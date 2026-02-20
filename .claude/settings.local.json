@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node scripts/analyze-pdf3.mjs:*)",
+      "Bash(node scripts/generate-test-pdf.mjs:*)",
+      "Bash(node scripts/analyze-text-positions.mjs:*)",
+      "Bash(node scripts/generate-calibration-pdf.mjs:*)"
+    ]
+  }
+}

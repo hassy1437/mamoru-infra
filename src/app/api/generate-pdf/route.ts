@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
         const body = await req.json();
 
         // 1. ファイルの読み込み
-        const pdfPath = path.join(process.cwd(), "public", "template.pdf");
+        const pdfPath = path.join(process.cwd(), "public", "PDF", "bekki_houkoku.pdf");
         const fontPath = path.join(process.cwd(), "public", "fonts", "NotoSansJP-Regular.ttf");
 
         const existingPdfBytes = fs.readFileSync(pdfPath);

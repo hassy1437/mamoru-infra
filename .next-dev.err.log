@@ -1,0 +1,13 @@
+Error: spawn EPERM
+    at ChildProcess.spawn (node:internal/child_process:420:11)
+    at spawn (node:child_process:753:9)
+    at fork (node:child_process:171:10)
+    at C:\projects\fire-report-app\node_modules\next\dist\cli\next-dev.js:243:45
+    at new Promise (<anonymous>)
+    at startServer (C:\projects\fire-report-app\node_modules\next\dist\cli\next-dev.js:212:16)
+    at runDevServer (C:\projects\fire-report-app\node_modules\next\dist\cli\next-dev.js:334:23)
+    at Module.nextDev (C:\projects\fire-report-app\node_modules\next\dist\cli\next-dev.js:342:11) {
+  errno: -4048,
+  code: 'EPERM',
+  syscall: 'spawn'
+}

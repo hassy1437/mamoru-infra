@@ -3,12 +3,19 @@ import {
     Building2,
     Smartphone,
     FileText,
-    Printer,
+    Download,
     ArrowRight,
     ShieldCheck,
     Zap,
     CheckCircle2
 } from "lucide-react";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Mamoru Infra — 消防設備点検の報告書作成を効率化",
+    description:
+        "スマホで入力するだけで、消防設備点検結果報告書のPDFをその場で自動生成。別記様式第1〜第22に対応。インストール不要・無料で利用可能。",
+};
 
 export default function Home() {
     return (
@@ -46,7 +53,7 @@ export default function Home() {
                 {/* Hero Section */}
                 <section className="relative px-4 py-16 md:py-24 md:px-6">
                     <div className="mx-auto max-w-5xl text-center">
-                        <div className="mb-8 inline-flex items-center rounded-full border border-blue-200 bg-blue-50/50 px-4 py-1.5 text-sm font-medium text-blue-700 backdrop-blur-sm transition-colors hover:bg-blue-100/50 cursor-pointer">
+                        <div className="mb-8 inline-flex items-center rounded-full border border-blue-200 bg-blue-50/50 px-4 py-1.5 text-sm font-medium text-blue-700 backdrop-blur-sm">
                             <Zap className="mr-2 h-4 w-4 fill-blue-500 text-blue-500" />
                             <span>消防設備点検の新しいスタンダード</span>
                         </div>
@@ -95,7 +102,7 @@ export default function Home() {
                             </div>
                             <div className="flex items-center gap-2">
                                 <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                                <span>自動PDF生成機能（予定）</span>
+                                <span>自動PDF生成機能</span>
                             </div>
                         </div>
                     </div>
@@ -124,8 +131,8 @@ export default function Home() {
                                     <h3 className="mb-4 text-2xl font-bold text-slate-900">スマホで完結する現場入力</h3>
                                     <p className="max-w-md text-slate-600 leading-relaxed">
                                         重いバインダーや紙の点検票はもう必要ありません。
-                                        手元のスマートフォンやタブレットから、スワイプやタップを中心とした直感的なUIでサクサクと入力できます。
-                                        写真の添付や特記事項のメモも簡単です。
+                                        手元のスマートフォンやタブレットから、直感的なUIでサクサクと入力できます。
+                                        特記事項のメモも簡単です。
                                     </p>
                                 </div>
                             </div>
@@ -153,7 +160,7 @@ export default function Home() {
                                     </div>
                                     <h3 className="mb-4 text-xl font-bold text-slate-900">入力ミスの防止</h3>
                                     <p className="text-slate-600 leading-relaxed text-sm">
-                                        必須項目のチェック機能や、整合性のバリデーションを搭載。手作業による転記ミスや漏れを根絶し、正確な書類作成をサポートします。
+                                        必須項目のチェック機能を搭載。手作業による転記ミスや漏れを防ぎ、正確な書類作成をサポートします。
                                     </p>
                                 </div>
                             </div>
@@ -163,12 +170,12 @@ export default function Home() {
                                 <div className="absolute right-0 top-0 h-full w-1/2 bg-gradient-to-l from-indigo-100/50 to-transparent"></div>
                                 <div className="relative z-10 flex h-full flex-col justify-center">
                                     <div className="mb-6 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600 transition-transform group-hover:scale-110">
-                                        <Printer className="h-7 w-7" />
+                                        <Download className="h-7 w-7" />
                                     </div>
-                                    <h3 className="mb-4 text-2xl font-bold text-slate-900">PDF & Word出力 <span className="text-sm font-normal text-indigo-600 bg-indigo-100 px-2 py-1 rounded-full ml-2">近日公開</span></h3>
+                                    <h3 className="mb-4 text-2xl font-bold text-slate-900">ワンクリックPDF出力</h3>
                                     <p className="max-w-md text-slate-600 leading-relaxed">
-                                        完成した報告書は、ワンクリックでPDFやWord形式でダウンロード可能。
-                                        そのまま印刷して提出したり、メールで共有したりと、社内外のワークフローをシームレスにつなぎます。
+                                        完成した報告書は、ワンクリックでPDF形式でダウンロード可能。
+                                        別記様式第1〜第22に対応し、そのまま印刷して消防署へ提出できます。
                                     </p>
                                 </div>
                             </div>
@@ -213,7 +220,7 @@ export default function Home() {
                     </div>
                     <div className="text-center md:text-left">
                         <p className="text-sm font-medium text-slate-500">
-                            © 2025 Mamoru Infra. <span className="hidden sm:inline">消防設備点検業務を効率化するポータル</span>
+                            © 2026 Mamoru Infra. <span className="hidden sm:inline">消防設備点検業務を効率化するポータル</span>
                         </p>
                     </div>
                 </div>

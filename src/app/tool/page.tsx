@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { ArrowRight, Building, ClipboardCheck, Wrench } from "lucide-react"
+import { ArrowRight, Building, ClipboardCheck, Settings, Wrench } from "lucide-react"
 
 export default function Home() {
   return (
@@ -27,7 +27,7 @@ export default function Home() {
         </div>
 
         <div className="flex flex-col gap-5 justify-center items-center relative z-10 pt-4">
-          <Link href="/reports/new" className="w-full group">
+          <Link href="/properties" className="w-full group">
             <Button size="lg" className="w-full text-lg px-10 py-7 gap-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 rounded-2xl font-bold">
               <Building className="w-6 h-6" />
               物件基本情報の入力
@@ -40,6 +40,14 @@ export default function Home() {
               <ClipboardCheck className="w-6 h-6" />
               消防設備点検スタート
               <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+            </Button>
+          </Link>
+
+          <Link href="/tool/equipment-settings" className="w-full group">
+            <Button size="lg" variant="outline" className="w-full text-base px-10 py-6 gap-3 border-slate-300 hover:bg-slate-50 hover:-translate-y-0.5 transition-all duration-300 rounded-2xl font-medium text-slate-600">
+              <Settings className="w-5 h-5" />
+              設備出力設定
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Button>
           </Link>
         </div>

@@ -1,0 +1,9 @@
+Circle analysis for senyo/kenyo:
+Circle rect: (253.4, 217.0) - (279.4, 231.0)
+Circle center: (266.4, 224.0)
+Senyo text bbox: (255.8, 218.8) - (277.0, 229.3)
+Senyo text center: (266.4, 224.1)
+Offset: (0.0, -0.05)
+Kenyo text bbox: (298.0, 218.8) - (319.0, 229.3)
+Circle covers senyo: YES (well centered)
+Circle does NOT cover kenyo: correct

@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <title>全帳票テスト出力レビュー</title>
+  <style>
+    body { font-family: "Yu Gothic UI", "Hiragino Sans", sans-serif; margin: 24px; color: #111827; background: #f8fafc; }
+    h1, h2, h3 { margin: 0; }
+    h1 { margin-bottom: 24px; }
+    section { margin-bottom: 32px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; }
+    .card { background: #fff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 16px; box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06); }
+    .meta, .links, .muted, .ok { margin: 8px 0; font-size: 13px; color: #475569; }
+    .thumbs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .thumbs img { width: 140px; border: 1px solid #cbd5e1; background: white; }
+    .errors { margin: 8px 0; color: #b91c1c; padding-left: 18px; }
+    a { color: #0f766e; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <h1>全帳票テスト出力レビュー</h1>
+  
+      <section>
+        <h2>報告書</h2>
+        <div class="grid">
+        <article class="card">
+          <h3>報告書PDF</h3>
+          <p class="meta">key: report_pdf / format: pdf</p>
+          <p class="links"><a href="pdf/report/report_pdf.pdf">report_pdf.pdf</a> | <a href="payloads/report/report_pdf.json">report_pdf.json</a></p>
+          <p class="ok">status=200 bytes=3289603 pages=1 png=1</p>
+          <div class="thumbs"><a href="png/report/report_pdf/report_pdf_p1.png"><img src="png/report/report_pdf/report_pdf_p1.png" alt="report_pdf" /></a></div>
+        </article>
+      
+        <article class="card">
+          <h3>報告書Word</h3>
+          <p class="meta">key: report_docx / format: docx</p>
+          <p class="links"><a href="docx/report/report_docx.docx">report_docx.docx</a> | <a href="payloads/report/report_docx.json">report_docx.json</a></p>
+          <p class="ok">status=200 bytes=22366</p>
+          <p class="muted">PNGなし</p>
+        </article>
+      </div>
+      </section>
+    
+      <section>
+        <h2>総括・一覧</h2>
+        <div class="grid">
+        <article class="card">
+          <h3>総括表PDF</h3>
+          <p class="meta">key: soukatsu / format: pdf</p>
+          <p class="links"><a href="pdf/overview/soukatsu.pdf">soukatsu.pdf</a> | <a href="payloads/overview/soukatsu.json">soukatsu.json</a></p>
+          <p class="ok">status=200 bytes=3395677 pages=2 png=2</p>
+          <div class="thumbs"><a href="png/overview/soukatsu/soukatsu_p1.png"><img src="png/overview/soukatsu/soukatsu_p1.png" alt="soukatsu" /></a><a href="png/overview/soukatsu/soukatsu_p2.png"><img src="png/overview/soukatsu/soukatsu_p2.png" alt="soukatsu" /></a></div>
+        </article>
+      
+        <article class="card">
+          <h3>点検者一覧PDF</h3>
+          <p class="meta">key: itiran / format: pdf</p>
+          <p class="links"><a href="pdf/overview/itiran.pdf">itiran.pdf</a> | <a href="payloads/overview/itiran.json">itiran.json</a></p>
+          <p class="ok">status=200 bytes=3368748 pages=1 png=1</p>
+          <div class="thumbs"><a href="png/overview/itiran/itiran_p1.png"><img src="png/overview/itiran/itiran_p1.png" alt="itiran" /></a></div>
+        </article>
+      </div>
+      </section>
+    
+      <section>
+        <h2>別記</h2>
+        <div class="grid">
+        <article class="card">
+          <h3>別記1 消火器点検票</h3>
+          <p class="meta">key: bekki1 / format: pdf</p>
+          <p class="links"><a href="pdf/bekki/bekki1.pdf">bekki1.pdf</a> | <a href="payloads/bekki/bekki1.json">bekki1.json</a></p>
+          <p class="ok">status=200 bytes=3415635 pages=2 png=2</p>
+          <div class="thumbs"><a href="png/bekki/bekki1/bekki1_p1.png"><img src="png/bekki/bekki1/bekki1_p1.png" alt="bekki1" /></a><a href="png/bekki/bekki1/bekki1_p2.png"><img src="png/bekki/bekki1/bekki1_p2.png" alt="bekki1" /></a></div>
+        </article>
+      
+        <article class="card">
+          <h3>別記2 屋内消火栓設備点検票</h3>
+          <p class="meta">key: bekki2 / format: pdf</p>
+          <p class="links"><a href="pdf/bekki/bekki2.pdf">bekki2.pdf</a> | <a href="payloads/bekki/bekki2.json">bekki2.json</a></p>
+          <p class="ok">status=200 bytes=3437461 pages=3 png=3</p>
+          <div class="thumbs"><a href="png/bekki/bekki2/bekki2_p1.png"><img src="png/bekki/bekki2/bekki2_p1.png" alt="bekki2" /></a><a href="png/bekki/bekki2/bekki2_p2.png"><img src="png/bekki/bekki2/bekki2_p2.png" alt="bekki2" /></a><a href="png/bekki/bekki2/bekki2_p3.png"><img src="png/bekki/bekki2/bekki2_p3.png" alt="bekki2" /></a></div>
+        </article>
+      
+        <article class="card">
+          <h3>別記3 スプリンクラー設備点検票</h3>
+          <p class="meta">key: bekki3 / format: pdf</p>
+          <p class="links"><a href="pdf/bekki/bekki3.pdf">bekki3.pdf</a> | <a href="payloads/bekki/bekki3.json">bekki3.json</a></p>
+          <p class="ok">status=200 bytes=3489719 pages=5 png=5</p>
+          <div class="thumbs"><a href="png/bekki/bekki3/bekki3_p1.png"><img src="png/bekki/bekki3/bekki3_p1.png" alt="bekki3" /></a><a href="png/bekki/bekki3/bekki3_p2.png"><img src="png/bekki/bekki3/bekki3_p2.png" alt="bekki3" /></a><a href="png/bekki/bekki3/bekki3_p3.png"><img src="png/bekki/bekki3/bekki3_p3.png" alt="bekki3" /></a><a href="png/bekki/bekki3/bekki3_p4.png"><img src="png/bekki/bekki3/bekki3_p4.png" alt="bekki3" /></a><a href="png/bekki/bekki3/bekki3_p5.png"><img src="png/bekki/bekki3/bekki3_p5.png" alt="bekki3" /></a></div>
+        </article>
+      
+        <article class="card">
+          <h3>別記4 水噴霧消火設備点検票</h3>
+          <p class="meta">key: bekki4 / format: pdf</p>
+          <p class="links"><a href="pdf/bekki/bekki4.pdf">bekki4.pdf</a> | <a href="payloads/bekki/bekki4.json">bekki4.json</a></p>
+          <p class="ok">status=200 bytes=3437256 pages=3 png=3</p>
+          <div class="thumbs"><a href="png/bekki/bekki4/bekki4_p1.png"><img src="png/bekki/bekki4/bekki4_p1.png" alt="bekki4" /></a><a href="png/bekki/bekki4/bekki4_p2.png"><img src="png/bekki/bekki4/bekki4_p2.png" alt="bekki4" /></a><a href="png/bekki/bekki4/bekki4_p3.png"><img src="png/bekki/bekki4/bekki4_p3.png" alt="bekki4" /></a></div>
+        </article>
+      
+        <article class="card">
+          <h3>別記5 泡消火設備点検票</h3>
+          <p class="meta">key: bekki5 / format: pdf</p>
+          <p class="links"><a href="pdf/bekki/bekki5.pdf">bekki5.pdf</a> | <a href="payloads/bekki/bekki5.json">bekki5.json</a></p>
+          <p class="ok">status=200 bytes=3509473 pages=4 png=4</p>
+          <div class="thumbs"><a href="png/bekki/bekki5/bekki5_p1.png"><img src="png/bekki/bekki5/bekki5_p1.png" alt="bekki5" /></a><a href="png/bekki/bekki5/bekki5_p2.png"><img src="png/bekki/bekki5/bekki5_p2.png" alt="bekki5" /></a><a href="png/bekki/bekki5/bekki5_p3.png"><img src="png/bekki/bekki5/bekki5_p3.png" alt="bekki5" /></a><a href="png/bekki/bekki5/bekki5_p4.png"><img src="png/bekki/bekki5/bekki5_p4.png" alt="bekki5" /></a></div>
+        </article>
+      
+        <article class="card">
+          <h3>別記6 不活性ガス消火設備点検票</h3>
+          <p class="meta">key: bekki6 / format: pdf</p>
+          <p class="links"><a href="pdf/bekki/bekki6.pdf">bekki6.pdf</a> | <a href="payloads/bekki/bekki6.json">bekki6.json</a></p>
+          <p class="ok">status=200 bytes=3570073 pages=5 png=5</p>
+          <div class="thumbs"><a href="png/bekki/bekki6/bekki6_p1.png"><img src="png/bekki/bekki6/bekki6_p1.png" alt="bekki6" /></a><a href="png/bekki/bekki6/bekki6_p2.png"><img src="png/bekki/bekki6/bekki6_p2.png" alt="bekki6" /></a><a href="png/bekki/bekki6/bekki6_p3.png"><img src="png/bekki/bekki6/bekki6_p3.png" alt="bekki6" /></a><a href="png/bekki/bekki6/bekki6_p4.png"><img src="png/bekki/bekki6/bekki6_p4.png" alt="bekki6" /></a><a href="png/bekki/bekki6/bekki6_p5.png"><img src="png/bekki/bekki6/bekki6_p5.png" alt="bekki6" /></a></div>
+        </article>
+      
+        <article class="card">
+          <h3>別記7 ハロゲン化物消火設備点検票</h3>
+          <p class="meta">key: bekki7 / format: pdf</p>
+          <p class="links"><a href="pdf/bekki/bekki7.pdf">bekki7.pdf</a> | <a href="payloads/bekki/bekki7.json">bekki7.json</a></p>
+          <p class="ok">status=200 bytes=3544065 pages=5 png=5</p>
+          <div class="thumbs"><a href="png/bekki/bekki7/bekki7_p1.png"><img src="png/bekki/bekki7/bekki7_p1.png" alt="bekki7" /></a><a href="png/bekki/bekki7/bekki7_p2.png"><img src="png/bekki/bekki7/bekki7_p2.png" alt="bekki7" /></a><a href="png/bekki/bekki7/bekki7_p3.png"><img src="png/bekki/bekki7/bekki7_p3.png" alt="bekki7" /></a><a href="png/bekki/bekki7/bekki7_p4.png"><img src="png/bekki/bekki7/bekki7_p4.png" alt="bekki7" /></a><a href="png/bekki/bekki7/bekki7_p5.png"><img src="png/bekki/bekki7/bekki7_p5.png" alt="bekki7" /></a></div>
+        </article>
+      
+        <article class="card">
+          <h3>別記8 粉末消火設備点検票</h3>
+          <p class="meta">key: bekki8 / format: pdf</p>
+          <p class="links"><a href="pdf/bekki/bekki8.pdf">bekki8.pdf</a> | <a href="payloads/bekki/bekki8.json">bekki8.json</a></p>
+          <p class="ok">status=200 bytes=3565562 pages=5 png=5</p>
+          <div class="thumbs"><a href="png/bekki/bekki8/bekki8_p1.png"><img src="png/bekki/bekki8/bekki8_p1.png" alt="bekki8" /></a><a href="png/bekki/bekki8/bekki8_p2.png"><img src="png/bekki/bekki8/bekki8_p2.png" alt="bekki8" /></a><a href="png/bekki/bekki8/bekki8_p3.png"><img src="png/bekki/bekki8/bekki8_p3.png" alt="bekki8" /></a><a href="png/bekki/bekki8/bekki8_p4.png"><img src="png/bekki/bekki8/bekki8_p4.png" alt="bekki8" /></a><a href="png/bekki/bekki8/bekki8_p5.png"><img src="png/bekki/bekki8/bekki8_p5.png" alt="bekki8" /></a></div>
+        </article>
+      
+        <article class="card">
+          <h3>別記9 屋外消火栓設備点検票</h3>
+          <p class="meta">key: bekki9 / format: pdf</p>
+          <p class="links"><a href="pdf/bekki/bekki9.pdf">bekki9.pdf</a> | <a href="payloads/bekki/bekki9.json">bekki9.json</a></p>
+          <p class="ok">status=200 bytes=3430274 pages=3 png=3</p>
+          <div class="thumbs"><a href="png/bekki/bekki9/bekki9_p1.png"><img src="png/bekki/bekki9/bekki9_p1.png" alt="bekki9" /></a><a href="png/bekki/bekki9/bekki9_p2.png"><img src="png/bekki/bekki9/bekki9_p2.png" alt="bekki9" /></a><a href="png/bekki/bekki9/bekki9_p3.png"><img src="png/bekki/bekki9/bekki9_p3.png" alt="bekki9" /></a></div>
+        </article>
+      
+        <article class="card">
+          <h3>別記10 動力消防ポンプ設備点検票</h3>
+          <p class="meta">key: bekki10 / format: pdf</p>
+          <p class="links"><a href="pdf/bekki/bekki10.pdf">bekki10.pdf</a> | <a href="payloads/bekki/bekki10.json">bekki10.json</a></p>
+          <p class="ok">status=200 bytes=3443299 pages=2 png=2</p>
+          <div class="thumbs"><a href="png/bekki/bekki10/bekki10_p1.png"><img src="png/bekki/bekki10/bekki10_p1.png" alt="bekki10" /></a><a href="png/bekki/bekki10/bekki10_p2.png"><img src="png/bekki/bekki10/bekki10_p2.png" alt="bekki10" /></a></div>
+        </article>
+      
+        <article class="card">
+          <h3>別記11-1 自動火災報知設備点検票</h3>
+          <p class="meta">key: bekki11_1 / format: pdf</p>
+          <p class="links"><a href="pdf/bekki/bekki11_1.pdf">bekki11_1.pdf</a> | <a href="payloads/bekki/bekki11_1.json">bekki11_1.json</a></p>
+          <p class="ok">status=200 bytes=3479031 pages=3 png=3</p>
+          <div class="thumbs"><a href="png/bekki/bekki11_1/bekki11_1_p1.png"><img src="png/bekki/bekki11_1/bekki11_1_p1.png" alt="bekki11_1" /></a><a href="png/bekki/bekki11_1/bekki11_1_p2.png"><img src="png/bekki/bekki11_1/bekki11_1_p2.png" alt="bekki11_1" /></a><a href="png/bekki/bekki11_1/bekki11_1_p3.png"><img src="png/bekki/bekki11_1/bekki11_1_p3.png" alt="bekki11_1" /></a></div>
+        </article>
+      
+        <article class="card">
+          <h3>別記11-2 ガス漏れ火災警報設備点検票</h3>
+          <p class="meta">key: bekki11_2 / format: pdf</p>
+          <p class="links"><a href="pdf/bekki/bekki11_2.pdf">bekki11_2.pdf</a> | <a href="payloads/bekki/bekki11_2.json">bekki11_2.json</a></p>
+          <p class="ok">status=200 bytes=3445157 pages=2 png=2</p>
+          <div class="thumbs"><a href="png/bekki/bekki11_2/bekki11_2_p1.png"><img src="png/bekki/bekki11_2/bekki11_2_p1.png" alt="bekki11_2" /></a><a href="png/bekki/bekki11_2/bekki11_2_p2.png"><img src="png/bekki/bekki11_2/bekki11_2_p2.png" alt="bekki11_2" /></a></div>
+        </article>
+      
+        <article class="card">
+          <h3>別記12 漏電火災警報器点検票</h3>
+          <p class="meta">key: bekki12 / format: pdf</p>
+          <p class="links"><a href="pdf/bekki/bekki12.pdf">bekki12.pdf</a> | <a href="payloads/bekki/bekki12.json">bekki12.json</a></p>
+          <p class="ok">status=200 bytes=3428233 pages=2 png=2</p>
+          <div class="thumbs"><a href="png/bekki/bekki12/bekki12_p1.png"><img src="png/bekki/bekki12/bekki12_p1.png" alt="bekki12" /></a><a href="png/bekki/bekki12/bekki12_p2.png"><img src="png/bekki/bekki12/bekki12_p2.png" alt="bekki12" /></a></div>
+        </article>
+      
+        <article class="card">
+          <h3>別記13 消防機関へ通報する火災報知設備点検票</h3>
+          <p class="meta">key: bekki13 / format: pdf</p>
+          <p class="links"><a href="pdf/bekki/bekki13.pdf">bekki13.pdf</a> | <a href="payloads/bekki/bekki13.json">bekki13.json</a></p>
+          <p class="ok">status=200 bytes=3449921 pages=2 png=2</p>
+          <div class="thumbs"><a href="png/bekki/bekki13/bekki13_p1.png"><img src="png/bekki/bekki13/bekki13_p1.png" alt="bekki13" /></a><a href="png/bekki/bekki13/bekki13_p2.png"><img src="png/bekki/bekki13/bekki13_p2.png" alt="bekki13" /></a></div>
+        </article>
+      
+        <article class="card">
+          <h3>別記14 非常警報設備点検票</h3>
+          <p class="meta">key: bekki14 / format: pdf</p>
+          <p class="links"><a href="pdf/bekki/bekki14.pdf">bekki14.pdf</a> | <a href="payloads/bekki/bekki14.json">bekki14.json</a></p>
+          <p class="ok">status=200 bytes=3467786 pages=3 png=3</p>
+          <div class="thumbs"><a href="png/bekki/bekki14/bekki14_p1.png"><img src="png/bekki/bekki14/bekki14_p1.png" alt="bekki14" /></a><a href="png/bekki/bekki14/bekki14_p2.png"><img src="png/bekki/bekki14/bekki14_p2.png" alt="bekki14" /></a><a href="png/bekki/bekki14/bekki14_p3.png"><img src="png/bekki/bekki14/bekki14_p3.png" alt="bekki14" /></a></div>
+        </article>
+      
+        <article class="card">
+          <h3>別記15 避難器具点検票</h3>
+          <p class="meta">key: bekki15 / format: pdf</p>
+          <p class="links"><a href="pdf/bekki/bekki15.pdf">bekki15.pdf</a> | <a href="payloads/bekki/bekki15.json">bekki15.json</a></p>
+          <p class="ok">status=200 bytes=3452862 pages=2 png=2</p>
+          <div class="thumbs"><a href="png/bekki/bekki15/bekki15_p1.png"><img src="png/bekki/bekki15/bekki15_p1.png" alt="bekki15" /></a><a href="png/bekki/bekki15/bekki15_p2.png"><img src="png/bekki/bekki15/bekki15_p2.png" alt="bekki15" /></a></div>
+        </article>
+      
+        <article class="card">
+          <h3>別記16 誘導灯及び誘導標識点検票</h3>
+          <p class="meta">key: bekki16 / format: pdf</p>
+          <p class="links"><a href="pdf/bekki/bekki16.pdf">bekki16.pdf</a> | <a href="payloads/bekki/bekki16.json">bekki16.json</a></p>
+          <p class="ok">status=200 bytes=3441715 pages=2 png=2</p>
+          <div class="thumbs"><a href="png/bekki/bekki16/bekki16_p1.png"><img src="png/bekki/bekki16/bekki16_p1.png" alt="bekki16" /></a><a href="png/bekki/bekki16/bekki16_p2.png"><img src="png/bekki/bekki16/bekki16_p2.png" alt="bekki16" /></a></div>
+        </article>
+      
+        <article class="card">
+          <h3>別記17 消防用水点検票</h3>
+          <p class="meta">key: bekki17 / format: pdf</p>
+          <p class="links"><a href="pdf/bekki/bekki17.pdf">bekki17.pdf</a> | <a href="payloads/bekki/bekki17.json">bekki17.json</a></p>
+          <p class="ok">status=200 bytes=3404653 pages=1 png=1</p>
+          <div class="thumbs"><a href="png/bekki/bekki17/bekki17_p1.png"><img src="png/bekki/bekki17/bekki17_p1.png" alt="bekki17" /></a></div>
+        </article>
+      
+        <article class="card">
+          <h3>別記18 排煙設備点検票</h3>
+          <p class="meta">key: bekki18 / format: pdf</p>
+          <p class="links"><a href="pdf/bekki/bekki18.pdf">bekki18.pdf</a> | <a href="payloads/bekki/bekki18.json">bekki18.json</a></p>
+          <p class="ok">status=200 bytes=3440069 pages=2 png=2</p>
+          <div class="thumbs"><a href="png/bekki/bekki18/bekki18_p1.png"><img src="png/bekki/bekki18/bekki18_p1.png" alt="bekki18" /></a><a href="png/bekki/bekki18/bekki18_p2.png"><img src="png/bekki/bekki18/bekki18_p2.png" alt="bekki18" /></a></div>
+        </article>
+      
+        <article class="card">
+          <h3>別記19 連結散水設備点検票</h3>
+          <p class="meta">key: bekki19 / format: pdf</p>
+          <p class="links"><a href="pdf/bekki/bekki19.pdf">bekki19.pdf</a> | <a href="payloads/bekki/bekki19.json">bekki19.json</a></p>
+          <p class="ok">status=200 bytes=3416883 pages=1 png=1</p>
+          <div class="thumbs"><a href="png/bekki/bekki19/bekki19_p1.png"><img src="png/bekki/bekki19/bekki19_p1.png" alt="bekki19" /></a></div>
+        </article>
+      
+        <article class="card">
+          <h3>別記20 連結送水管点検票</h3>
+          <p class="meta">key: bekki20 / format: pdf</p>
+          <p class="links"><a href="pdf/bekki/bekki20.pdf">bekki20.pdf</a> | <a href="payloads/bekki/bekki20.json">bekki20.json</a></p>
+          <p class="ok">status=200 bytes=3465964 pages=3 png=3</p>
+          <div class="thumbs"><a href="png/bekki/bekki20/bekki20_p1.png"><img src="png/bekki/bekki20/bekki20_p1.png" alt="bekki20" /></a><a href="png/bekki/bekki20/bekki20_p2.png"><img src="png/bekki/bekki20/bekki20_p2.png" alt="bekki20" /></a><a href="png/bekki/bekki20/bekki20_p3.png"><img src="png/bekki/bekki20/bekki20_p3.png" alt="bekki20" /></a></div>
+        </article>
+      
+        <article class="card">
+          <h3>別記21 非常コンセント設備点検票</h3>
+          <p class="meta">key: bekki21 / format: pdf</p>
+          <p class="links"><a href="pdf/bekki/bekki21.pdf">bekki21.pdf</a> | <a href="payloads/bekki/bekki21.json">bekki21.json</a></p>
+          <p class="ok">status=200 bytes=3403579 pages=1 png=1</p>
+          <div class="thumbs"><a href="png/bekki/bekki21/bekki21_p1.png"><img src="png/bekki/bekki21/bekki21_p1.png" alt="bekki21" /></a></div>
+        </article>
+      
+        <article class="card">
+          <h3>別記22 無線通信補助設備点検票</h3>
+          <p class="meta">key: bekki22 / format: pdf</p>
+          <p class="links"><a href="pdf/bekki/bekki22.pdf">bekki22.pdf</a> | <a href="payloads/bekki/bekki22.json">bekki22.json</a></p>
+          <p class="ok">status=200 bytes=3416485 pages=1 png=1</p>
+          <div class="thumbs"><a href="png/bekki/bekki22/bekki22_p1.png"><img src="png/bekki/bekki22/bekki22_p1.png" alt="bekki22" /></a></div>
+        </article>
+      </div>
+      </section>
+    
+</body>
+</html>

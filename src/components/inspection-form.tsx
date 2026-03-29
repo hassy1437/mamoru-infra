@@ -1,6 +1,6 @@
-"use client"
+﻿"use client"
 
-import { useState } from "react"
+import { useState, type FormEvent } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
@@ -9,22 +9,28 @@ import { Label } from "@/components/ui/label"
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
 import { Plus, Trash2, Loader2 } from "lucide-react"
 
+type EquipmentItem = {
+    id: string
+    name: string
+}
+
+const createEquipmentItem = (): EquipmentItem => ({
+    id: crypto.randomUUID(),
+    name: "",
+})
+
 export default function InspectionForm() {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState(false)
 
-    // フォームの状態管理
-    const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0])
-    // ★削除: 消防長のStateを削除しました
+    const [reportDate, setReportDate] = useState(new Date().toISOString().split("T")[0])
 
-    // 届出者情報
     const [notifierAddress, setNotifierAddress] = useState("")
     const [notifierName, setNotifierName] = useState("")
     const [notifierPhone, setNotifierPhone] = useState("")
 
-    // 防火対象物情報
     const [buildingAddress, setBuildingAddress] = useState("")
     const [buildingName, setBuildingName] = useState("")
     const [buildingUsage, setBuildingUsage] = useState("")
@@ -32,66 +38,60 @@ export default function InspectionForm() {
     const [floorBelow, setFloorBelow] = useState("")
     const [totalFloorArea, setTotalFloorArea] = useState("")
 
-    // 消防用設備等
-    const [equipmentList, setEquipmentList] = useState<{ id: string, name: string }[]>([
-        { id: '1', name: '' }
-    ])
+    const [equipmentList, setEquipmentList] = useState<EquipmentItem[]>([createEquipmentItem()])
 
     const addEquipment = () => {
-        setEquipmentList([...equipmentList, { id: crypto.randomUUID(), name: '' }])
+        setEquipmentList((prev) => [...prev, createEquipmentItem()])
     }
 
     const removeEquipment = (id: string) => {
-        setEquipmentList(equipmentList.filter(item => item.id !== id))
+        setEquipmentList((prev) => (prev.length === 1 ? prev : prev.filter((item) => item.id !== id)))
     }
 
     const updateEquipment = (id: string, value: string) => {
-        setEquipmentList(equipmentList.map(item =>
-            item.id === id ? { ...item, name: value } : item
-        ))
+        setEquipmentList((prev) => prev.map((item) => (item.id === id ? { ...item, name: value } : item)))
     }
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         setLoading(true)
         setError(null)
         setSuccess(false)
 
         try {
-            // データベースに送信
             const { data, error: insertError } = await supabase
-                .from('inspection_reports')
+                .from("inspection_reports")
                 .insert({
                     report_date: reportDate,
-                    // ★削除: fire_department_name の送信をやめました
-                    fire_department_name: "", // ← ★この1行を追加！(空文字を送る)
+                    fire_department_name: "",
                     notifier_address: notifierAddress,
                     notifier_name: notifierName,
-                    notifier_phone: notifierPhone,
+                    notifier_phone: notifierPhone || null,
                     building_address: buildingAddress,
                     building_name: buildingName,
                     building_usage: buildingUsage,
-                    floor_above: floorAbove ? parseInt(floorAbove) : null,
-                    floor_below: floorBelow ? parseInt(floorBelow) : null,
-                    total_floor_area: totalFloorArea ? parseFloat(totalFloorArea) : null,
-                    equipment_types: equipmentList.map(e => e.name).filter(n => n.trim() !== ''),
-                    status: 'submitted'
+                    floor_above: floorAbove ? Number.parseInt(floorAbove, 10) : null,
+                    floor_below: floorBelow ? Number.parseInt(floorBelow, 10) : null,
+                    total_floor_area: totalFloorArea ? Number.parseFloat(totalFloorArea) : null,
+                    equipment_types: equipmentList.map((item) => item.name.trim()).filter(Boolean),
+                    status: "submitted",
                 })
                 .select()
                 .single()
 
             if (insertError) throw insertError
+            if (!data || typeof data.id !== "string") {
+                throw new Error("保存結果のIDを取得できませんでした。")
+            }
 
             setSuccess(true)
 
-            // プレビュー画面へ移動
             setTimeout(() => {
                 router.push(`/reports/${data.id}`)
             }, 1000)
-
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err)
-            setError(err.message || "レポートの保存中にエラーが発生しました。")
+            setError(err instanceof Error ? err.message : "レポートの保存中にエラーが発生しました。")
         } finally {
             setLoading(false)
         }
@@ -106,15 +106,14 @@ export default function InspectionForm() {
             )}
             {success && (
                 <div className="bg-green-50 text-green-600 p-4 rounded-md border border-green-200">
-                    保存成功！プレビュー画面へ移動します...
+                    保存しました。レポート画面へ移動します...
                 </div>
             )}
 
-            {/* 基本情報 */}
             <Card>
                 <CardHeader>
                     <CardTitle>基本情報</CardTitle>
-                    <CardDescription>報告日を入力してください。</CardDescription>
+                    <CardDescription>報告書の基本情報を入力してください。</CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-6 md:grid-cols-2">
                     <div className="space-y-2">
@@ -127,22 +126,20 @@ export default function InspectionForm() {
                             onChange={(e) => setReportDate(e.target.value)}
                         />
                     </div>
-                    {/* ★削除: 消防長の入力欄をここから削除しました */}
                 </CardContent>
             </Card>
 
-            {/* 届出者情報 */}
             <Card>
                 <CardHeader>
                     <CardTitle>届出者情報</CardTitle>
-                    <CardDescription>報告する人の情報を入力してください。</CardDescription>
+                    <CardDescription>届出者の情報を入力してください。</CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-6 md:grid-cols-2">
                     <div className="space-y-2 md:col-span-2">
-                        <Label htmlFor="notifierName">氏名（名称）</Label>
+                        <Label htmlFor="notifierName">氏名</Label>
                         <Input
                             id="notifierName"
-                            placeholder="氏名を入力"
+                            placeholder="届出者氏名"
                             required
                             value={notifierName}
                             onChange={(e) => setNotifierName(e.target.value)}
@@ -171,11 +168,10 @@ export default function InspectionForm() {
                 </CardContent>
             </Card>
 
-            {/* 防火対象物情報 */}
             <Card>
                 <CardHeader>
-                    <CardTitle>防火対象物</CardTitle>
-                    <CardDescription>点検対象の建物詳細を入力してください。</CardDescription>
+                    <CardTitle>防火対象物情報</CardTitle>
+                    <CardDescription>建物の基本情報を入力してください。</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                     <div className="grid gap-6 md:grid-cols-2">
@@ -183,7 +179,7 @@ export default function InspectionForm() {
                             <Label htmlFor="buildingName">名称</Label>
                             <Input
                                 id="buildingName"
-                                placeholder="建物名"
+                                placeholder="建物名称"
                                 required
                                 value={buildingName}
                                 onChange={(e) => setBuildingName(e.target.value)}
@@ -193,7 +189,7 @@ export default function InspectionForm() {
                             <Label htmlFor="buildingUsage">用途</Label>
                             <Input
                                 id="buildingUsage"
-                                placeholder="例：共同住宅、事務所"
+                                placeholder="事務所・共同住宅など"
                                 required
                                 value={buildingUsage}
                                 onChange={(e) => setBuildingUsage(e.target.value)}
@@ -203,7 +199,7 @@ export default function InspectionForm() {
                             <Label htmlFor="buildingAddress">所在地</Label>
                             <Input
                                 id="buildingAddress"
-                                placeholder="防火対象物の所在地"
+                                placeholder="建物の所在地"
                                 required
                                 value={buildingAddress}
                                 onChange={(e) => setBuildingAddress(e.target.value)}
@@ -214,23 +210,11 @@ export default function InspectionForm() {
                     <div className="grid grid-cols-3 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="floorAbove">地上階数</Label>
-                            <Input
-                                id="floorAbove"
-                                type="number"
-                                min="0"
-                                value={floorAbove}
-                                onChange={(e) => setFloorAbove(e.target.value)}
-                            />
+                            <Input id="floorAbove" type="number" min="0" value={floorAbove} onChange={(e) => setFloorAbove(e.target.value)} />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="floorBelow">地下階数</Label>
-                            <Input
-                                id="floorBelow"
-                                type="number"
-                                min="0"
-                                value={floorBelow}
-                                onChange={(e) => setFloorBelow(e.target.value)}
-                            />
+                            <Input id="floorBelow" type="number" min="0" value={floorBelow} onChange={(e) => setFloorBelow(e.target.value)} />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="totalFloorArea">延べ面積 (㎡)</Label>
@@ -247,11 +231,10 @@ export default function InspectionForm() {
                 </CardContent>
             </Card>
 
-            {/* 消防用設備等 */}
             <Card>
                 <CardHeader>
-                    <CardTitle>設置されている消防用設備等</CardTitle>
-                    <CardDescription>建物に設置されている設備をリストアップしてください。</CardDescription>
+                    <CardTitle>設備種別</CardTitle>
+                    <CardDescription>点検対象の設備名を追加してください。</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     {equipmentList.map((item, index) => (
@@ -281,7 +264,7 @@ export default function InspectionForm() {
             <div className="flex justify-end pt-4">
                 <Button type="submit" size="lg" disabled={loading} className="w-full md:w-auto">
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {loading ? "保存中..." : "報告書を作成する"}
+                    {loading ? "保存中..." : "報告書を登録する"}
                 </Button>
             </div>
         </form>

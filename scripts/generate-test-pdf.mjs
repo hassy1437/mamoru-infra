@@ -3,7 +3,11 @@ import fontkit from "@pdf-lib/fontkit";
 import fs from "fs";
 import path from "path";
 
-const pdfPath = path.join(process.cwd(), "public", "bekki_soukatu.pdf");
+const candidatePdfPaths = [
+    path.join(process.cwd(), "public", "PDF", "bekki_soukatu.pdf"),
+    path.join(process.cwd(), "public", "bekki_soukatu.pdf"),
+];
+const pdfPath = candidatePdfPaths.find((p) => fs.existsSync(p));
 const fontPath = path.join(process.cwd(), "public", "fonts", "NotoSansJP-Regular.ttf");
 
 const P1_ROW1 = { top: 119.7, bottom: 197.8 };
@@ -73,6 +77,10 @@ const drawDate = (page, font, pageHeight, dateY, size, dateValue, anchors) => {
     page.drawText(monthStr, { x: anchors.month - monthW, y: pageHeight - dateY, size, font, color: rgb(0, 0, 0) });
     page.drawText(dayStr, { x: anchors.day - dayW, y: pageHeight - dateY, size, font, color: rgb(0, 0, 0) });
 };
+
+if (!pdfPath) {
+    throw new Error("Template PDF not found: bekki_soukatu.pdf");
+}
 
 const existingPdfBytes = fs.readFileSync(pdfPath);
 const fontBytes = fs.readFileSync(fontPath);

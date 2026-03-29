@@ -8,40 +8,20 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
-import { Loader2 } from "lucide-react"
-
-const EQUIPMENT_LIST = [
-    "消火器",
-    "屋内消火栓設備",
-    "スプリンクラー設備",
-    "水噴霧消火設備",
-    "泡消火設備",
-    "不活性ガス消火設備",
-    "ハロゲン化物消火設備",
-    "粉末消火設備",
-    "屋外消火栓設備",
-    "動力消防ポンプ設備",
-    "自動火災報知設備",
-    "ガス漏れ火災警報設備",
-    "漏電火災警報器",
-    "消防機関へ通報する火災報知設備",
-    "非常警報器具・設備",
-    "避難器具",
-    "誘導灯・誘導標識",
-    "消防用水",
-    "排煙設備",
-    "連結散水設備",
-    "連結送水管",
-    "非常コンセント設備",
-    "無線通信補助設備",
-] as const
+import { Loader2, Building2 } from "lucide-react"
+import type { Property } from "@/types/database"
+import { ALL_EQUIPMENT_TYPES, getEnabledEquipmentTypes } from "@/lib/equipment-config"
 
 type EquipmentResult = {
     name: string
     result: "指摘なし" | "要改善" | "該当なし"
 }
 
-export default function SoukatsuForm() {
+interface SoukatsuFormProps {
+    property?: Property
+}
+
+export default function SoukatsuForm({ property }: SoukatsuFormProps) {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -53,23 +33,26 @@ export default function SoukatsuForm() {
     const [periodStart, setPeriodStart] = useState("")
     const [periodEnd, setPeriodEnd] = useState("")
 
-    // 届出者情報
-    const [notifierAddress, setNotifierAddress] = useState("")
-    const [notifierName, setNotifierName] = useState("")
-    const [notifierPhone, setNotifierPhone] = useState("")
+    // 届出者情報（物件マスターから初期化）
+    const [notifierAddress, setNotifierAddress] = useState(property?.notifier_address ?? "")
+    const [notifierName, setNotifierName] = useState(property?.notifier_name ?? "")
+    const [notifierPhone, setNotifierPhone] = useState(property?.notifier_phone ?? "")
 
-    // 防火対象物情報
-    const [buildingAddress, setBuildingAddress] = useState("")
-    const [buildingName, setBuildingName] = useState("")
-    const [buildingUsage, setBuildingUsage] = useState("")
-    const [buildingStructure, setBuildingStructure] = useState("")
-    const [floorAbove, setFloorAbove] = useState("")
-    const [floorBelow, setFloorBelow] = useState("")
-    const [totalFloorArea, setTotalFloorArea] = useState("")
+    // 防火対象物情報（物件マスターから初期化）
+    const [buildingAddress, setBuildingAddress] = useState(property?.building_address ?? "")
+    const [buildingName, setBuildingName] = useState(property?.building_name ?? "")
+    const [buildingUsage, setBuildingUsage] = useState(property?.building_usage ?? "")
+    const [buildingStructure, setBuildingStructure] = useState(property?.building_structure ?? "")
+    const [floorAbove, setFloorAbove] = useState(property?.floor_above?.toString() ?? "")
+    const [floorBelow, setFloorBelow] = useState(property?.floor_below?.toString() ?? "")
+    const [totalFloorArea, setTotalFloorArea] = useState(property?.total_floor_area?.toString() ?? "")
 
-    // 点検結果
+    // 点検結果：物件マスターで選択した設備のみ表示、初期値「指摘なし」
+    // 物件なしの場合は有効設備のみ・初期値「該当なし」
     const [equipmentResults, setEquipmentResults] = useState<EquipmentResult[]>(
-        EQUIPMENT_LIST.map(name => ({ name, result: "該当なし" }))
+        property && (property.equipment_types ?? []).length > 0
+            ? (property.equipment_types ?? []).map(name => ({ name, result: "指摘なし" as const }))
+            : [...ALL_EQUIPMENT_TYPES].map(name => ({ name, result: "該当なし" as const }))
     )
 
     // 総合判定・備考
@@ -109,6 +92,7 @@ export default function SoukatsuForm() {
                     equipment_results: equipmentResults.filter(e => e.result !== "該当なし"),
                     overall_judgment: overallJudgment || null,
                     notes: notes || null,
+                    property_id: property?.id ?? null,
                 })
                 .select()
                 .single()
@@ -119,9 +103,9 @@ export default function SoukatsuForm() {
             setTimeout(() => {
                 router.push(`/inspection/${data.id}`)
             }, 1000)
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err)
-            setError(err.message || "保存中にエラーが発生しました。")
+            setError((err as Error).message || "保存中にエラーが発生しました。")
         } finally {
             setLoading(false)
         }
@@ -140,6 +124,17 @@ export default function SoukatsuForm() {
                 </div>
             )}
 
+            {/* 物件マスター転記バナー */}
+            {property && (
+                <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+                    <Building2 className="w-5 h-5 text-blue-600 shrink-0" />
+                    <div className="text-sm">
+                        <span className="font-semibold text-blue-800">{property.building_name}</span>
+                        <span className="text-blue-600"> の情報を転記しました。必要に応じて修正してください。</span>
+                    </div>
+                </div>
+            )}
+
             {/* 基本情報 */}
             <Card>
                 <CardHeader>
@@ -148,7 +143,7 @@ export default function SoukatsuForm() {
                 </CardHeader>
                 <CardContent className="grid gap-6 md:grid-cols-2">
                     <div className="space-y-2">
-                        <Label htmlFor="inspectionDate">点検年月日</Label>
+                        <Label htmlFor="inspectionDate" required>点検年月日</Label>
                         <Input
                             id="inspectionDate"
                             type="date"
@@ -209,11 +204,13 @@ export default function SoukatsuForm() {
             <Card>
                 <CardHeader>
                     <CardTitle>届出者情報</CardTitle>
-                    <CardDescription>報告する人の情報を入力してください。</CardDescription>
+                    <CardDescription>
+                        {property ? "物件マスターから転記しました。" : "報告する人の情報を入力してください。"}
+                    </CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-6 md:grid-cols-2">
                     <div className="space-y-2 md:col-span-2">
-                        <Label htmlFor="notifierName">氏名（名称）</Label>
+                        <Label htmlFor="notifierName" required>氏名（名称）</Label>
                         <Input
                             id="notifierName"
                             placeholder="氏名を入力"
@@ -223,7 +220,7 @@ export default function SoukatsuForm() {
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="notifierAddress">住所</Label>
+                        <Label htmlFor="notifierAddress" required>住所</Label>
                         <Input
                             id="notifierAddress"
                             placeholder="届出者の住所"
@@ -249,12 +246,14 @@ export default function SoukatsuForm() {
             <Card>
                 <CardHeader>
                     <CardTitle>防火対象物</CardTitle>
-                    <CardDescription>点検対象の建物詳細を入力してください。</CardDescription>
+                    <CardDescription>
+                        {property ? "物件マスターから転記しました。" : "点検対象の建物詳細を入力してください。"}
+                    </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                     <div className="grid gap-6 md:grid-cols-2">
                         <div className="space-y-2">
-                            <Label htmlFor="buildingName">名称</Label>
+                            <Label htmlFor="buildingName" required>名称</Label>
                             <Input
                                 id="buildingName"
                                 placeholder="建物名"
@@ -264,7 +263,7 @@ export default function SoukatsuForm() {
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="buildingUsage">用途</Label>
+                            <Label htmlFor="buildingUsage" required>用途</Label>
                             <Input
                                 id="buildingUsage"
                                 placeholder="例：共同住宅、事務所"
@@ -274,7 +273,7 @@ export default function SoukatsuForm() {
                             />
                         </div>
                         <div className="space-y-2 md:col-span-2">
-                            <Label htmlFor="buildingAddress">所在地</Label>
+                            <Label htmlFor="buildingAddress" required>所在地</Label>
                             <Input
                                 id="buildingAddress"
                                 placeholder="防火対象物の所在地"
@@ -293,7 +292,7 @@ export default function SoukatsuForm() {
                             />
                         </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="floorAbove">地上階数</Label>
                             <Input
@@ -333,7 +332,12 @@ export default function SoukatsuForm() {
             <Card>
                 <CardHeader>
                     <CardTitle>消防用設備等の点検結果</CardTitle>
-                    <CardDescription>該当する設備の点検結果を選択してください。「該当なし」の設備はPDFに記載されません。</CardDescription>
+                    <CardDescription>
+                        {property
+                            ? `物件に登録された${equipmentResults.length}種類の設備の点検結果を選択してください。`
+                            : "該当する設備の点検結果を選択してください。「該当なし」の設備はPDFに記載されません。"
+                        }
+                    </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-3">
@@ -341,7 +345,10 @@ export default function SoukatsuForm() {
                             <div key={item.name} className="flex items-center justify-between gap-4 py-2 border-b border-slate-100 last:border-0">
                                 <span className="text-sm font-medium text-slate-700 min-w-[200px]">{item.name}</span>
                                 <div className="flex gap-2">
-                                    {(["該当なし", "指摘なし", "要改善"] as const).map(result => (
+                                    {(property
+                                        ? ["指摘なし", "要改善"] as const
+                                        : ["該当なし", "指摘なし", "要改善"] as const
+                                    ).map(result => (
                                         <button
                                             key={result}
                                             type="button"

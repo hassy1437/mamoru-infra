@@ -4,7 +4,11 @@ import { Button } from "@/components/ui/button"
 import { FileDown, Loader2 } from "lucide-react"
 import { useState } from "react"
 
-export default function SoukatsuPdfButton({ data }: { data: any }) {
+type SoukatsuPdfData = {
+    building_name?: string | null
+} & Record<string, unknown>
+
+export default function SoukatsuPdfButton({ data }: { data: SoukatsuPdfData }) {
     const [loading, setLoading] = useState(false)
 
     const handleDownload = async () => {
@@ -26,7 +30,7 @@ export default function SoukatsuPdfButton({ data }: { data: any }) {
             document.body.appendChild(a)
             a.click()
             a.remove()
-        } catch (e) {
+        } catch {
             alert("PDF作成に失敗しました")
         } finally {
             setLoading(false)

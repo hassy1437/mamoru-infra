@@ -1,0 +1,12 @@
+TEMPLATE text in inspection_type area (y=160-185, x=115-260):
+  [148.4,176.5] sz=10.6 "機"
+  [169.6,176.5] sz=10.6 "器・総"
+  [211.6,176.5] sz=10.6 "合"
+  [259.2,176.5] sz=10.6 "点検年月日"
+
+FILLED text in inspection_type area (y=160-185, x=115-260):
+  [148.4,176.5] sz=10.6 font=MS-Mincho "機"
+  [169.6,176.5] sz=10.6 font=MS-Mincho "器・総"
+  [211.6,176.5] sz=10.6 font=MS-Mincho "合"
+  [259.2,176.5] sz=10.6 font=MS-Mincho "点検年月日"
+  [169.3,175.4] sz=6.4 font=NotoSansJP-Regular-1973 "機器・総合"

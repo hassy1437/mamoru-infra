@@ -105,8 +105,16 @@ export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
 
-        const pdfPath = path.join(process.cwd(), "public", "bekki_soukatu.pdf");
+        const candidatePdfPaths = [
+            path.join(process.cwd(), "public", "PDF", "bekki_soukatu.pdf"),
+            path.join(process.cwd(), "public", "bekki_soukatu.pdf"),
+        ];
+        const pdfPath = candidatePdfPaths.find((p) => fs.existsSync(p));
         const fontPath = path.join(process.cwd(), "public", "fonts", "NotoSansJP-Regular.ttf");
+
+        if (!pdfPath) {
+            throw new Error("Template PDF not found: bekki_soukatu.pdf");
+        }
 
         const existingPdfBytes = fs.readFileSync(pdfPath);
         const fontBytes = fs.readFileSync(fontPath);
@@ -140,7 +148,7 @@ export async function POST(req: NextRequest) {
             const minFontSize = options?.minFontSize ?? 3.5;
             let currentSize = Math.min(fontSize, options?.maxFontSize ?? fontSize);
 
-            const maxWidth = Math.max(1, cellW - paddingX * 2);
+            const maxWidth = Math.max(1, (cellW - paddingX * 2) * 0.85);
             const maxHeight = Math.max(1, cellH - paddingY * 2);
 
             const widthAtCurrent = customFont.widthOfTextAtSize(normalized, currentSize);
@@ -415,7 +423,7 @@ export async function POST(req: NextRequest) {
 
         const pdfBytes = await pdfDoc.save();
 
-        return new NextResponse(pdfBytes as any, {
+        return new NextResponse(pdfBytes as unknown as BodyInit, {
             status: 200,
             headers: {
                 "Content-Type": "application/pdf",

@@ -1,0 +1,16 @@
+VA-content: x=[275.8-286.3] y=[532.8-543.4] sz=10.6 "Ｖ"
+VA-content: x=[328.3-338.9] y=[532.8-543.4] sz=10.6 "Ａ"
+VA-content: x=[240.5-278.3] y=[529.6-539.3] sz=6.7 "AC䃳䃱䃱/䃲"
+VA-content: x=[240.5-249.8] y=[537.2-546.9] sz=6.7 "8.5"
+VA-content: x=[240.5-268.9] y=[533.4-543.1] sz=6.7 "AC䃳䃱䃱"
+VA-content: x=[288.5-301.5] y=[533.4-543.1] sz=6.7 "18.5"
+
+ANALYSIS: DUPLICATE RENDERING DETECTED
+The drawResultRows function renders content for row 10 with contentOverrides[10]={x:238,w:36}
+Then the V/A split code at lines 420-438 ALSO draws the voltage and current
+Row 10 is NOT in skipContentRows, so content is drawn TWICE
+
+Evidence:
+  1st render (drawResultRows wrap): "AC200/2" at x=240.5 y=529.6 + "8.5" at x=240.5 y=537.2
+  2nd render (V/A split): "AC200" at x=240.5 y=533.4 + "18.5" at x=288.5 y=533.4
+  These overlap, causing visual garbling

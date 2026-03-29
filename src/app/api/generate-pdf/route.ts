@@ -1,143 +1,104 @@
-import { NextRequest, NextResponse } from "next/server";
-import { PDFDocument, rgb } from "pdf-lib";
-import fontkit from "@pdf-lib/fontkit";
-import fs from "fs";
-import path from "path";
+﻿import { NextRequest, NextResponse } from "next/server"
+import { PDFDocument, rgb } from "pdf-lib"
+import fontkit from "@pdf-lib/fontkit"
+import fs from "fs"
+import path from "path"
+
+type GeneratePdfBody = {
+    report_date?: string
+    fire_department_name?: string
+    notifier_address?: string
+    notifier_name?: string
+    notifier_phone?: string
+    building_address?: string
+    building_name?: string
+    building_usage?: string
+    floor_above?: number | string | null
+    floor_below?: number | string | null
+    total_floor_area?: number | string | null
+    equipment_types?: string[] | null
+}
+
+const toText = (value: unknown) => {
+    if (value === null || value === undefined) return undefined
+    const text = String(value).trim()
+    return text.length > 0 ? text : undefined
+}
 
 export async function POST(req: NextRequest) {
     try {
-        const body = await req.json();
+        const body = (await req.json()) as GeneratePdfBody
 
-        // 1. ファイルの読み込み
-        const pdfPath = path.join(process.cwd(), "public", "PDF", "bekki_houkoku.pdf");
-        const fontPath = path.join(process.cwd(), "public", "fonts", "NotoSansJP-Regular.ttf");
+        const pdfPath = path.join(process.cwd(), "public", "PDF", "bekki_houkoku.pdf")
+        const fontPath = path.join(process.cwd(), "public", "fonts", "NotoSansJP-Regular.ttf")
 
-        const existingPdfBytes = fs.readFileSync(pdfPath);
-        const fontBytes = fs.readFileSync(fontPath);
+        const existingPdfBytes = fs.readFileSync(pdfPath)
+        const fontBytes = fs.readFileSync(fontPath)
 
-        // 2. PDFロード & フォント埋め込み
-        const pdfDoc = await PDFDocument.load(existingPdfBytes);
-        pdfDoc.registerFontkit(fontkit);
-        const customFont = await pdfDoc.embedFont(fontBytes);
+        const pdfDoc = await PDFDocument.load(existingPdfBytes)
+        pdfDoc.registerFontkit(fontkit)
+        const customFont = await pdfDoc.embedFont(fontBytes)
 
-        const pages = pdfDoc.getPages();
-        const firstPage = pages[0];
-        const { height } = firstPage.getSize();
+        const firstPage = pdfDoc.getPages()[0]
+        const { height } = firstPage.getSize()
 
-        // ----------------------------------------------------
-        // ★デバッグ用グリッド線（10pt刻み）
-        // ----------------------------------------------------
-        /*for (let i = 0; i < 850; i += 10) {
-            // 50の倍数のときだけ、線を濃くして数字を表示する
-            const isMajor = i % 50 === 0;
-            const opacity = isMajor ? 0.5 : 0.15; // 10刻みは薄く(0.15)、50刻みは濃く(0.5)
-            const thickness = isMajor ? 1 : 0.5;
-
-            // 縦線 (x座標)
-            firstPage.drawLine({
-                start: { x: i, y: 0 },
-                end: { x: i, y: height },
-                thickness: thickness,
-                color: rgb(1, 0, 0),
-                opacity: opacity
-            });
-
-            if (isMajor) {
-                firstPage.drawText(String(i), { x: i + 2, y: height - 10, size: 8, color: rgb(1, 0, 0), font: customFont });
-            }
-
-            // 横線 (y座標)
-            const yPos = height - i;
-            if (yPos > 0) {
-                firstPage.drawLine({
-                    start: { x: 0, y: yPos },
-                    end: { x: 600, y: yPos },
-                    thickness: thickness,
-                    color: rgb(1, 0, 0),
-                    opacity: opacity
-                });
-
-                if (isMajor) {
-                    firstPage.drawText(String(i), { x: 5, y: yPos + 2, size: 8, color: rgb(1, 0, 0), font: customFont });
-                }
-            }
-        }*/
-        // ----------------------------------------------------
-
-        // ★文字描画関数 (自動縮小機能付き)
-        // maxWidthを指定すると、はみ出す場合に文字を小さくします
-        const draw = (text: string | null | undefined, x: number, y: number, size = 10.5, maxWidth?: number) => {
-            if (!text) return;
-            const textStr = String(text);
-            let currentSize = size;
+        const draw = (text: string | undefined, x: number, y: number, size = 10.5, maxWidth?: number) => {
+            if (!text) return
+            let currentSize = size
 
             if (maxWidth) {
-                const textWidth = customFont.widthOfTextAtSize(textStr, currentSize);
+                const textWidth = customFont.widthOfTextAtSize(text, currentSize)
                 if (textWidth > maxWidth) {
-                    currentSize = currentSize * (maxWidth / textWidth);
+                    currentSize = currentSize * (maxWidth / textWidth)
                 }
             }
 
-            firstPage.drawText(textStr, {
+            firstPage.drawText(text, {
                 x,
                 y: height - y,
                 size: currentSize,
                 font: customFont,
                 color: rgb(0, 0, 0),
-            });
-        };
+            })
+        }
 
-        // --- 日付 (右上の枠) ---
-        // いただいた数値を適用しました
-        const d = new Date(body.report_date);
-        draw(d.getFullYear().toString(), 380, 100);
-        draw((d.getMonth() + 1).toString(), 430, 100);
-        draw(d.getDate().toString(), 480, 100);
+        const d = new Date(body.report_date ?? "")
+        if (!Number.isNaN(d.getTime())) {
+            draw(String(d.getFullYear()), 380, 100)
+            draw(String(d.getMonth() + 1), 430, 100)
+            draw(String(d.getDate()), 480, 100)
+        }
 
-        // --- 宛名 (左上) ---
-        // ※ここも位置調整が必要かもしれません（とりあえず初期値）
-        draw(body.fire_department_name, 60, 95, 12);
+        draw(toText(body.fire_department_name), 60, 95, 12)
 
-        // --- 届出者欄 ---
-        // いただいた数値を適用しました
-        const notifierX = 312;
-        // 住所や名前は長くなりやすいので maxWidth(220) を設定しておくと安心です
-        draw(body.notifier_address, notifierX, 151, 10.5, 200);
-        draw(body.notifier_name, notifierX, 168, 10.5, 200);
-        draw(body.notifier_phone, notifierX, 185, 10.5, 200);
+        const notifierX = 312
+        draw(toText(body.notifier_address), notifierX, 151, 10.5, 200)
+        draw(toText(body.notifier_name), notifierX, 168, 10.5, 200)
+        draw(toText(body.notifier_phone), notifierX, 185, 10.5, 200)
 
-        // --- 防火対象物 (表組み) ---
-        // いただいた数値を適用しました
-        const tableX = 150;
-        // 建物名なども長くなりやすいので maxWidth(350) を設定
-        draw(body.building_address, tableX, 269, 10.5, 350);
-        draw(body.building_name, tableX, 305, 10.5, 350);
-        draw(body.building_usage, tableX, 340, 10.5, 180);
+        const tableX = 150
+        draw(toText(body.building_address), tableX, 269, 10.5, 350)
+        draw(toText(body.building_name), tableX, 305, 10.5, 350)
+        draw(toText(body.building_usage), tableX, 340, 10.5, 180)
 
-        // --- 規模 (地上・地下・面積) ---
-        // ※ここから下はまだ未調整のようなので、グリッドを見ながら合わせてみてください
-        draw(body.floor_above?.toString(), 190, 381); // 地上
-        draw(body.floor_below?.toString() || "0", 300, 381); // 地下
-        draw(body.total_floor_area?.toString(), 430, 381); // 面積
+        draw(toText(body.floor_above), 190, 381)
+        draw(toText(body.floor_below) ?? "0", 300, 381)
+        draw(toText(body.total_floor_area), 430, 381)
 
-        // --- 設備リスト ---
-        const equipments = body.equipment_types ? body.equipment_types.join("、") : "";
-        draw(equipments, tableX, 410, 9, 380);
+        const equipments = Array.isArray(body.equipment_types) ? body.equipment_types.join("、") : ""
+        draw(equipments || undefined, tableX, 410, 9, 380)
 
+        const pdfBytes = await pdfDoc.save()
 
-        // 4. 生成して返却
-        const pdfBytes = await pdfDoc.save();
-
-        return new NextResponse(pdfBytes as any, {
+        return new NextResponse(pdfBytes as unknown as BodyInit, {
             status: 200,
             headers: {
                 "Content-Type": "application/pdf",
                 "Content-Disposition": 'attachment; filename="official_report.pdf"',
             },
-        });
-
+        })
     } catch (error) {
-        console.error(error);
-        return NextResponse.json({ error: "PDF generation failed" }, { status: 500 });
+        console.error(error)
+        return NextResponse.json({ error: "PDF generation failed" }, { status: 500 })
     }
 }

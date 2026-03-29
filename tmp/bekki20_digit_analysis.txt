@@ -1,0 +1,27 @@
+--- Motor model (P1) ---
+  [224.7,273.1] sz=6.0 font=NotoSansJP-Regular-1973 text="SF-JR 䃴.䃸kW 䃵P" chars=[U+0053(S) U+0046(F) U+002D(-) U+004A(J) U+0052(R) U+0020( ) U+40F4(䃴) U+002E(.) U+40F8(䃸) U+006B(k) U+0057(W) U+0020( ) U+40F5(䃵) U+0050(P)]
+--- Pump model (P1) ---
+  [420.7,274.4] sz=10.6 font=MS-Mincho text=" " chars=[U+0020( )]
+  [423.7,273.1] sz=6.0 font=NotoSansJP-Regular-1973 text="䃶䃱x䃵䃱FSED 䃶.䃲䃶" chars=[U+40F6(䃶) U+40F1(䃱) U+0078(x) U+40F5(䃵) U+40F1(䃱) U+0046(F) U+0053(S) U+0045(E) U+0044(D) U+0020( ) U+40F6(䃶) U+002E(.) U+40F2(䃲) U+40F6(䃶)]
+--- Device1 model (P3) ---
+  [144.1,672.9] sz=5.8 font=NotoSansJP-Regular-1973 text="PG-䃳䃶䃱" chars=[U+0050(P) U+0047(G) U+002D(-) U+40F3(䃳) U+40F6(䃶) U+40F1(䃱)]
+  [145.7,674.3] sz=10.6 font=MS-Mincho text=" " chars=[U+0020( )]
+  [199.5,672.8] sz=5.6 font=NotoSansJP-Regular-1973 text="2026年01月15日" chars=[U+0032(2) U+0030(0) U+0032(2) U+0036(6) U+5E74(年) U+0030(0) U+0031(1) U+6708(月) U+0031(1) U+0035(5) U+65E5(日)]
+--- Device2 model (P3) ---
+  [366.1,672.9] sz=5.8 font=NotoSansJP-Regular-1973 text="FW-䃲䃱䃱" chars=[U+0046(F) U+0057(W) U+002D(-) U+40F2(䃲) U+40F1(䃱) U+40F1(䃱)]
+  [367.7,674.3] sz=10.6 font=MS-Mincho text=" " chars=[U+0020( )]
+--- Device1 date (P3) ---
+  [199.5,672.8] sz=5.6 font=NotoSansJP-Regular-1973 text="2026年01月15日" chars=[U+0032(2) U+0030(0) U+0032(2) U+0036(6) U+5E74(年) U+0030(0) U+0031(1) U+6708(月) U+0031(1) U+0035(5) U+65E5(日)]
+  [201.2,674.3] sz=10.6 font=MS-Mincho text=" " chars=[U+0020( )]
+--- Device2 date (P3) ---
+  [421.5,672.8] sz=5.6 font=NotoSansJP-Regular-1973 text="2026年01月20日" chars=[U+0032(2) U+0030(0) U+0032(2) U+0036(6) U+5E74(年) U+0030(0) U+0031(1) U+6708(月) U+0032(2) U+0030(0) U+65E5(日)]
+  [423.2,674.3] sz=10.6 font=MS-Mincho text=" " chars=[U+0020( )]
+  [477.1,672.6] sz=5.0 font=NotoSansJP-Regular-1973 text="愛知時計電機株式会社" chars=[U+611B(愛) U+77E5(知) U+6642(時) U+8A08(計) U+96FB(電) U+6A5F(機) U+682A(株) U+5F0F(式) U+4F1A(会) U+793E(社)]
+--- P1 row17 content ---
+  [224.2,604.9] sz=6.0 font=NotoSansJP-Regular-1973 text="AC䃳䃱䃱V 䃲䃶.䃶A 正常" chars=[U+0041(A) U+0043(C) U+40F3(䃳) U+40F1(䃱) U+40F1(䃱) U+0056(V) U+0020( ) U+40F2(䃲) U+40F6(䃶) U+002E(.) U+40F6(䃶) U+0041(A) U+0020( ) U+6B63(正) U+5E38(常)]
+  [270.5,606.2] sz=10.6 font=MS-Mincho text="Ｖ" chars=[U+FF36(Ｖ)]
+  [281.0,606.2] sz=10.6 font=MS-Mincho text="    " chars=[U+0020( ) U+0020( ) U+0020( ) U+0020( )]
+  [323.0,606.2] sz=10.6 font=MS-Mincho text="Ａ" chars=[U+FF21(Ａ)]
+  [333.5,606.2] sz=10.6 font=MS-Mincho text="  " chars=[U+0020( ) U+0020( )]
+--- P1 row18 content ---
+  [224.2,620.2] sz=6.0 font=NotoSansJP-Regular-1973 text="䃲䃸䃶䃱r/min 正常" chars=[U+40F2(䃲) U+40F8(䃸) U+40F6(䃶) U+40F1(䃱) U+0072(r) U+002F(/) U+006D(m) U+0069(i) U+006E(n) U+0020( ) U+6B63(正) U+5E38(常)]

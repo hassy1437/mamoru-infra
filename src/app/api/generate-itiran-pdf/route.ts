@@ -39,46 +39,50 @@ const SHB_ROWS_1 = [156, 170.5, 185, 200, 214.5, 229, 243.5, 258.5]
 // key順: toku, class1, class2, class3, class4, class5, class6, class7
 
 // 消防設備士 列 (右揃えアンカー x = 年月日ラベルの直左)
-// 交付年月日: x=109-244 を3分割
-//   年(35pt): x=109-144 → アンカー 142 (垂直線分析: x=144 が shoubou行に出現)
-//   月(50pt): x=144-194 → アンカー 192
-//   日(50pt): x=194-244 → アンカー 241
+// 交付年月日: PyMuPDF文字位置分析による実測値
+//   年ラベル: x=181.6-189.6 → 値は181.6左端の右揃え → アンカー 181
+//   月ラベル: x=205.6-213.6 → 値は205.6左端の右揃え → アンカー 205
+//   日ラベル: x=229.6-237.6 → 値は229.6左端の右揃え → アンカー 229
 // 交付番号: x=244-308 (w=64) (垂直線分析: x=308 が shoubou行に出現)
 // 交付知事: x=308-357 (w=49) (垂直線分析: x=357 が shoubou行に出現)
-// 講習受講年月: x=357-435 を2分割 (年30pt, 月48pt) → アンカー 383, 431
+// 講習受講年月: 年ラベル x=394.4, 月ラベル x=418.4 → アンカー 394, 418
 const SHB = {
-    issue_year:   142,   // 年右揃えアンカー (x=109-144 の右端)
-    issue_month:  192,   // 月右揃えアンカー
-    issue_day:    241,   // 日右揃えアンカー
+    issue_year:   181,   // 年右揃えアンカー (年ラベル左端 181.6)
+    issue_month:  205,   // 月右揃えアンカー (月ラベル左端 205.6)
+    issue_day:    229,   // 日右揃えアンカー (日ラベル左端 229.6)
     license:      { x: 244,  w: 64 },   // 交付番号 (x=244-308)
     governor:     { x: 308,  w: 49 },   // 交付知事 (x=308-357)
-    tr_year:      383,   // 講習年アンカー
-    tr_month:     431,   // 講習月アンカー
+    tr_year:      394,   // 講習年アンカー (年ラベル左端 394.4)
+    tr_month:     418,   // 講習月アンカー (月ラベル左端 418.4)
 }
 
 // 備考行 (SHB row8終端 258.5+14.5=273 の直後)
 const BIKO1 = { top: 273, h: 14.5, x: 65.6, w: 370.0 }
 
 // 消防設備点検資格者 データ行の上端 (3行, Inspector 1)
-// 水平線分析: 287.5-288.5(区切り), 303-304(ヘッダ下), 304, 319, 333.5, 348 に水平線
+// 水平線分析: 287.5-288.5(区切り), 303-304(ヘッダ行下端), 304-319(列ヘッダ行), 319(row0), 333.5(row1), 348(row2)
+// ※304.5は「種類等/交付年月日」の列ヘッダー行 → データは319から開始
 // 垂直線分析: x=241 が fromTop 305-319, 319-334, 334-348 に出現 → 行範囲確認
 const KSA_ROW_H = 14.5
-const KSA_ROWS_1 = [304.5, 319, 333.5]
+const KSA_ROWS_1 = [319, 333.5, 348]
 // key順: toku, class1, class2
 
 // 消防設備点検資格者 列
 // 種類等:    x=65-144 (w=79) → drawInCell (垂直線: x=144 が kensa行に出現)
-// 交付年月日: x=144-241 (97pt) を3分割 → アンカー 174, 206, 238
+// 交付年月日: PyMuPDF文字位置分析(第1種・第2種行)
+//   年ラベル: x=182.2 → アンカー 182
+//   月ラベル: x=206.2 → アンカー 206
+//   日ラベル: x=230.2 → アンカー 230
 // 交付番号:  x=241-339 (w=98) → drawInCell (垂直線: x=241,339 が kensa行に出現)
-// 有効期限:  x=339-435 (96pt) を3分割 → アンカー 368, 400, 432
+// 有効期限:  年ラベル x=376.4, 月ラベル x=400.4, 日ラベル x=424.4
 const KSA = {
-    issue_year:   174,
+    issue_year:   182,
     issue_month:  206,
-    issue_day:    238,
+    issue_day:    230,
     license:      { x: 241, w: 98 },   // 交付番号 (x=241-339)
-    exp_year:     368,
+    exp_year:     376,
     exp_month:    400,
-    exp_day:      432,
+    exp_day:      424,
 }
 
 // ============================================================
@@ -101,6 +105,24 @@ export async function POST(req: NextRequest) {
         const pages = pdfDoc.getPages()
         const page = pages[0]
 
+        const truncateToFitWidth = (value: string, size: number, maxWidth: number) => {
+            if (customFont.widthOfTextAtSize(value, size) <= maxWidth) return value
+
+            const suffix = "..."
+            const suffixWidth = customFont.widthOfTextAtSize(suffix, size)
+            if (suffixWidth > maxWidth) return ""
+
+            let cut = value.length
+            while (cut > 0) {
+                const candidate = `${value.slice(0, cut).trimEnd()}${suffix}`
+                if (customFont.widthOfTextAtSize(candidate, size) <= maxWidth) {
+                    return candidate
+                }
+                cut -= 1
+            }
+            return suffix
+        }
+
         // ------- helper: セル内にテキストを描画（縮小あり・省略なし）-------
         const drawInCell = (
             pg: PDFPage,
@@ -117,7 +139,7 @@ export async function POST(req: NextRequest) {
 
             const paddingX = 2
             const paddingY = 2
-            const maxWidth = Math.max(1, cellW - paddingX * 2)
+            const maxWidth = Math.max(1, (cellW - paddingX * 2) * 0.85)
             const maxHeight = Math.max(1, cellH - paddingY * 2)
 
             let currentSize = fontSize
@@ -131,7 +153,10 @@ export async function POST(req: NextRequest) {
             }
             currentSize = Math.max(currentSize, 3.5)
 
-            const textWidth = customFont.widthOfTextAtSize(normalized, currentSize)
+            const textToDraw = truncateToFitWidth(normalized, currentSize, maxWidth)
+            if (!textToDraw) return
+
+            const textWidth = customFont.widthOfTextAtSize(textToDraw, currentSize)
             const textHeight = customFont.heightAtSize(currentSize, { descender: true })
             const textTopFromTop = cellTopFromTop + (cellH - textHeight) / 2
             const baselineOffset = textHeight * 0.78
@@ -140,7 +165,7 @@ export async function POST(req: NextRequest) {
                 ? cellX + (cellW - textWidth) / 2
                 : cellX + paddingX
 
-            pg.drawText(normalized, { x, y, size: currentSize, font: customFont, color: rgb(0, 0, 0) })
+            pg.drawText(textToDraw, { x, y, size: currentSize, font: customFont, color: rgb(0, 0, 0) })
         }
 
         // ------- helper: 数値を右揃えでアンカーの左に描画 -------

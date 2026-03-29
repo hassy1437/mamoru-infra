@@ -1,3 +1,0 @@
-P2 last row content: (715.47265625, '予備品 確認済')
-P2 last row judgment: (715.8780517578125, '良')
-

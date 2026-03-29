@@ -1,4 +1,0 @@
-inspector_company: [349.7,201.4] sz=6.0 "防災設備メンテナンス株式会社"
-  Cell width: 94.8, text displayed: 防災設備メンテナンス株式会社
-inspector_company: [444.5,201.4] sz=6.0 "03-9876-5432"
-  Cell width: 94.8, text displayed: 03-9876-5432

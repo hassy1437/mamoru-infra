@@ -1,8 +1,0 @@
-Period date: [169.3,175.4] sz=6.4 font=NotoSansJP-Regular-1973 "機器・総合" chars=[U+6A5F(機) U+5668(器) U+30FB(・) U+7DCF(総) U+5408(合)]
-Period date: [333.4,175.3] sz=6.2 font=NotoSansJP-Regular-1973 "2026" chars=[U+0032(2) U+0030(0) U+0032(2) U+0036(6)]
-Period date: [375.2,175.3] sz=6.2 font=NotoSansJP-Regular-1973 "2" chars=[U+0032(2)]
-Period date: [406.7,175.3] sz=6.2 font=NotoSansJP-Regular-1973 "1" chars=[U+0031(1)]
-Period date: [438.4,175.3] sz=6.2 font=NotoSansJP-Regular-1973 "2026" chars=[U+0032(2) U+0030(0) U+0032(2) U+0036(6)]
-Period date: [480.3,175.3] sz=6.2 font=NotoSansJP-Regular-1973 "2" chars=[U+0032(2)]
-Period date: [508.3,175.3] sz=6.2 font=NotoSansJP-Regular-1973 "28" chars=[U+0032(2) U+0038(8)]
-TEL: [444.5,201.4] sz=6.0 font=NotoSansJP-Regular-1973 "03-9876-5432" chars=[U+0030(0) U+0033(3) U+002D(-) U+0039(9) U+0038(8) U+0037(7) U+0036(6) U+002D(-) U+0035(5) U+0034(4) U+0033(3) U+0032(2)]

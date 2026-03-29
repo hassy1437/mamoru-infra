@@ -1,4 +1,4 @@
-﻿import { createClient } from "@supabase/supabase-js"
+﻿import { createClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
@@ -14,9 +14,6 @@ import {
     type ItiranInputStepId,
 } from "@/lib/itiran-input-flow"
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseKey)
 
 const CURRENT_STEP_ID: ItiranInputStepId = "connected-sprinkler"
 
@@ -26,6 +23,7 @@ export default async function ConnectedSprinklerBekki19Page({
     params: Promise<{ id: string; itiranId: string }>
 }) {
     const { id, itiranId } = await params
+    const supabase = await createClient()
 
     const { data: soukatsu } = await supabase
         .from("inspection_soukatsu")

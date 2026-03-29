@@ -1,15 +1,12 @@
-﻿import { createClient } from "@supabase/supabase-js"
+﻿import { createClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
 import SoukatsuPdfButton from "@/components/soukatsu-pdf-button"
 import SoukatsuPdfPreview from "@/components/soukatsu-pdf-preview"
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseKey)
-
 export default async function InspectionDetailPage({ params }: { params: Promise<{ id: string }> }) {
+    const supabase = await createClient()
     const { id } = await params
 
     const { data: report } = await supabase

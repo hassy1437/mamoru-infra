@@ -134,6 +134,7 @@ export interface Database {
                 Row: {
                     id: string
                     created_at: string
+                    user_id: string | null
                     soukatsu_id: string | null
                     inspector1: Json | null
                     inspector2: Json | null
@@ -141,6 +142,7 @@ export interface Database {
                 Insert: {
                     id?: string
                     created_at?: string
+                    user_id?: string | null
                     soukatsu_id?: string | null
                     inspector1?: Json | null
                     inspector2?: Json | null
@@ -148,6 +150,7 @@ export interface Database {
                 Update: {
                     id?: string
                     created_at?: string
+                    user_id?: string | null
                     soukatsu_id?: string | null
                     inspector1?: Json | null
                     inspector2?: Json | null
@@ -505,6 +508,7 @@ export interface Database {
                 Row: {
                     id: string
                     created_at: string
+                    user_id: string | null
                     inspection_date: string
                     inspection_type: string
                     inspection_period_start: string | null
@@ -527,6 +531,7 @@ export interface Database {
                 Insert: {
                     id?: string
                     created_at?: string
+                    user_id?: string | null
                     inspection_date: string
                     inspection_type: string
                     inspection_period_start?: string | null
@@ -549,6 +554,7 @@ export interface Database {
                 Update: {
                     id?: string
                     created_at?: string
+                    user_id?: string | null
                     inspection_date?: string
                     inspection_type?: string
                     inspection_period_start?: string | null

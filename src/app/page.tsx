@@ -10,6 +10,7 @@ import {
     CheckCircle2
 } from "lucide-react";
 import type { Metadata } from "next";
+import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
     title: "Mamoru Infra — 消防設備点検の報告書作成を効率化",
@@ -17,7 +18,9 @@ export const metadata: Metadata = {
         "スマホで入力するだけで、消防設備点検結果報告書のPDFをその場で自動生成。別記様式第1〜第22に対応。インストール不要・無料で利用可能。",
 };
 
-export default function Home() {
+export default async function Home() {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
     return (
         <div className="flex min-h-screen flex-col bg-slate-50 font-sans text-slate-900 selection:bg-blue-200">
             {/* Background elements */}
@@ -35,16 +38,36 @@ export default function Home() {
                             Mamoru Infra
                         </span>
                     </Link>
-                    <nav className="flex items-center gap-4">
-                        <Link
-                            href="/tool"
-                            className="group relative inline-flex h-10 items-center justify-center overflow-hidden rounded-full bg-slate-900 px-6 font-medium text-white transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(15,23,42,0.3)] hover:bg-slate-800"
-                        >
-                            <span className="relative z-10 flex items-center gap-2 text-sm">
-                                アプリを使う
-                                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                            </span>
-                        </Link>
+                    <nav className="flex items-center gap-3">
+                        {user ? (
+                            <Link
+                                href="/tool"
+                                className="group relative inline-flex h-10 items-center justify-center overflow-hidden rounded-full bg-slate-900 px-6 font-medium text-white transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(15,23,42,0.3)] hover:bg-slate-800"
+                            >
+                                <span className="relative z-10 flex items-center gap-2 text-sm">
+                                    アプリを使う
+                                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                                </span>
+                            </Link>
+                        ) : (
+                            <>
+                                <Link
+                                    href="/login"
+                                    className="inline-flex h-10 items-center justify-center rounded-full border border-slate-200 bg-white px-5 text-sm font-medium text-slate-700 transition-all hover:bg-slate-50"
+                                >
+                                    ログイン
+                                </Link>
+                                <Link
+                                    href="/signup"
+                                    className="group relative inline-flex h-10 items-center justify-center overflow-hidden rounded-full bg-slate-900 px-6 font-medium text-white transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(15,23,42,0.3)] hover:bg-slate-800"
+                                >
+                                    <span className="relative z-10 flex items-center gap-2 text-sm">
+                                        新規登録
+                                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                                    </span>
+                                </Link>
+                            </>
+                        )}
                     </nav>
                 </div>
             </header>
@@ -75,11 +98,11 @@ export default function Home() {
 
                         <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
                             <Link
-                                href="/tool"
+                                href={user ? "/tool" : "/signup"}
                                 className="group relative inline-flex h-14 w-full sm:w-auto items-center justify-center overflow-hidden rounded-full bg-blue-600 px-8 text-base font-semibold text-white transition-all hover:scale-105 hover:shadow-[0_0_25px_rgba(37,99,235,0.4)] hover:bg-blue-500"
                             >
                                 <span className="relative z-10 flex items-center">
-                                    いますぐ無料で試す
+                                    {user ? "アプリを使う" : "いますぐ無料で試す"}
                                     <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
                                 </span>
                             </Link>
@@ -195,13 +218,13 @@ export default function Home() {
                             現場の働き方を変える準備はできましたか？
                         </h2>
                         <p className="mb-10 text-lg text-blue-100 md:text-xl">
-                            アカウント登録不要で、今すぐブラウザからお試しいただけます。
+                            無料アカウントを作成して、今すぐブラウザからお試しください。
                         </p>
                         <Link
-                            href="/tool"
+                            href={user ? "/tool" : "/signup"}
                             className="inline-flex h-14 items-center justify-center rounded-full bg-white px-10 text-lg font-bold text-blue-600 shadow-xl transition-all hover:scale-105 hover:bg-slate-50 hover:shadow-2xl"
                         >
-                            アプリを起動する
+                            {user ? "アプリを起動する" : "無料で始める"}
                         </Link>
                     </div>
                 </section>

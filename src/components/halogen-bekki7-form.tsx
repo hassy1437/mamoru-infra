@@ -421,13 +421,6 @@ export default function HalogenBekki7Form({
         return true
     }, [itiranId, payload, propertyId, soukatsuId])
 
-    // Auto-save on unmount (navigation away)
-    const persistDraftRef = useRef(persistDraft)
-    useEffect(() => { persistDraftRef.current = persistDraft }, [persistDraft])
-    useEffect(() => {
-        return () => { persistDraftRef.current(false) }
-    }, [])
-
     const handleSave = useCallback(async () => {
         setSaving(true)
         await persistDraft()
@@ -480,6 +473,13 @@ export default function HalogenBekki7Form({
             setLoadingDownload(false)
         }
     }, [formName, generatePdfBlob, persistDraft])
+
+    // Auto-save on unmount (navigation away)
+    const persistDraftRef = useRef(persistDraft)
+    useEffect(() => { persistDraftRef.current = persistDraft }, [persistDraft])
+    useEffect(() => {
+        return () => { persistDraftRef.current(false) }
+    }, [])
 
     useEffect(() => {
         return () => {

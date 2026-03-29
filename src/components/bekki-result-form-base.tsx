@@ -333,9 +333,28 @@ export default function BekkiResultFormBase({
         }
     }, [downloadFilenamePrefix, formName, generatePdfBlob, persistDraft])
 
-    // Auto-save on unmount (navigation away)
+    // Keep a stable ref to the latest persistDraft
     const persistDraftRef = useRef(persistDraft)
     useEffect(() => { persistDraftRef.current = persistDraft }, [persistDraft])
+
+    // Track whether this is the initial render (skip auto-save on mount)
+    const isInitialMount = useRef(true)
+
+    // Debounced auto-save: save 5 seconds after last payload change
+    useEffect(() => {
+        if (isInitialMount.current) {
+            isInitialMount.current = false
+            return
+        }
+        const timer = setTimeout(() => {
+            persistDraftRef.current(false).then((ok) => {
+                if (ok) setSaveMessage(`自動保存済み: ${new Date().toLocaleString("ja-JP")}`)
+            })
+        }, 5000)
+        return () => clearTimeout(timer)
+    }, [payload])
+
+    // Auto-save on unmount (navigation away)
     useEffect(() => {
         return () => { persistDraftRef.current(false) }
     }, [])

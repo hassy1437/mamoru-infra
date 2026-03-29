@@ -109,7 +109,7 @@ export default function CombinedPdfButton({
             }
 
             const mergedBytes = await merged.save()
-            const blob = new Blob([mergedBytes], { type: "application/pdf" })
+            const blob = new Blob([new Uint8Array(mergedBytes)], { type: "application/pdf" })
             const url = window.URL.createObjectURL(blob)
             const a = document.createElement("a")
             a.href = url

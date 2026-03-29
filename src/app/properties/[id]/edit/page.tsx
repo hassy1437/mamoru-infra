@@ -1,19 +1,15 @@
-import { createClient } from "@supabase/supabase-js"
+import { createClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import PropertyForm from "@/components/property-form"
 import type { Property } from "@/types/database"
-
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
 
 export default async function EditPropertyPage({
     params,
 }: {
     params: Promise<{ id: string }>
 }) {
+    const supabase = await createClient()
     const { id } = await params
 
     const { data: property } = await supabase

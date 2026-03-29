@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js"
+import { createClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import { CheckCircle2, MinusCircle } from "lucide-react"
@@ -7,15 +7,12 @@ import { PDF_MERGE_CONFIG } from "@/lib/pdf-merge-config"
 import { selectedSteps } from "@/lib/itiran-input-flow"
 import type { ItiranInputStepId } from "@/lib/itiran-input-flow"
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseKey)
-
 export default async function OutputPage({
     params,
 }: {
     params: Promise<{ id: string; itiranId: string }>
 }) {
+    const supabase = await createClient()
     const { id, itiranId } = await params
 
     const { data: soukatsu } = await supabase

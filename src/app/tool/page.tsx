@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ArrowRight, Building, ClipboardCheck, Settings, Wrench } from "lucide-react"
+import LogoutButton from "@/components/logout-button"
 
 export default function Home() {
   return (
@@ -54,6 +55,9 @@ export default function Home() {
 
         <div className="absolute -top-20 -right-20 w-64 h-64 bg-blue-50 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob"></div>
         <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-indigo-50 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-2000"></div>
+      </div>
+      <div className="mt-6">
+        <LogoutButton />
       </div>
     </main>
   )

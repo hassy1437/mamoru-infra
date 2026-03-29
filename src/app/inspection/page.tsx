@@ -1,14 +1,10 @@
-import { createClient } from "@supabase/supabase-js"
+import { createClient } from "@/lib/supabase/server"
 import Link from "next/link"
 import { Building2, ClipboardCheck, MapPin, Plus, User } from "lucide-react"
 import type { Property } from "@/types/database"
 
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
-
 export default async function InspectionPage() {
+    const supabase = await createClient()
     const { data: properties } = await supabase
         .from("properties")
         .select("*")

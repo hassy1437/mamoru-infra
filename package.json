@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@pdf-lib/fontkit": "^1.1.1",
+    "@supabase/ssr": "^0.9.0",
     "@supabase/supabase-js": "^2.87.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",

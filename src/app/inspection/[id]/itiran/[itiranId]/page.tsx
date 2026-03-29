@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js"
+import { createClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import ItiranPdfButton from "@/components/itiran-pdf-button"
@@ -6,15 +6,12 @@ import ItiranPdfPreview from "@/components/itiran-pdf-preview"
 import { ArrowRight, FileDown } from "lucide-react"
 import { buildItiranInputHref, getItiranInputNextLabel, getNextItiranInputStep } from "@/lib/itiran-input-flow"
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseKey)
-
 export default async function ItiranDetailPage({
     params,
 }: {
     params: Promise<{ id: string; itiranId: string }>
 }) {
+    const supabase = await createClient()
     const { id, itiranId } = await params
 
     const { data: record } = await supabase.from("inspection_itiran").select("*").eq("id", itiranId).single()

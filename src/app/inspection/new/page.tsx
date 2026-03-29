@@ -1,19 +1,15 @@
-import { createClient } from "@supabase/supabase-js"
+import { createClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import SoukatsuForm from "@/components/soukatsu-form"
 import type { Property } from "@/types/database"
-
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
 
 export default async function NewInspectionPage({
     searchParams,
 }: {
     searchParams: Promise<{ propertyId?: string }>
 }) {
+    const supabase = await createClient()
     const { propertyId } = await searchParams
 
     if (!propertyId) {

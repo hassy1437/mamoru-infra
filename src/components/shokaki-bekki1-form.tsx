@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Eye, FileDown, Loader2, Save } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import {
+import CameraInput from "@/components/camera-input"
     normalizeBekkiInspectorNameForPayload,
     normalizeBekkiInspectorNameForState,
     normalizeBekkiWitnessForPayload,
@@ -580,6 +581,13 @@ export default function ShokakiBekki1Form({
                             </tbody>
                         </table>
                     </div>
+                </CardContent>
+            </Card>
+
+            {/* 点検写真 */}
+            <Card>
+                <CardContent className="pt-6">
+                    <CameraInput itiranId={itiranId} />
                 </CardContent>
             </Card>
 

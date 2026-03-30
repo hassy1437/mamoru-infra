@@ -4,6 +4,8 @@ import { Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { createClient } from "@/lib/supabase/server";
 import { AuthProvider } from "@/components/auth-provider";
+import { ServiceWorkerRegistrar } from "@/components/sw-registrar";
+import { OfflineIndicator } from "@/components/offline-indicator";
 
 const notoSansJP = Noto_Sans_JP({
   variable: "--font-noto-sans-jp",
@@ -20,6 +22,13 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Mamoru Infra - 消防設備点検報告書作成",
   description: "消防用設備等点検結果報告書をブラウザから作成・PDF出力できるWebアプリケーション",
+  manifest: "/manifest.json",
+  themeColor: "#2563eb",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Mamoru Infra",
+  },
 };
 
 export default async function RootLayout({
@@ -43,6 +52,8 @@ export default async function RootLayout({
         className={`${notoSansJP.variable} ${geistMono.variable} antialiased`}
       >
         <AuthProvider initialUser={user}>
+          <OfflineIndicator />
+          <ServiceWorkerRegistrar />
           {children}
         </AuthProvider>
       </body>

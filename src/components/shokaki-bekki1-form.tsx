@@ -9,12 +9,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Eye, FileDown, Loader2, Save } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import {
-import CameraInput from "@/components/camera-input"
     normalizeBekkiInspectorNameForPayload,
     normalizeBekkiInspectorNameForState,
     normalizeBekkiWitnessForPayload,
     normalizeBekkiWitnessForState,
 } from "@/lib/bekki-form-normalization"
+import CameraInput from "@/components/camera-input"
 
 type MarkKey = "A" | "B" | "C" | "D" | "E" | "F"
 

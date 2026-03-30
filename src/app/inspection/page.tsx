@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import Link from "next/link"
 import { Building2, ClipboardCheck, MapPin, Plus, User } from "lucide-react"
 import type { Property } from "@/types/database"
+import PropertySearch from "@/components/property-search"
 
 export default async function InspectionPage() {
     const supabase = await createClient()
@@ -56,52 +57,63 @@ export default async function InspectionPage() {
                     </div>
                 )}
 
-                {/* 物件一覧 */}
-                <div className="space-y-4">
-                    {list.map((property) => (
-                        <div
-                            key={property.id}
-                            className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow"
-                        >
-                            <div className="flex items-start justify-between gap-4">
-                                <div className="flex-1 min-w-0">
-                                    <h2 className="text-lg font-bold text-slate-900 truncate">
-                                        {property.building_name}
-                                    </h2>
-                                    <div className="mt-1.5 space-y-1 text-sm text-slate-500">
-                                        <div className="flex items-center gap-1.5">
-                                            <MapPin className="w-3.5 h-3.5 shrink-0" />
-                                            <span className="truncate">{property.building_address}</span>
-                                        </div>
-                                        <div className="flex items-center gap-1.5">
-                                            <User className="w-3.5 h-3.5 shrink-0" />
-                                            <span>{property.notifier_name}</span>
-                                        </div>
-                                    </div>
-                                    <div className="mt-2 flex flex-wrap gap-1.5">
-                                        {(property.equipment_types ?? []).map((eq) => (
-                                            <span
-                                                key={eq}
-                                                className="inline-block px-2 py-0.5 bg-emerald-50 text-emerald-700 text-xs rounded-full font-medium"
-                                            >
-                                                {eq}
-                                            </span>
-                                        ))}
-                                    </div>
-                                </div>
-                                <div className="shrink-0">
-                                    <Link
-                                        href={`/inspection/new?propertyId=${property.id}`}
-                                        className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors whitespace-nowrap"
+                {/* 物件一覧（検索付き） */}
+                {list.length > 0 && (
+                    <PropertySearch items={list} searchFields={["building_name", "building_address", "notifier_name"]}>
+                        {(filtered) => (
+                            <div className="space-y-4">
+                                {filtered.length === 0 && (
+                                    <p className="text-center py-10 text-slate-400 text-sm">
+                                        検索条件に一致する物件がありません。
+                                    </p>
+                                )}
+                                {filtered.map((property) => (
+                                    <div
+                                        key={property.id}
+                                        className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow"
                                     >
-                                        <ClipboardCheck className="w-4 h-4" />
-                                        この物件で点検開始
-                                    </Link>
-                                </div>
+                                        <div className="flex items-start justify-between gap-4">
+                                            <div className="flex-1 min-w-0">
+                                                <h2 className="text-lg font-bold text-slate-900 truncate">
+                                                    {property.building_name}
+                                                </h2>
+                                                <div className="mt-1.5 space-y-1 text-sm text-slate-500">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <MapPin className="w-3.5 h-3.5 shrink-0" />
+                                                        <span className="truncate">{property.building_address}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <User className="w-3.5 h-3.5 shrink-0" />
+                                                        <span>{property.notifier_name}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                                    {(property.equipment_types ?? []).map((eq) => (
+                                                        <span
+                                                            key={eq}
+                                                            className="inline-block px-2 py-0.5 bg-emerald-50 text-emerald-700 text-xs rounded-full font-medium"
+                                                        >
+                                                            {eq}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <div className="shrink-0">
+                                                <Link
+                                                    href={`/inspection/new?propertyId=${property.id}`}
+                                                    className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors whitespace-nowrap"
+                                                >
+                                                    <ClipboardCheck className="w-4 h-4" />
+                                                    この物件で点検開始
+                                                </Link>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
-                        </div>
-                    ))}
-                </div>
+                        )}
+                    </PropertySearch>
+                )}
             </div>
         </main>
     )

@@ -19,8 +19,14 @@ export const metadata: Metadata = {
 };
 
 export default async function Home() {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    let user = null;
+    try {
+        const supabase = await createClient();
+        const { data } = await supabase.auth.getUser();
+        user = data.user;
+    } catch {
+        // Auth failure should not crash the landing page.
+    }
     return (
         <div className="flex min-h-screen flex-col bg-slate-50 font-sans text-slate-900 selection:bg-blue-200">
             {/* Background elements */}

@@ -6,8 +6,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Eye, FileDown, Loader2, Save } from "lucide-react"
+import { Eye, FileDown, Loader2, Save, WifiOff } from "lucide-react"
 import { supabase } from "@/lib/supabase"
+import { saveDraftLocal } from "@/lib/local-draft"
+import CameraInput from "@/components/camera-input"
 import {
     normalizeBekkiInspectorNameForPayload,
     normalizeBekkiInspectorNameForState,
@@ -253,6 +255,25 @@ export default function BekkiResultFormBase({
     const persistDraft = useCallback(async (clearMessage = true) => {
         setError(null)
         if (clearMessage) setSaveMessage(null)
+
+        // Always save locally for offline resilience
+        const localKey = `${dbTable}:${itiranId}`
+        try {
+            await saveDraftLocal(localKey, {
+                soukatsu_id: soukatsuId,
+                itiran_id: itiranId,
+                property_id: propertyId ?? null,
+                payload,
+            })
+        } catch {
+            // IndexedDB failure is non-critical
+        }
+
+        // Try saving to Supabase (may fail if offline)
+        if (!navigator.onLine) {
+            setSaveMessage(`ローカル保存済み (オフライン): ${new Date().toLocaleString("ja-JP")}`)
+            return true
+        }
 
         const { error: saveError } = await supabase
             .from(dbTable)
@@ -565,6 +586,13 @@ export default function BekkiResultFormBase({
                 </CardContent>
             </Card>
 
+            {/* 点検写真 */}
+            <Card>
+                <CardContent className="pt-6">
+                    <CameraInput itiranId={itiranId} />
+                </CardContent>
+            </Card>
+
             <div className="flex gap-2 flex-wrap items-center">
                 <Button type="button" onClick={handleSave} disabled={busy} className="bg-slate-700 hover:bg-slate-800 text-white">
                     {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
@@ -578,7 +606,12 @@ export default function BekkiResultFormBase({
                     {loadingDownload ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileDown className="w-4 h-4 mr-2" />}
                     PDFダウンロード
                 </Button>
-                {saveMessage && <span className="text-sm text-slate-500">{saveMessage}</span>}
+                {saveMessage && (
+                    <span className="text-sm text-slate-500 flex items-center gap-1">
+                        {saveMessage.includes("オフライン") && <WifiOff className="w-3.5 h-3.5 text-amber-500" />}
+                        {saveMessage}
+                    </span>
+                )}
             </div>
 
             {error && <p className="text-sm text-red-600">{error}</p>}

@@ -2,6 +2,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ArrowRight, Building, ClipboardCheck, Settings, Wrench } from "lucide-react"
 import LogoutButton from "@/components/logout-button"
+import { InstallPrompt } from "@/components/install-prompt"
 
 export default function Home() {
   return (
@@ -59,6 +60,7 @@ export default function Home() {
       <div className="mt-6">
         <LogoutButton />
       </div>
+      <InstallPrompt />
     </main>
   )
 }

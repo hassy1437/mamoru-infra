@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Eye, FileDown, Loader2, Save } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import {
+import CameraInput from "@/components/camera-input"
     normalizeBekkiInspectorNameForPayload,
     normalizeBekkiInspectorNameForState,
     normalizeBekkiWitnessForPayload,
@@ -676,6 +677,13 @@ export default function SprinklerBekki3Form({
                             <Input placeholder="製造者名" value={device2.maker} onChange={(e) => setDevice2((p) => ({ ...p, maker: e.target.value }))} />
                         </div>
                     </div>
+                </CardContent>
+            </Card>
+
+            {/* 点検写真 */}
+            <Card>
+                <CardContent className="pt-6">
+                    <CameraInput itiranId={itiranId} />
                 </CardContent>
             </Card>
 

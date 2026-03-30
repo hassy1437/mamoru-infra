@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ClipboardCheck, Loader2, Pencil, Trash2 } from "lucide-react"
+import { ClipboardCheck, Copy, Loader2, Pencil, Trash2 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 
 interface PropertyActionButtonsProps {
@@ -48,6 +48,13 @@ export default function PropertyActionButtons({
             >
                 <Pencil className="w-4 h-4" />
                 編集
+            </Link>
+            <Link
+                href={`/properties/new?copyFrom=${propertyId}`}
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
+            >
+                <Copy className="w-4 h-4" />
+                複製
             </Link>
             <Link
                 href={`/inspection/new?propertyId=${propertyId}`}

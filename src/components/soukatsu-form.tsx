@@ -19,9 +19,10 @@ type EquipmentResult = {
 
 interface SoukatsuFormProps {
     property?: Property
+    previousData?: Record<string, unknown> | null
 }
 
-export default function SoukatsuForm({ property }: SoukatsuFormProps) {
+export default function SoukatsuForm({ property, previousData }: SoukatsuFormProps) {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -29,7 +30,9 @@ export default function SoukatsuForm({ property }: SoukatsuFormProps) {
 
     // 基本情報
     const [inspectionDate, setInspectionDate] = useState(new Date().toISOString().split('T')[0])
-    const [inspectionType, setInspectionType] = useState<string>("機器点検")
+    const [inspectionType, setInspectionType] = useState<string>(
+        (previousData?.inspection_type as string) || "機器点検"
+    )
     const [periodStart, setPeriodStart] = useState("")
     const [periodEnd, setPeriodEnd] = useState("")
 
@@ -49,15 +52,29 @@ export default function SoukatsuForm({ property }: SoukatsuFormProps) {
 
     // 点検結果：物件マスターで選択した設備のみ表示、初期値「指摘なし」
     // 物件なしの場合は有効設備のみ・初期値「該当なし」
-    const [equipmentResults, setEquipmentResults] = useState<EquipmentResult[]>(
-        property && (property.equipment_types ?? []).length > 0
+    // 前回コピーがある場合は前回の結果を初期値にする
+    const [equipmentResults, setEquipmentResults] = useState<EquipmentResult[]>(() => {
+        const prevResults = previousData?.equipment_results as EquipmentResult[] | undefined
+        if (prevResults && prevResults.length > 0) {
+            // 前回の結果をベースに、物件の設備リストと照合
+            const equipTypes = property?.equipment_types ?? ALL_EQUIPMENT_TYPES
+            return equipTypes.map(name => {
+                const prev = prevResults.find(r => r.name === name)
+                return prev ? { name, result: prev.result } : { name, result: "指摘なし" as const }
+            })
+        }
+        return property && (property.equipment_types ?? []).length > 0
             ? (property.equipment_types ?? []).map(name => ({ name, result: "指摘なし" as const }))
             : [...ALL_EQUIPMENT_TYPES].map(name => ({ name, result: "該当なし" as const }))
-    )
+    })
 
     // 総合判定・備考
-    const [overallJudgment, setOverallJudgment] = useState("")
-    const [notes, setNotes] = useState("")
+    const [overallJudgment, setOverallJudgment] = useState(
+        (previousData?.overall_judgment as string) || ""
+    )
+    const [notes, setNotes] = useState(
+        (previousData?.notes as string) || ""
+    )
 
     const updateEquipmentResult = (index: number, result: EquipmentResult["result"]) => {
         setEquipmentResults(prev =>

@@ -33,22 +33,26 @@ export async function updateSession(request: NextRequest) {
         }
     )
 
-    const { data: { user } } = await supabase.auth.getUser()
+    try {
+        const { data: { user } } = await supabase.auth.getUser()
 
-    const protectedPaths = ['/tool', '/properties', '/inspection', '/reports']
-    const isProtected = protectedPaths.some(p => request.nextUrl.pathname.startsWith(p))
+        const protectedPaths = ['/tool', '/properties', '/inspection', '/reports']
+        const isProtected = protectedPaths.some(p => request.nextUrl.pathname.startsWith(p))
 
-    if (!user && isProtected) {
-        const url = request.nextUrl.clone()
-        url.pathname = '/login'
-        url.searchParams.set('redirectTo', request.nextUrl.pathname)
-        return NextResponse.redirect(url)
-    }
+        if (!user && isProtected) {
+            const url = request.nextUrl.clone()
+            url.pathname = '/login'
+            url.searchParams.set('redirectTo', request.nextUrl.pathname)
+            return NextResponse.redirect(url)
+        }
 
-    if (user && (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/signup')) {
-        const url = request.nextUrl.clone()
-        url.pathname = '/tool'
-        return NextResponse.redirect(url)
+        if (user && (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/signup')) {
+            const url = request.nextUrl.clone()
+            url.pathname = '/tool'
+            return NextResponse.redirect(url)
+        }
+    } catch {
+        // Auth check failed — allow request through without redirecting
     }
 
     return supabaseResponse

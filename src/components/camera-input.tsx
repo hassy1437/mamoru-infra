@@ -69,9 +69,6 @@ export default function CameraInput({ itiranId }: CameraInputProps) {
                 video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } },
             })
             streamRef.current = stream
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream
-            }
             setShowCamera(true)
         } catch {
             // Camera not available – show fallback explanation and use file picker
@@ -79,6 +76,13 @@ export default function CameraInput({ itiranId }: CameraInputProps) {
             openFilePicker()
         }
     }, [openFilePicker])
+
+    // Attach stream to video element after it renders
+    useEffect(() => {
+        if (showCamera && videoRef.current && streamRef.current) {
+            videoRef.current.srcObject = streamRef.current
+        }
+    }, [showCamera])
 
     const stopCamera = useCallback(() => {
         streamRef.current?.getTracks().forEach((t) => t.stop())

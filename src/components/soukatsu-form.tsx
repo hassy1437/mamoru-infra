@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
-import { Loader2, Building2 } from "lucide-react"
+import { Loader2, Building2, CheckCircle2, AlertTriangle, MinusCircle } from "lucide-react"
 import { toast } from "sonner"
 import type { Property } from "@/types/database"
 import { ALL_EQUIPMENT_TYPES } from "@/lib/equipment-config"
@@ -380,7 +380,7 @@ export default function SoukatsuForm({ property, previousData }: SoukatsuFormPro
                                             key={result}
                                             type="button"
                                             onClick={() => updateEquipmentResult(index, result)}
-                                            className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all ${
+                                            className={`inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-full transition-all ${
                                                 item.result === result
                                                     ? result === "指摘なし"
                                                         ? "bg-green-100 text-green-700 ring-2 ring-green-500"
@@ -390,6 +390,9 @@ export default function SoukatsuForm({ property, previousData }: SoukatsuFormPro
                                                     : "bg-slate-50 text-slate-400 hover:bg-slate-100"
                                             }`}
                                         >
+                                            {result === "指摘なし" && <CheckCircle2 className="w-3 h-3" />}
+                                            {result === "要改善" && <AlertTriangle className="w-3 h-3" />}
+                                            {result === "該当なし" && <MinusCircle className="w-3 h-3" />}
                                             {result}
                                         </button>
                                     ))}

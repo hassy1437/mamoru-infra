@@ -451,8 +451,8 @@ export default function BekkiResultFormBase({
                                             onChange={(e) => updateRowField(section.key, idx, "judgment", e.target.value)}
                                         >
                                             <option value="">未選択</option>
-                                            <option value="良">良</option>
-                                            <option value="否">否</option>
+                                            <option value="良">&#10003; 良</option>
+                                            <option value="否">&#10007; 否</option>
                                         </select>
                                     </td>
                                     <td className="p-1 border">
@@ -512,8 +512,8 @@ export default function BekkiResultFormBase({
                                         onChange={(e) => updateRowField(section.key, idx, "judgment", e.target.value)}
                                     >
                                         <option value="">-</option>
-                                        <option value="良">良</option>
-                                        <option value="否">否</option>
+                                        <option value="良">&#10003; 良</option>
+                                        <option value="否">&#10007; 否</option>
                                     </select>
                                 </div>
                             </div>

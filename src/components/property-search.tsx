@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { Search, MapPin, User, ClipboardCheck, Building2, Plus } from "lucide-react"
+import { Search, MapPin, User, ClipboardCheck } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
 import type { Property } from "@/types/database"
@@ -12,8 +12,11 @@ interface PropertySearchProps {
     mode: "inspection" | "properties"
 }
 
+const ITEMS_PER_PAGE = 20
+
 export default function PropertySearch({ items, mode }: PropertySearchProps) {
     const [query, setQuery] = useState("")
+    const [page, setPage] = useState(0)
 
     const filtered = useMemo(() => {
         const q = query.trim().toLowerCase()
@@ -25,6 +28,11 @@ export default function PropertySearch({ items, mode }: PropertySearchProps) {
         )
     }, [items, query])
 
+    // Derive page from filtered results; clamp page to valid range
+    const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
+    const safePage = Math.min(page, Math.max(0, totalPages - 1))
+    const paginated = filtered.slice(safePage * ITEMS_PER_PAGE, (safePage + 1) * ITEMS_PER_PAGE)
+
     return (
         <>
             <div className="relative mb-4">
@@ -32,7 +40,7 @@ export default function PropertySearch({ items, mode }: PropertySearchProps) {
                 <Input
                     type="text"
                     value={query}
-                    onChange={(e) => setQuery(e.target.value)}
+                    onChange={(e) => { setQuery(e.target.value); setPage(0) }}
                     placeholder="建物名・住所で検索..."
                     className="pl-10"
                 />
@@ -48,7 +56,7 @@ export default function PropertySearch({ items, mode }: PropertySearchProps) {
                         検索条件に一致する物件がありません。
                     </p>
                 )}
-                {filtered.map((property) => (
+                {paginated.map((property) => (
                     <div
                         key={property.id}
                         className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow"
@@ -91,6 +99,41 @@ export default function PropertySearch({ items, mode }: PropertySearchProps) {
                     </div>
                 ))}
             </div>
+
+            {/* ページネーション */}
+            {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 mt-6 pt-4 border-t border-slate-200">
+                    <button
+                        onClick={() => setPage((p) => Math.max(0, p - 1))}
+                        disabled={safePage === 0}
+                        className="px-3 py-1.5 text-sm rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                        前へ
+                    </button>
+                    <div className="flex items-center gap-1">
+                        {Array.from({ length: totalPages }, (_, i) => (
+                            <button
+                                key={i}
+                                onClick={() => setPage(i)}
+                                className={`w-8 h-8 text-sm rounded-lg transition-colors ${
+                                    i === safePage
+                                        ? "bg-blue-600 text-white font-medium"
+                                        : "hover:bg-slate-100 text-slate-600"
+                                }`}
+                            >
+                                {i + 1}
+                            </button>
+                        ))}
+                    </div>
+                    <button
+                        onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                        disabled={safePage === totalPages - 1}
+                        className="px-3 py-1.5 text-sm rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                        次へ
+                    </button>
+                </div>
+            )}
         </>
     )
 }

@@ -5,6 +5,7 @@ import ItiranPdfButton from "@/components/itiran-pdf-button"
 import ItiranPdfPreview from "@/components/itiran-pdf-preview"
 import StepIndicator from "@/components/step-indicator"
 import { INSPECTION_STEPS } from "@/lib/inspection-steps"
+import Breadcrumb from "@/components/breadcrumb"
 import { ArrowRight, CheckCircle2, Circle, FileDown } from "lucide-react"
 import { buildItiranInputHref, getItiranInputNextLabel, getNextItiranInputStep } from "@/lib/itiran-input-flow"
 import { getEquipmentProgress } from "@/lib/inspection-progress"
@@ -42,6 +43,12 @@ export default async function ItiranDetailPage({
     return (
         <div className="min-h-screen bg-gray-100 p-4 md:p-8">
             <div className="max-w-[210mm] mx-auto mb-6">
+                <Breadcrumb items={[
+                    { label: "点検", href: "/inspection" },
+                    { label: "総括表", href: `/inspection/${id}` },
+                    { label: "点検者", href: `/inspection/${id}/itiran/${itiranId}` },
+                    { label: "別記入力" },
+                ]} />
                 <StepIndicator steps={[...INSPECTION_STEPS]} currentStep={3} />
             </div>
             <div className="max-w-[210mm] mx-auto mb-6 flex justify-between items-center gap-3 flex-wrap">

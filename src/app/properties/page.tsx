@@ -3,6 +3,7 @@ import Link from "next/link"
 import { Building2, Plus } from "lucide-react"
 import type { Property } from "@/types/database"
 import PropertySearch from "@/components/property-search"
+import Breadcrumb from "@/components/breadcrumb"
 
 export default async function PropertiesPage() {
     const { supabase, user } = await getAuthenticatedClient()
@@ -17,12 +18,10 @@ export default async function PropertiesPage() {
     return (
         <main className="min-h-screen bg-gray-50 py-10">
             <div className="max-w-4xl mx-auto px-4">
+                <Breadcrumb items={[{ label: "物件一覧" }]} />
                 {/* ヘッダー */}
                 <div className="flex items-center justify-between mb-8">
                     <div>
-                        <Link href="/tool" className="text-sm text-blue-600 hover:underline mb-2 block">
-                            ← ツール選択に戻る
-                        </Link>
                         <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
                             <Building2 className="w-7 h-7 text-blue-600" />
                             物件一覧

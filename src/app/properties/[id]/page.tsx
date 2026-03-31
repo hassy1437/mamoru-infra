@@ -2,8 +2,10 @@ import { getAuthenticatedClient } from "@/lib/supabase/auth-server"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import {
+    AlertTriangle,
     Building2,
     Calendar,
+    CheckCircle2,
     ClipboardCheck,
     Copy,
     MapPin,
@@ -12,6 +14,7 @@ import {
     User,
 } from "lucide-react"
 import type { Property } from "@/types/database"
+import Breadcrumb from "@/components/breadcrumb"
 
 export default async function PropertyDetailPage({
     params,
@@ -45,11 +48,12 @@ export default async function PropertyDetailPage({
     return (
         <main className="min-h-screen bg-gray-50 py-10">
             <div className="max-w-4xl mx-auto px-4 space-y-6">
+                <Breadcrumb items={[
+                    { label: "物件一覧", href: "/properties" },
+                    { label: p.building_name },
+                ]} />
                 {/* ヘッダー */}
                 <div>
-                    <Link href="/properties" className="text-sm text-blue-600 hover:underline mb-2 block">
-                        ← 物件一覧に戻る
-                    </Link>
                     <div className="flex items-start justify-between gap-4">
                         <div>
                             <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
@@ -186,12 +190,16 @@ export default async function PropertyDetailPage({
                                     </div>
                                     {inspection.overall_judgment && (
                                         <span
-                                            className={`text-xs font-medium px-2.5 py-1 rounded-full ${
+                                            className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${
                                                 inspection.overall_judgment === "適合"
                                                     ? "bg-green-50 text-green-700"
                                                     : "bg-red-50 text-red-700"
                                             }`}
                                         >
+                                            {inspection.overall_judgment === "適合"
+                                                ? <CheckCircle2 className="w-3.5 h-3.5" />
+                                                : <AlertTriangle className="w-3.5 h-3.5" />
+                                            }
                                             {inspection.overall_judgment}
                                         </span>
                                     )}

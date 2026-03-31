@@ -7,11 +7,11 @@ import { InstallPrompt } from "@/components/install-prompt"
 export default function Home() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-6 bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100">
-      <div className="relative max-w-2xl w-full bg-white rounded-3xl shadow-xl border border-slate-100 p-10 md:p-16 text-center space-y-10 overflow-hidden">
+      <div className="relative max-w-2xl w-full bg-white rounded-2xl shadow-xl border border-slate-100 p-10 md:p-16 text-center space-y-10 overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-indigo-600"></div>
 
         <div className="flex justify-center relative z-10">
-          <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-5 rounded-2xl shadow-lg shadow-blue-200/50 transform -rotate-6 hover:rotate-0 transition-transform duration-300">
+          <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-5 rounded-xl shadow-lg shadow-blue-200/50 transform -rotate-6 hover:rotate-0 transition-transform duration-300">
             <Wrench className="w-14 h-14 text-white" strokeWidth={1.5} />
           </div>
         </div>
@@ -30,7 +30,7 @@ export default function Home() {
 
         <div className="flex flex-col gap-5 justify-center items-center relative z-10 pt-4">
           <Link href="/properties" className="w-full group">
-            <Button size="lg" className="w-full text-lg px-10 py-7 gap-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 rounded-2xl font-bold">
+            <Button size="lg" className="w-full text-lg px-10 py-7 gap-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 rounded-xl font-bold">
               <Building className="w-6 h-6" />
               物件基本情報の入力
               <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
@@ -38,7 +38,7 @@ export default function Home() {
           </Link>
 
           <Link href="/inspection" className="w-full group">
-            <Button size="lg" className="w-full text-lg px-10 py-7 gap-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 rounded-2xl font-bold">
+            <Button size="lg" className="w-full text-lg px-10 py-7 gap-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 rounded-xl font-bold">
               <ClipboardCheck className="w-6 h-6" />
               消防設備点検スタート
               <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
@@ -46,7 +46,7 @@ export default function Home() {
           </Link>
 
           <Link href="/tool/equipment-settings" className="w-full group">
-            <Button size="lg" variant="outline" className="w-full text-base px-10 py-6 gap-3 border-slate-300 hover:bg-slate-50 hover:-translate-y-0.5 transition-all duration-300 rounded-2xl font-medium text-slate-600">
+            <Button size="lg" variant="outline" className="w-full text-base px-10 py-6 gap-3 border-slate-300 hover:bg-slate-50 hover:-translate-y-0.5 transition-all duration-300 rounded-xl font-medium text-slate-600">
               <Settings className="w-5 h-5" />
               設備出力設定
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />

@@ -1,8 +1,10 @@
 import { createClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
-import Link from "next/link"
 import { CheckCircle2, MinusCircle } from "lucide-react"
 import CombinedPdfButton from "@/components/combined-pdf-button"
+import StepIndicator from "@/components/step-indicator"
+import { INSPECTION_STEPS } from "@/lib/inspection-steps"
+import Breadcrumb from "@/components/breadcrumb"
 import { PDF_MERGE_CONFIG } from "@/lib/pdf-merge-config"
 import { selectedSteps } from "@/lib/itiran-input-flow"
 import type { ItiranInputStepId } from "@/lib/itiran-input-flow"
@@ -75,11 +77,13 @@ export default async function OutputPage({
     return (
         <div className="min-h-screen bg-gray-100 p-4 md:p-8">
             <div className="max-w-3xl mx-auto space-y-6">
-                <div className="flex justify-between items-center">
-                    <Link href={`/inspection/${id}/itiran/${itiranId}`} className="text-blue-600 hover:underline">
-                        &larr; 点検者一覧に戻る
-                    </Link>
-                </div>
+                <Breadcrumb items={[
+                    { label: "点検", href: "/inspection" },
+                    { label: "総括表", href: `/inspection/${id}` },
+                    { label: "別記", href: `/inspection/${id}/itiran/${itiranId}` },
+                    { label: "PDF出力" },
+                ]} />
+                <StepIndicator steps={[...INSPECTION_STEPS]} currentStep={4} />
 
                 <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
                     <h1 className="text-xl font-bold">結果出力</h1>

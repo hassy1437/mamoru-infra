@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Eye, FileDown, Loader2, Save, WifiOff } from "lucide-react"
+import { toast } from "sonner"
+import { friendlyError } from "@/lib/error-messages"
 import { supabase } from "@/lib/supabase"
 import { saveDraftLocal } from "@/lib/local-draft"
 import CameraInput from "@/components/camera-input"
@@ -289,15 +291,16 @@ export default function BekkiResultFormBase({
             )
 
         if (saveError) {
-            if (saveError.message.includes(dbTable)) {
-                setError("保存テーブルが未作成です。SQLをSupabaseで実行してください。")
-            } else {
-                setError(`保存に失敗しました: ${saveError.message}`)
-            }
+            const msg = saveError.message.includes(dbTable)
+                ? "保存テーブルが未作成です。SQLをSupabaseで実行してください。"
+                : friendlyError(saveError)
+            setError(msg)
+            toast.error(msg)
             return false
         }
 
         setSaveMessage(`保存しました: ${new Date().toLocaleString("ja-JP")}`)
+        toast.success("保存しました")
         return true
     }, [dbTable, itiranId, payload, propertyId, soukatsuId])
 
@@ -400,8 +403,9 @@ export default function BekkiResultFormBase({
                 <CardDescription>種別・容量等の内容、判定、不良内容、措置内容を入力してください。</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="overflow-x-auto border rounded-lg">
-                    <table className="min-w-[1080px] w-full text-sm">
+                {/* Desktop: table layout */}
+                <div className="hidden md:block overflow-x-auto border rounded-lg">
+                    <table className="w-full text-sm">
                         <thead className="bg-slate-50">
                             <tr>
                                 <th className="p-2 border w-80 text-left">点検項目</th>
@@ -447,8 +451,8 @@ export default function BekkiResultFormBase({
                                             onChange={(e) => updateRowField(section.key, idx, "judgment", e.target.value)}
                                         >
                                             <option value="">未選択</option>
-                                            <option value="良">良</option>
-                                            <option value="否">否</option>
+                                            <option value="良">&#10003; 良</option>
+                                            <option value="否">&#10007; 否</option>
                                         </select>
                                     </td>
                                     <td className="p-1 border">
@@ -467,6 +471,74 @@ export default function BekkiResultFormBase({
                             ))}
                         </tbody>
                     </table>
+                </div>
+
+                {/* Mobile: card layout */}
+                <div className="md:hidden space-y-3">
+                    {section.labels.map((label, idx) => (
+                        <div key={`${section.key}-mobile-${idx}`} className="border rounded-lg p-3 space-y-2 bg-white">
+                            <div className="font-medium text-sm text-slate-800">{label}</div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="space-y-1">
+                                    <span className="text-xs text-slate-500">内容</span>
+                                    {idx === section.currentValueRowIndex ? (
+                                        <div className="flex gap-1 items-center">
+                                            <Input
+                                                value={rowsByKey[section.key]?.[idx]?.content ?? ""}
+                                                onChange={(e) => updateRowField(section.key, idx, "content", e.target.value)}
+                                                placeholder="V"
+                                                className="h-9 text-sm"
+                                            />
+                                            <Input
+                                                value={rowsByKey[section.key]?.[idx]?.current_value ?? ""}
+                                                onChange={(e) => updateRowField(section.key, idx, "current_value", e.target.value)}
+                                                placeholder="A"
+                                                className="h-9 text-sm"
+                                            />
+                                        </div>
+                                    ) : (
+                                        <Input
+                                            value={rowsByKey[section.key]?.[idx]?.content ?? ""}
+                                            onChange={(e) => updateRowField(section.key, idx, "content", e.target.value)}
+                                            className="h-9 text-sm"
+                                        />
+                                    )}
+                                </div>
+                                <div className="space-y-1">
+                                    <span className="text-xs text-slate-500">判定</span>
+                                    <select
+                                        className="w-full h-9 border border-input rounded-md bg-background px-2 text-sm"
+                                        value={rowsByKey[section.key]?.[idx]?.judgment ?? ""}
+                                        onChange={(e) => updateRowField(section.key, idx, "judgment", e.target.value)}
+                                    >
+                                        <option value="">-</option>
+                                        <option value="良">&#10003; 良</option>
+                                        <option value="否">&#10007; 否</option>
+                                    </select>
+                                </div>
+                            </div>
+                            {(rowsByKey[section.key]?.[idx]?.judgment === "否" || rowsByKey[section.key]?.[idx]?.bad_content || rowsByKey[section.key]?.[idx]?.action_content) && (
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-1">
+                                        <span className="text-xs text-slate-500">不良内容</span>
+                                        <Input
+                                            value={rowsByKey[section.key]?.[idx]?.bad_content ?? ""}
+                                            onChange={(e) => updateRowField(section.key, idx, "bad_content", e.target.value)}
+                                            className="h-9 text-sm"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <span className="text-xs text-slate-500">措置内容</span>
+                                        <Input
+                                            value={rowsByKey[section.key]?.[idx]?.action_content ?? ""}
+                                            onChange={(e) => updateRowField(section.key, idx, "action_content", e.target.value)}
+                                            className="h-9 text-sm"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ))}
                 </div>
             </CardContent>
         </Card>

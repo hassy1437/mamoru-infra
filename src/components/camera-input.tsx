@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Camera, X, Trash2, StickyNote } from "lucide-react"
+import { Camera, ImagePlus, Trash2, StickyNote } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -17,68 +17,12 @@ interface CameraInputProps {
 
 export default function CameraInput({ itiranId }: CameraInputProps) {
     const [photos, setPhotos] = useState<LocalPhoto[]>([])
-    const [showCamera, setShowCamera] = useState(false)
-    const [preview, setPreview] = useState<string | null>(null)
-    const videoRef = useRef<HTMLVideoElement>(null)
-    const streamRef = useRef<MediaStream | null>(null)
-    const canvasRef = useRef<HTMLCanvasElement>(null)
+    const fileInputRef = useRef<HTMLInputElement>(null)
 
     // Load existing photos
     useEffect(() => {
         getPhotos(itiranId).then(setPhotos).catch(() => {})
     }, [itiranId])
-
-    const startCamera = useCallback(async () => {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } },
-            })
-            streamRef.current = stream
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream
-            }
-            setShowCamera(true)
-        } catch {
-            // Fallback to file input if camera not available
-            const input = document.createElement("input")
-            input.type = "file"
-            input.accept = "image/*"
-            input.capture = "environment"
-            input.onchange = async (e) => {
-                const file = (e.target as HTMLInputElement).files?.[0]
-                if (!file) return
-                const reader = new FileReader()
-                reader.onload = () => {
-                    if (typeof reader.result === "string") {
-                        saveAndAddPhoto(reader.result)
-                    }
-                }
-                reader.readAsDataURL(file)
-            }
-            input.click()
-        }
-    }, [itiranId])
-
-    const stopCamera = useCallback(() => {
-        streamRef.current?.getTracks().forEach((t) => t.stop())
-        streamRef.current = null
-        setShowCamera(false)
-        setPreview(null)
-    }, [])
-
-    const capture = useCallback(() => {
-        const video = videoRef.current
-        const canvas = canvasRef.current
-        if (!video || !canvas) return
-
-        canvas.width = video.videoWidth
-        canvas.height = video.videoHeight
-        const ctx = canvas.getContext("2d")
-        if (!ctx) return
-        ctx.drawImage(video, 0, 0)
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.8)
-        setPreview(dataUrl)
-    }, [])
 
     const saveAndAddPhoto = useCallback(
         async (dataUrl: string) => {
@@ -95,11 +39,22 @@ export default function CameraInput({ itiranId }: CameraInputProps) {
         [itiranId]
     )
 
-    const confirmCapture = useCallback(async () => {
-        if (!preview) return
-        await saveAndAddPhoto(preview)
-        setPreview(null)
-    }, [preview, saveAndAddPhoto])
+    const handleFileChange = useCallback(
+        (e: React.ChangeEvent<HTMLInputElement>) => {
+            const file = e.target.files?.[0]
+            if (!file) return
+            const reader = new FileReader()
+            reader.onload = () => {
+                if (typeof reader.result === "string") {
+                    saveAndAddPhoto(reader.result)
+                }
+            }
+            reader.readAsDataURL(file)
+            // Reset so the same file can be selected again
+            e.target.value = ""
+        },
+        [saveAndAddPhoto]
+    )
 
     const handleDeletePhoto = useCallback(async (id: string) => {
         await deletePhoto(id)
@@ -123,74 +78,48 @@ export default function CameraInput({ itiranId }: CameraInputProps) {
                     <Camera className="w-4 h-4" />
                     点検写真
                 </h3>
-                <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={showCamera ? stopCamera : startCamera}
-                    className="text-xs"
-                >
-                    {showCamera ? (
-                        <>
-                            <X className="w-3.5 h-3.5 mr-1" />
-                            カメラを閉じる
-                        </>
-                    ) : (
-                        <>
-                            <Camera className="w-3.5 h-3.5 mr-1" />
-                            写真を撮影
-                        </>
-                    )}
-                </Button>
+                <div className="flex gap-2">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                            if (fileInputRef.current) {
+                                fileInputRef.current.capture = "environment"
+                                fileInputRef.current.click()
+                            }
+                        }}
+                        className="text-xs"
+                    >
+                        <Camera className="w-3.5 h-3.5 mr-1" />
+                        写真を撮影
+                    </Button>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                            if (fileInputRef.current) {
+                                fileInputRef.current.removeAttribute("capture")
+                                fileInputRef.current.click()
+                            }
+                        }}
+                        className="text-xs"
+                    >
+                        <ImagePlus className="w-3.5 h-3.5 mr-1" />
+                        ファイル選択
+                    </Button>
+                </div>
             </div>
 
-            {/* Camera view */}
-            {showCamera && (
-                <div className="relative rounded-lg overflow-hidden border border-slate-200 bg-black">
-                    {preview ? (
-                        <>
-                            <img src={preview} alt="プレビュー" className="w-full" />
-                            <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-3">
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    className="bg-emerald-600 hover:bg-emerald-700"
-                                    onClick={confirmCapture}
-                                >
-                                    保存する
-                                </Button>
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="secondary"
-                                    onClick={() => setPreview(null)}
-                                >
-                                    撮り直す
-                                </Button>
-                            </div>
-                        </>
-                    ) : (
-                        <>
-                            <video
-                                ref={videoRef}
-                                autoPlay
-                                playsInline
-                                muted
-                                className="w-full"
-                            />
-                            <div className="absolute bottom-3 left-0 right-0 flex justify-center">
-                                <button
-                                    type="button"
-                                    onClick={capture}
-                                    className="w-16 h-16 rounded-full border-4 border-white bg-white/30 backdrop-blur-sm hover:bg-white/50 transition-colors"
-                                    aria-label="撮影"
-                                />
-                            </div>
-                        </>
-                    )}
-                    <canvas ref={canvasRef} className="hidden" />
-                </div>
-            )}
+            {/* Hidden file input – capture attribute is set dynamically */}
+            <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="hidden"
+            />
 
             {/* Photo gallery */}
             {photos.length > 0 && (
@@ -232,7 +161,7 @@ export default function CameraInput({ itiranId }: CameraInputProps) {
                 </div>
             )}
 
-            {photos.length === 0 && !showCamera && (
+            {photos.length === 0 && (
                 <p className="text-xs text-slate-400 text-center py-3 border border-dashed border-slate-200 rounded-lg">
                     まだ写真がありません。「写真を撮影」ボタンで点検箇所を撮影できます。
                 </p>

@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { AuthProvider } from "@/components/auth-provider";
 import { ServiceWorkerRegistrar } from "@/components/sw-registrar";
 import { OfflineIndicator } from "@/components/offline-indicator";
+import { Toaster } from "@/components/ui/toaster";
 
 const notoSansJP = Noto_Sans_JP({
   variable: "--font-noto-sans-jp",
@@ -52,6 +53,7 @@ export default async function RootLayout({
         className={`${notoSansJP.variable} ${geistMono.variable} antialiased`}
       >
         <AuthProvider initialUser={user}>
+          <Toaster />
           <OfflineIndicator />
           <ServiceWorkerRegistrar />
           {children}

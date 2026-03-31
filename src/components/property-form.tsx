@@ -9,8 +9,43 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
 import { Loader2 } from "lucide-react"
+import { toast } from "sonner"
+import { friendlyError } from "@/lib/error-messages"
 import type { Property } from "@/types/database"
 import { ALL_EQUIPMENT_TYPES, getEnabledEquipmentTypes } from "@/lib/equipment-config"
+import { useUnsavedChanges } from "@/hooks/use-unsaved-changes"
+import FormProgress from "@/components/form-progress"
+
+const FORM_SECTIONS = ["届出者情報", "防火対象物", "設備選択"]
+
+const EQUIPMENT_CATEGORIES: { label: string; items: string[] }[] = [
+    {
+        label: "消火設備",
+        items: [
+            "消火器", "屋内消火栓設備", "スプリンクラー設備", "水噴霧消火設備",
+            "泡消火設備", "不活性ガス消火設備", "ハロゲン化物消火設備", "粉末消火設備",
+            "屋外消火栓設備", "動力消防ポンプ設備",
+        ],
+    },
+    {
+        label: "警報設備",
+        items: [
+            "自動火災報知設備", "ガス漏れ火災警報設備", "漏電火災警報器",
+            "消防機関へ通報する火災報知設備", "非常警報器具・設備",
+        ],
+    },
+    {
+        label: "避難・誘導設備",
+        items: ["避難器具", "誘導灯・誘導標識"],
+    },
+    {
+        label: "消防活動用設備等",
+        items: [
+            "消防用水", "排煙設備", "連結散水設備", "連結送水管",
+            "非常コンセント設備", "無線通信補助設備",
+        ],
+    },
+]
 
 interface PropertyFormProps {
     property?: Property
@@ -19,6 +54,7 @@ interface PropertyFormProps {
 export default function PropertyForm({ property }: PropertyFormProps) {
     const router = useRouter()
     const { user } = useAuth()
+    const { markDirty, markClean } = useUnsavedChanges()
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
@@ -39,6 +75,7 @@ export default function PropertyForm({ property }: PropertyFormProps) {
     // 設置設備
     const [selectedEquipment, setSelectedEquipment] = useState<string[]>(property?.equipment_types ?? [])
     const [enabledTypes, setEnabledTypes] = useState<string[]>([...ALL_EQUIPMENT_TYPES])
+    const [equipmentSearch, setEquipmentSearch] = useState("")
     useEffect(() => { setEnabledTypes(getEnabledEquipmentTypes()) }, [])
 
     const toggleEquipment = (name: string) => {
@@ -46,6 +83,15 @@ export default function PropertyForm({ property }: PropertyFormProps) {
             prev.includes(name) ? prev.filter(e => e !== name) : [...prev, name]
         )
     }
+
+    // Mark form as dirty on any input change (via capturing event)
+    useEffect(() => {
+        const form = document.querySelector("form")
+        if (!form) return
+        const handler = () => markDirty()
+        form.addEventListener("input", handler)
+        return () => form.removeEventListener("input", handler)
+    }, [markDirty])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -89,10 +135,14 @@ export default function PropertyForm({ property }: PropertyFormProps) {
                 if (insertError) throw insertError
             }
 
+            markClean()
+            toast.success(property ? "物件情報を更新しました" : "物件情報を登録しました")
             router.push("/properties")
         } catch (err: unknown) {
             console.error(err)
-            setError((err as Error).message || "保存中にエラーが発生しました。")
+            const msg = friendlyError(err)
+            setError(msg)
+            toast.error(msg)
         } finally {
             setLoading(false)
         }
@@ -100,6 +150,7 @@ export default function PropertyForm({ property }: PropertyFormProps) {
 
     return (
         <form onSubmit={handleSubmit} className="space-y-8 max-w-4xl mx-auto p-4">
+            <FormProgress sections={FORM_SECTIONS} />
             {error && (
                 <div className="bg-red-50 text-red-600 p-4 rounded-md border border-red-200">
                     {error}
@@ -239,32 +290,58 @@ export default function PropertyForm({ property }: PropertyFormProps) {
                         点検時はここで選択した設備のみが点検結果の入力対象となります。
                     </CardDescription>
                 </CardHeader>
-                <CardContent>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                        {ALL_EQUIPMENT_TYPES.filter(t => enabledTypes.includes(t)).map((name) => (
-                            <label
-                                key={name}
-                                className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-all ${
-                                    selectedEquipment.includes(name)
-                                        ? "bg-blue-50 border-blue-400 text-blue-800"
-                                        : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                                }`}
-                            >
-                                <input
-                                    type="checkbox"
-                                    checked={selectedEquipment.includes(name)}
-                                    onChange={() => toggleEquipment(name)}
-                                    className="w-4 h-4 text-blue-600 rounded"
-                                />
-                                <span className="text-sm font-medium">{name}</span>
-                            </label>
-                        ))}
+                <CardContent className="space-y-4">
+                    {/* 検索 + 選択状況 */}
+                    <div className="flex items-center gap-3">
+                        <Input
+                            placeholder="設備名で検索..."
+                            value={equipmentSearch}
+                            onChange={(e) => setEquipmentSearch(e.target.value)}
+                            className="max-w-xs"
+                        />
+                        {selectedEquipment.length > 0 && (
+                            <span className="text-sm text-blue-600 font-medium whitespace-nowrap">
+                                {selectedEquipment.length}種類選択中
+                            </span>
+                        )}
                     </div>
-                    {selectedEquipment.length > 0 && (
-                        <p className="mt-4 text-sm text-blue-600 font-medium">
-                            {selectedEquipment.length}種類の設備を選択中
-                        </p>
-                    )}
+
+                    {/* カテゴリ別表示 */}
+                    {EQUIPMENT_CATEGORIES.map((cat) => {
+                        const visibleItems = cat.items.filter(
+                            (name) =>
+                                enabledTypes.includes(name) &&
+                                (!equipmentSearch || name.includes(equipmentSearch))
+                        )
+                        if (visibleItems.length === 0) return null
+                        return (
+                            <div key={cat.label}>
+                                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                                    {cat.label}
+                                </p>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                    {visibleItems.map((name) => (
+                                        <label
+                                            key={name}
+                                            className={`flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-all text-sm ${
+                                                selectedEquipment.includes(name)
+                                                    ? "bg-blue-50 border-blue-400 text-blue-800"
+                                                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                                            }`}
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedEquipment.includes(name)}
+                                                onChange={() => toggleEquipment(name)}
+                                                className="w-4 h-4 text-blue-600 rounded shrink-0"
+                                            />
+                                            <span className="font-medium leading-tight">{name}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                        )
+                    })}
                 </CardContent>
             </Card>
 

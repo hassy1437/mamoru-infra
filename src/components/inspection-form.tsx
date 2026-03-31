@@ -1,6 +1,6 @@
 ﻿"use client"
 
-import { useState, type FormEvent } from "react"
+import { useEffect, useState, type FormEvent } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
@@ -8,6 +8,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
 import { Plus, Trash2, Loader2 } from "lucide-react"
+import { toast } from "sonner"
+import { friendlyError } from "@/lib/error-messages"
+import { useUnsavedChanges } from "@/hooks/use-unsaved-changes"
 
 type EquipmentItem = {
     id: string
@@ -21,9 +24,9 @@ const createEquipmentItem = (): EquipmentItem => ({
 
 export default function InspectionForm() {
     const router = useRouter()
+    const { markDirty, markClean } = useUnsavedChanges()
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
-    const [success, setSuccess] = useState(false)
 
     const [reportDate, setReportDate] = useState(new Date().toISOString().split("T")[0])
 
@@ -39,6 +42,15 @@ export default function InspectionForm() {
     const [totalFloorArea, setTotalFloorArea] = useState("")
 
     const [equipmentList, setEquipmentList] = useState<EquipmentItem[]>([createEquipmentItem()])
+
+    // Mark form as dirty on any input change
+    useEffect(() => {
+        const form = document.querySelector("form")
+        if (!form) return
+        const handler = () => markDirty()
+        form.addEventListener("input", handler)
+        return () => form.removeEventListener("input", handler)
+    }, [markDirty])
 
     const addEquipment = () => {
         setEquipmentList((prev) => [...prev, createEquipmentItem()])
@@ -56,7 +68,6 @@ export default function InspectionForm() {
         e.preventDefault()
         setLoading(true)
         setError(null)
-        setSuccess(false)
 
         try {
             const { data, error: insertError } = await supabase
@@ -84,14 +95,14 @@ export default function InspectionForm() {
                 throw new Error("保存結果のIDを取得できませんでした。")
             }
 
-            setSuccess(true)
-
-            setTimeout(() => {
-                router.push(`/reports/${data.id}`)
-            }, 1000)
+            markClean()
+            toast.success("報告書を保存しました")
+            router.push(`/reports/${data.id}`)
         } catch (err: unknown) {
             console.error(err)
-            setError(err instanceof Error ? err.message : "レポートの保存中にエラーが発生しました。")
+            const msg = friendlyError(err)
+            setError(msg)
+            toast.error(msg)
         } finally {
             setLoading(false)
         }
@@ -102,11 +113,6 @@ export default function InspectionForm() {
             {error && (
                 <div className="bg-red-50 text-red-600 p-4 rounded-md border border-red-200">
                     エラー: {error}
-                </div>
-            )}
-            {success && (
-                <div className="bg-green-50 text-green-600 p-4 rounded-md border border-green-200">
-                    保存しました。レポート画面へ移動します...
                 </div>
             )}
 

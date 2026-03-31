@@ -137,7 +137,7 @@ export default function CameraInput({ itiranId }: CameraInputProps) {
                             <button
                                 type="button"
                                 onClick={() => handleDeletePhoto(photo.id)}
-                                className="absolute top-1.5 right-1.5 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                className="absolute top-1.5 right-1.5 p-1.5 bg-red-500 text-white rounded-full opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                                 aria-label="削除"
                             >
                                 <Trash2 className="w-3.5 h-3.5" />

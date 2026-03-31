@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server"
+import { getAuthenticatedClient } from "@/lib/supabase/auth-server"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import SoukatsuForm from "@/components/soukatsu-form"
@@ -9,7 +9,7 @@ export default async function NewInspectionPage({
 }: {
     searchParams: Promise<{ propertyId?: string; copyFrom?: string }>
 }) {
-    const supabase = await createClient()
+    const { supabase, user } = await getAuthenticatedClient()
     const { propertyId, copyFrom } = await searchParams
 
     if (!propertyId) {
@@ -20,6 +20,7 @@ export default async function NewInspectionPage({
         .from("properties")
         .select("*")
         .eq("id", propertyId)
+        .eq("user_id", user.id)
         .single()
 
     if (!property) {

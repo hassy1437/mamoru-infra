@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server"
+import { getAuthenticatedClient } from "@/lib/supabase/auth-server"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 // コンポーネントの読み込み
@@ -7,13 +7,14 @@ import PrintButton from "@/components/print-button"
 import PdfOverlayButton from "@/components/pdf-overlay-button" // ★追加: PDFボタン
 
 export default async function ReportPage({ params }: { params: Promise<{ id: string }> }) {
-    const supabase = await createClient()
+    const { supabase, user } = await getAuthenticatedClient()
     const { id } = await params
 
     const { data: report } = await supabase
         .from("inspection_reports")
         .select("*")
         .eq("id", id)
+        .eq("user_id", user.id)
         .single()
 
     if (!report) {

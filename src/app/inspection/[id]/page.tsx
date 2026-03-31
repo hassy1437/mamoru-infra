@@ -1,4 +1,4 @@
-﻿import { createClient } from "@/lib/supabase/server"
+﻿import { getAuthenticatedClient } from "@/lib/supabase/auth-server"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
@@ -6,13 +6,14 @@ import SoukatsuPdfButton from "@/components/soukatsu-pdf-button"
 import SoukatsuPdfPreview from "@/components/soukatsu-pdf-preview"
 
 export default async function InspectionDetailPage({ params }: { params: Promise<{ id: string }> }) {
-    const supabase = await createClient()
+    const { supabase, user } = await getAuthenticatedClient()
     const { id } = await params
 
     const { data: report } = await supabase
         .from("inspection_soukatsu")
         .select("*")
         .eq("id", id)
+        .eq("user_id", user.id)
         .single()
 
     if (!report) {

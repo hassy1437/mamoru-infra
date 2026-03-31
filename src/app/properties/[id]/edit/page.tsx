@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server"
+import { getAuthenticatedClient } from "@/lib/supabase/auth-server"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import PropertyForm from "@/components/property-form"
@@ -9,13 +9,14 @@ export default async function EditPropertyPage({
 }: {
     params: Promise<{ id: string }>
 }) {
-    const supabase = await createClient()
+    const { supabase, user } = await getAuthenticatedClient()
     const { id } = await params
 
     const { data: property } = await supabase
         .from("properties")
         .select("*")
         .eq("id", id)
+        .eq("user_id", user.id)
         .single()
 
     if (!property) {

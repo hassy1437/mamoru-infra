@@ -127,22 +127,14 @@ export default function CameraInput({ itiranId }: CameraInputProps) {
                     {photos.map((photo) => (
                         <div
                             key={photo.id}
-                            className="relative group rounded-lg border border-slate-200 bg-slate-50"
+                            className="rounded-lg border border-slate-200 bg-slate-50"
                         >
                             <img
                                 src={photo.dataUrl}
                                 alt={photo.note || "点検写真"}
                                 className="w-full h-32 object-cover rounded-t-lg"
                             />
-                            <button
-                                type="button"
-                                onClick={() => handleDeletePhoto(photo.id)}
-                                className="absolute top-1 right-1 z-10 p-1.5 bg-red-500 text-white rounded-full shadow-md"
-                                aria-label="削除"
-                            >
-                                <Trash2 className="w-4 h-4" />
-                            </button>
-                            <div className="p-1.5">
+                            <div className="p-1.5 space-y-1">
                                 <div className="flex items-center gap-1">
                                     <StickyNote className="w-3 h-3 text-slate-400 shrink-0" />
                                     <Input
@@ -152,9 +144,19 @@ export default function CameraInput({ itiranId }: CameraInputProps) {
                                         className="h-7 text-xs border-0 bg-transparent px-1 focus-visible:ring-0"
                                     />
                                 </div>
-                                <p className="text-[10px] text-slate-400 px-1">
-                                    {new Date(photo.createdAt).toLocaleString("ja-JP")}
-                                </p>
+                                <div className="flex items-center justify-between">
+                                    <p className="text-[10px] text-slate-400 px-1">
+                                        {new Date(photo.createdAt).toLocaleString("ja-JP")}
+                                    </p>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleDeletePhoto(photo.id)}
+                                        className="flex items-center gap-0.5 text-[11px] text-red-500 hover:text-red-700 px-1"
+                                    >
+                                        <Trash2 className="w-3 h-3" />
+                                        削除
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     ))}

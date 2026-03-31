@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Camera, X, Trash2, StickyNote } from "lucide-react"
+import { Camera, ImagePlus, X, Trash2, StickyNote } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -19,6 +19,7 @@ export default function CameraInput({ itiranId }: CameraInputProps) {
     const [photos, setPhotos] = useState<LocalPhoto[]>([])
     const [showCamera, setShowCamera] = useState(false)
     const [preview, setPreview] = useState<string | null>(null)
+    const [cameraFallback, setCameraFallback] = useState(false)
     const videoRef = useRef<HTMLVideoElement>(null)
     const streamRef = useRef<MediaStream | null>(null)
     const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -27,6 +28,40 @@ export default function CameraInput({ itiranId }: CameraInputProps) {
     useEffect(() => {
         getPhotos(itiranId).then(setPhotos).catch(() => {})
     }, [itiranId])
+
+    const saveAndAddPhoto = useCallback(
+        async (dataUrl: string) => {
+            const photo: LocalPhoto = {
+                id: `photo_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                itiranId,
+                dataUrl,
+                note: "",
+                createdAt: new Date().toISOString(),
+            }
+            await savePhoto(photo)
+            setPhotos((prev) => [...prev, photo])
+        },
+        [itiranId]
+    )
+
+    const openFilePicker = useCallback(() => {
+        const input = document.createElement("input")
+        input.type = "file"
+        input.accept = "image/*"
+        input.capture = "environment"
+        input.onchange = async (e) => {
+            const file = (e.target as HTMLInputElement).files?.[0]
+            if (!file) return
+            const reader = new FileReader()
+            reader.onload = () => {
+                if (typeof reader.result === "string") {
+                    saveAndAddPhoto(reader.result)
+                }
+            }
+            reader.readAsDataURL(file)
+        }
+        input.click()
+    }, [saveAndAddPhoto])
 
     const startCamera = useCallback(async () => {
         try {
@@ -39,25 +74,11 @@ export default function CameraInput({ itiranId }: CameraInputProps) {
             }
             setShowCamera(true)
         } catch {
-            // Fallback to file input if camera not available
-            const input = document.createElement("input")
-            input.type = "file"
-            input.accept = "image/*"
-            input.capture = "environment"
-            input.onchange = async (e) => {
-                const file = (e.target as HTMLInputElement).files?.[0]
-                if (!file) return
-                const reader = new FileReader()
-                reader.onload = () => {
-                    if (typeof reader.result === "string") {
-                        saveAndAddPhoto(reader.result)
-                    }
-                }
-                reader.readAsDataURL(file)
-            }
-            input.click()
+            // Camera not available – show fallback explanation and use file picker
+            setCameraFallback(true)
+            openFilePicker()
         }
-    }, [itiranId])
+    }, [openFilePicker])
 
     const stopCamera = useCallback(() => {
         streamRef.current?.getTracks().forEach((t) => t.stop())
@@ -79,21 +100,6 @@ export default function CameraInput({ itiranId }: CameraInputProps) {
         const dataUrl = canvas.toDataURL("image/jpeg", 0.8)
         setPreview(dataUrl)
     }, [])
-
-    const saveAndAddPhoto = useCallback(
-        async (dataUrl: string) => {
-            const photo: LocalPhoto = {
-                id: `photo_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-                itiranId,
-                dataUrl,
-                note: "",
-                createdAt: new Date().toISOString(),
-            }
-            await savePhoto(photo)
-            setPhotos((prev) => [...prev, photo])
-        },
-        [itiranId]
-    )
 
     const confirmCapture = useCallback(async () => {
         if (!preview) return
@@ -189,6 +195,25 @@ export default function CameraInput({ itiranId }: CameraInputProps) {
                         </>
                     )}
                     <canvas ref={canvasRef} className="hidden" />
+                </div>
+            )}
+
+            {/* Camera fallback explanation */}
+            {cameraFallback && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2">
+                    <p className="text-sm text-amber-800">
+                        カメラが利用できないため、ファイル選択から写真を追加できます。
+                    </p>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={openFilePicker}
+                        className="text-xs"
+                    >
+                        <ImagePlus className="w-3.5 h-3.5 mr-1" />
+                        ファイルから選択
+                    </Button>
                 </div>
             )}
 

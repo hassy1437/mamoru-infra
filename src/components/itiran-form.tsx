@@ -10,6 +10,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
+import { friendlyError } from "@/lib/error-messages"
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes"
 import type { InspectorData, ShoubouLicense, KensaLicense } from "@/types/database"
 
@@ -140,8 +141,9 @@ export default function ItiranForm({ soukatsuId }: Props) {
             .single()
 
         if (insertError) {
-            setError(insertError.message)
-            toast.error("保存に失敗しました")
+            const msg = friendlyError(insertError)
+            setError(msg)
+            toast.error(msg)
             setLoading(false)
             return
         }

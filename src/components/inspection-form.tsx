@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
 import { Plus, Trash2, Loader2 } from "lucide-react"
 import { toast } from "sonner"
+import { friendlyError } from "@/lib/error-messages"
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes"
 
 type EquipmentItem = {
@@ -99,9 +100,9 @@ export default function InspectionForm() {
             router.push(`/reports/${data.id}`)
         } catch (err: unknown) {
             console.error(err)
-            const msg = err instanceof Error ? err.message : "レポートの保存中にエラーが発生しました。"
+            const msg = friendlyError(err)
             setError(msg)
-            toast.error("保存に失敗しました")
+            toast.error(msg)
         } finally {
             setLoading(false)
         }

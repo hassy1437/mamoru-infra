@@ -11,9 +11,19 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/com
 import { Textarea } from "@/components/ui/textarea"
 import { Loader2, Building2, CheckCircle2, AlertTriangle, MinusCircle } from "lucide-react"
 import { toast } from "sonner"
+import { friendlyError } from "@/lib/error-messages"
 import type { Property } from "@/types/database"
 import { ALL_EQUIPMENT_TYPES } from "@/lib/equipment-config"
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes"
+import FormProgress from "@/components/form-progress"
+
+const FORM_SECTIONS = [
+    "点検基本情報",
+    "届出者情報",
+    "防火対象物",
+    "点検結果",
+    "総合判定・備考",
+]
 
 type EquipmentResult = {
     name: string
@@ -135,9 +145,9 @@ export default function SoukatsuForm({ property, previousData }: SoukatsuFormPro
             router.push(`/inspection/${data.id}`)
         } catch (err: unknown) {
             console.error(err)
-            const msg = (err as Error).message || "保存中にエラーが発生しました。"
+            const msg = friendlyError(err)
             setError(msg)
-            toast.error("保存に失敗しました")
+            toast.error(msg)
         } finally {
             setLoading(false)
         }
@@ -145,6 +155,7 @@ export default function SoukatsuForm({ property, previousData }: SoukatsuFormPro
 
     return (
         <form onSubmit={handleSubmit} className="space-y-8 max-w-4xl mx-auto p-4">
+            <FormProgress sections={FORM_SECTIONS} />
             {error && (
                 <div className="bg-red-50 text-red-600 p-4 rounded-md border border-red-200">
                     エラー: {error}

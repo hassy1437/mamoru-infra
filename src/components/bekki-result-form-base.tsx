@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Eye, FileDown, Loader2, Save, WifiOff } from "lucide-react"
 import { toast } from "sonner"
+import { friendlyError } from "@/lib/error-messages"
 import { supabase } from "@/lib/supabase"
 import { saveDraftLocal } from "@/lib/local-draft"
 import CameraInput from "@/components/camera-input"
@@ -290,12 +291,11 @@ export default function BekkiResultFormBase({
             )
 
         if (saveError) {
-            if (saveError.message.includes(dbTable)) {
-                setError("保存テーブルが未作成です。SQLをSupabaseで実行してください。")
-            } else {
-                setError(`保存に失敗しました: ${saveError.message}`)
-            }
-            toast.error("保存に失敗しました")
+            const msg = saveError.message.includes(dbTable)
+                ? "保存テーブルが未作成です。SQLをSupabaseで実行してください。"
+                : friendlyError(saveError)
+            setError(msg)
+            toast.error(msg)
             return false
         }
 

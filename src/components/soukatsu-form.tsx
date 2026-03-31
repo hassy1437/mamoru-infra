@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Loader2, Building2 } from "lucide-react"
 import { toast } from "sonner"
 import type { Property } from "@/types/database"
-import { ALL_EQUIPMENT_TYPES, getEnabledEquipmentTypes } from "@/lib/equipment-config"
+import { ALL_EQUIPMENT_TYPES } from "@/lib/equipment-config"
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes"
 
 type EquipmentResult = {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { Loader2 } from "lucide-react"
+import { toast } from "sonner"
+import { useUnsavedChanges } from "@/hooks/use-unsaved-changes"
 import type { InspectorData, ShoubouLicense, KensaLicense } from "@/types/database"
 
 const SHOUBOU_TYPES = [
@@ -60,11 +62,21 @@ interface Props {
 
 export default function ItiranForm({ soukatsuId }: Props) {
     const router = useRouter()
+    const { markDirty, markClean } = useUnsavedChanges()
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [inspectors, setInspectors] = useState<[InspectorData, InspectorData]>([
         emptyInspector(), emptyInspector(),
     ])
+
+    // Mark form as dirty on any input change
+    useEffect(() => {
+        const form = document.querySelector("form")
+        if (!form) return
+        const handler = () => markDirty()
+        form.addEventListener("input", handler)
+        return () => form.removeEventListener("input", handler)
+    }, [markDirty])
 
     const updateInspector = (index: 0 | 1, field: keyof Pick<InspectorData, "address" | "name" | "company" | "phone" | "equipment_names" | "shoubou_notes">, value: string) => {
         setInspectors(prev => {
@@ -129,10 +141,13 @@ export default function ItiranForm({ soukatsuId }: Props) {
 
         if (insertError) {
             setError(insertError.message)
+            toast.error("保存に失敗しました")
             setLoading(false)
             return
         }
 
+        markClean()
+        toast.success("点検者情報を保存しました")
         router.push(`/inspection/${soukatsuId}/itiran/${data.id}`)
     }
 

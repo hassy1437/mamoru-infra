@@ -3,6 +3,8 @@ import { notFound } from "next/navigation"
 import Link from "next/link"
 import { CheckCircle2, MinusCircle } from "lucide-react"
 import CombinedPdfButton from "@/components/combined-pdf-button"
+import StepIndicator from "@/components/step-indicator"
+import { INSPECTION_STEPS } from "@/lib/inspection-steps"
 import { PDF_MERGE_CONFIG } from "@/lib/pdf-merge-config"
 import { selectedSteps } from "@/lib/itiran-input-flow"
 import type { ItiranInputStepId } from "@/lib/itiran-input-flow"
@@ -75,6 +77,7 @@ export default async function OutputPage({
     return (
         <div className="min-h-screen bg-gray-100 p-4 md:p-8">
             <div className="max-w-3xl mx-auto space-y-6">
+                <StepIndicator steps={[...INSPECTION_STEPS]} currentStep={4} />
                 <div className="flex justify-between items-center">
                     <Link href={`/inspection/${id}/itiran/${itiranId}`} className="text-blue-600 hover:underline">
                         &larr; 点検者一覧に戻る

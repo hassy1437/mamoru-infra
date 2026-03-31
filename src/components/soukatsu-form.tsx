@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/components/auth-provider"
@@ -10,8 +10,10 @@ import { Label } from "@/components/ui/label"
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { Loader2, Building2 } from "lucide-react"
+import { toast } from "sonner"
 import type { Property } from "@/types/database"
 import { ALL_EQUIPMENT_TYPES, getEnabledEquipmentTypes } from "@/lib/equipment-config"
+import { useUnsavedChanges } from "@/hooks/use-unsaved-changes"
 
 type EquipmentResult = {
     name: string
@@ -26,9 +28,9 @@ interface SoukatsuFormProps {
 export default function SoukatsuForm({ property, previousData }: SoukatsuFormProps) {
     const router = useRouter()
     const { user } = useAuth()
+    const { markDirty, markClean } = useUnsavedChanges()
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
-    const [success, setSuccess] = useState(false)
 
     // 基本情報
     const [inspectionDate, setInspectionDate] = useState(new Date().toISOString().split('T')[0])
@@ -78,7 +80,17 @@ export default function SoukatsuForm({ property, previousData }: SoukatsuFormPro
         (previousData?.notes as string) || ""
     )
 
+    // Mark form as dirty on any input change
+    useEffect(() => {
+        const form = document.querySelector("form")
+        if (!form) return
+        const handler = () => markDirty()
+        form.addEventListener("input", handler)
+        return () => form.removeEventListener("input", handler)
+    }, [markDirty])
+
     const updateEquipmentResult = (index: number, result: EquipmentResult["result"]) => {
+        markDirty()
         setEquipmentResults(prev =>
             prev.map((item, i) => i === index ? { ...item, result } : item)
         )
@@ -88,7 +100,6 @@ export default function SoukatsuForm({ property, previousData }: SoukatsuFormPro
         e.preventDefault()
         setLoading(true)
         setError(null)
-        setSuccess(false)
 
         try {
             const { data, error: insertError } = await supabase
@@ -119,13 +130,14 @@ export default function SoukatsuForm({ property, previousData }: SoukatsuFormPro
 
             if (insertError) throw insertError
 
-            setSuccess(true)
-            setTimeout(() => {
-                router.push(`/inspection/${data.id}`)
-            }, 1000)
+            markClean()
+            toast.success("総括表を保存しました")
+            router.push(`/inspection/${data.id}`)
         } catch (err: unknown) {
             console.error(err)
-            setError((err as Error).message || "保存中にエラーが発生しました。")
+            const msg = (err as Error).message || "保存中にエラーが発生しました。"
+            setError(msg)
+            toast.error("保存に失敗しました")
         } finally {
             setLoading(false)
         }
@@ -136,11 +148,6 @@ export default function SoukatsuForm({ property, previousData }: SoukatsuFormPro
             {error && (
                 <div className="bg-red-50 text-red-600 p-4 rounded-md border border-red-200">
                     エラー: {error}
-                </div>
-            )}
-            {success && (
-                <div className="bg-green-50 text-green-600 p-4 rounded-md border border-green-200">
-                    保存成功！プレビュー画面へ移動します...
                 </div>
             )}
 

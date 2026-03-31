@@ -9,8 +9,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
 import { Loader2 } from "lucide-react"
+import { toast } from "sonner"
 import type { Property } from "@/types/database"
 import { ALL_EQUIPMENT_TYPES, getEnabledEquipmentTypes } from "@/lib/equipment-config"
+import { useUnsavedChanges } from "@/hooks/use-unsaved-changes"
 
 interface PropertyFormProps {
     property?: Property
@@ -19,6 +21,7 @@ interface PropertyFormProps {
 export default function PropertyForm({ property }: PropertyFormProps) {
     const router = useRouter()
     const { user } = useAuth()
+    const { markDirty, markClean } = useUnsavedChanges()
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
@@ -46,6 +49,15 @@ export default function PropertyForm({ property }: PropertyFormProps) {
             prev.includes(name) ? prev.filter(e => e !== name) : [...prev, name]
         )
     }
+
+    // Mark form as dirty on any input change (via capturing event)
+    useEffect(() => {
+        const form = document.querySelector("form")
+        if (!form) return
+        const handler = () => markDirty()
+        form.addEventListener("input", handler)
+        return () => form.removeEventListener("input", handler)
+    }, [markDirty])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -89,10 +101,14 @@ export default function PropertyForm({ property }: PropertyFormProps) {
                 if (insertError) throw insertError
             }
 
+            markClean()
+            toast.success(property ? "物件情報を更新しました" : "物件情報を登録しました")
             router.push("/properties")
         } catch (err: unknown) {
             console.error(err)
-            setError((err as Error).message || "保存中にエラーが発生しました。")
+            const msg = (err as Error).message || "保存中にエラーが発生しました。"
+            setError(msg)
+            toast.error("保存に失敗しました")
         } finally {
             setLoading(false)
         }

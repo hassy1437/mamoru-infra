@@ -3,6 +3,8 @@ import { notFound } from "next/navigation"
 import Link from "next/link"
 import ItiranPdfButton from "@/components/itiran-pdf-button"
 import ItiranPdfPreview from "@/components/itiran-pdf-preview"
+import StepIndicator from "@/components/step-indicator"
+import { INSPECTION_STEPS } from "@/lib/inspection-steps"
 import { ArrowRight, CheckCircle2, Circle, FileDown } from "lucide-react"
 import { buildItiranInputHref, getItiranInputNextLabel, getNextItiranInputStep } from "@/lib/itiran-input-flow"
 import { getEquipmentProgress } from "@/lib/inspection-progress"
@@ -39,6 +41,9 @@ export default async function ItiranDetailPage({
 
     return (
         <div className="min-h-screen bg-gray-100 p-4 md:p-8">
+            <div className="max-w-[210mm] mx-auto mb-6">
+                <StepIndicator steps={[...INSPECTION_STEPS]} currentStep={3} />
+            </div>
             <div className="max-w-[210mm] mx-auto mb-6 flex justify-between items-center gap-3 flex-wrap">
                 <Link href={`/inspection/${id}`} className="text-blue-600 hover:underline">
                     &larr; 総括表に戻る

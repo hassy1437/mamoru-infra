@@ -2,6 +2,8 @@ import { getAuthenticatedClient } from "@/lib/supabase/auth-server"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import SoukatsuForm from "@/components/soukatsu-form"
+import StepIndicator from "@/components/step-indicator"
+import { INSPECTION_STEPS } from "@/lib/inspection-steps"
 import type { Property } from "@/types/database"
 
 export default async function NewInspectionPage({
@@ -47,6 +49,9 @@ export default async function NewInspectionPage({
                     <Link href="/inspection" className="text-sm text-blue-600 hover:underline">
                         ← 物件選択に戻る
                     </Link>
+                    <div className="mt-4">
+                        <StepIndicator steps={[...INSPECTION_STEPS]} currentStep={0} />
+                    </div>
                     <h1 className="text-2xl font-bold text-slate-900 mt-2">
                         消防用設備等点検結果総括表
                     </h1>

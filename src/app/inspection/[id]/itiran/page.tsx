@@ -1,5 +1,7 @@
 import Link from "next/link"
 import ItiranForm from "@/components/itiran-form"
+import StepIndicator from "@/components/step-indicator"
+import { INSPECTION_STEPS } from "@/lib/inspection-steps"
 
 export default async function ItiranPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params
@@ -7,6 +9,7 @@ export default async function ItiranPage({ params }: { params: Promise<{ id: str
     return (
         <div className="min-h-screen bg-gray-100 py-8">
             <div className="max-w-4xl mx-auto px-6 mb-6">
+                <StepIndicator steps={[...INSPECTION_STEPS]} currentStep={2} />
                 <Link href={`/inspection/${id}`} className="text-blue-600 hover:underline text-sm">
                     &larr; 総括表に戻る
                 </Link>

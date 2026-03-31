@@ -4,6 +4,8 @@ import Link from "next/link"
 import { ArrowRight } from "lucide-react"
 import SoukatsuPdfButton from "@/components/soukatsu-pdf-button"
 import SoukatsuPdfPreview from "@/components/soukatsu-pdf-preview"
+import StepIndicator from "@/components/step-indicator"
+import { INSPECTION_STEPS } from "@/lib/inspection-steps"
 
 export default async function InspectionDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { supabase, user } = await getAuthenticatedClient()
@@ -22,6 +24,9 @@ export default async function InspectionDetailPage({ params }: { params: Promise
 
     return (
         <div className="min-h-screen bg-gray-100 p-4 md:p-8">
+            <div className="max-w-[210mm] mx-auto mb-6">
+                <StepIndicator steps={[...INSPECTION_STEPS]} currentStep={1} />
+            </div>
             <div className="max-w-[210mm] mx-auto mb-6 flex justify-between items-center gap-3 flex-wrap">
                 <Link href="/tool" className="text-blue-600 hover:underline">
                     &larr; ツール選択に戻る

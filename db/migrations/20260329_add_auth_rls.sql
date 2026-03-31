@@ -40,6 +40,7 @@ ALTER TABLE public.inspection_itiran ENABLE ROW LEVEL SECURITY;
 DO $$
 DECLARE
     tbl text;
+    pol_name text;
 BEGIN
     FOR tbl IN
         SELECT unnest(ARRAY[
@@ -80,58 +81,58 @@ BEGIN
         -- Enable RLS
         EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', tbl);
 
-        -- Create RLS policy (skip if already exists)
-        IF NOT EXISTS (
-            SELECT 1 FROM pg_policies
-            WHERE schemaname = 'public' AND tablename = tbl
-              AND policyname = 'Users can CRUD own ' || tbl
-        ) THEN
-            EXECUTE format(
-                'CREATE POLICY "Users can CRUD own %1$s" ON public.%1$I FOR ALL
-                 USING (EXISTS (
-                     SELECT 1 FROM public.inspection_soukatsu s
-                     WHERE s.id = %1$I.soukatsu_id AND s.user_id = auth.uid()
-                 ))
-                 WITH CHECK (EXISTS (
-                     SELECT 1 FROM public.inspection_soukatsu s
-                     WHERE s.id = %1$I.soukatsu_id AND s.user_id = auth.uid()
-                 ))',
-                tbl
-            );
-        END IF;
+        -- Use short policy name to avoid 63-char truncation issues
+        pol_name := 'rls_' || tbl;
+
+        -- Drop existing policy (handles both truncated and full names)
+        EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', pol_name, tbl);
+        EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', 'Users can CRUD own ' || tbl, tbl);
+
+        EXECUTE format(
+            'CREATE POLICY %I ON public.%2$I FOR ALL
+             USING (EXISTS (
+                 SELECT 1 FROM public.inspection_soukatsu s
+                 WHERE s.id = %2$I.soukatsu_id AND s.user_id = auth.uid()
+             ))
+             WITH CHECK (EXISTS (
+                 SELECT 1 FROM public.inspection_soukatsu s
+                 WHERE s.id = %2$I.soukatsu_id AND s.user_id = auth.uid()
+             ))',
+            pol_name, tbl
+        );
     END LOOP;
 END
 $$;
 
 -- 6. RLS Policies: Direct user_id ownership (core tables)
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='properties' AND policyname='Users can CRUD own properties') THEN
-        CREATE POLICY "Users can CRUD own properties"
-            ON public.properties FOR ALL
-            USING (auth.uid() = user_id)
-            WITH CHECK (auth.uid() = user_id);
-    END IF;
+-- Use DROP + CREATE to be safely re-runnable
+DROP POLICY IF EXISTS "Users can CRUD own properties" ON public.properties;
+DROP POLICY IF EXISTS "rls_properties" ON public.properties;
+CREATE POLICY "rls_properties" ON public.properties FOR ALL
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
 
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='inspection_reports' AND policyname='Users can CRUD own reports') THEN
-        CREATE POLICY "Users can CRUD own reports"
-            ON public.inspection_reports FOR ALL
-            USING (auth.uid() = user_id)
-            WITH CHECK (auth.uid() = user_id);
-    END IF;
+DROP POLICY IF EXISTS "Users can CRUD own reports" ON public.inspection_reports;
+DROP POLICY IF EXISTS "rls_inspection_reports" ON public.inspection_reports;
+CREATE POLICY "rls_inspection_reports" ON public.inspection_reports FOR ALL
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
 
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='inspection_soukatsu' AND policyname='Users can CRUD own soukatsu') THEN
-        CREATE POLICY "Users can CRUD own soukatsu"
-            ON public.inspection_soukatsu FOR ALL
-            USING (auth.uid() = user_id)
-            WITH CHECK (auth.uid() = user_id);
-    END IF;
+DROP POLICY IF EXISTS "Users can CRUD own soukatsu" ON public.inspection_soukatsu;
+DROP POLICY IF EXISTS "rls_inspection_soukatsu" ON public.inspection_soukatsu;
+CREATE POLICY "rls_inspection_soukatsu" ON public.inspection_soukatsu FOR ALL
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
 
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='inspection_itiran' AND policyname='Users can CRUD own itiran') THEN
-        CREATE POLICY "Users can CRUD own itiran"
-            ON public.inspection_itiran FOR ALL
-            USING (auth.uid() = user_id)
-            WITH CHECK (auth.uid() = user_id);
-    END IF;
-END
-$$;
+DROP POLICY IF EXISTS "Users can CRUD own itiran" ON public.inspection_itiran;
+DROP POLICY IF EXISTS "rls_inspection_itiran" ON public.inspection_itiran;
+CREATE POLICY "rls_inspection_itiran" ON public.inspection_itiran FOR ALL
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
+
+-- 7. Set user_id on existing data (assign to first user if exists)
+-- Run this manually if you have existing data without user_id:
+-- UPDATE public.properties SET user_id = 'YOUR_USER_UUID' WHERE user_id IS NULL;
+-- UPDATE public.inspection_soukatsu SET user_id = 'YOUR_USER_UUID' WHERE user_id IS NULL;
+-- UPDATE public.inspection_itiran SET user_id = 'YOUR_USER_UUID' WHERE user_id IS NULL;
+-- UPDATE public.inspection_reports SET user_id = 'YOUR_USER_UUID' WHERE user_id IS NULL;

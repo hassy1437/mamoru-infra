@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { useAuth } from "@/components/auth-provider"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -17,6 +18,7 @@ interface PropertyFormProps {
 
 export default function PropertyForm({ property }: PropertyFormProps) {
     const router = useRouter()
+    const { user } = useAuth()
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
@@ -83,7 +85,7 @@ export default function PropertyForm({ property }: PropertyFormProps) {
             } else {
                 const { error: insertError } = await supabase
                     .from("properties")
-                    .insert(payload)
+                    .insert({ ...payload, user_id: user?.id })
                 if (insertError) throw insertError
             }
 

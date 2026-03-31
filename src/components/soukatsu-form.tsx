@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { useAuth } from "@/components/auth-provider"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -24,6 +25,7 @@ interface SoukatsuFormProps {
 
 export default function SoukatsuForm({ property, previousData }: SoukatsuFormProps) {
     const router = useRouter()
+    const { user } = useAuth()
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState(false)
@@ -110,6 +112,7 @@ export default function SoukatsuForm({ property, previousData }: SoukatsuFormPro
                     overall_judgment: overallJudgment || null,
                     notes: notes || null,
                     property_id: property?.id ?? null,
+                    user_id: user?.id,
                 })
                 .select()
                 .single()

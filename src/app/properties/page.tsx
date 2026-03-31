@@ -1,14 +1,15 @@
-import { createClient } from "@/lib/supabase/server"
+import { getAuthenticatedClient } from "@/lib/supabase/auth-server"
 import Link from "next/link"
 import { Building2, Plus } from "lucide-react"
 import type { Property } from "@/types/database"
 import PropertySearch from "@/components/property-search"
 
 export default async function PropertiesPage() {
-    const supabase = await createClient()
+    const { supabase, user } = await getAuthenticatedClient()
     const { data: properties } = await supabase
         .from("properties")
         .select("*")
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false })
 
     const list = (properties ?? []) as Property[]

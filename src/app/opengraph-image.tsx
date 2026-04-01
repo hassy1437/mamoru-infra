@@ -91,7 +91,7 @@ export default function Image() {
 
                 {/* Feature pills */}
                 <div style={{ display: "flex", gap: 16 }}>
-                    {["別記様式 第1〜第8対応", "作成時間 1/3に短縮", "オフライン対応"].map(
+                    {["消火器など7設備対応", "作成時間 1/3に短縮", "オフライン対応"].map(
                         (text) => (
                             <div
                                 key={text}

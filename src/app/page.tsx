@@ -23,7 +23,7 @@ import AppDemo from "@/components/app-demo";
 export const metadata: Metadata = {
     title: "Mamoru Infra — 消防設備点検の報告書作成を効率化",
     description:
-        "スマホで入力するだけで、消防設備点検結果報告書のPDFをその場で自動生成。別記様式第1〜第8に対応。インストール不要・無料で利用可能。",
+        "スマホで入力するだけで、消防設備点検結果報告書のPDFをその場で自動生成。消火器・屋内消火栓・スプリンクラー等7設備に対応。インストール不要・無料で利用可能。",
     twitter: {
         card: "summary_large_image",
         title: "Mamoru Infra — 消防設備点検の報告書作成を効率化",
@@ -167,8 +167,8 @@ export default async function Home() {
                     <section className="py-16 border-y border-slate-200 bg-white">
                         <div className="mx-auto grid max-w-5xl grid-cols-2 gap-8 px-4 text-center md:grid-cols-4 md:px-6">
                             <div>
-                                <div className="text-3xl font-extrabold text-blue-600 md:text-4xl">22</div>
-                                <div className="mt-1 text-sm font-medium text-slate-500">対応様式数</div>
+                                <div className="text-3xl font-extrabold text-blue-600 md:text-4xl">7</div>
+                                <div className="mt-1 text-sm font-medium text-slate-500">対応設備数</div>
                             </div>
                             <div>
                                 <div className="text-3xl font-extrabold text-blue-600 md:text-4xl">1/3</div>

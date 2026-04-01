@@ -1,26 +1,37 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { ArrowRight, Building, ClipboardCheck, Settings, Wrench, Clock } from "lucide-react"
+import { ArrowRight, Building, ClipboardCheck, Settings, Wrench, Clock, FileText } from "lucide-react"
 import LogoutButton from "@/components/logout-button"
 import { InstallPrompt } from "@/components/install-prompt"
 import { createClient } from "@/lib/supabase/server"
 
 export default async function ToolPage() {
   let recentInspections: { id: string; property_name: string; updated_at: string }[] = []
+  let propertyCount = 0
+  let inspectionCount = 0
+
   try {
     const supabase = await createClient()
-    const { data } = await supabase
-      .from("inspections")
-      .select("id, property:properties(building_name), updated_at")
-      .order("updated_at", { ascending: false })
-      .limit(3)
-    if (data) {
-      recentInspections = data.map((d: Record<string, unknown>) => ({
+
+    const [inspRes, propCountRes, inspCountRes] = await Promise.all([
+      supabase
+        .from("inspections")
+        .select("id, property:properties(building_name), updated_at")
+        .order("updated_at", { ascending: false })
+        .limit(3),
+      supabase.from("properties").select("id", { count: "exact", head: true }),
+      supabase.from("inspections").select("id", { count: "exact", head: true }),
+    ])
+
+    if (inspRes.data) {
+      recentInspections = inspRes.data.map((d: Record<string, unknown>) => ({
         id: d.id as string,
         property_name: (d.property as Record<string, unknown>)?.building_name as string || "不明な物件",
         updated_at: d.updated_at as string,
       }))
     }
+    propertyCount = propCountRes.count ?? 0
+    inspectionCount = inspCountRes.count ?? 0
   } catch {
     // DB errors should not crash the tool page
   }
@@ -43,9 +54,24 @@ export default async function ToolPage() {
               消防設備点検・報告書作成ツール
             </span>
           </h1>
-          <p className="text-slate-500 text-lg leading-relaxed max-w-lg mx-auto">
-            作業内容を選択してください。
-          </p>
+        </div>
+
+        {/* Summary Cards */}
+        <div className="relative z-10 grid grid-cols-2 gap-3">
+          <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 text-left">
+            <div className="flex items-center gap-2 mb-1">
+              <Building className="w-4 h-4 text-blue-500" />
+              <span className="text-xs font-medium text-slate-500">登録物件</span>
+            </div>
+            <div className="text-2xl font-extrabold text-slate-900">{propertyCount}</div>
+          </div>
+          <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 text-left">
+            <div className="flex items-center gap-2 mb-1">
+              <FileText className="w-4 h-4 text-emerald-500" />
+              <span className="text-xs font-medium text-slate-500">点検実施</span>
+            </div>
+            <div className="text-2xl font-extrabold text-slate-900">{inspectionCount}</div>
+          </div>
         </div>
 
         {/* Recent Inspections */}

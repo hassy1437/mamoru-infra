@@ -18,11 +18,22 @@ import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import ScrollAnimate from "@/components/scroll-animate";
 import FaqAccordion from "@/components/faq-accordion";
+import AppDemo from "@/components/app-demo";
 
 export const metadata: Metadata = {
     title: "Mamoru Infra — 消防設備点検の報告書作成を効率化",
     description:
         "スマホで入力するだけで、消防設備点検結果報告書のPDFをその場で自動生成。別記様式第1〜第8に対応。インストール不要・無料で利用可能。",
+    twitter: {
+        card: "summary_large_image",
+        title: "Mamoru Infra — 消防設備点検の報告書作成を効率化",
+        description: "スマホで入力するだけで報告書PDFを自動生成。無料・インストール不要。",
+    },
+    openGraph: {
+        title: "Mamoru Infra — 消防設備点検の報告書作成を効率化",
+        description: "スマホで入力するだけで報告書PDFを自動生成。無料・インストール不要。",
+        type: "website",
+    },
 };
 
 export default async function Home() {
@@ -145,65 +156,8 @@ export default async function Home() {
                                 </div>
                             </div>
 
-                            {/* Right: App Mockup */}
-                            <div className="relative mx-auto w-[280px] md:w-[300px]">
-                                <div className="rounded-[2.5rem] border-[8px] border-slate-800 bg-slate-800 p-1 shadow-2xl">
-                                    <div className="rounded-[2rem] bg-white overflow-hidden">
-                                        {/* Status bar */}
-                                        <div className="flex items-center justify-between bg-slate-50 px-5 py-2 text-[10px] text-slate-400">
-                                            <span>9:41</span>
-                                            <div className="h-5 w-20 rounded-full bg-slate-800"></div>
-                                            <span>100%</span>
-                                        </div>
-                                        {/* App header */}
-                                        <div className="bg-white px-4 py-3 border-b border-slate-100">
-                                            <div className="flex items-center gap-2">
-                                                <div className="h-6 w-6 rounded-full bg-blue-600 flex items-center justify-center">
-                                                    <Building2 className="h-3 w-3 text-white" />
-                                                </div>
-                                                <span className="text-xs font-bold text-slate-800">Mamoru Infra</span>
-                                            </div>
-                                        </div>
-                                        {/* App content mockup */}
-                                        <div className="px-4 py-4 space-y-3">
-                                            <div className="text-[11px] font-bold text-slate-700">消防設備点検</div>
-                                            <div className="rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 p-3 text-white">
-                                                <div className="text-[10px] opacity-80">進行中の点検</div>
-                                                <div className="text-xs font-bold mt-0.5">サンプルビル A棟</div>
-                                                <div className="mt-2 h-1.5 rounded-full bg-white/30">
-                                                    <div className="h-1.5 w-3/4 rounded-full bg-white"></div>
-                                                </div>
-                                                <div className="text-[9px] mt-1 opacity-80">75% 完了</div>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <div className="flex items-center gap-2 rounded-lg bg-slate-50 p-2.5">
-                                                    <div className="h-8 w-8 rounded-lg bg-emerald-100 flex items-center justify-center">
-                                                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                                                    </div>
-                                                    <div>
-                                                        <div className="text-[10px] font-semibold text-slate-700">消火器</div>
-                                                        <div className="text-[9px] text-emerald-600">入力済み</div>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center gap-2 rounded-lg bg-slate-50 p-2.5">
-                                                    <div className="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center">
-                                                        <PenLine className="h-4 w-4 text-blue-600" />
-                                                    </div>
-                                                    <div>
-                                                        <div className="text-[10px] font-semibold text-slate-700">屋内消火栓</div>
-                                                        <div className="text-[9px] text-blue-600">入力中...</div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div className="rounded-lg bg-blue-600 py-2 text-center text-[11px] font-bold text-white">
-                                                PDF出力
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                {/* Glow effect */}
-                                <div className="absolute -inset-4 -z-10 rounded-[3rem] bg-gradient-to-br from-blue-400/20 to-indigo-400/20 blur-2xl"></div>
-                            </div>
+                            {/* Right: Animated App Demo */}
+                            <AppDemo />
                         </div>
                     </div>
                 </section>

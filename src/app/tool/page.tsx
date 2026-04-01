@@ -26,7 +26,7 @@ export default async function ToolPage() {
     if (inspRes.data) {
       recentInspections = inspRes.data.map((d: Record<string, unknown>) => ({
         id: d.id as string,
-        property_name: (d.property as Record<string, unknown>)?.building_name as string || "不明な物件",
+        property_name: String((d.property as Record<string, unknown> | null)?.building_name ?? "不明な物件"),
         updated_at: d.updated_at as string,
       }))
     }

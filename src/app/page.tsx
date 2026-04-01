@@ -375,35 +375,31 @@ export default async function Home() {
                         <ScrollAnimate>
                             <div className="mb-12 text-center">
                                 <h2 className="mb-4 text-3xl font-bold tracking-tight text-slate-900 md:text-5xl">
-                                    対応<span className="text-blue-600">別記様式</span>
+                                    対応<span className="text-blue-600">設備</span>
                                 </h2>
-                                <p className="text-lg text-slate-600">消防設備点検結果報告書の主要な別記様式に対応しています</p>
+                                <p className="text-lg text-slate-600">以下の消防設備点検に対応しています</p>
                             </div>
                         </ScrollAnimate>
                         <ScrollAnimate>
                             <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
                                 {[
-                                    { num: "第1", name: "消火器", color: "bg-red-50 text-red-700 ring-red-100" },
-                                    { num: "第2", name: "屋内消火栓設備", color: "bg-orange-50 text-orange-700 ring-orange-100" },
-                                    { num: "第3", name: "スプリンクラー設備", color: "bg-amber-50 text-amber-700 ring-amber-100" },
-                                    { num: "第4", name: "水噴霧消火設備", color: "bg-cyan-50 text-cyan-700 ring-cyan-100" },
-                                    { num: "第5", name: "泡消火設備", color: "bg-blue-50 text-blue-700 ring-blue-100" },
-                                    { num: "第6", name: "不活性ガス消火設備", color: "bg-indigo-50 text-indigo-700 ring-indigo-100" },
-                                    { num: "第7", name: "ハロゲン化物消火設備", color: "bg-violet-50 text-violet-700 ring-violet-100" },
-                                    { num: "第8", name: "粉末消火設備", color: "bg-pink-50 text-pink-700 ring-pink-100" },
+                                    { name: "消火器", color: "bg-red-50 text-red-700 ring-red-100" },
+                                    { name: "避難器具", color: "bg-orange-50 text-orange-700 ring-orange-100" },
+                                    { name: "屋内消火栓設備", color: "bg-amber-50 text-amber-700 ring-amber-100" },
+                                    { name: "自動火災報知設備", color: "bg-cyan-50 text-cyan-700 ring-cyan-100" },
+                                    { name: "誘導灯", color: "bg-blue-50 text-blue-700 ring-blue-100" },
+                                    { name: "スプリンクラー設備", color: "bg-indigo-50 text-indigo-700 ring-indigo-100" },
+                                    { name: "連結送水管", color: "bg-violet-50 text-violet-700 ring-violet-100" },
                                 ].map((item) => (
-                                    <div key={item.num} className={`flex items-center gap-3 rounded-xl p-4 ring-1 ${item.color}`}>
+                                    <div key={item.name} className={`flex items-center gap-3 rounded-xl p-4 ring-1 ${item.color}`}>
                                         <FileSpreadsheet className="h-5 w-5 shrink-0" />
-                                        <div>
-                                            <div className="text-xs font-medium opacity-75">別記様式{item.num}</div>
-                                            <div className="text-sm font-bold">{item.name}</div>
-                                        </div>
+                                        <div className="text-sm font-bold">{item.name}</div>
                                     </div>
                                 ))}
                             </div>
                         </ScrollAnimate>
                         <ScrollAnimate>
-                            <p className="mt-6 text-center text-sm text-slate-500">※ 別記様式第9〜第22は順次対応予定です</p>
+                            <p className="mt-6 text-center text-sm text-slate-500">※ 対応設備は順次拡大予定です</p>
                         </ScrollAnimate>
                     </div>
                 </section>

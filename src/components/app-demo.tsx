@@ -20,7 +20,7 @@ export default function AppDemo() {
     }, [])
 
     return (
-        <div className="relative mx-auto w-[280px] md:w-[300px]">
+        <div className="relative mx-auto w-full max-w-[280px] md:max-w-[300px]">
             <div className="rounded-[2.5rem] border-[8px] border-slate-800 bg-slate-800 p-1 shadow-2xl">
                 <div className="rounded-[2rem] bg-white overflow-hidden">
                     {/* Status bar */}

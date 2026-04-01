@@ -1,10 +1,30 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { ArrowRight, Building, ClipboardCheck, Settings, Wrench } from "lucide-react"
+import { ArrowRight, Building, ClipboardCheck, Settings, Wrench, Clock } from "lucide-react"
 import LogoutButton from "@/components/logout-button"
 import { InstallPrompt } from "@/components/install-prompt"
+import { createClient } from "@/lib/supabase/server"
 
-export default function Home() {
+export default async function ToolPage() {
+  let recentInspections: { id: string; property_name: string; updated_at: string }[] = []
+  try {
+    const supabase = await createClient()
+    const { data } = await supabase
+      .from("inspections")
+      .select("id, property:properties(building_name), updated_at")
+      .order("updated_at", { ascending: false })
+      .limit(3)
+    if (data) {
+      recentInspections = data.map((d: Record<string, unknown>) => ({
+        id: d.id as string,
+        property_name: (d.property as Record<string, unknown>)?.building_name as string || "不明な物件",
+        updated_at: d.updated_at as string,
+      }))
+    }
+  } catch {
+    // DB errors should not crash the tool page
+  }
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-6 bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100">
       <div className="relative max-w-2xl w-full bg-white rounded-2xl shadow-xl border border-slate-100 p-10 md:p-16 text-center space-y-10 overflow-hidden">
@@ -27,6 +47,33 @@ export default function Home() {
             作業内容を選択してください。
           </p>
         </div>
+
+        {/* Recent Inspections */}
+        {recentInspections.length > 0 && (
+          <div className="relative z-10 text-left">
+            <div className="flex items-center gap-2 mb-3">
+              <Clock className="w-4 h-4 text-slate-400" />
+              <span className="text-sm font-semibold text-slate-500">最近の点検</span>
+            </div>
+            <div className="space-y-2">
+              {recentInspections.map((insp) => (
+                <Link
+                  key={insp.id}
+                  href={`/inspection/${insp.id}`}
+                  className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-4 py-3 text-sm transition-all hover:bg-blue-50 hover:border-blue-200 group"
+                >
+                  <div>
+                    <span className="font-medium text-slate-700 group-hover:text-blue-700">{insp.property_name}</span>
+                    <span className="ml-2 text-xs text-slate-400">
+                      {new Date(insp.updated_at).toLocaleDateString("ja-JP")}
+                    </span>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all" />
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="flex flex-col gap-5 justify-center items-center relative z-10 pt-4">
           <Link href="/properties" className="w-full group">

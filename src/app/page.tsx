@@ -16,9 +16,11 @@ import {
 } from "lucide-react";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
+import dynamic from "next/dynamic";
 import ScrollAnimate from "@/components/scroll-animate";
-import FaqAccordion from "@/components/faq-accordion";
-import AppDemo from "@/components/app-demo";
+
+const FaqAccordion = dynamic(() => import("@/components/faq-accordion"), { ssr: false });
+const AppDemo = dynamic(() => import("@/components/app-demo"), { ssr: false });
 
 export const metadata: Metadata = {
     title: "Mamoru Infra — 消防設備点検の報告書作成を効率化",

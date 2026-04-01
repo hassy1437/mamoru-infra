@@ -45,7 +45,7 @@ export default function FaqAccordion() {
                     >
                         <span className="text-base font-semibold text-slate-900 pr-4">{item.q}</span>
                         <ChevronDown
-                            className={`h-5 w-5 shrink-0 text-slate-400 transition-transform duration-200 ${openIndex === i ? "rotate-180" : ""}`}
+                            className={`h-5 w-5 shrink-0 text-slate-600 transition-transform duration-200 ${openIndex === i ? "rotate-180" : ""}`}
                         />
                     </button>
                     <div

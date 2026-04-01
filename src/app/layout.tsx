@@ -21,8 +21,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Mamoru Infra - 消防設備点検報告書作成",
-  description: "消防用設備等点検結果報告書をブラウザから作成・PDF出力できるWebアプリケーション",
+  title: "Mamoru Infra — 消防設備点検の報告書作成を効率化",
+  description: "スマホで入力するだけで、消防設備点検結果報告書のPDFをその場で自動生成。消火器・屋内消火栓・スプリンクラー等7設備に対応。インストール不要・無料で利用可能。",
   manifest: "/manifest.json",
   themeColor: "#2563eb",
   appleWebApp: {

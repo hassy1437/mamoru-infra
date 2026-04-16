@@ -84,25 +84,12 @@ export default async function RootLayout({
                 background-color: #1C64F2 !important;
                 animation: mamoru-chatbot-pulse 2.5s ease-in-out infinite;
               }
-              #dify-chatbot-bubble-window {
-                position: fixed !important;
-                z-index: 2147483647 !important;
-                right: 0.75rem !important;
-                bottom: 5rem !important;
-                width: calc(100vw - 1.5rem) !important;
-                height: 60vh !important;
-                max-height: 60vh !important;
-                border-radius: 1rem !important;
-                box-shadow: 0 8px 32px rgba(0,0,0,0.12) !important;
-              }
               @media (min-width: 640px) {
                 #dify-chatbot-bubble-window {
-                  right: 1rem !important;
-                  bottom: 4.5rem !important;
                   width: 24rem !important;
                   height: 40rem !important;
-                  max-height: 40rem !important;
                   border-radius: 1rem !important;
+                  box-shadow: 0 8px 32px rgba(0,0,0,0.12) !important;
                 }
               }
               @media (prefers-reduced-motion: reduce) {

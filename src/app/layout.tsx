@@ -87,12 +87,13 @@ export default async function RootLayout({
               #dify-chatbot-bubble-window {
                 position: fixed !important;
                 z-index: 2147483647 !important;
-                right: 0 !important;
-                bottom: 0 !important;
-                width: 100vw !important;
-                height: 80vh !important;
-                max-height: 80vh !important;
-                border-radius: 1rem 1rem 0 0 !important;
+                right: 0.75rem !important;
+                bottom: 5rem !important;
+                width: calc(100vw - 1.5rem) !important;
+                height: 60vh !important;
+                max-height: 60vh !important;
+                border-radius: 1rem !important;
+                box-shadow: 0 8px 32px rgba(0,0,0,0.12) !important;
               }
               @media (min-width: 640px) {
                 #dify-chatbot-bubble-window {

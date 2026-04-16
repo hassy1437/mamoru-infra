@@ -8,6 +8,7 @@ import { AuthProvider } from "@/components/auth-provider";
 import { ServiceWorkerRegistrar } from "@/components/sw-registrar";
 import { OfflineIndicator } from "@/components/offline-indicator";
 import { Toaster } from "@/components/ui/toaster";
+import ChatbotHint from "@/components/chatbot-hint";
 
 const notoSansJP = Noto_Sans_JP({
   variable: "--font-noto-sans-jp",
@@ -59,6 +60,7 @@ export default async function RootLayout({
           <ServiceWorkerRegistrar />
           {children}
         </AuthProvider>
+        <ChatbotHint />
         <Script id="dify-chatbot-config" strategy="afterInteractive">
           {`window.difyChatbotConfig = { token: 'bvhfapiUdU8yqQmc' }`}
         </Script>
@@ -70,12 +72,26 @@ export default async function RootLayout({
         <style
           dangerouslySetInnerHTML={{
             __html: `
+              @keyframes mamoru-chatbot-pulse {
+                0%, 100% {
+                  box-shadow: 0 4px 12px rgba(28, 100, 242, 0.35);
+                }
+                50% {
+                  box-shadow: 0 4px 24px rgba(28, 100, 242, 0.65), 0 0 0 10px rgba(28, 100, 242, 0.12);
+                }
+              }
               #dify-chatbot-bubble-button {
                 background-color: #1C64F2 !important;
+                animation: mamoru-chatbot-pulse 2.5s ease-in-out infinite;
               }
               #dify-chatbot-bubble-window {
                 width: 24rem !important;
                 height: 40rem !important;
+              }
+              @media (prefers-reduced-motion: reduce) {
+                #dify-chatbot-bubble-button {
+                  animation: none;
+                }
               }
             `,
           }}

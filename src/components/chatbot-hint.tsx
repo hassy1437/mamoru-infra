@@ -80,11 +80,12 @@ export default function ChatbotHint() {
     return (
         <div
             aria-live="polite"
-            className={`fixed bottom-[5.5rem] right-4 z-[2147483646] max-w-[16rem] transition-all duration-500 ${
+            className={`fixed bottom-[6rem] right-4 max-w-[16rem] transition-all duration-500 ${
                 visible
-                    ? "opacity-100 translate-y-0 pointer-events-auto"
+                    ? "opacity-100 translate-y-0"
                     : "opacity-0 translate-y-2 pointer-events-none"
             }`}
+            style={{ zIndex: visible ? 2147483646 : -1 }}
         >
             <div className="relative rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-xl">
                 <button

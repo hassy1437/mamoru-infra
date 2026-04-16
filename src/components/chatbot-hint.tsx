@@ -55,8 +55,8 @@ export default function ChatbotHint() {
         const timer = setTimeout(show, AUTO_SHOW_DELAY_MS)
         window.addEventListener("scroll", onScroll, { passive: true })
 
-        // Hide the hint as soon as the user clicks the Dify bubble
-        const handleClick = (e: MouseEvent) => {
+        // Hide the hint when user taps/clicks the Dify bubble
+        const handleInteraction = (e: Event) => {
             const target = e.target as HTMLElement | null
             if (target?.closest("#dify-chatbot-bubble-button")) {
                 setVisible(false)
@@ -68,12 +68,14 @@ export default function ChatbotHint() {
                 }
             }
         }
-        document.addEventListener("click", handleClick)
+        document.addEventListener("click", handleInteraction)
+        document.addEventListener("touchend", handleInteraction)
 
         return () => {
             window.removeEventListener("scroll", onScroll)
             clearTimeout(timer)
-            document.removeEventListener("click", handleClick)
+            document.removeEventListener("click", handleInteraction)
+            document.removeEventListener("touchend", handleInteraction)
         }
     }, [])
 

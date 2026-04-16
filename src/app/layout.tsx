@@ -84,12 +84,18 @@ export default async function RootLayout({
                 background-color: #1C64F2 !important;
                 animation: mamoru-chatbot-pulse 2.5s ease-in-out infinite;
               }
+              #dify-chatbot-bubble-window {
+                top: auto !important;
+                bottom: 5rem !important;
+                max-height: 65vh !important;
+                border-radius: 1rem !important;
+                box-shadow: 0 8px 32px rgba(0,0,0,0.12) !important;
+              }
               @media (min-width: 640px) {
                 #dify-chatbot-bubble-window {
                   width: 24rem !important;
                   height: 40rem !important;
-                  border-radius: 1rem !important;
-                  box-shadow: 0 8px 32px rgba(0,0,0,0.12) !important;
+                  max-height: 40rem !important;
                 }
               }
               @media (prefers-reduced-motion: reduce) {

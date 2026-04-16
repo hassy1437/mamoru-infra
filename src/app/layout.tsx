@@ -84,9 +84,11 @@ export default async function RootLayout({
                 background-color: #1C64F2 !important;
                 animation: mamoru-chatbot-pulse 2.5s ease-in-out infinite;
               }
-              #dify-chatbot-bubble-window {
-                width: 24rem !important;
-                height: 40rem !important;
+              @media (min-width: 640px) {
+                #dify-chatbot-bubble-window {
+                  width: 24rem !important;
+                  height: 40rem !important;
+                }
               }
               @media (prefers-reduced-motion: reduce) {
                 #dify-chatbot-bubble-button {

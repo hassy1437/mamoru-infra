@@ -40,6 +40,8 @@ export default function ChatbotHint() {
         let shown = false
         const show = () => {
             if (shown) return
+            // Only show hint if the Dify button is actually in the DOM
+            if (!document.getElementById("dify-chatbot-bubble-button")) return
             shown = true
             setVisible(true)
             window.removeEventListener("scroll", onScroll)

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Noto_Sans_JP } from "next/font/google";
 import { Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { createClient } from "@/lib/supabase/server";
 import { AuthProvider } from "@/components/auth-provider";
@@ -58,6 +59,27 @@ export default async function RootLayout({
           <ServiceWorkerRegistrar />
           {children}
         </AuthProvider>
+        <Script id="dify-chatbot-config" strategy="afterInteractive">
+          {`window.difyChatbotConfig = { token: 'bvhfapiUdU8yqQmc' }`}
+        </Script>
+        <Script
+          src="https://udify.app/embed.min.js"
+          id="bvhfapiUdU8yqQmc"
+          strategy="afterInteractive"
+        />
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+              #dify-chatbot-bubble-button {
+                background-color: #1C64F2 !important;
+              }
+              #dify-chatbot-bubble-window {
+                width: 24rem !important;
+                height: 40rem !important;
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   );

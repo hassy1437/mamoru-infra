@@ -85,6 +85,7 @@ export default async function RootLayout({
                 animation: mamoru-chatbot-pulse 2.5s ease-in-out infinite;
               }
               #dify-chatbot-bubble-window {
+                position: fixed !important;
                 top: auto !important;
                 bottom: 5rem !important;
                 max-height: 65vh !important;

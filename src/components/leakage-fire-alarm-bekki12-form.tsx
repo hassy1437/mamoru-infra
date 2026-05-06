@@ -20,51 +20,51 @@ interface Props {
 }
 
 const PAGE1_ITEMS = [
-    "周囲の状況",
-    "外形",
-    "表示",
-    "受電源表示灯",
-    "スイッチ類",
-    "ヒューズ類",
-    "信試験装置",
-    "表示灯",
-    "結線接続",
-    "接地 / 機",
-    "感度調整装置",
-    "予備品等",
-    "外形",
-    "表示 / 変",
-    "流未警戒",
-    "器容量",
-    "外形",
-    "音 / 取付状態 / 響",
-    "装音圧等 / 置",
-    "置 / 周囲の状況 / 漏電火災警",
-    "報器の作動 / 外形 / と連動して",
-    "と連動して / 電流の遮断定格電流容量",
-    "を行う装置 / 作動状況",
+    "受信機 周囲の状況",
+    "受信機 外形",
+    "受信機 表示",
+    "受信機 電源表示灯",
+    "受信機 スイッチ類",
+    "受信機 ヒューズ類（Ａ）",
+    "受信機 試験装置",
+    "受信機 表示灯",
+    "受信機 結線接続",
+    "受信機 接地",
+    "受信機 感度調整装置（mA）",
+    "受信機 予備品等",
+    "変流器 外形",
+    "変流器 表示",
+    "変流器 未警戒",
+    "変流器 容量（Ａ）",
+    "音響装置 外形",
+    "音響装置 取付状態",
+    "音響装置 音圧等",
+    "漏電火災警報器の作動と連動して電流の遮断を行う装置 周囲の状況",
+    "漏電火災警報器の作動と連動して電流の遮断を行う装置 外形",
+    "漏電火災警報器の作動と連動して電流の遮断を行う装置 定格電流容量（Ａ）",
+    "漏電火災警報器の作動と連動して電流の遮断を行う装置 作動状況",
 ] as const
 const PAGE2_ITEMS = [
-    "作動範囲",
+    "作動範囲（－％～＋％）",
     "漏電表示灯",
-    "音響装置の音圧",
-    "漏電火災警報器の作動と連動 / して電流の遮断を行う装置",
+    "音響装置の音圧（db）",
+    "漏電火災警報器の作動と連動して電流の遮断を行う装置",
 ] as const
 
 export default function LeakageFireAlarmBekki12Form(props: Props) {
     return (
         <BekkiResultFormBase
             {...props}
-            title="???????????????12???"
-            iframeTitle="???????????????12?PDF?????"
+            title="漏電火災警報器点検票（別記様式12）"
+            iframeTitle="漏電火災警報器点検票（別記様式12）PDFプレビュー"
             apiPath="/api/generate-leakage-fire-alarm-bekki12-pdf"
             dbTable="inspection_leakage_fire_alarm_bekki12"
-            downloadFilenamePrefix="??????????"
+            downloadFilenamePrefix="漏電火災警報器点検票"
             sections={[
-                { key: "page1_rows", title: "??1 ????", labels: PAGE1_ITEMS },
-                { key: "page2_rows", title: "??2 ????", labels: PAGE2_ITEMS },
+                { key: "page1_rows", title: "（その1）機器点検", labels: PAGE1_ITEMS },
+                { key: "page2_rows", title: "（その2）総合点検", labels: PAGE2_ITEMS },
             ]}
-            notesCardTitle="??2 ??????"
+            notesCardTitle="（その2）備考・測定機器"
             notesRows={10}
         />
     )

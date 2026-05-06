@@ -21,43 +21,43 @@ interface Props {
 
 const PAGE1_ITEMS = [
     "周囲の状況等",
-    "貯水槽",
-    "水水量",
-    "水状",
-    "給水装置 / 源",
-    "周囲の状況",
-    "吸管投入口 / 吸管投入",
-    "吸管投入 / 本体 / 孔・採水口採水口",
-    "孔・採水口採水口 / 開閉弁",
-    "標識",
-    "燃料",
-    "潤滑油",
-    "外形",
-    "内蓄電池電解液",
-    "端子電圧 / 燃",
-    "燃 / 起動装置",
-    "機動力伝達装置",
-    "冷却ラジエータ等 / 関",
-    "装置冷却ファン",
-    "吸排気装置",
-    "本体",
-    "真空潤滑剤 / ポ",
-    "ポンプ自動停止スイッチ",
-    "ン / 計器類",
-    "プ作動",
+    "水源 / 貯水槽",
+    "水源 / 水量（ｍ3）",
+    "水源 / 水状",
+    "水源 / 給水装置",
+    "採水口 / 周囲の状況",
+    "採水口 / 吸管投入口（本体）",
+    "採水口 / 吸管投入孔・採水口",
+    "採水口 / 開閉弁",
+    "採水口 / 標識",
+    "内燃機関 / 燃料（Ｌ）",
+    "内燃機関 / 潤滑油",
+    "内燃機関 / 外形",
+    "内燃機関 / 蓄電池電解液",
+    "内燃機関 / 端子電圧（Ｖ）",
+    "内燃機関 / 起動装置",
+    "内燃機関 / 動力伝達装置",
+    "内燃機関 / 冷却装置 / ラジエータ等",
+    "内燃機関 / 冷却装置 / 冷却ファン",
+    "内燃機関 / 吸排気装置",
+    "ポンプ / 本体",
+    "ポンプ / 真空潤滑剤",
+    "ポンプ / 自動停止スイッチ",
+    "ポンプ / 計器類",
+    "ポンプ / 作動",
 ] as const
 const PAGE2_ITEMS = [
     "車台装置・搬送装置",
-    "装備",
-    "吸管・ストレーナー / 積",
-    "積 / 外形 / ホース・ / 載",
-    "ノズル等 / ホースの耐圧性能 / 器",
-    "はしご / 具",
-    "破壊器具その他の器具",
-    "??8",
+    "積載器具 / 装備",
+    "積載器具 / 吸管・ストレーナー",
+    "積載器具 / ホース・ノズル等 / 外形（ホース寸法・ノズル径）",
+    "積載器具 / ホース・ノズル等 / ホースの耐圧性能",
+    "積載器具 / はしご",
+    "積載器具 / 破壊器具その他の器具",
+    "総合点検（見出し行・通常入力不要）",
     "運転状況",
     "吸水性能",
-    "放水圧力 / 放水性能",
+    "放水性能 / 放水圧力",
     "放水性能 / 放水量",
     "走行性能",
 ] as const
@@ -66,21 +66,21 @@ export default function DoryokuPumpBekki10Form(props: Props) {
     return (
         <BekkiResultFormBase
             {...props}
-            title="?????????????????10???"
-            iframeTitle="?????????????????10?PDF?????"
+            title="動力消防ポンプ設備点検票（別記様式10）"
+            iframeTitle="動力消防ポンプ設備点検票（別記様式10）PDFプレビュー"
             apiPath="/api/generate-doryoku-pump-bekki10-pdf"
             dbTable="inspection_doryoku_pump_bekki10"
-            downloadFilenamePrefix="????????????"
+            downloadFilenamePrefix="動力消防ポンプ設備点検票"
             sections={[
-                { key: "page1_rows", title: "??1 ????", labels: PAGE1_ITEMS },
-                { key: "page2_rows", title: "??2 ????", labels: PAGE2_ITEMS },
+                { key: "page1_rows", title: "（その1）機器点検", labels: PAGE1_ITEMS },
+                { key: "page2_rows", title: "（その2）点検結果", labels: PAGE2_ITEMS },
             ]}
-            extraFieldsTitle="??????"
+            extraFieldsTitle="設備情報"
             extraFields={[
-                { key: "body_maker", label: "?? ????" },
-                { key: "body_model", label: "?? ???" },
+                { key: "body_maker", label: "本体 製造者名" },
+                { key: "body_model", label: "本体 型式等" },
             ]}
-            notesCardTitle="??2 ??????"
+            notesCardTitle="（その2）備考・測定機器"
             notesRows={8}
         />
     )

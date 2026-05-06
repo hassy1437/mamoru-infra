@@ -41,6 +41,7 @@ yarn-error.log*
 next-env.d.ts
 
 tmp/
+.tmp/
 public/debug/
 .next-dev.err.log
 .next-dev.out.log

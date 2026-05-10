@@ -39,7 +39,7 @@ export default function EmergencyPowerOutletBekki21Form(props: Props) {
             apiPath="/api/generate-emergency-power-outlet-bekki21-pdf"
             dbTable="inspection_emergency_power_outlet_bekki21"
             downloadFilenamePrefix="非常コンセント設備点検票"
-            sections={[{ key: "page1_rows", title: "機器点検", labels: PAGE1_ITEMS }]}
+            sections={[{ key: "page1_rows", title: "機器点検", labels: PAGE1_ITEMS, currentValueRowIndex: 6 }]}
             notesCardTitle="備考（その1）"
             notesRows={12}
         />

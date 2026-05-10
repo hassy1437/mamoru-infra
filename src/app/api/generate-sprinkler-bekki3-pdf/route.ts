@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { PDFDocument, rgb, PDFPage, StandardFonts } from "pdf-lib"
+import { PDFDocument, rgb, PDFPage } from "pdf-lib"
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
@@ -151,7 +151,6 @@ export async function POST(req: NextRequest) {
         const pdfDoc = await PDFDocument.load(existingPdfBytes)
         pdfDoc.registerFontkit(fontkit)
         const customFont = await pdfDoc.embedFont(fontBytes)
-        const latinFont = await pdfDoc.embedFont(StandardFonts.Helvetica)
 
         const [page1, page2, page3, page4, page5] = pdfDoc.getPages()
         const p1Height = page1.getSize().height
@@ -489,7 +488,7 @@ export async function POST(req: NextRequest) {
             if (!pressRow) continue
             const pTop = P2_ROW_BOUNDS[ri]
             const pH = P2_ROW_BOUNDS[ri + 1] - P2_ROW_BOUNDS[ri]
-            drawInCellWithFont(page2, p2Height, latinFont, pressRow.content, 285, pTop, 14, pH, 6.5, { paddingX: 0.5 })
+            drawInCellWithFont(page2, p2Height, customFont, pressRow.content, 285, pTop, 14, pH, 6.5, { paddingX: 0.5 })
         }
 
         // 性能 (p2 row 20): 「MPa」/ 「L/min」自動分割
@@ -500,7 +499,7 @@ export async function POST(req: NextRequest) {
             const perfContent = normalizeText(perfRow3.content)
 
             const drawMpaVal = (v: string) => drawWrappedInCell(page2, p2Height, v, 237, perfTop, 38, perfH, 6.7)
-            const drawFlowVal = (v: string) => drawInCellWithFont(page2, p2Height, latinFont, v, 294, perfTop, 9, perfH, 6.0, { paddingX: 0.5 })
+            const drawFlowVal = (v: string) => drawInCellWithFont(page2, p2Height, customFont, v, 294, perfTop, 9, perfH, 6.0, { paddingX: 0.5 })
 
             if (perfRow3.flow_value) {
                 if (perfContent) drawMpaVal(perfContent)
@@ -548,11 +547,11 @@ export async function POST(req: NextRequest) {
             if (swContent.includes("/")) {
                 const parts = swContent.split("/")
                 // 設定圧力値: 「設定圧力」(x=244-286)の下、「MPa」(x=273)の左
-                drawInCellWithFont(page3, p3Height, latinFont, parts[0]?.trim(), 244, valTop, 28, valH, 6.5, { paddingX: 0.5 })
+                drawInCellWithFont(page3, p3Height, customFont, parts[0]?.trim(), 244, valTop, 28, valH, 6.5, { paddingX: 0.5 })
                 // 作動圧力値: 「作動圧力」(x=296-338)の下、「MPa」(x=326)の左
-                drawInCellWithFont(page3, p3Height, latinFont, parts[1]?.trim(), 296, valTop, 28, valH, 6.5, { paddingX: 0.5 })
+                drawInCellWithFont(page3, p3Height, customFont, parts[1]?.trim(), 296, valTop, 28, valH, 6.5, { paddingX: 0.5 })
             } else if (swContent) {
-                drawInCellWithFont(page3, p3Height, latinFont, swContent, 244, valTop, 28, valH, 6.5, { paddingX: 0.5 })
+                drawInCellWithFont(page3, p3Height, customFont, swContent, 244, valTop, 28, valH, 6.5, { paddingX: 0.5 })
             }
         }
 
@@ -569,20 +568,20 @@ export async function POST(req: NextRequest) {
             const parts = hContent.split("/")
             if (parts.length >= 3) {
                 // ホース長(m): 「m×」(x=265)の左 → x=244, w=20
-                drawInCellWithFont(page3, p3Height, latinFont, parts[0]?.trim(), 244, hValTop, 20, hValH, 6.5, { paddingX: 0.5 })
+                drawInCellWithFont(page3, p3Height, customFont, parts[0]?.trim(), 244, hValTop, 20, hValH, 6.5, { paddingX: 0.5 })
                 // 本数: 「本」(x=296)の左 → x=287, w=9
-                drawInCellWithFont(page3, p3Height, latinFont, parts[1]?.trim(), 287, hValTop, 9, hValH, 6.0, { paddingX: 0 })
+                drawInCellWithFont(page3, p3Height, customFont, parts[1]?.trim(), 287, hValTop, 9, hValH, 6.0, { paddingX: 0 })
                 // ノズル径(mm): 「mm」(x=307)の前... 「本」(x=307)の右から
                 // Actually: value before "mm" but after "本" → We need space between them
                 // Template shows: ___ 本 ___ mm. So nozzle goes before "mm"
                 // "本" ends at x≈307, "mm" starts from x≈307 (adjacent)
                 // ノズル径の値は右半分「ノズル径」ヘッダーの下に配置
-                drawInCellWithFont(page3, p3Height, latinFont, parts[2]?.trim(), 310, hValTop, 15, hValH, 6.0, { paddingX: 0 })
+                drawInCellWithFont(page3, p3Height, customFont, parts[2]?.trim(), 310, hValTop, 15, hValH, 6.0, { paddingX: 0 })
             } else if (parts.length === 2) {
-                drawInCellWithFont(page3, p3Height, latinFont, parts[0]?.trim(), 244, hValTop, 20, hValH, 6.5, { paddingX: 0.5 })
-                drawInCellWithFont(page3, p3Height, latinFont, parts[1]?.trim(), 310, hValTop, 15, hValH, 6.0, { paddingX: 0 })
+                drawInCellWithFont(page3, p3Height, customFont, parts[0]?.trim(), 244, hValTop, 20, hValH, 6.5, { paddingX: 0.5 })
+                drawInCellWithFont(page3, p3Height, customFont, parts[1]?.trim(), 310, hValTop, 15, hValH, 6.0, { paddingX: 0 })
             } else if (hContent) {
-                drawInCellWithFont(page3, p3Height, latinFont, hContent, 244, hValTop, 28, hValH, 6.5, { paddingX: 0.5 })
+                drawInCellWithFont(page3, p3Height, customFont, hContent, 244, hValTop, 28, hValH, 6.5, { paddingX: 0.5 })
             }
         }
 
@@ -626,7 +625,7 @@ export async function POST(req: NextRequest) {
         const device2 = body.device2 ?? {}
         const devOpts: DrawOptions = { paddingX: 1 }
         drawInCell(page5, p5Height, device1.name, 83, 658, 56, 19, 7.2, devOpts)
-        drawInCellWithFont(page5, p5Height, latinFont, device1.model, 139, 658, 55, 19, 7.2, devOpts)
+        drawInCellWithFont(page5, p5Height, customFont, device1.model, 139, 658, 55, 19, 7.2, devOpts)
         drawInCell(page5, p5Height, formatJapaneseDateText(device1.calibrated_at), 194, 658, 56, 19, 7.2, devOpts)
 
         const drawDeviceMaker = (text: unknown, page: PDFPage, pageH: number, cellX: number, cellW: number, cellTop: number, cellH: number) => {
@@ -653,7 +652,7 @@ export async function POST(req: NextRequest) {
         drawDeviceMaker(device1.maker, page5, p5Height, 250, 56, 658, 19)
 
         drawInCell(page5, p5Height, device2.name, 306, 658, 56, 19, 7.2, devOpts)
-        drawInCellWithFont(page5, p5Height, latinFont, device2.model, 362, 658, 56, 19, 7.2, devOpts)
+        drawInCellWithFont(page5, p5Height, customFont, device2.model, 362, 658, 56, 19, 7.2, devOpts)
         drawInCell(page5, p5Height, formatJapaneseDateText(device2.calibrated_at), 418, 658, 56, 19, 7.2, devOpts)
         drawDeviceMaker(device2.maker, page5, p5Height, 474, 56, 658, 19)
 

@@ -14,7 +14,7 @@ import {
     type DateAnchors,
 } from "@/lib/pdf-form-helpers"
 
-type BekkiRow = { content?: string; judgment?: string; bad_content?: string; action_content?: string }
+type BekkiRow = { content?: string; judgment?: string; bad_content?: string; action_content?: string; current_value?: string }
 type DeviceRow = { name?: string; model?: string; calibrated_at?: string; maker?: string }
 
 type Bekki18Payload = {
@@ -133,13 +133,16 @@ export async function POST(req: NextRequest) {
             rowBounds: number[],
             cols: ResultColumns,
             sizes?: { content?: number; judgment?: number; bad?: number; action?: number },
+            contentOverrides?: Record<number, { x: number; w: number }>,
         ) => {
             for (let i = 0; i < rowBounds.length - 1; i += 1) {
                 const row = rows[i]
                 if (!row) continue
                 const top = rowBounds[i]
                 const h = rowBounds[i + 1] - top
-                drawWrappedInCell(page, pageHeight, row.content, cols.contentX, top, cols.contentW, h, sizes?.content ?? 6.2)
+                const cx = contentOverrides?.[i]?.x ?? cols.contentX
+                const cw = contentOverrides?.[i]?.w ?? cols.contentW
+                drawWrappedInCell(page, pageHeight, row.content, cx, top, cw, h, sizes?.content ?? 6.2)
                 drawInCell(page, pageHeight, row.judgment, cols.judgmentX, top, cols.judgmentW, h, sizes?.judgment ?? 7.2, {
                     align: "center",
                 })
@@ -219,7 +222,20 @@ export async function POST(req: NextRequest) {
                 actionW: 78.0,
             },
             { content: 5.8, judgment: 6.8, bad: 5.8, action: 5.8 },
+            {
+                // Pre-4: 公式PDFの単位印字（Ｖ/Ａ）と重ならないよう content cell を狭める
+                15: { x: 222.6, w: 50 },  // 電圧計・電流計: Ｖ(x=274.9)前まで
+                17: { x: 222.6, w: 97 },  // ヒューズ類: Ａ(x=322.3)前まで
+            },
         )
+
+        // Pre-4: 電圧計・電流計 (row 15) — 電流値(A)を Ｖ印字後、Ａ印字前に描画
+        const voltRow18 = body.page1_rows?.[15]
+        if (voltRow18?.current_value) {
+            const vTop = P1_ROW_BOUNDS[15]
+            const vH = P1_ROW_BOUNDS[16] - P1_ROW_BOUNDS[15]
+            drawInCell(page1, p1Height, voltRow18.current_value, 287, vTop, 33, vH, 5.8)
+        }
 
         drawResultRows(
             page2,

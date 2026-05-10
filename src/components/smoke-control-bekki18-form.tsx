@@ -82,7 +82,7 @@ export default function SmokeControlBekki18Form(props: Props) {
                 { key: "smoke_machine_model", label: "型式等" },
             ]}
             sections={[
-                { key: "page1_rows", title: "（その1）機器点検", labels: PAGE1_ITEMS },
+                { key: "page1_rows", title: "（その1）機器点検", labels: PAGE1_ITEMS, currentValueRowIndex: 15 },
                 { key: "page2_rows", title: "（その2）点検結果", labels: PAGE2_ITEMS },
             ]}
             notesCardTitle="備考（その2）"

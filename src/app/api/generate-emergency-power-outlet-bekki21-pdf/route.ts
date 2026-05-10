@@ -14,7 +14,7 @@ import {
     type DateAnchors,
 } from "@/lib/pdf-form-helpers"
 
-type BekkiRow = { content?: string; judgment?: string; bad_content?: string; action_content?: string }
+type BekkiRow = { content?: string; judgment?: string; bad_content?: string; action_content?: string; current_value?: string }
 type DeviceRow = { name?: string; model?: string; calibrated_at?: string; maker?: string }
 
 type Bekki21Payload = {
@@ -116,13 +116,15 @@ export async function POST(req: NextRequest) {
             fontSize,
         })
 
-        const drawResultRows = (page: PDFPage, pageHeight: number, rows: BekkiRow[], rowBounds: number[], cols: ResultColumns) => {
+        const drawResultRows = (page: PDFPage, pageHeight: number, rows: BekkiRow[], rowBounds: number[], cols: ResultColumns, contentOverrides?: Record<number, { x: number; w: number }>) => {
             for (let i = 0; i < rowBounds.length - 1; i += 1) {
                 const row = rows[i]
                 if (!row) continue
                 const top = rowBounds[i]
                 const h = rowBounds[i + 1] - top
-                drawWrappedInCell(page, pageHeight, row.content, cols.contentX, top, cols.contentW, h, 6.1)
+                const cx = contentOverrides?.[i]?.x ?? cols.contentX
+                const cw = contentOverrides?.[i]?.w ?? cols.contentW
+                drawWrappedInCell(page, pageHeight, row.content, cx, top, cw, h, 6.1)
                 drawInCell(page, pageHeight, row.judgment, cols.judgmentX, top, cols.judgmentW, h, 7.0, { align: "center" })
                 drawWrappedInCell(page, pageHeight, row.bad_content, cols.badX, top, cols.badW, h, 6.0)
                 drawWrappedInCell(page, pageHeight, row.action_content, cols.actionX, top, cols.actionW, h, 6.0)
@@ -187,7 +189,18 @@ export async function POST(req: NextRequest) {
             badW: 78.84,
             actionX: 453.36,
             actionW: 76.44,
+        }, {
+            // Pre-4: 端子電圧（常用Ｖ・非常Ｖ）row 6 — 常用V を「常用V」印字(x=275)前に収める
+            6: { x: 222.36, w: 50 },
         })
+
+        // Pre-4: 端子電圧 row 6 — 非常V値を「常用V」(x=275)後・「非常V」(x=322.3)前に描画
+        const termVoltRow = body.page1_rows?.[6]
+        if (termVoltRow?.current_value) {
+            const tvTop = P1_ROW_BOUNDS[6]
+            const tvH = P1_ROW_BOUNDS[7] - P1_ROW_BOUNDS[6]
+            drawInCell(page1, p1Height, termVoltRow.current_value, 287, tvTop, 33, tvH, 5.8)
+        }
 
         drawWrappedInCell(page1, p1Height, body.notes, 85.8, 416.4, 444.0, 233.76, 6.8)
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { PDFDocument, rgb, PDFPage, StandardFonts } from "pdf-lib"
+import { PDFDocument, rgb, PDFPage } from "pdf-lib"
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
@@ -140,7 +140,6 @@ export async function POST(req: NextRequest) {
         const pdfDoc = await PDFDocument.load(existingPdfBytes)
         pdfDoc.registerFontkit(fontkit)
         const customFont = await pdfDoc.embedFont(fontBytes)
-        const latinFont = await pdfDoc.embedFont(StandardFonts.Helvetica)
 
         const [page1, page2, page3] = pdfDoc.getPages()
         const p1Height = page1.getSize().height
@@ -476,7 +475,7 @@ export async function POST(req: NextRequest) {
             if (!pressRow) continue
             const pTop = P2_ROW_BOUNDS[ri]
             const pH = P2_ROW_BOUNDS[ri + 1] - P2_ROW_BOUNDS[ri]
-            drawInCellWithFont(page2, p2Height, latinFont, pressRow.content, 283, pTop, 14, pH, 6.5, { paddingX: 0.5 })
+            drawInCellWithFont(page2, p2Height, customFont, pressRow.content, 283, pTop, 14, pH, 6.5, { paddingX: 0.5 })
         }
 
         // 性能 (p2 row 19): 「MPa」/ 「L/min」自動分割
@@ -487,7 +486,7 @@ export async function POST(req: NextRequest) {
             const perfContent = normalizeText(perfRow4.content)
 
             const drawMpaVal = (v: string) => drawWrappedInCell(page2, p2Height, v, 234, perfTop, 36, perfH, 6.7)
-            const drawFlowVal = (v: string) => drawInCellWithFont(page2, p2Height, latinFont, v, 292, perfTop, 15, perfH, 6.5, { paddingX: 1 })
+            const drawFlowVal = (v: string) => drawInCellWithFont(page2, p2Height, customFont, v, 292, perfTop, 15, perfH, 6.5, { paddingX: 1 })
 
             if (perfRow4.flow_value) {
                 if (perfContent) drawMpaVal(perfContent)
@@ -537,10 +536,10 @@ export async function POST(req: NextRequest) {
             const valH = swH / 2 + 2
             if (swContent.includes("/")) {
                 const parts = swContent.split("/")
-                drawInCellWithFont(page3, p3Height, latinFont, parts[0]?.trim(), 244, valTop, 28, valH, 6.5, { paddingX: 0.5 })
-                drawInCellWithFont(page3, p3Height, latinFont, parts[1]?.trim(), 296, valTop, 28, valH, 6.5, { paddingX: 0.5 })
+                drawInCellWithFont(page3, p3Height, customFont, parts[0]?.trim(), 244, valTop, 28, valH, 6.5, { paddingX: 0.5 })
+                drawInCellWithFont(page3, p3Height, customFont, parts[1]?.trim(), 296, valTop, 28, valH, 6.5, { paddingX: 0.5 })
             } else if (swContent) {
-                drawInCellWithFont(page3, p3Height, latinFont, swContent, 244, valTop, 28, valH, 6.5, { paddingX: 0.5 })
+                drawInCellWithFont(page3, p3Height, customFont, swContent, 244, valTop, 28, valH, 6.5, { paddingX: 0.5 })
             }
         }
 
@@ -550,7 +549,7 @@ export async function POST(req: NextRequest) {
         const device2 = body.device2 ?? {}
         const devOpts: DrawOptions = { paddingX: 1 }
         drawInCell(page3, p3Height, device1.name, 82, 658, 56, 18, 7.2, devOpts)
-        drawInCellWithFont(page3, p3Height, latinFont, device1.model, 138, 658, 56, 18, 7.2, devOpts)
+        drawInCellWithFont(page3, p3Height, customFont, device1.model, 138, 658, 56, 18, 7.2, devOpts)
         drawInCell(page3, p3Height, formatJapaneseDateText(device1.calibrated_at), 194, 658, 56, 18, 7.2, devOpts)
 
         const drawDeviceMaker = (text: unknown, page: PDFPage, pageH: number, cellX: number, cellW: number, cellTop: number, cellH: number) => {
@@ -577,7 +576,7 @@ export async function POST(req: NextRequest) {
         drawDeviceMaker(device1.maker, page3, p3Height, 250, 56, 658, 18)
 
         drawInCell(page3, p3Height, device2.name, 306, 658, 56, 18, 7.2, devOpts)
-        drawInCellWithFont(page3, p3Height, latinFont, device2.model, 362, 658, 56, 18, 7.2, devOpts)
+        drawInCellWithFont(page3, p3Height, customFont, device2.model, 362, 658, 56, 18, 7.2, devOpts)
         drawInCell(page3, p3Height, formatJapaneseDateText(device2.calibrated_at), 418, 658, 56, 18, 7.2, devOpts)
         drawDeviceMaker(device2.maker, page3, p3Height, 474, 55, 658, 18)
 

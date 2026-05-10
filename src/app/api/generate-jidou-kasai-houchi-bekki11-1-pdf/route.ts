@@ -286,7 +286,7 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        const drawResultRows = (page: PDFPage, pageHeight: number, rows: BekkiRow[], rowBounds: number[], cols: ResultColumns, skipContentRows?: Set<number>, skipAllRows?: Set<number>) => {
+        const drawResultRows = (page: PDFPage, pageHeight: number, rows: BekkiRow[], rowBounds: number[], cols: ResultColumns, skipContentRows?: Set<number>, skipAllRows?: Set<number>, contentOverrides?: Record<number, { x: number; w: number }>) => {
             for (let i = 0; i < rowBounds.length - 1; i += 1) {
                 const row = rows[i]
                 if (!row) continue
@@ -294,7 +294,9 @@ export async function POST(req: NextRequest) {
                 const top = rowBounds[i]
                 const h = rowBounds[i + 1] - top
                 if (!skipContentRows?.has(i)) {
-                    drawWrappedInCell(page, pageHeight, row.content, cols.contentX, top, cols.contentW, h, 6.3)
+                    const cx = contentOverrides?.[i]?.x ?? cols.contentX
+                    const cw = contentOverrides?.[i]?.w ?? cols.contentW
+                    drawWrappedInCell(page, pageHeight, row.content, cx, top, cw, h, 6.3)
                 }
                 drawInCell(page, pageHeight, row.judgment, cols.judgmentX, top, cols.judgmentW, h, 7.8, { align: "center" })
                 drawWrappedInCell(page, pageHeight, row.bad_content, cols.badX, top, cols.badW, h, 6.1)
@@ -361,6 +363,11 @@ export async function POST(req: NextRequest) {
             judgmentX: 335.33, judgmentW: 32.0,
             badX: 367.33, badW: 81.34,
             actionX: 448.67, actionW: 80.66,
+        }, undefined, undefined, {
+            // Pre-4: 公式PDFの単位印字 (V/A at x=319.8) と重ならないよう content cell を狭める
+            4:  { x: 230.0, w: 88 },  // 端子電圧 Ｖ
+            10: { x: 230.0, w: 88 },  // 電圧計 Ｖ
+            12: { x: 230.0, w: 88 },  // ヒューズ類 Ａ
         })
 
         drawResultRows(page2, p2Height, body.page2_rows ?? [], P2_ROW_BOUNDS, {

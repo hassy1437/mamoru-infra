@@ -220,7 +220,9 @@ export async function POST(req: NextRequest) {
 
         const device1 = body.device1 ?? {}
         const device2 = body.device2 ?? {}
-        const deviceRowTop = 665.28
+        // Pre-5: 元の 665.28 は公式PDFのヘッダー行（機器名/型式/校正年月日/製造者名）と
+        // 重なっていたため +16.44pt シフト。データ行1 (top_y=681.72, h=16.44pt) に描画。
+        const deviceRowTop = 681.72
         const deviceRowH = 16.44
 
         drawInCell(page2, p2Height, device1.name, 80.52, deviceRowTop, 55.68, deviceRowH, 5.8)

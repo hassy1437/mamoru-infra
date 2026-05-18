@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { PDFDocument, rgb, type PDFPage, StandardFonts } from "pdf-lib"
+import { PDFDocument, rgb, type PDFPage } from "pdf-lib"
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
@@ -119,7 +119,6 @@ export async function POST(req: NextRequest) {
         const pdfDoc = await PDFDocument.load(fs.readFileSync(pdfPath))
         pdfDoc.registerFontkit(fontkit)
         const customFont = await pdfDoc.embedFont(fs.readFileSync(fontPath))
-        const latinFont = await pdfDoc.embedFont(StandardFonts.Helvetica)
 
         const [page1, page2, page3] = pdfDoc.getPages()
         const p1Height = page1.getSize().height
@@ -356,7 +355,7 @@ export async function POST(req: NextRequest) {
         // 受信機: 製造者名 row (y=224.5-238.6), 型式等 row (y=238.6-252.5)
         // Data cell: x=265 (after label text) to x=529.6
         drawInCell(page1, p1Height, getExtra(body, "receiver_maker"), 265, 224.5, 264.6, 14.1, 6.8)
-        drawInCellWithFont(page1, p1Height, latinFont, getExtra(body, "receiver_model"), 265, 238.6, 264.6, 13.9, 6.8, { paddingX: 2 })
+        drawInCellWithFont(page1, p1Height, customFont, getExtra(body, "receiver_model"), 265, 238.6, 264.6, 13.9, 6.8, { paddingX: 2 })
 
         drawResultRows(page1, p1Height, body.page1_rows ?? [], P1_ROW_BOUNDS, {
             contentX: 230.0, contentW: 105.33,
@@ -435,10 +434,10 @@ export async function POST(req: NextRequest) {
         const deviceTableRowH = 20.8
         const devOpts: DrawOptions = { paddingX: 1 }
         // 機器名はテンプレートに印刷済み（加熱試験器/メーターリレー試験器/加煙試験器/炎感知器用作動試験器）
-        drawInCellWithFont(page3, p3Height, latinFont, device1.model, 158.0, deviceTableTop, 32.8, deviceTableRowH, 6.4, devOpts)
+        drawInCellWithFont(page3, p3Height, customFont, device1.model, 158.0, deviceTableTop, 32.8, deviceTableRowH, 6.4, devOpts)
         drawInCell(page3, p3Height, formatJapaneseDateText(device1.calibrated_at), 194.8, deviceTableTop, 53.2, deviceTableRowH, 5.2)
         drawDeviceMaker(device1.maker, page3, p3Height, 252.0, 52.4, deviceTableTop, deviceTableRowH)
-        drawInCellWithFont(page3, p3Height, latinFont, device2.model, 382.4, deviceTableTop, 32.8, deviceTableRowH, 6.2, devOpts)
+        drawInCellWithFont(page3, p3Height, customFont, device2.model, 382.4, deviceTableTop, 32.8, deviceTableRowH, 6.2, devOpts)
         drawInCell(page3, p3Height, formatJapaneseDateText(device2.calibrated_at), 419.2, deviceTableTop, 53.2, deviceTableRowH, 5.2)
         drawDeviceMaker(device2.maker, page3, p3Height, 476.4, 53.2, deviceTableTop, deviceTableRowH)
 

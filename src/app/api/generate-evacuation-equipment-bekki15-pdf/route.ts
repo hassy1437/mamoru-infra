@@ -1,5 +1,5 @@
 ﻿import { NextRequest, NextResponse } from "next/server"
-import { PDFDocument, type PDFPage, StandardFonts, rgb } from "pdf-lib"
+import { PDFDocument, type PDFPage, rgb } from "pdf-lib"
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
@@ -80,7 +80,6 @@ export async function POST(req: NextRequest) {
         const pdfDoc = await PDFDocument.load(fs.readFileSync(pdfPath))
         pdfDoc.registerFontkit(fontkit)
         const customFont = await pdfDoc.embedFont(fs.readFileSync(fontPath))
-        const latinFont = await pdfDoc.embedFont(StandardFonts.Helvetica)
 
         const [page1, page2] = pdfDoc.getPages()
         const p1Height = page1.getSize().height
@@ -303,12 +302,12 @@ export async function POST(req: NextRequest) {
 
         const devOpts: DrawOptions = { paddingX: 1 }
         drawInCell(page2, p2Height, device1.name, 80.76, deviceRowTop, 56.16, deviceRowH, 5.6)
-        drawInCellWithFont(page2, p2Height, latinFont, device1.model, 136.92, deviceRowTop, 56.16, deviceRowH, 5.6, devOpts)
+        drawInCellWithFont(page2, p2Height, customFont, device1.model, 136.92, deviceRowTop, 56.16, deviceRowH, 5.6, devOpts)
         drawInCell(page2, p2Height, formatJapaneseDateText(device1.calibrated_at), 193.08, deviceRowTop, 56.16, deviceRowH, 5.4)
         drawDeviceMaker(device1.maker, page2, p2Height, 249.24, 55.68, deviceRowTop, deviceRowH)
 
         drawInCell(page2, p2Height, device2.name, 305.88, deviceRowTop, 55.68, deviceRowH, 5.6)
-        drawInCellWithFont(page2, p2Height, latinFont, device2.model, 361.56, deviceRowTop, 56.16, deviceRowH, 5.6, devOpts)
+        drawInCellWithFont(page2, p2Height, customFont, device2.model, 361.56, deviceRowTop, 56.16, deviceRowH, 5.6, devOpts)
         drawInCell(page2, p2Height, formatJapaneseDateText(device2.calibrated_at), 417.72, deviceRowTop, 56.16, deviceRowH, 5.4)
         drawDeviceMaker(device2.maker, page2, p2Height, 473.88, 56.16, deviceRowTop, deviceRowH)
 

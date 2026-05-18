@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { PDFDocument, rgb, PDFPage, StandardFonts } from "pdf-lib"
+import { PDFDocument, rgb, PDFPage } from "pdf-lib"
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
@@ -132,7 +132,6 @@ export async function POST(req: NextRequest) {
         const pdfDoc = await PDFDocument.load(existingPdfBytes)
         pdfDoc.registerFontkit(fontkit)
         const customFont = await pdfDoc.embedFont(fontBytes)
-        const latinFont = await pdfDoc.embedFont(StandardFonts.Helvetica)
 
         const [page1, page2, page3] = pdfDoc.getPages()
         const p1Height = page1.getSize().height
@@ -457,7 +456,7 @@ export async function POST(req: NextRequest) {
             const perfContent = normalizeText(perfRow.content)
 
             const drawMpaVal = (v: string) => drawWrappedInCell(page2, p2Height, v, 239, perfTop, 27, perfH, 6.8)
-            const drawFlowVal = (v: string) => drawInCellWithFont(page2, p2Height, latinFont, v, 297, perfTop, 15, perfH, 6.5, { paddingX: 1 })
+            const drawFlowVal = (v: string) => drawInCellWithFont(page2, p2Height, customFont, v, 297, perfTop, 15, perfH, 6.5, { paddingX: 1 })
 
             if (perfRow.flow_value) {
                 // 明示的フィールド: content=MPa値, flow_value=L/min値
@@ -513,7 +512,7 @@ export async function POST(req: NextRequest) {
         const device2 = body.device2 ?? {}
         const devOpts: DrawOptions = { paddingX: 1 }
         drawInCell(page3, p3Height, device1.name, 83, 649, 55, 14, 7.2, devOpts)
-        drawInCellWithFont(page3, p3Height, latinFont, device1.model, 138, 649, 56, 14, 7.2, devOpts)
+        drawInCellWithFont(page3, p3Height, customFont, device1.model, 138, 649, 56, 14, 7.2, devOpts)
         drawInCell(page3, p3Height, formatJapaneseDateText(device1.calibrated_at), 194, 649, 56, 14, 7.2, devOpts)
         // 製造者名は長い社名が多いため、0.85安全マージンなしで描画
         const drawDeviceMaker = (text: unknown, cellX: number, cellW: number) => {
@@ -540,7 +539,7 @@ export async function POST(req: NextRequest) {
         drawDeviceMaker(device1.maker, 250, 56)
 
         drawInCell(page3, p3Height, device2.name, 306, 649, 56, 14, 7.2, devOpts)
-        drawInCellWithFont(page3, p3Height, latinFont, device2.model, 362, 649, 56, 14, 7.2, devOpts)
+        drawInCellWithFont(page3, p3Height, customFont, device2.model, 362, 649, 56, 14, 7.2, devOpts)
         drawInCell(page3, p3Height, formatJapaneseDateText(device2.calibrated_at), 418, 649, 56, 14, 7.2, devOpts)
         drawDeviceMaker(device2.maker, 474, 55)
 

@@ -459,9 +459,9 @@ export async function POST(req: NextRequest) {
             // 放水圧力2: 右側に「MPa」印刷済み (x=318.8) → x=234, w=83
             27: { x: 234, w: 83 },
         }, new Set([
-            // 設定圧力(上段): w=13の超狭セル → latinFont手動描画
+            // 設定圧力(上段): w=13の超狭セル → 手動描画
             4,
-            // 作動圧力: w=13の超狭セル → latinFont手動描画
+            // 作動圧力: w=13の超狭セル → 手動描画
             6,
             // 専用/兼用: テンプレートに選択肢が印刷済み → skip+circle
             7,
@@ -469,7 +469,7 @@ export async function POST(req: NextRequest) {
             19,
         ]))
 
-        // P2 rows 4, 6: 設定圧力・作動圧力 (w=13 超狭セル → latinFont)
+        // P2 rows 4, 6: 設定圧力・作動圧力 (w=13 超狭セル → 手動描画)
         for (const ri of [4, 6] as const) {
             const pressRow = p2Rows4[ri]
             if (!pressRow) continue

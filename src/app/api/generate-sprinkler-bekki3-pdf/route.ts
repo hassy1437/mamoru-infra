@@ -340,16 +340,17 @@ export async function POST(req: NextRequest) {
             content: string,
             choices: Array<{label: string; cx: number; cy: number; rx: number; ry: number}>,
         ) => {
-            const match = choices.find(c => content.includes(c.label))
-            if (!match) return
-            page.drawEllipse({
-                x: match.cx,
-                y: pageHeight - match.cy,
-                xScale: match.rx,
-                yScale: match.ry,
-                borderColor: rgb(0, 0, 0),
-                borderWidth: 0.7,
-            })
+            for (const c of choices) {
+                if (!content.includes(c.label)) continue
+                page.drawEllipse({
+                    x: c.cx,
+                    y: pageHeight - c.cy,
+                    xScale: c.rx,
+                    yScale: c.ry,
+                    borderColor: rgb(0, 0, 0),
+                    borderWidth: 0.7,
+                })
+            }
         }
 
         const drawRightAt = (

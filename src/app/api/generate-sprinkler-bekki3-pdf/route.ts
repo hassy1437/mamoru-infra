@@ -476,13 +476,13 @@ export async function POST(req: NextRequest) {
             // 放水圧力2: 右側に「MPa」印刷済み (x=307.3) → x=237, w: 68
             32: { x: 237, w: 68 },
         }, new Set([
-            4,  // 設定圧力(上段): 超狭セル(14px) → latinFont手動描画
+            4,  // 設定圧力(上段): 超狭セル(14px) → 手動描画
             6,  // 作動圧力: 同上
             7,  // 専用/兼用: テンプレートに選択肢が印刷済み → skip+circle
             20, // 性能（MPa/L/min）: 自動分割のため手動描画
         ]))
 
-        // P2 rows 4, 6: 「設定圧力」/「作動圧力」(x=242-285) と「MPa」(x=300) の間 → latinFont
+        // P2 rows 4, 6: 「設定圧力」/「作動圧力」(x=242-285) と「MPa」(x=300) の間に手動描画
         for (const ri of [4, 6] as const) {
             const pressRow = p2Rows3[ri]
             if (!pressRow) continue

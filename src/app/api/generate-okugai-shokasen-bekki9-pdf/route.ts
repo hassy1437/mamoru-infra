@@ -238,6 +238,7 @@ export async function POST(req: NextRequest) {
             rowBounds: number[],
             columns: ResultColumns,
             contentOverrides: Record<number, { x: number; w: number }> = {},
+            skipContentRows: Set<number> = new Set(),
         ) => {
             for (let i = 0; i < rowBounds.length - 1; i += 1) {
                 const row = rows[i]
@@ -247,10 +248,32 @@ export async function POST(req: NextRequest) {
                 const ov = contentOverrides[i]
                 const cx = ov?.x ?? columns.contentX
                 const cw = ov?.w ?? columns.contentW
-                drawWrappedInCell(page, pageHeight, row.content, cx, top, cw, h, 6.5)
+                if (!skipContentRows.has(i)) {
+                    drawWrappedInCell(page, pageHeight, row.content, cx, top, cw, h, 6.5)
+                }
                 drawInCell(page, pageHeight, row.judgment, columns.judgmentX, top, columns.judgmentW, h, 8.0, { align: "center" })
                 drawWrappedInCell(page, pageHeight, row.bad_content, columns.badX, top, columns.badW, h, 6.2)
                 drawWrappedInCell(page, pageHeight, row.action_content, columns.actionX, top, columns.actionW, h, 6.2)
+            }
+        }
+
+        // 専用/兼用 など選択式セルに〇を描画（bekki2/3/4/20 と同一パターン）
+        const drawSelectionCircle = (
+            page: PDFPage,
+            pageHeight: number,
+            content: string,
+            choices: Array<{ label: string; cx: number; cy: number; rx: number; ry: number }>,
+        ) => {
+            for (const c of choices) {
+                if (!content.includes(c.label)) continue
+                page.drawEllipse({
+                    x: c.cx,
+                    y: pageHeight - c.cy,
+                    xScale: c.rx,
+                    yScale: c.ry,
+                    borderColor: rgb(0, 0, 0),
+                    borderWidth: 0.7,
+                })
             }
         }
 
@@ -343,7 +366,13 @@ export async function POST(req: NextRequest) {
             badW: 90.0,
             actionX: 439.33,
             actionW: 90.0,
-        })
+        }, {}, new Set([7]))
+
+        // PAGE2 row 7「遠隔操作部 / 機能（専用・兼用）」: 公式PDF刷り込みの選択を丸囲み
+        drawSelectionCircle(page2, p2Height, body.page2_rows?.[7]?.content ?? "", [
+            { label: "専用", cx: 237.24, cy: 210, rx: 14, ry: 7 },
+            { label: "兼用", cx: 279.30, cy: 210, rx: 14, ry: 7 },
+        ])
 
         drawResultRows(page3, p3Height, body.page3_rows ?? [], P3_ROW_BOUNDS, {
             contentX: 216.67,

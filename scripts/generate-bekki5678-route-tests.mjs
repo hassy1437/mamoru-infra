@@ -2,15 +2,15 @@ import { runRoutePdf } from "./run-route-pdf.mjs";
 
 const makeRows = (count, prefix) =>
   Array.from({ length: count }, (_, i) => ({
-    content: `${prefix} item ${i + 1}`,
-    judgment: i % 5 === 2 ? "NG" : "OK",
+    content: `${prefix} 点検項目 ${i + 1}`,
+    judgment: i % 5 === 2 ? "不良" : "良",
     bad_content:
       i % 5 === 2
-        ? "LONGTEXTWITHOUTSPACES-ABNORMAL-CONDITION-DETECTED-NEEDS-RECHECK"
+        ? "作動不良・圧力低下・表示劣化あり。継続使用前に再点検が必要です。"
         : "",
     action_content:
       i % 5 === 2
-        ? "REPLACE-PARTS-AND-RUN-RETEST-WITH-CALIBRATED-TOOL"
+        ? "部品交換および再試験を実施予定（長文フィット確認用テキスト）"
         : "",
   }));
 
@@ -33,30 +33,30 @@ const makeCylinderRows = (count, cols) =>
   });
 
 const shared = {
-  form_name: "Sample Building Long Name For Fit Test",
-  fire_manager: "Fire Manager Taro Yamada",
-  witness: "Facility Manager Hanako Sato",
-  location: "1-1-1 Marunouchi Chiyoda-ku Tokyo Sample Tower South and North",
-  inspection_type: "Equipment + General",
+  form_name: "高層複合施設サンプル棟（長文フィット確認）",
+  fire_manager: "消防管理者 山田太郎",
+  witness: "管理会社 立会担当 佐藤花子",
+  location: "東京都千代田区丸の内一丁目一番一号 サンプルタワー南館・北館 共用部全域",
+  inspection_type: "機器・総合点検",
   period_start: "2026-02-01",
   period_end: "2026-02-26",
-  inspector_name: "Ichiro Suzuki",
-  inspector_company: "Sample Fire Equipment Maintenance Center",
-  inspector_address: "4-2-8 Shibakoen Minato-ku Tokyo Building 3F",
-  inspector_tel: "03-1234-5678 ext204",
+  inspector_name: "鈴木一郎",
+  inspector_company: "株式会社サンプル消防設備保守センター",
+  inspector_address: "東京都港区芝公園四丁目二番八号 メンテナンスビル3階 点検部",
+  inspector_tel: "03-1234-5678（内線204）",
   notes:
-    "LONGTEXTWITHOUTSPACES-FOR-NOTES-CHECK-THIS-SHOULD-SHRINK-OR-TRUNCATE-WITHOUT-OVERFLOW",
+    "備考欄の長文テストです。日本語文章がスペースなしでもはみ出さないこと、狭いセルで縮小や切り詰めが効くことを確認します。必要に応じて省略記号で表示します。",
   device1: {
-    name: "Gauge",
+    name: "圧力計",
     model: "PG-9000-LONG",
     calibrated_at: "2026/1/31",
-    maker: "MeasureLab",
+    maker: "計測機器製作所",
   },
   device2: {
-    name: "Tester",
+    name: "試験器",
     model: "TT-42-EXT",
     calibrated_at: "2026/2/10",
-    maker: "TestMaker",
+    maker: "試験機メーカー",
   },
 };
 
@@ -67,12 +67,12 @@ const jobs = [
     outPdfPath: "tmp/pdf-test-bekki5678/bekki5_test.pdf",
     payload: {
       ...shared,
-      equipment_name: "Foam Main System",
-      pump_maker: "PumpCo",
-      pump_model: "PMP-9000",
-      motor_maker: "MotorCo",
+      equipment_name: "主ポンプ系統",
+      pump_maker: "ポンプ製造株式会社",
+      pump_model: "PMP-9000-EX",
+      motor_maker: "電機",
       motor_model: "MTR-2026",
-      foam_maker: "FoamUnit",
+      foam_maker: "サンプル",
       foam_model: "FM-12A",
       page1_rows: makeRows(19, "B5-P1").map((row, i) =>
         i === 11 ? { ...row, content: "200", current_value: "5.2" } : row
@@ -88,8 +88,8 @@ const jobs = [
     outPdfPath: "tmp/pdf-test-bekki5678/bekki6_test.pdf",
     payload: {
       ...shared,
-      zone_name: "A Zone",
-      equipment_system: "Inert Gas System",
+      zone_name: "A区画",
+      equipment_system: "不活性ガス消火設備",
       page1_rows: makeRows(32, "B6-P1"),
       page2_rows: makeRows(40, "B6-P2"),
       page3_rows: makeRows(36, "B6-P3"),
@@ -103,8 +103,8 @@ const jobs = [
     outPdfPath: "tmp/pdf-test-bekki5678/bekki7_test.pdf",
     payload: {
       ...shared,
-      zone_name: "B Zone",
-      equipment_system: "Halogen System",
+      zone_name: "B区画",
+      equipment_system: "ハロゲン化物消火設備",
       page1_rows: makeRows(37, "B7-P1"),
       page2_rows: makeRows(47, "B7-P2"),
       page3_rows: makeRows(27, "B7-P3"),
@@ -118,8 +118,8 @@ const jobs = [
     outPdfPath: "tmp/pdf-test-bekki5678/bekki8_test.pdf",
     payload: {
       ...shared,
-      zone_name: "C Zone",
-      equipment_system: "Powder System",
+      zone_name: "C区画",
+      equipment_system: "粉末消火設備",
       page1_rows: makeRows(39, "B8-P1"),
       page2_rows: makeRows(45, "B8-P2"),
       page3_rows: makeRows(25, "B8-P3"),

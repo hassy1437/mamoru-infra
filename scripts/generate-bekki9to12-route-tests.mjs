@@ -2,43 +2,43 @@ import { runRoutePdf } from "./run-route-pdf.mjs";
 
 const makeRows = (count, prefix) =>
   Array.from({ length: count }, (_, i) => ({
-    content: `${prefix} item ${i + 1}`,
-    judgment: i % 5 === 2 ? "NG" : "OK",
+    content: `${prefix} 点検項目 ${i + 1}`,
+    judgment: i % 5 === 2 ? "不良" : "良",
     bad_content:
       i % 5 === 2
-        ? "LONGTEXTWITHOUTSPACES-ABNORMAL-CONDITION-DETECTED-NEEDS-RECHECK"
+        ? "作動不良・圧力低下・表示劣化あり。継続使用前に再点検が必要です。"
         : "",
     action_content:
       i % 5 === 2
-        ? "REPLACE-PARTS-AND-RUN-RETEST-WITH-CALIBRATED-TOOL"
+        ? "部品交換および再試験を実施予定（長文フィット確認用テキスト）"
         : "",
   }));
 
 const shared = {
-  form_name: "Sample Building Long Name For Fit Test",
-  fire_manager: "Fire Manager Taro Yamada",
-  witness: "Facility Manager Hanako Sato",
-  location: "1-1-1 Marunouchi Chiyoda-ku Tokyo Sample Tower South and North",
-  inspection_type: "Equipment + General",
+  form_name: "高層複合施設サンプル棟（長文フィット確認）",
+  fire_manager: "消防管理者 山田太郎",
+  witness: "管理会社 立会担当 佐藤花子",
+  location: "東京都千代田区丸の内一丁目一番一号 サンプルタワー南館・北館 共用部全域",
+  inspection_type: "機器・総合点検",
   period_start: "2026-02-01",
   period_end: "2026-02-26",
-  inspector_name: "Ichiro Suzuki",
-  inspector_company: "Sample Fire Equipment Maintenance Center",
-  inspector_address: "4-2-8 Shibakoen Minato-ku Tokyo Building 3F",
-  inspector_tel: "03-1234-5678 ext204",
+  inspector_name: "鈴木一郎",
+  inspector_company: "株式会社サンプル消防設備保守センター",
+  inspector_address: "東京都港区芝公園四丁目二番八号 メンテナンスビル3階 点検部",
+  inspector_tel: "03-1234-5678（内線204）",
   notes:
-    "LONGTEXTWITHOUTSPACES-FOR-NOTES-CHECK-THIS-SHOULD-SHRINK-OR-TRUNCATE-WITHOUT-OVERFLOW",
+    "備考欄の長文テストです。日本語文章がスペースなしでもはみ出さないこと、狭いセルで縮小や切り詰めが効くことを確認します。必要に応じて省略記号で表示します。",
   device1: {
-    name: "Gauge",
+    name: "圧力計",
     model: "PG-9000-LONG",
     calibrated_at: "2026/1/31",
-    maker: "MeasureLab",
+    maker: "計測機器製作所",
   },
   device2: {
-    name: "Tester",
+    name: "試験器",
     model: "TT-42-EXT",
     calibrated_at: "2026/2/10",
-    maker: "TestMaker",
+    maker: "試験機メーカー",
   },
 };
 
@@ -50,10 +50,10 @@ const jobs = [
     payload: {
       ...shared,
       extra_fields: {
-        pump_maker: "PumpCo",
-        pump_model: "PMP-9000",
-        motor_maker: "MotorCo",
-        motor_model: "MTR-2026",
+        pump_maker: "ポンプ製造株式会社",
+        pump_model: "PMP-9000-EX",
+        motor_maker: "電機サンプル",
+        motor_model: "MTR-2026-L",
       },
       page1_rows: makeRows(18, "B9-P1").map((row, i) =>
         i === 10 ? { ...row, content: "200", current_value: "5.2" } : row
@@ -69,7 +69,7 @@ const jobs = [
     payload: {
       ...shared,
       extra_fields: {
-        body_maker: "EngineCo",
+        body_maker: "動力消防ポンプ製造株式会社",
         body_model: "ENG-5000",
       },
       page1_rows: makeRows(25, "B10-P1"),
@@ -83,7 +83,7 @@ const jobs = [
     payload: {
       ...shared,
       extra_fields: {
-        receiver_maker: "ReceiverTech",
+        receiver_maker: "受信機製造株式会社",
         receiver_model: "RCV-11",
       },
       page1_rows: makeRows(28, "B11-1-P1"),
@@ -98,9 +98,9 @@ const jobs = [
     payload: {
       ...shared,
       extra_fields: {
-        receiver_maker: "ReceiverTech",
+        receiver_maker: "受信機製造株式会社",
         receiver_model: "RCV-11",
-        repeater_maker: "RepeaterTech",
+        repeater_maker: "中継器製造株式会社",
         repeater_model: "RPT-22",
       },
       page1_rows: makeRows(24, "B11-2-P1"),

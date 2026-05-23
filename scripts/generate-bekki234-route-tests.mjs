@@ -59,11 +59,17 @@ const jobs = [
         // row 10: 電圧計・電流計 — 電圧値(V)と電流値(A)を個別にテスト
         i === 10 ? { ...row, content: "200", current_value: "5.2" } : row
       ),
-      page2_rows: makeRows(34, "別記2-2").map((row, i) =>
+      page2_rows: makeRows(34, "別記2-2").map((row, i) => {
+        // row 7: 機能（専用/兼用）— 丸囲み確認用に「専用」を投入
+        if (i === 7) return { ...row, content: "専用" };
         // row 24: 性能 — MPa値とL/min値を個別にテスト
-        i === 24 ? { ...row, content: "0.40", flow_value: "300" } : row
+        if (i === 24) return { ...row, content: "0.40", flow_value: "300" };
+        return row;
+      }),
+      page3_rows: makeRows(32, "別記2-3").map((row, i) =>
+        // row 13: 表示灯（専用/兼用）— 丸囲み確認用に「兼用」を投入
+        i === 13 ? { ...row, content: "兼用" } : row
       ),
-      page3_rows: makeRows(32, "別記2-3"),
     },
   },
   {
@@ -75,7 +81,10 @@ const jobs = [
       page1_rows: makeRows(19, "別記3-1").map((row, i) =>
         i === 10 ? { ...row, content: "200", current_value: "5.2" } : row
       ),
-      page2_rows: makeRows(34, "別記3-2"),
+      page2_rows: makeRows(34, "別記3-2").map((row, i) =>
+        // row 7: 火災感知装置 感知器（専用/兼用）— 丸囲み確認用に「専用」を投入
+        i === 7 ? { ...row, content: "専用" } : row
+      ),
       page3_rows: makeRows(36, "別記3-3"),
       page4_rows: makeRows(23, "別記3-4"),
       page5_rows: makeRows(11, "別記3-5"),
@@ -90,7 +99,10 @@ const jobs = [
       page1_rows: makeRows(18, "別記4-1").map((row, i) =>
         i === 10 ? { ...row, content: "200", current_value: "5.2" } : row
       ),
-      page2_rows: makeRows(35, "別記4-2"),
+      page2_rows: makeRows(35, "別記4-2").map((row, i) =>
+        // row 7: 火災感知装置 感知器（専用/兼用）— 丸囲み確認用に「兼用」を投入
+        i === 7 ? { ...row, content: "兼用" } : row
+      ),
       page3_rows: makeRows(24, "別記4-3"),
     },
   },

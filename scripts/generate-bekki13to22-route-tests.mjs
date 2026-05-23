@@ -129,7 +129,10 @@ const jobs = [
         pump_model: "PMP-9000-EX",
       },
       page1_rows: makeRows(30, "B20-P1"),
-      page2_rows: makeRows(40, "B20-P2"),
+      page2_rows: makeRows(40, "B20-P2").map((row, i) =>
+        // row 7: 遠隔操作部 機能（専用・兼用）— 丸囲み確認用に「兼用」を投入
+        i === 7 ? { ...row, content: "兼用" } : row
+      ),
       page3_rows: makeRows(10, "B20-P3"),
     },
   },

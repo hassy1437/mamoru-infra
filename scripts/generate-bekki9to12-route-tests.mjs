@@ -58,7 +58,10 @@ const jobs = [
       page1_rows: makeRows(18, "B9-P1").map((row, i) =>
         i === 10 ? { ...row, content: "200", current_value: "5.2" } : row
       ),
-      page2_rows: makeRows(36, "B9-P2"),
+      page2_rows: makeRows(36, "B9-P2").map((row, i) =>
+        // row 7: 遠隔操作部 機能（専用・兼用）— 丸囲み確認用に「専用」を投入
+        i === 7 ? { ...row, content: "専用" } : row
+      ),
       page3_rows: makeRows(22, "B9-P3"),
     },
   },

@@ -128,7 +128,10 @@ const jobs = [
         pump_maker: "ポンプ製造株式会社",
         pump_model: "PMP-9000-EX",
       },
-      page1_rows: makeRows(30, "B20-P1"),
+      page1_rows: makeRows(30, "B20-P1").map((row, i) =>
+        // row 17: 電圧計・電流計 — 電圧値(V)と電流値(A)を個別にテスト
+        i === 17 ? { ...row, content: "200", current_value: "5.2" } : row
+      ),
       page2_rows: makeRows(40, "B20-P2").map((row, i) =>
         // row 7: 遠隔操作部 機能（専用・兼用）— 丸囲み確認用に「兼用」を投入
         i === 7 ? { ...row, content: "兼用" } : row

@@ -14,7 +14,7 @@ import {
     type DateAnchors,
 } from "@/lib/pdf-form-helpers"
 
-type BekkiRow = { content?: string; judgment?: string; bad_content?: string; action_content?: string }
+type BekkiRow = { content?: string; judgment?: string; bad_content?: string; action_content?: string; current_value?: string }
 type DeviceRow = { name?: string; model?: string; calibrated_at?: string; maker?: string }
 
 type Bekki20Payload = {
@@ -324,7 +324,13 @@ export async function POST(req: NextRequest) {
             const vTop = P1_ROW_BOUNDS[17]
             const vH = P1_ROW_BOUNDS[18] - vTop
             const vContent = normalizeText(voltRow.content)
-            if (vContent.includes("/")) {
+            const aValue = normalizeText(voltRow.current_value)
+            if (aValue) {
+                // 新方式: content=電圧(V), current_value=電流(A)（bekki18/21 と同じ2欄入力）
+                drawInCellWithFont(page1, p1Height, customFont, vContent, 222, vTop, 48, vH, 6.0, { paddingX: 1 })
+                drawInCellWithFont(page1, p1Height, customFont, aValue, 280, vTop, 42, vH, 6.0, { paddingX: 1 })
+            } else if (vContent.includes("/")) {
+                // 後方互換: 旧スラッシュ手入力データ "100/5" を分割
                 const parts = vContent.split("/")
                 // V value: x=222 to before V label (x=270)
                 drawInCellWithFont(page1, p1Height, customFont, parts[0]?.trim(), 222, vTop, 48, vH, 6.0, { paddingX: 1 })

@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Eye, FileDown, Loader2, Save } from "lucide-react"
 import { supabase } from "@/lib/supabase"
+import { toDateInputValue } from "@/lib/date-utils"
 import {
     normalizeBekkiInspectorNameForPayload,
     normalizeBekkiInspectorNameForState,
@@ -656,14 +657,20 @@ export default function InertGasBekki6Form({
                             <p className="font-medium text-sm">測定機器 1</p>
                             <Input placeholder="機器名" value={device1.name} onChange={(e) => setDevice1((p) => ({ ...p, name: e.target.value }))} />
                             <Input placeholder="型式" value={device1.model} onChange={(e) => setDevice1((p) => ({ ...p, model: e.target.value }))} />
-                            <Input placeholder="校正年月日" value={device1.calibrated_at} onChange={(e) => setDevice1((p) => ({ ...p, calibrated_at: e.target.value }))} />
+                            <div className="space-y-1">
+                                <Label className="text-xs font-normal text-slate-500">校正年月日</Label>
+                                <Input type="date" value={toDateInputValue(device1.calibrated_at)} onChange={(e) => setDevice1((p) => ({ ...p, calibrated_at: e.target.value }))} />
+                            </div>
                             <Input placeholder="製造者名" value={device1.maker} onChange={(e) => setDevice1((p) => ({ ...p, maker: e.target.value }))} />
                         </div>
                         <div className="space-y-2">
                             <p className="font-medium text-sm">測定機器 2</p>
                             <Input placeholder="機器名" value={device2.name} onChange={(e) => setDevice2((p) => ({ ...p, name: e.target.value }))} />
                             <Input placeholder="型式" value={device2.model} onChange={(e) => setDevice2((p) => ({ ...p, model: e.target.value }))} />
-                            <Input placeholder="校正年月日" value={device2.calibrated_at} onChange={(e) => setDevice2((p) => ({ ...p, calibrated_at: e.target.value }))} />
+                            <div className="space-y-1">
+                                <Label className="text-xs font-normal text-slate-500">校正年月日</Label>
+                                <Input type="date" value={toDateInputValue(device2.calibrated_at)} onChange={(e) => setDevice2((p) => ({ ...p, calibrated_at: e.target.value }))} />
+                            </div>
                             <Input placeholder="製造者名" value={device2.maker} onChange={(e) => setDevice2((p) => ({ ...p, maker: e.target.value }))} />
                         </div>
                     </div>

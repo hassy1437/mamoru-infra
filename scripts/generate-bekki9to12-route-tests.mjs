@@ -58,11 +58,17 @@ const jobs = [
       page1_rows: makeRows(18, "B9-P1").map((row, i) =>
         i === 10 ? { ...row, content: "200", current_value: "5.2" } : row
       ),
-      page2_rows: makeRows(36, "B9-P2").map((row, i) =>
+      page2_rows: makeRows(36, "B9-P2").map((row, i) => {
         // row 7: 遠隔操作部 機能（専用・兼用）— 丸囲み確認用に「専用」を投入
-        i === 7 ? { ...row, content: "専用" } : row
+        if (i === 7) return { ...row, content: "専用" };
+        // row 21: ポンプ性能 — 吐出圧力(MPa)=content, 吐出量(L/min)=flow_value
+        if (i === 21) return { ...row, content: "0.25", flow_value: "130" };
+        return row;
+      }),
+      page3_rows: makeRows(22, "B9-P3").map((row, i) =>
+        // row 3: ホース・ノズル外形 — 長さ(m)=content, 本数=hose_count, 口径(mm)=nozzle_dia
+        i === 3 ? { ...row, content: "30", hose_count: "2", nozzle_dia: "19" } : row
       ),
-      page3_rows: makeRows(22, "B9-P3"),
     },
   },
   {
@@ -76,7 +82,10 @@ const jobs = [
         body_model: "ENG-5000",
       },
       page1_rows: makeRows(25, "B10-P1"),
-      page2_rows: makeRows(13, "B10-P2"),
+      page2_rows: makeRows(13, "B10-P2").map((row, i) =>
+        // row 3: ホース・ノズル等 外形 — 長さ(m)=content, 本数=hose_count, 口径(mm)=nozzle_dia
+        i === 3 ? { ...row, content: "20", hose_count: "1", nozzle_dia: "25" } : row
+      ),
     },
   },
   {

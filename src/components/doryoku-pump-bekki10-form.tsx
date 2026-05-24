@@ -73,7 +73,7 @@ export default function DoryokuPumpBekki10Form(props: Props) {
             downloadFilenamePrefix="動力消防ポンプ設備点検票"
             sections={[
                 { key: "page1_rows", title: "（その1）機器点検", labels: PAGE1_ITEMS },
-                { key: "page2_rows", title: "（その2）点検結果", labels: PAGE2_ITEMS },
+                { key: "page2_rows", title: "（その2）点検結果", labels: PAGE2_ITEMS, hoseRowIndexes: [3] },
             ]}
             extraFieldsTitle="設備情報"
             extraFields={[

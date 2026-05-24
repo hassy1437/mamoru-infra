@@ -133,14 +133,20 @@ const jobs = [
         pump_maker: "ポンプ製造株式会社",
         pump_model: "PMP-9000-EX",
       },
-      page1_rows: makeRows(30, "B20-P1").map((row, i) =>
+      page1_rows: makeRows(30, "B20-P1").map((row, i) => {
+        // row 7: ホース・ノズル — 長さ(m)=content, 本数=hose_count, 口径(mm)=nozzle_dia
+        if (i === 7) return { ...row, content: "20", hose_count: "2", nozzle_dia: "25" };
         // row 17: 電圧計・電流計 — 電圧値(V)と電流値(A)を個別にテスト
-        i === 17 ? { ...row, content: "200", current_value: "5.2" } : row
-      ),
-      page2_rows: makeRows(40, "B20-P2").map((row, i) =>
+        if (i === 17) return { ...row, content: "200", current_value: "5.2" };
+        return row;
+      }),
+      page2_rows: makeRows(40, "B20-P2").map((row, i) => {
         // row 7: 遠隔操作部 機能（専用・兼用）— 丸囲み確認用に「兼用」を投入
-        i === 7 ? { ...row, content: "兼用" } : row
-      ),
+        if (i === 7) return { ...row, content: "兼用" };
+        // row 18: ポンプ性能 — 吐出圧力(MPa)=content, 吐出量(L/min)=flow_value
+        if (i === 18) return { ...row, content: "0.85", flow_value: "1800" };
+        return row;
+      }),
       page3_rows: makeRows(10, "B20-P3"),
     },
   },

@@ -261,6 +261,7 @@ export async function POST(req: NextRequest) {
             rowBounds: number[],
             columns: ResultColumns,
             contentOverrides: Record<number, { x: number; w: number }> = {},
+            skipContentRows: Set<number> = new Set(),
         ) => {
             for (let i = 0; i < rowBounds.length - 1; i += 1) {
                 const row = rows[i]
@@ -271,10 +272,32 @@ export async function POST(req: NextRequest) {
                 const cx = ov?.x ?? columns.contentX
                 const cw = ov?.w ?? columns.contentW
 
-                drawWrappedInCell(page, pageHeight, row.content, cx, top, cw, h, 6.7)
+                if (!skipContentRows.has(i)) {
+                    drawWrappedInCell(page, pageHeight, row.content, cx, top, cw, h, 6.7)
+                }
                 drawInCell(page, pageHeight, row.judgment, columns.judgmentX, top, columns.judgmentW, h, 8.4, { align: "center" })
                 drawWrappedInCell(page, pageHeight, row.bad_content, columns.badX, top, columns.badW, h, 6.7)
                 drawWrappedInCell(page, pageHeight, row.action_content, columns.actionX, top, columns.actionW, h, 6.7)
+            }
+        }
+
+        // 専用/兼用 など選択式セルに〇を描画（bekki9/20 と同一の loop版パターン）
+        const drawSelectionCircle = (
+            page: PDFPage,
+            pageHeight: number,
+            content: string,
+            choices: Array<{ label: string; cx: number; cy: number; rx: number; ry: number }>,
+        ) => {
+            for (const c of choices) {
+                if (!content.includes(c.label)) continue
+                page.drawEllipse({
+                    x: c.cx,
+                    y: pageHeight - c.cy,
+                    xScale: c.rx,
+                    yScale: c.ry,
+                    borderColor: rgb(0, 0, 0),
+                    borderWidth: 0.7,
+                })
             }
         }
 
@@ -359,7 +382,13 @@ export async function POST(req: NextRequest) {
             judgmentX: 313, judgmentW: 46,
             badX: 359, badW: 86,
             actionX: 445, actionW: 84,
-        })
+        }, {}, new Set([7]))
+
+        // PAGE2 row 7「火災感知装置 / 感知器（専用・兼用）」: 公式PDF刷り込みの選択を丸囲み
+        drawSelectionCircle(page2, p2Height, body.page2_rows?.[7]?.content ?? "", [
+            { label: "専用", cx: 243.6, cy: 228.6, rx: 14, ry: 7 },
+            { label: "兼用", cx: 285.7, cy: 228.6, rx: 14, ry: 7 },
+        ])
 
         drawResultRows(page3, p3Height, body.page3_rows ?? [], P3_ROW_BOUNDS, {
             contentX: 214, contentW: 99,

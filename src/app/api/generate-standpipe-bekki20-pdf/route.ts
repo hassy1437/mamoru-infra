@@ -14,7 +14,7 @@ import {
     type DateAnchors,
 } from "@/lib/pdf-form-helpers"
 
-type BekkiRow = { content?: string; judgment?: string; bad_content?: string; action_content?: string; current_value?: string }
+type BekkiRow = { content?: string; judgment?: string; bad_content?: string; action_content?: string; current_value?: string; flow_value?: string; hose_count?: string; nozzle_dia?: string }
 type DeviceRow = { name?: string; model?: string; calibrated_at?: string; maker?: string }
 
 type Bekki20Payload = {
@@ -292,28 +292,29 @@ export async function POST(req: NextRequest) {
         ]))
         drawResultRows(page3, p3Height, body.page3_rows ?? [], P3_ROW_BOUNDS, commonCols)
 
-        // === P1 Row 7: ホース・ノズル (m × 本 mm) ===
-        // Template: "ホース___m × ___本  ノズル径___mm"
-        // m label at x≈258, × at x≈268, 本 at x≈289, mm at x≈321-332
+        // === P1 Row 7: ホース・ノズル (長さｍ × 本数本 ／ ノズル径mm) ===
+        // 公式PDF実測: ｍ@247.6 / ×(x1=268.6) / 本@289.6(x1=300.1) / mm@321。content列左=222.24。
+        // 新キー優先（content=長さ, hose_count=本数, nozzle_dia=口径）→ "/" 分割 → 単一content。値は各空白に中央寄せ
         const p1Rows = body.page1_rows ?? []
         const hoseRow = p1Rows[7]
         if (hoseRow) {
             const hTop = P1_ROW_BOUNDS[7]
             const hH = P1_ROW_BOUNDS[8] - hTop
+            const hValTop = hTop + hH / 2
+            const hValH = hH / 2
             const hContent = normalizeText(hoseRow.content)
-            // content format: "20/2/25" or "20" (m value)
-            // content = m value, content_tsuro (reuse) = 本 value, content_kyaku (reuse) = mm value
-            // Or use "/" separator: "20/2/25"
-            if (hContent.includes("/")) {
+            const hCount = normalizeText(hoseRow.hose_count)
+            const nDia = normalizeText(hoseRow.nozzle_dia)
+            const drawLen = (v: string) => { if (v) drawInCellWithFont(page1, p1Height, customFont, v, 222.24, hValTop, 25.4, hValH, 6.0, { align: "center" }) }
+            const drawCnt = (v: string) => { if (v) drawInCellWithFont(page1, p1Height, customFont, v, 268.6, hValTop, 21, hValH, 6.0, { align: "center" }) }
+            const drawDia = (v: string) => { if (v) drawInCellWithFont(page1, p1Height, customFont, v, 300.1, hValTop, 20.9, hValH, 6.0, { align: "center" }) }
+            if (hCount || nDia) {
+                drawLen(hContent); drawCnt(hCount); drawDia(nDia)
+            } else if (hContent.includes("/")) {
                 const parts = hContent.split("/")
-                // m value: between ホース label and ×
-                drawInCellWithFont(page1, p1Height, customFont, parts[0]?.trim(), 236, hTop + hH / 2, 22, hH / 2, 6.0, { paddingX: 0.5 })
-                // 本 value: between × and 本
-                drawInCellWithFont(page1, p1Height, customFont, parts[1]?.trim(), 270, hTop + hH / 2, 18, hH / 2, 6.0, { paddingX: 0.5 })
-                // mm value: before mm label
-                drawInCellWithFont(page1, p1Height, customFont, parts[2]?.trim(), 305, hTop + hH / 2, 16, hH / 2, 6.0, { paddingX: 0.5 })
+                drawLen(parts[0]?.trim() ?? ""); drawCnt(parts[1]?.trim() ?? ""); drawDia(parts[2]?.trim() ?? "")
             } else if (hContent) {
-                drawInCellWithFont(page1, p1Height, customFont, hContent, 236, hTop + hH / 2, 22, hH / 2, 6.0, { paddingX: 0.5 })
+                drawLen(hContent)
             }
         }
 
@@ -351,21 +352,24 @@ export async function POST(req: NextRequest) {
             ])
         }
 
-        // === P2 Row 18: 性能 (MPa / L/min) ===
-        // Template: "MPa" at x≈260-276, "L/min" at x≈307-334
+        // === P2 Row 18: 性能 (吐出圧力MPa / 吐出量L/min) ===
+        // 公式PDF実測: MPa@259.9(x1=275.8) / L/min@307.3。content列左=222.24。
+        // 新キー優先（content=MPa, flow_value=L/min）→ "/" 分割 → 単一content。値は各空白に中央寄せ
         const perfRow = p2Rows[18]
         if (perfRow) {
             const pTop = P2_ROW_BOUNDS[18]
             const pH = P2_ROW_BOUNDS[19] - pTop
             const pContent = normalizeText(perfRow.content)
-            if (pContent.includes("/")) {
+            const pFlow = normalizeText(perfRow.flow_value)
+            const drawMpa = (v: string) => { if (v) drawInCellWithFont(page2, p2Height, customFont, v, 222.24, pTop, 37.7, pH, 6.0, { align: "center" }) }
+            const drawLmin = (v: string) => { if (v) drawInCellWithFont(page2, p2Height, customFont, v, 275.8, pTop, 31.5, pH, 6.0, { align: "center" }) }
+            if (pFlow) {
+                drawMpa(pContent); drawLmin(pFlow)
+            } else if (pContent.includes("/")) {
                 const parts = pContent.split("/")
-                // MPa value: before MPa label
-                drawInCellWithFont(page2, p2Height, customFont, parts[0]?.trim(), 232, pTop, 27, pH, 6.0, { paddingX: 0.5 })
-                // L/min value: between MPa and L/min labels
-                drawInCellWithFont(page2, p2Height, customFont, parts[1]?.trim(), 280, pTop, 26, pH, 6.0, { paddingX: 0.5 })
+                drawMpa(parts[0]?.trim() ?? ""); drawLmin(parts[1]?.trim() ?? "")
             } else if (pContent) {
-                drawInCellWithFont(page2, p2Height, customFont, pContent, 232, pTop, 27, pH, 6.0, { paddingX: 0.5 })
+                drawMpa(pContent)
             }
         }
 

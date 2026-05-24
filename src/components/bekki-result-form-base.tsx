@@ -28,6 +28,9 @@ export type BekkiRowState = {
     current_value: string  // 電圧計・電流計行の電流値（A）
     content_tsuro: string   // 種別容量の通路列（様式16 splitTypeCapacity 用）
     content_kyaku: string   // 種別容量の客席列（様式16 splitTypeCapacity 用）
+    flow_value: string      // ポンプ性能の吐出量(L/min)（pumpPerfRowIndex 用）
+    hose_count: string      // ホース本数（hoseRowIndexes 用）
+    nozzle_dia: string      // ノズル径(mm)（hoseRowIndexes 用）
 }
 
 export type BekkiDeviceState = {
@@ -67,6 +70,8 @@ type SectionConfig = {
     labels: readonly string[]
     currentValueRowIndex?: number  // 電圧計・電流計行のインデックス
     splitTypeCapacity?: boolean    // 種別容量を避難口/通路/客席の3列入力にする（様式16）
+    pumpPerfRowIndex?: number      // ポンプ性能行: 吐出圧力(content)/吐出量(flow_value) の2欄入力
+    hoseRowIndexes?: readonly number[]  // ホース行: 長さ(content)/本数(hose_count)/口径(nozzle_dia) の3列入力
 }
 
 type ExtraFieldConfig = {
@@ -109,6 +114,9 @@ const createEmptyRow = (): BekkiRowState => ({
     current_value: "",
     content_tsuro: "",
     content_kyaku: "",
+    flow_value: "",
+    hose_count: "",
+    nozzle_dia: "",
 })
 
 const createEmptyDevice = (): BekkiDeviceState => ({
@@ -130,6 +138,9 @@ const coerceRow = (value: unknown): BekkiRowState => {
         current_value: coerceString(source.current_value),
         content_tsuro: coerceString(source.content_tsuro),
         content_kyaku: coerceString(source.content_kyaku),
+        flow_value: coerceString(source.flow_value),
+        hose_count: coerceString(source.hose_count),
+        nozzle_dia: coerceString(source.nozzle_dia),
     }
 }
 
@@ -428,7 +439,43 @@ export default function BekkiResultFormBase({
                                 <tr key={`${section.key}-${idx}`}>
                                     <td className="p-2 border">{label}</td>
                                     <td className="p-1 border">
-                                        {section.splitTypeCapacity ? (
+                                        {section.hoseRowIndexes?.includes(idx) ? (
+                                            <div className="flex gap-1 items-center">
+                                                <Input
+                                                    value={rowsByKey[section.key]?.[idx]?.content ?? ""}
+                                                    onChange={(e) => updateRowField(section.key, idx, "content", e.target.value)}
+                                                    placeholder="長さ(m)"
+                                                    className="w-16"
+                                                />
+                                                <Input
+                                                    value={rowsByKey[section.key]?.[idx]?.hose_count ?? ""}
+                                                    onChange={(e) => updateRowField(section.key, idx, "hose_count", e.target.value)}
+                                                    placeholder="本数"
+                                                    className="w-14"
+                                                />
+                                                <Input
+                                                    value={rowsByKey[section.key]?.[idx]?.nozzle_dia ?? ""}
+                                                    onChange={(e) => updateRowField(section.key, idx, "nozzle_dia", e.target.value)}
+                                                    placeholder="口径(mm)"
+                                                    className="w-16"
+                                                />
+                                            </div>
+                                        ) : idx === section.pumpPerfRowIndex ? (
+                                            <div className="flex gap-1 items-center">
+                                                <Input
+                                                    value={rowsByKey[section.key]?.[idx]?.content ?? ""}
+                                                    onChange={(e) => updateRowField(section.key, idx, "content", e.target.value)}
+                                                    placeholder="吐出圧力(MPa)"
+                                                    className="w-24"
+                                                />
+                                                <Input
+                                                    value={rowsByKey[section.key]?.[idx]?.flow_value ?? ""}
+                                                    onChange={(e) => updateRowField(section.key, idx, "flow_value", e.target.value)}
+                                                    placeholder="吐出量(L/min)"
+                                                    className="w-24"
+                                                />
+                                            </div>
+                                        ) : section.splitTypeCapacity ? (
                                             <div className="flex gap-1 items-center">
                                                 <Input
                                                     value={rowsByKey[section.key]?.[idx]?.content ?? ""}
@@ -510,7 +557,43 @@ export default function BekkiResultFormBase({
                             <div className="grid grid-cols-2 gap-2">
                                 <div className="space-y-1">
                                     <span className="text-xs text-slate-500">内容</span>
-                                    {section.splitTypeCapacity ? (
+                                    {section.hoseRowIndexes?.includes(idx) ? (
+                                        <div className="flex gap-1 items-center">
+                                            <Input
+                                                value={rowsByKey[section.key]?.[idx]?.content ?? ""}
+                                                onChange={(e) => updateRowField(section.key, idx, "content", e.target.value)}
+                                                placeholder="長さ(m)"
+                                                className="h-9 text-sm"
+                                            />
+                                            <Input
+                                                value={rowsByKey[section.key]?.[idx]?.hose_count ?? ""}
+                                                onChange={(e) => updateRowField(section.key, idx, "hose_count", e.target.value)}
+                                                placeholder="本数"
+                                                className="h-9 text-sm"
+                                            />
+                                            <Input
+                                                value={rowsByKey[section.key]?.[idx]?.nozzle_dia ?? ""}
+                                                onChange={(e) => updateRowField(section.key, idx, "nozzle_dia", e.target.value)}
+                                                placeholder="口径(mm)"
+                                                className="h-9 text-sm"
+                                            />
+                                        </div>
+                                    ) : idx === section.pumpPerfRowIndex ? (
+                                        <div className="flex gap-1 items-center">
+                                            <Input
+                                                value={rowsByKey[section.key]?.[idx]?.content ?? ""}
+                                                onChange={(e) => updateRowField(section.key, idx, "content", e.target.value)}
+                                                placeholder="吐出圧力(MPa)"
+                                                className="h-9 text-sm"
+                                            />
+                                            <Input
+                                                value={rowsByKey[section.key]?.[idx]?.flow_value ?? ""}
+                                                onChange={(e) => updateRowField(section.key, idx, "flow_value", e.target.value)}
+                                                placeholder="吐出量(L/min)"
+                                                className="h-9 text-sm"
+                                            />
+                                        </div>
+                                    ) : section.splitTypeCapacity ? (
                                         <div className="flex gap-1 items-center">
                                             <Input
                                                 value={rowsByKey[section.key]?.[idx]?.content ?? ""}

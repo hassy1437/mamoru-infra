@@ -5,7 +5,7 @@ import fs from "fs"
 import path from "path"
 import { drawWrappedTextInCell, formatJapaneseDateText } from "@/lib/pdf-form-helpers"
 
-type BekkiRow = { content?: string; judgment?: string; bad_content?: string; action_content?: string }
+type BekkiRow = { content?: string; judgment?: string; bad_content?: string; action_content?: string; hose_count?: string; nozzle_dia?: string }
 type DeviceRow = { name?: string; model?: string; calibrated_at?: string; maker?: string }
 
 type Bekki10Payload = {
@@ -196,13 +196,15 @@ export async function POST(req: NextRequest) {
             },
         })
 
-        const drawResultRows = (page: PDFPage, pageHeight: number, rows: BekkiRow[], rowBounds: number[], columns: ResultColumns) => {
+        const drawResultRows = (page: PDFPage, pageHeight: number, rows: BekkiRow[], rowBounds: number[], columns: ResultColumns, skipContentRows: Set<number> = new Set()) => {
             for (let i = 0; i < rowBounds.length - 1; i += 1) {
                 const row = rows[i]
                 if (!row) continue
                 const top = rowBounds[i]
                 const h = rowBounds[i + 1] - top
-                drawWrappedInCell(page, pageHeight, row.content, columns.contentX, top, columns.contentW, h, 6.4)
+                if (!skipContentRows.has(i)) {
+                    drawWrappedInCell(page, pageHeight, row.content, columns.contentX, top, columns.contentW, h, 6.4)
+                }
                 drawInCell(page, pageHeight, row.judgment, columns.judgmentX, top, columns.judgmentW, h, 7.8, { align: "center" })
                 drawWrappedInCell(page, pageHeight, row.bad_content, columns.badX, top, columns.badW, h, 6.2)
                 drawWrappedInCell(page, pageHeight, row.action_content, columns.actionX, top, columns.actionW, h, 6.2)
@@ -277,7 +279,32 @@ export async function POST(req: NextRequest) {
             judgmentX: 311.5, judgmentW: 42.0,
             badX: 353.5, badW: 88.0,
             actionX: 441.5, actionW: 88.0,
-        })
+        }, new Set([3]))
+
+        // PAGE2 row 3「積載器具 / ホース・ノズル等 / 外形」: 長さ(m)/本数/口径(mm) を分割描画
+        // 公式PDF実測: ｍ@238.4 / ×@248.9(x1=259.4) / 本@275.2(x1=285.7) / mm@296.2。content列左=217。
+        // 新キー優先（content=長さ, hose_count=本数, nozzle_dia=口径）→ "/" 分割 → 単一content の3段fallback。値は各空白に中央寄せ
+        const hoseRow10 = body.page2_rows?.[3]
+        if (hoseRow10) {
+            const hTop = P2_ROW_BOUNDS[3]
+            const hH = P2_ROW_BOUNDS[4] - P2_ROW_BOUNDS[3]
+            const hValTop = hTop + hH / 2 - 2
+            const hValH = hH / 2 + 2
+            const hContent = normalizeText(hoseRow10.content)
+            const hCount = normalizeText(hoseRow10.hose_count)
+            const nDia = normalizeText(hoseRow10.nozzle_dia)
+            const drawLen = (v: string) => { if (v) drawInCell(page2, p2Height, v, 217, hValTop, 21.4, hValH, 6.0, { align: "center" }) }
+            const drawCnt = (v: string) => { if (v) drawInCell(page2, p2Height, v, 259.4, hValTop, 15.8, hValH, 6.0, { align: "center" }) }
+            const drawDia = (v: string) => { if (v) drawInCell(page2, p2Height, v, 285.7, hValTop, 10.5, hValH, 6.0, { align: "center" }) }
+            if (hCount || nDia) {
+                drawLen(hContent); drawCnt(hCount); drawDia(nDia)
+            } else if (hContent.includes("/")) {
+                const parts = hContent.split("/")
+                drawLen(parts[0]?.trim() ?? ""); drawCnt(parts[1]?.trim() ?? ""); drawDia(parts[2]?.trim() ?? "")
+            } else if (hContent) {
+                drawLen(hContent)
+            }
+        }
 
         drawWrappedInCell(page2, p2Height, body.notes, 82.67, 358.0, 446.66, 266.0, 7.0)
 

@@ -111,8 +111,8 @@ export default function StandpipeBekki20Form(props: Props) {
                 { key: "pump_model", label: "ポンプ 型式等" },
             ]}
             sections={[
-                { key: "page1_rows", title: "（その1）機器点検", labels: PAGE1_ITEMS, currentValueRowIndex: 17 },
-                { key: "page2_rows", title: "（その2）機器点検", labels: PAGE2_ITEMS },
+                { key: "page1_rows", title: "（その1）機器点検", labels: PAGE1_ITEMS, currentValueRowIndex: 17, hoseRowIndexes: [7] },
+                { key: "page2_rows", title: "（その2）機器点検", labels: PAGE2_ITEMS, pumpPerfRowIndex: 18 },
                 { key: "page3_rows", title: "（その3）総合点検", labels: PAGE3_ITEMS },
             ]}
             notesCardTitle="備考（その3）"

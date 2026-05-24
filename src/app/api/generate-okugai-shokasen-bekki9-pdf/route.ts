@@ -11,6 +11,9 @@ type BekkiRow = {
     bad_content?: string
     action_content?: string
     current_value?: string  // 電圧計・電流計行の電流値（A）
+    flow_value?: string     // ポンプ性能の吐出量(L/min)
+    hose_count?: string     // ホース本数
+    nozzle_dia?: string     // ノズル径(mm)
 }
 
 type DeviceRow = {
@@ -366,13 +369,34 @@ export async function POST(req: NextRequest) {
             badW: 90.0,
             actionX: 439.33,
             actionW: 90.0,
-        }, {}, new Set([7]))
+        }, {}, new Set([7, 21]))
 
         // PAGE2 row 7「遠隔操作部 / 機能（専用・兼用）」: 公式PDF刷り込みの選択を丸囲み
         drawSelectionCircle(page2, p2Height, body.page2_rows?.[7]?.content ?? "", [
             { label: "専用", cx: 237.24, cy: 210, rx: 14, ry: 7 },
             { label: "兼用", cx: 279.30, cy: 210, rx: 14, ry: 7 },
         ])
+
+        // PAGE2 row 21「ポンプ / 性能（MPa・L/min）」: 吐出圧力(MPa)/吐出量(L/min) を分割描画
+        // 新キー優先（content=MPa, flow_value=L/min）→ content の "/" 分割 → 単一content の3段fallback
+        const perfRow9 = body.page2_rows?.[21]
+        if (perfRow9) {
+            const pTop = P2_ROW_BOUNDS[21]
+            const pH = P2_ROW_BOUNDS[22] - P2_ROW_BOUNDS[21]
+            const pContent = normalizeText(perfRow9.content)
+            const pFlow = normalizeText(perfRow9.flow_value)
+            // 公式PDF実測: MPa@239.8(x1=255.6) / L/min@276.6。値は各ラベル前の空白に中央寄せ
+            const drawMpa = (v: string) => { if (v) drawInCell(page2, p2Height, v, 208, pTop, 31.8, pH, 6.0, { align: "center" }) }
+            const drawLmin = (v: string) => { if (v) drawInCell(page2, p2Height, v, 255.6, pTop, 21, pH, 6.0, { align: "center" }) }
+            if (pFlow) {
+                drawMpa(pContent); drawLmin(pFlow)
+            } else if (pContent.includes("/")) {
+                const parts = pContent.split("/")
+                drawMpa(parts[0]?.trim() ?? ""); drawLmin(parts[1]?.trim() ?? "")
+            } else if (pContent) {
+                drawMpa(pContent)
+            }
+        }
 
         drawResultRows(page3, p3Height, body.page3_rows ?? [], P3_ROW_BOUNDS, {
             contentX: 216.67,
@@ -383,7 +407,32 @@ export async function POST(req: NextRequest) {
             badW: 89.34,
             actionX: 442.67,
             actionW: 86.66,
-        })
+        }, {}, new Set([3]))
+
+        // PAGE3 row 3「屋外消火栓箱 / ホース・ノズル / 外形」: 長さ(m)/本数/口径(mm) を分割描画
+        // 新キー優先（content=長さ, hose_count=本数, nozzle_dia=口径）→ "/" 分割 → 単一content
+        const hoseRow9 = body.page3_rows?.[3]
+        if (hoseRow9) {
+            const hTop = P3_ROW_BOUNDS[3]
+            const hH = P3_ROW_BOUNDS[4] - P3_ROW_BOUNDS[3]
+            const hValTop = hTop + hH / 2 - 2
+            const hValH = hH / 2 + 2
+            const hContent = normalizeText(hoseRow9.content)
+            const hCount = normalizeText(hoseRow9.hose_count)
+            const nDia = normalizeText(hoseRow9.nozzle_dia)
+            // 公式PDF実測: ｍ@233.3 / ×@243.8(x1=254.4) / 本@264.8(x1=275.4) / mm@291.1。content列左=216.67
+            const drawLen = (v: string) => { if (v) drawInCell(page3, p3Height, v, 216.67, hValTop, 16.6, hValH, 6.0, { align: "center" }) }
+            const drawCnt = (v: string) => { if (v) drawInCell(page3, p3Height, v, 254.4, hValTop, 10.4, hValH, 6.0, { align: "center" }) }
+            const drawDia = (v: string) => { if (v) drawInCell(page3, p3Height, v, 275.4, hValTop, 15.7, hValH, 6.0, { align: "center" }) }
+            if (hCount || nDia) {
+                drawLen(hContent); drawCnt(hCount); drawDia(nDia)
+            } else if (hContent.includes("/")) {
+                const parts = hContent.split("/")
+                drawLen(parts[0]?.trim() ?? ""); drawCnt(parts[1]?.trim() ?? ""); drawDia(parts[2]?.trim() ?? "")
+            } else if (hContent) {
+                drawLen(hContent)
+            }
+        }
 
         drawWrappedInCell(page3, p3Height, body.notes, 82.67, 540.67, 446.66, 88.66, 7.2)
 

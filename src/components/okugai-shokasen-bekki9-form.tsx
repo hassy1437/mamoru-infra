@@ -113,8 +113,8 @@ export default function OkugaiShokasenBekki9Form(props: Props) {
             downloadFilenamePrefix="屋外消火栓設備点検票"
             sections={[
                 { key: "page1_rows", title: "（その1）機器点検", labels: PAGE1_ITEMS, currentValueRowIndex: 10 },
-                { key: "page2_rows", title: "（その2）機器点検", labels: PAGE2_ITEMS },
-                { key: "page3_rows", title: "（その3）総合点検", labels: PAGE3_ITEMS },
+                { key: "page2_rows", title: "（その2）機器点検", labels: PAGE2_ITEMS, pumpPerfRowIndex: 21 },
+                { key: "page3_rows", title: "（その3）総合点検", labels: PAGE3_ITEMS, hoseRowIndexes: [3] },
             ]}
             extraFieldsTitle="設備情報"
             extraFields={[

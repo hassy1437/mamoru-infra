@@ -80,8 +80,13 @@ const jobs = [
     outPdfPath: "tmp/pdf-test-bekki13to22/bekki16_test.pdf",
     payload: {
       ...shared,
-      page1_rows: makeRows(20, "B16-P1"),
-      page2_rows: makeRows(20, "B16-P2"),
+      // 種別容量3列（避難口=content / 通路=content_tsuro / 客席=content_kyaku）の描画確認用
+      page1_rows: makeRows(20, "B16-P1").map((row, i) =>
+        i === 0 ? { ...row, content: "避難口20", content_tsuro: "通路15", content_kyaku: "客席8" } : row
+      ),
+      page2_rows: makeRows(20, "B16-P2").map((row, i) =>
+        i === 0 ? { ...row, content: "避難口5", content_tsuro: "通路3", content_kyaku: "客席2" } : row
+      ),
     },
   },
   {

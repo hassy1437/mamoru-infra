@@ -26,6 +26,8 @@ export type BekkiRowState = {
     bad_content: string
     action_content: string
     current_value: string  // 電圧計・電流計行の電流値（A）
+    content_tsuro: string   // 種別容量の通路列（様式16 splitTypeCapacity 用）
+    content_kyaku: string   // 種別容量の客席列（様式16 splitTypeCapacity 用）
 }
 
 export type BekkiDeviceState = {
@@ -64,6 +66,7 @@ type SectionConfig = {
     title: string
     labels: readonly string[]
     currentValueRowIndex?: number  // 電圧計・電流計行のインデックス
+    splitTypeCapacity?: boolean    // 種別容量を避難口/通路/客席の3列入力にする（様式16）
 }
 
 type ExtraFieldConfig = {
@@ -104,6 +107,8 @@ const createEmptyRow = (): BekkiRowState => ({
     bad_content: "",
     action_content: "",
     current_value: "",
+    content_tsuro: "",
+    content_kyaku: "",
 })
 
 const createEmptyDevice = (): BekkiDeviceState => ({
@@ -123,6 +128,8 @@ const coerceRow = (value: unknown): BekkiRowState => {
         bad_content: coerceString(source.bad_content),
         action_content: coerceString(source.action_content),
         current_value: coerceString(source.current_value),
+        content_tsuro: coerceString(source.content_tsuro),
+        content_kyaku: coerceString(source.content_kyaku),
     }
 }
 
@@ -421,7 +428,28 @@ export default function BekkiResultFormBase({
                                 <tr key={`${section.key}-${idx}`}>
                                     <td className="p-2 border">{label}</td>
                                     <td className="p-1 border">
-                                        {idx === section.currentValueRowIndex ? (
+                                        {section.splitTypeCapacity ? (
+                                            <div className="flex gap-1 items-center">
+                                                <Input
+                                                    value={rowsByKey[section.key]?.[idx]?.content ?? ""}
+                                                    onChange={(e) => updateRowField(section.key, idx, "content", e.target.value)}
+                                                    placeholder="避難口"
+                                                    className="w-20"
+                                                />
+                                                <Input
+                                                    value={rowsByKey[section.key]?.[idx]?.content_tsuro ?? ""}
+                                                    onChange={(e) => updateRowField(section.key, idx, "content_tsuro", e.target.value)}
+                                                    placeholder="通路"
+                                                    className="w-20"
+                                                />
+                                                <Input
+                                                    value={rowsByKey[section.key]?.[idx]?.content_kyaku ?? ""}
+                                                    onChange={(e) => updateRowField(section.key, idx, "content_kyaku", e.target.value)}
+                                                    placeholder="客席"
+                                                    className="w-20"
+                                                />
+                                            </div>
+                                        ) : idx === section.currentValueRowIndex ? (
                                             <div className="flex gap-1 items-center">
                                                 <Input
                                                     value={rowsByKey[section.key]?.[idx]?.content ?? ""}
@@ -482,7 +510,28 @@ export default function BekkiResultFormBase({
                             <div className="grid grid-cols-2 gap-2">
                                 <div className="space-y-1">
                                     <span className="text-xs text-slate-500">内容</span>
-                                    {idx === section.currentValueRowIndex ? (
+                                    {section.splitTypeCapacity ? (
+                                        <div className="flex gap-1 items-center">
+                                            <Input
+                                                value={rowsByKey[section.key]?.[idx]?.content ?? ""}
+                                                onChange={(e) => updateRowField(section.key, idx, "content", e.target.value)}
+                                                placeholder="避難口"
+                                                className="h-9 text-sm"
+                                            />
+                                            <Input
+                                                value={rowsByKey[section.key]?.[idx]?.content_tsuro ?? ""}
+                                                onChange={(e) => updateRowField(section.key, idx, "content_tsuro", e.target.value)}
+                                                placeholder="通路"
+                                                className="h-9 text-sm"
+                                            />
+                                            <Input
+                                                value={rowsByKey[section.key]?.[idx]?.content_kyaku ?? ""}
+                                                onChange={(e) => updateRowField(section.key, idx, "content_kyaku", e.target.value)}
+                                                placeholder="客席"
+                                                className="h-9 text-sm"
+                                            />
+                                        </div>
+                                    ) : idx === section.currentValueRowIndex ? (
                                         <div className="flex gap-1 items-center">
                                             <Input
                                                 value={rowsByKey[section.key]?.[idx]?.content ?? ""}

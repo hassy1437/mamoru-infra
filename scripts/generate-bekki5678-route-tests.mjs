@@ -77,7 +77,10 @@ const jobs = [
       page1_rows: makeRows(19, "B5-P1").map((row, i) =>
         i === 11 ? { ...row, content: "200", current_value: "5.2" } : row
       ),
-      page2_rows: makeRows(34, "B5-P2"),
+      page2_rows: makeRows(34, "B5-P2").map((row, i) =>
+        // row 7: 火災感知装置 感知器（専用・兼用）— 丸囲み確認用に「専用」を投入
+        i === 7 ? { ...row, content: "専用" } : row
+      ),
       page3_rows: makeRows(27, "B5-P3"),
       page4_rows: makeRows(23, "B5-P4"),
     },
@@ -91,7 +94,10 @@ const jobs = [
       zone_name: "A区画",
       equipment_system: "不活性ガス消火設備",
       page1_rows: makeRows(32, "B6-P1"),
-      page2_rows: makeRows(40, "B6-P2"),
+      page2_rows: makeRows(40, "B6-P2").map((row, i) =>
+        // row 17: 起動装置 自動式 火災感知装置（専用・兼用）— 丸囲み確認用に「兼用」を投入
+        i === 17 ? { ...row, content: "兼用" } : row
+      ),
       page3_rows: makeRows(36, "B6-P3"),
       page4_rows: makeRows(12, "B6-P4"),
       page5_rows: makeCylinderRows(29, 4),
@@ -106,7 +112,10 @@ const jobs = [
       zone_name: "B区画",
       equipment_system: "ハロゲン化物消火設備",
       page1_rows: makeRows(37, "B7-P1"),
-      page2_rows: makeRows(47, "B7-P2"),
+      page2_rows: makeRows(47, "B7-P2").map((row, i) =>
+        // row 26: 起動装置 自動式 火災感知装置（専用・兼用）— 丸囲み確認用に「専用」を投入
+        i === 26 ? { ...row, content: "専用" } : row
+      ),
       page3_rows: makeRows(27, "B7-P3"),
       page4_rows: makeRows(11, "B7-P4"),
       page5_rows: makeCylinderRows(19, 6),
@@ -121,7 +130,10 @@ const jobs = [
       zone_name: "C区画",
       equipment_system: "粉末消火設備",
       page1_rows: makeRows(39, "B8-P1"),
-      page2_rows: makeRows(45, "B8-P2"),
+      page2_rows: makeRows(45, "B8-P2").map((row, i) =>
+        // row 26: 起動装置 自動式 火災感知装置（専用・兼用）— 丸囲み確認用に「兼用」を投入
+        i === 26 ? { ...row, content: "兼用" } : row
+      ),
       page3_rows: makeRows(25, "B8-P3"),
       page4_rows: makeRows(11, "B8-P4"),
       page5_rows: makeCylinderRows(19, 6),

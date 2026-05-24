@@ -59,8 +59,8 @@ export default function GuidanceLightsSignsBekki16Form(props: Props) {
             dbTable="inspection_guidance_lights_signs_bekki16"
             downloadFilenamePrefix="誘導灯及び誘導標識点検票"
             sections={[
-                { key: "page1_rows", title: "その1 点検項目", labels: PAGE1_ITEMS },
-                { key: "page2_rows", title: "その2 点検項目", labels: PAGE2_ITEMS },
+                { key: "page1_rows", title: "その1 点検項目", labels: PAGE1_ITEMS, splitTypeCapacity: true },
+                { key: "page2_rows", title: "その2 点検項目", labels: PAGE2_ITEMS, splitTypeCapacity: true },
             ]}
             notesCardTitle="備考（その2）"
             notesRows={12}

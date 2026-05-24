@@ -494,6 +494,34 @@ export async function POST(req: NextRequest) {
             { label: "兼用", cx: 312.1, cy: 306.75, rx: 14, ry: 7 },
         ])
 
+        // P3A row 8, 9: ホース/ノズル径「ホース ___m× ___本 ｜ ノズル径 ___mm」を手動3分割描画
+        // content="20/2/19" → ホース20m × 2本, ノズル径19mm（skipContentRows で content をスキップ済）
+        // bekki3(row25)/bekki20(row7) と同手法。公式PDF実測座標を使用。
+        for (const hi of [8, 9]) {
+            const hoseRow = p3Rows[hi]
+            if (!hoseRow) continue
+            const hTop = P3_ROW_BOUNDS_A[hi]
+            const hH = P3_ROW_BOUNDS_A[hi + 1] - P3_ROW_BOUNDS_A[hi]
+            const hContent = normalizeText(hoseRow.content)
+            // 値は行の下半分（m×/本/mm ラベルと同じ高さ）に配置
+            const hValTop = hTop + hH / 2 - 2
+            const hValH = hH / 2 + 2
+            const parts = hContent.split("/")
+            if (parts.length >= 3) {
+                // ホース長(m): 「m」(x=264.6)の左
+                drawInCellWithFont(page3, p3Height, customFont, parts[0]?.trim(), 244, hValTop, 20, hValH, 6.5, { paddingX: 0.5 })
+                // 本数: 「×」(x=285.7)と「本」(x=301.4)の間
+                drawInCellWithFont(page3, p3Height, customFont, parts[1]?.trim(), 287, hValTop, 12, hValH, 6.0, { paddingX: 0 })
+                // ノズル径(mm): 「本」(x=312)と「mm」(x=327.7)の間
+                drawInCellWithFont(page3, p3Height, customFont, parts[2]?.trim(), 313, hValTop, 14, hValH, 6.0, { paddingX: 0 })
+            } else if (parts.length === 2) {
+                drawInCellWithFont(page3, p3Height, customFont, parts[0]?.trim(), 244, hValTop, 20, hValH, 6.5, { paddingX: 0.5 })
+                drawInCellWithFont(page3, p3Height, customFont, parts[1]?.trim(), 313, hValTop, 14, hValH, 6.0, { paddingX: 0 })
+            } else if (hContent) {
+                drawInCellWithFont(page3, p3Height, customFont, hContent, 244, hValTop, 20, hValH, 6.5, { paddingX: 0.5 })
+            }
+        }
+
         drawResultRows(page3, p3Height, p3Rows, P3_ROW_BOUNDS_B, 22, {
             // 電動機の運転電流: 「Ａ」印刷済み (x=327-338) → x=325まで
             2: { x: 239, w: 86 },

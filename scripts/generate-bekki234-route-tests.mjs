@@ -92,7 +92,11 @@ const jobs = [
         if (i === 20) return { ...row, content: "0.85", flow_value: "1800" };
         return row;
       }),
-      page3_rows: makeRows(36, "別記3-3"),
+      page3_rows: makeRows(36, "別記3-3").map((row, i) => {
+        // row 25: 補助散水栓箱等 ホース・ノズル外形 — 長さ/本数/口径を個別キーで投入
+        if (i === 25) return { ...row, content: "20", hose_count: "2", nozzle_dia: "25" };
+        return row;
+      }),
       page4_rows: makeRows(23, "別記3-4"),
       page5_rows: makeRows(11, "別記3-5"),
     },

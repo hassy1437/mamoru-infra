@@ -12,6 +12,8 @@ type Bekki3Row = {
     action_content?: string
     current_value?: string  // 電圧計・電流計行の電流値（A）
     flow_value?: string     // 性能行のL/min値（MPaラベルとL/minラベルの間）
+    hose_count?: string     // ホース行の本数
+    nozzle_dia?: string     // ホース行のノズル径（mm）
 }
 
 type DeviceRow = {
@@ -557,32 +559,27 @@ export async function POST(req: NextRequest) {
         }
 
         // P3 row 25: ホース/ノズル径「ホース ___m× ___本 | ノズル径 ___mm」
-        // content="25/2/19" → ホース25m × 2本, ノズル径19mm
+        // 新キー優先（content=長さ, hose_count=本数, nozzle_dia=口径）→ "/" 分割 → 単一content
         const hoseRow = p3Rows3[25]
         if (hoseRow) {
             const hTop = P3_ROW_BOUNDS[25]
             const hH = P3_ROW_BOUNDS[26] - P3_ROW_BOUNDS[25]
             const hContent = normalizeText(hoseRow.content)
+            const hCount = normalizeText(hoseRow.hose_count)
+            const nDia = normalizeText(hoseRow.nozzle_dia)
             // 値は行の下半分（m×, 本, mmラベルと同じ高さ）に配置
             const hValTop = hTop + hH / 2 - 2
             const hValH = hH / 2 + 2
-            const parts = hContent.split("/")
-            if (parts.length >= 3) {
-                // ホース長(m): 「m×」(x=265)の左 → x=244, w=20
-                drawInCellWithFont(page3, p3Height, customFont, parts[0]?.trim(), 244, hValTop, 20, hValH, 6.5, { paddingX: 0.5 })
-                // 本数: 「本」(x=296)の左 → x=287, w=9
-                drawInCellWithFont(page3, p3Height, customFont, parts[1]?.trim(), 287, hValTop, 9, hValH, 6.0, { paddingX: 0 })
-                // ノズル径(mm): 「mm」(x=307)の前... 「本」(x=307)の右から
-                // Actually: value before "mm" but after "本" → We need space between them
-                // Template shows: ___ 本 ___ mm. So nozzle goes before "mm"
-                // "本" ends at x≈307, "mm" starts from x≈307 (adjacent)
-                // ノズル径の値は右半分「ノズル径」ヘッダーの下に配置
-                drawInCellWithFont(page3, p3Height, customFont, parts[2]?.trim(), 310, hValTop, 15, hValH, 6.0, { paddingX: 0 })
-            } else if (parts.length === 2) {
-                drawInCellWithFont(page3, p3Height, customFont, parts[0]?.trim(), 244, hValTop, 20, hValH, 6.5, { paddingX: 0.5 })
-                drawInCellWithFont(page3, p3Height, customFont, parts[1]?.trim(), 310, hValTop, 15, hValH, 6.0, { paddingX: 0 })
+            const drawLen = (v: string) => { if (v) drawInCellWithFont(page3, p3Height, customFont, v, 244, hValTop, 20, hValH, 6.5, { paddingX: 0.5 }) }
+            const drawCnt = (v: string) => { if (v) drawInCellWithFont(page3, p3Height, customFont, v, 287, hValTop, 9, hValH, 6.0, { paddingX: 0 }) }
+            const drawDia = (v: string) => { if (v) drawInCellWithFont(page3, p3Height, customFont, v, 310, hValTop, 15, hValH, 6.0, { paddingX: 0 }) }
+            if (hCount || nDia) {
+                drawLen(hContent); drawCnt(hCount); drawDia(nDia)
+            } else if (hContent.includes("/")) {
+                const parts = hContent.split("/")
+                drawLen(parts[0]?.trim() ?? ""); drawCnt(parts[1]?.trim() ?? ""); drawDia(parts[2]?.trim() ?? "")
             } else if (hContent) {
-                drawInCellWithFont(page3, p3Height, customFont, hContent, 244, hValTop, 28, hValH, 6.5, { paddingX: 0.5 })
+                drawLen(hContent)
             }
         }
 

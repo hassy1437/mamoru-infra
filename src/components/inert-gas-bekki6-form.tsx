@@ -39,10 +39,24 @@ type CylinderRowState = {
     spec3: string
     spec4: string
     spec5: string
+    // 後方互換用（旧データは date+temp+value 結合の単一テキスト）
     measure1: string
     measure2: string
     measure3: string
     measure4: string
+    // 4回ぶんの (date, temp, value) trio
+    measure1_date: string
+    measure1_temp: string
+    measure1_value: string
+    measure2_date: string
+    measure2_temp: string
+    measure2_value: string
+    measure3_date: string
+    measure3_temp: string
+    measure3_value: string
+    measure4_date: string
+    measure4_temp: string
+    measure4_value: string
 }
 
 type InertGasBekki6Payload = {
@@ -244,6 +258,18 @@ const createEmptyCylinderRow = (index: number): CylinderRowState => ({
     measure2: "",
     measure3: "",
     measure4: "",
+    measure1_date: "",
+    measure1_temp: "",
+    measure1_value: "",
+    measure2_date: "",
+    measure2_temp: "",
+    measure2_value: "",
+    measure3_date: "",
+    measure3_temp: "",
+    measure3_value: "",
+    measure4_date: "",
+    measure4_temp: "",
+    measure4_value: "",
 })
 
 const coerceString = (value: unknown, fallback = "") => (typeof value === "string" ? value : fallback)
@@ -282,6 +308,18 @@ const coerceCylinderRow = (value: unknown, index: number): CylinderRowState => {
         measure2: coerceString(source.measure2),
         measure3: coerceString(source.measure3),
         measure4: coerceString(source.measure4),
+        measure1_date: coerceString(source.measure1_date),
+        measure1_temp: coerceString(source.measure1_temp),
+        measure1_value: coerceString(source.measure1_value),
+        measure2_date: coerceString(source.measure2_date),
+        measure2_temp: coerceString(source.measure2_temp),
+        measure2_value: coerceString(source.measure2_value),
+        measure3_date: coerceString(source.measure3_date),
+        measure3_temp: coerceString(source.measure3_temp),
+        measure3_value: coerceString(source.measure3_value),
+        measure4_date: coerceString(source.measure4_date),
+        measure4_temp: coerceString(source.measure4_temp),
+        measure4_value: coerceString(source.measure4_value),
     }
 }
 
@@ -687,7 +725,7 @@ export default function InertGasBekki6Form({
                 <CardHeader>
                     <CardTitle>（その5）容器ごとの点検結果</CardTitle>
                     <CardDescription>
-                        仕様1〜5（全質量/空質量/消火剤量kg/消火剤量m³/充てん圧力MPa）と測定1〜4（点検年月日・容器表面温度・点検時の消火剤量または容器内圧力）を入力してください。
+                        仕様1〜5（全質量/空質量/消火剤量kg/消火剤量m³/充てん圧力MPa）と測定1〜4 を入力してください。各測定セルは上段に点検年月日、下段に容器表面温度・点検時の消火剤量(kg)または容器内圧力(MPa)を横並びで描画します。
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -702,10 +740,10 @@ export default function InertGasBekki6Form({
                                     <th className="p-2 border w-24">消火剤量(kg)</th>
                                     <th className="p-2 border w-24">消火剤量(m³)</th>
                                     <th className="p-2 border w-28">充てん圧力(MPa)</th>
-                                    <th className="p-2 border w-40">測定1</th>
-                                    <th className="p-2 border w-40">測定2</th>
-                                    <th className="p-2 border w-40">測定3</th>
-                                    <th className="p-2 border w-40">測定4</th>
+                                    <th className="p-2 border w-44">測定1<br /><span className="text-xs font-normal text-slate-500">日付 / 温度・値</span></th>
+                                    <th className="p-2 border w-44">測定2<br /><span className="text-xs font-normal text-slate-500">日付 / 温度・値</span></th>
+                                    <th className="p-2 border w-44">測定3<br /><span className="text-xs font-normal text-slate-500">日付 / 温度・値</span></th>
+                                    <th className="p-2 border w-44">測定4<br /><span className="text-xs font-normal text-slate-500">日付 / 温度・値</span></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -732,18 +770,37 @@ export default function InertGasBekki6Form({
                                         <td className="p-1 border">
                                             <Input value={row.spec5} onChange={(e) => updateCylinderField(idx, "spec5", e.target.value)} placeholder="例: 14.7" />
                                         </td>
-                                        <td className="p-1 border">
-                                            <Input value={row.measure1} onChange={(e) => updateCylinderField(idx, "measure1", e.target.value)} placeholder="例: 2026/02/22 18℃ 41.0" />
-                                        </td>
-                                        <td className="p-1 border">
-                                            <Input value={row.measure2} onChange={(e) => updateCylinderField(idx, "measure2", e.target.value)} />
-                                        </td>
-                                        <td className="p-1 border">
-                                            <Input value={row.measure3} onChange={(e) => updateCylinderField(idx, "measure3", e.target.value)} />
-                                        </td>
-                                        <td className="p-1 border">
-                                            <Input value={row.measure4} onChange={(e) => updateCylinderField(idx, "measure4", e.target.value)} />
-                                        </td>
+                                        {([1, 2, 3, 4] as const).map((n) => {
+                                            const dateKey = `measure${n}_date` as const
+                                            const tempKey = `measure${n}_temp` as const
+                                            const valueKey = `measure${n}_value` as const
+                                            return (
+                                                <td key={`m${n}`} className="p-1 border">
+                                                    <div className="space-y-1">
+                                                        <Input
+                                                            value={row[dateKey]}
+                                                            onChange={(e) => updateCylinderField(idx, dateKey, e.target.value)}
+                                                            placeholder={n === 1 ? "2026/02/22" : "日付"}
+                                                            className="h-8 text-xs"
+                                                        />
+                                                        <div className="grid grid-cols-2 gap-1">
+                                                            <Input
+                                                                value={row[tempKey]}
+                                                                onChange={(e) => updateCylinderField(idx, tempKey, e.target.value)}
+                                                                placeholder={n === 1 ? "18℃" : "温度"}
+                                                                className="h-8 text-xs"
+                                                            />
+                                                            <Input
+                                                                value={row[valueKey]}
+                                                                onChange={(e) => updateCylinderField(idx, valueKey, e.target.value)}
+                                                                placeholder={n === 1 ? "41.0" : "値"}
+                                                                className="h-8 text-xs"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            )
+                                        })}
                                     </tr>
                                 ))}
                             </tbody>

@@ -14,7 +14,7 @@ const makeRows = (count, prefix) =>
         : "",
   }));
 
-const makeCylinderRows = (count, cols, includeSpec45 = false, useDateValue = false) =>
+const makeCylinderRows = (count, cols, includeSpec45 = false, useDateValue = false, useDateTempValue = false) =>
   Array.from({ length: count }, (_, i) => {
     const base = {
       no: String(i + 1),
@@ -23,8 +23,16 @@ const makeCylinderRows = (count, cols, includeSpec45 = false, useDateValue = fal
       spec2: "SPEC-B",
       spec3: "SPEC-C",
     };
-    if (useDateValue) {
-      // 新形式：各セルに (date, value) ペアを投入（PR2 様式7 が初出。PR3 で 様式8 にも展開予定）
+    if (useDateTempValue) {
+      // PR4 様式6: 各セルに (date, temp, value) trio を投入
+      for (let n = 1; n <= cols; n += 1) {
+        const dd = String(((i + n) % 28) + 1).padStart(2, "0");
+        base[`measure${n}_date`] = `2026/02/${dd}`;
+        base[`measure${n}_temp`] = `${15 + n}℃`;
+        base[`measure${n}_value`] = `${(i % 9) + 1}.${n}`;
+      }
+    } else if (useDateValue) {
+      // 新形式：各セルに (date, value) ペアを投入（PR2 様式7 が初出。PR3 で 様式8 にも展開）
       for (let n = 1; n <= cols; n += 1) {
         const dd = String(((i + n) % 28) + 1).padStart(2, "0");
         base[`measure${n}_date`] = `2026/02/${dd}`;
@@ -121,7 +129,7 @@ const jobs = [
       ),
       page3_rows: makeRows(36, "B6-P3"),
       page4_rows: makeRows(12, "B6-P4"),
-      page5_rows: makeCylinderRows(29, 4, true),
+      page5_rows: makeCylinderRows(29, 4, true, false, true),
     },
   },
   {

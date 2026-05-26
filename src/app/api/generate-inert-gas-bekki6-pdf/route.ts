@@ -3,7 +3,7 @@ import { PDFDocument, rgb, PDFPage } from "pdf-lib"
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
-import { drawWrappedTextInCell, formatJapaneseDateText } from "@/lib/pdf-form-helpers"
+import { drawTextInCell, drawWrappedTextInCell, formatJapaneseDateText } from "@/lib/pdf-form-helpers"
 
 type Bekki6Row = {
     content?: string
@@ -27,10 +27,24 @@ type CylinderRow = {
     spec3?: string
     spec4?: string
     spec5?: string
+    // 旧形式（後方互換）：date+temp+value を結合した1テキスト
     measure1?: string
     measure2?: string
     measure3?: string
     measure4?: string
+    // 新形式：4セル × (date, temp, value) trio
+    measure1_date?: string
+    measure1_temp?: string
+    measure1_value?: string
+    measure2_date?: string
+    measure2_temp?: string
+    measure2_value?: string
+    measure3_date?: string
+    measure3_temp?: string
+    measure3_value?: string
+    measure4_date?: string
+    measure4_temp?: string
+    measure4_value?: string
 }
 
 type Bekki6Payload = {
@@ -353,25 +367,54 @@ export async function POST(req: NextRequest) {
                 if (!row) continue
                 const top = P5_ROW_BOUNDS[i]
                 const h = P5_ROW_BOUNDS[i + 1] - top
-                const values = [
-                    row.no,
-                    row.cylinder_no,
-                    row.spec1,
-                    row.spec2,
-                    row.spec3,
-                    row.spec4,
-                    row.spec5,
-                    row.measure1,
-                    row.measure2,
-                    row.measure3,
-                    row.measure4,
-                ]
 
-                for (let c = 0; c < values.length; c += 1) {
+                // 仕様域 (cols 0-6): 1セル=1値（PR1 と同じ）
+                const specValues = [row.no, row.cylinder_no, row.spec1, row.spec2, row.spec3, row.spec4, row.spec5]
+                for (let c = 0; c < specValues.length; c += 1) {
                     const x = P5_COLS[c]
                     const w = P5_COLS[c + 1] - P5_COLS[c]
-                    const isShort = c <= 6
-                    drawWrappedInCell(page, pageHeight, values[c], x, top, w, h, isShort ? 6.3 : 5.9)
+                    drawWrappedInCell(page, pageHeight, specValues[c], x, top, w, h, 6.3)
+                }
+
+                // 測定域 (cols 7-10): Plan B 配置
+                //   上半分: date（全幅）
+                //   下半分: temp（左半分） / value（右半分）
+                // セル寸法: ~54.7pt × 20pt → 上下 10pt 高 → drawTextInCell auto-shrink で ~6.2pt 想定
+                // PR2/3 の drawCellSubRegions（vertical 等分割）ではなく、Plan B 用にインライン 3 呼び出し
+                const legacy = [row.measure1, row.measure2, row.measure3, row.measure4]
+                const dates = [row.measure1_date, row.measure2_date, row.measure3_date, row.measure4_date]
+                const temps = [row.measure1_temp, row.measure2_temp, row.measure3_temp, row.measure4_temp]
+                const values = [row.measure1_value, row.measure2_value, row.measure3_value, row.measure4_value]
+                const subOpts = { paddingX: 1.0, paddingY: 0.5, minFontSize: 3.5, align: "center" as const }
+                for (let m = 0; m < 4; m += 1) {
+                    const c = 7 + m
+                    const x = P5_COLS[c]
+                    const w = P5_COLS[c + 1] - P5_COLS[c]
+                    const subH = h / 2
+                    const halfW = w / 2
+
+                    const date = dates[m] ?? ""
+                    const temp = temps[m] ?? ""
+                    const value = (values[m] && values[m] !== "") ? values[m] : (legacy[m] ?? "")
+
+                    // 上半分: date（全幅）
+                    drawTextInCell({
+                        page, pageHeight, font: customFont, text: date,
+                        cellX: x, cellTopFromTop: top, cellW: w, cellH: subH,
+                        fontSize: 7, options: subOpts,
+                    })
+                    // 下左半分: temp
+                    drawTextInCell({
+                        page, pageHeight, font: customFont, text: temp,
+                        cellX: x, cellTopFromTop: top + subH, cellW: halfW, cellH: subH,
+                        fontSize: 7, options: subOpts,
+                    })
+                    // 下右半分: value
+                    drawTextInCell({
+                        page, pageHeight, font: customFont, text: value,
+                        cellX: x + halfW, cellTopFromTop: top + subH, cellW: halfW, cellH: subH,
+                        fontSize: 7, options: subOpts,
+                    })
                 }
             }
         }

@@ -61,9 +61,9 @@ export default function PropertySearch({ items, mode }: PropertySearchProps) {
                         key={property.id}
                         className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow"
                     >
-                        <div className="flex items-start justify-between gap-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                             {mode === "properties" ? (
-                                <Link href={`/properties/${property.id}`} className="flex-1 min-w-0">
+                                <Link href={`/properties/${property.id}`} className="min-w-0 sm:flex-1">
                                     <h2 className="text-lg font-bold text-slate-900 truncate hover:text-blue-600 transition-colors">
                                         {property.building_name}
                                     </h2>
@@ -71,7 +71,7 @@ export default function PropertySearch({ items, mode }: PropertySearchProps) {
                                     <EquipmentTags types={property.equipment_types ?? []} limit={5} />
                                 </Link>
                             ) : (
-                                <div className="flex-1 min-w-0">
+                                <div className="min-w-0 sm:flex-1">
                                     <h2 className="text-lg font-bold text-slate-900 truncate">
                                         {property.building_name}
                                     </h2>
@@ -79,11 +79,11 @@ export default function PropertySearch({ items, mode }: PropertySearchProps) {
                                     <EquipmentTags types={property.equipment_types ?? []} />
                                 </div>
                             )}
-                            <div className="shrink-0">
+                            <div className="shrink-0 w-full sm:w-auto">
                                 {mode === "inspection" ? (
                                     <Link
                                         href={`/inspection/new?propertyId=${property.id}`}
-                                        className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors whitespace-nowrap"
+                                        className="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors whitespace-nowrap w-full sm:w-auto"
                                     >
                                         <ClipboardCheck className="w-4 h-4" />
                                         この物件で点検開始
@@ -141,13 +141,13 @@ export default function PropertySearch({ items, mode }: PropertySearchProps) {
 function PropertyMeta({ property }: { property: Property }) {
     return (
         <div className="mt-1.5 space-y-1 text-sm text-slate-500">
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 min-w-0">
                 <MapPin className="w-3.5 h-3.5 shrink-0" />
                 <span className="truncate">{property.building_address}</span>
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 min-w-0">
                 <User className="w-3.5 h-3.5 shrink-0" />
-                <span>{property.notifier_name}</span>
+                <span className="truncate">{property.notifier_name}</span>
             </div>
         </div>
     )
@@ -159,12 +159,12 @@ function EquipmentTags({ types, limit }: { types: string[]; limit?: number }) {
     return (
         <div className="mt-2 flex flex-wrap gap-1.5">
             {shown.map((eq) => (
-                <span key={eq} className={`inline-block px-2 py-0.5 ${colorClass} text-xs rounded-full font-medium`}>
+                <span key={eq} className={`inline-block px-2 py-0.5 ${colorClass} text-xs rounded-full font-medium whitespace-nowrap`}>
                     {eq}
                 </span>
             ))}
             {limit && types.length > limit && (
-                <span className="inline-block px-2 py-0.5 bg-slate-100 text-slate-500 text-xs rounded-full">
+                <span className="inline-block px-2 py-0.5 bg-slate-100 text-slate-500 text-xs rounded-full whitespace-nowrap">
                     +{types.length - limit}種類
                 </span>
             )}

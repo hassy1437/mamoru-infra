@@ -23,6 +23,7 @@ type RowState = {
     bad_content: string
     action_content: string
     current_value: string  // 電圧計・電流計行の電流値（A）
+    flow_value: string     // ポンプ性能行の吐出量（L/min）
 }
 
 type DeviceState = {
@@ -101,7 +102,6 @@ const PAGE2_ITEMS = [
     "操作部（手動式起動）外形",
     "操作部（手動式起動）表示",
     "操作部（手動式起動）機能",
-    "自動式起動装置 開閉装置",
     "起動用水圧 圧力スイッチ設定圧力",
     "起動用水圧 起動用圧力タンク",
     "起動用水圧 機能・作動圧力",
@@ -129,7 +129,8 @@ const PAGE2_ITEMS = [
     "補助水槽 水状",
     "補助水槽 給水装置",
     "補助水槽 バルブ類",
-    "高架水槽方式 / 圧力水槽方式",
+    "高架水槽方式",
+    "圧力水槽方式",
     "減圧のための措置",
 ] as const
 
@@ -217,6 +218,7 @@ const createEmptyRow = (): RowState => ({
     bad_content: "",
     action_content: "",
     current_value: "",
+    flow_value: "",
 })
 
 const createEmptyDevice = (): DeviceState => ({
@@ -239,6 +241,7 @@ const coerceRow = (value: unknown): RowState => {
         bad_content: coerceString(source.bad_content),
         action_content: coerceString(source.action_content),
         current_value: coerceString(source.current_value),
+        flow_value: coerceString(source.flow_value),
     }
 }
 
@@ -476,6 +479,7 @@ export default function SprinklerBekki3Form({
         rows: RowState[],
         setter: Dispatch<SetStateAction<RowState[]>>,
         currentValueRowIndex?: number,
+        perfRowIndex?: number,
     ) => (
         <Card>
             <CardHeader>
@@ -499,7 +503,24 @@ export default function SprinklerBekki3Form({
                                 <tr key={`${title}-${label}`}>
                                     <td className="p-2 border">{label}</td>
                                     <td className="p-1 border">
-                                        {idx === currentValueRowIndex ? (
+                                        {idx === perfRowIndex ? (
+                                            <div className="flex gap-1 items-center">
+                                                <Input
+                                                    value={rows[idx].content}
+                                                    onChange={(e) => updateRowField(setter, idx, "content", e.target.value)}
+                                                    placeholder="吐出圧力(MPa)"
+                                                    className="w-24"
+                                                />
+                                                <span className="text-xs text-muted-foreground">MPa</span>
+                                                <Input
+                                                    value={rows[idx].flow_value}
+                                                    onChange={(e) => updateRowField(setter, idx, "flow_value", e.target.value)}
+                                                    placeholder="吐出量(L/min)"
+                                                    className="w-24"
+                                                />
+                                                <span className="text-xs text-muted-foreground">L/min</span>
+                                            </div>
+                                        ) : idx === currentValueRowIndex ? (
                                             <div className="flex gap-1 items-center">
                                                 <Input
                                                     value={rows[idx].content}
@@ -647,7 +668,7 @@ export default function SprinklerBekki3Form({
             </Card>
 
             {renderItemTable("（その1）機器点検", PAGE1_ITEMS, page1Rows, setPage1Rows, 10)}
-            {renderItemTable("（その2）機器点検", PAGE2_ITEMS, page2Rows, setPage2Rows)}
+            {renderItemTable("（その2）機器点検", PAGE2_ITEMS, page2Rows, setPage2Rows, undefined, 20)}
             {renderItemTable("（その3）機器点検", PAGE3_ITEMS, page3Rows, setPage3Rows)}
             {renderItemTable("（その4）総合点検", PAGE4_ITEMS, page4Rows, setPage4Rows)}
             {renderItemTable("（その5）補助散水栓", PAGE5_ITEMS, page5Rows, setPage5Rows)}

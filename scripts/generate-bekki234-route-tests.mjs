@@ -85,10 +85,13 @@ const jobs = [
       page1_rows: makeRows(19, "別記3-1").map((row, i) =>
         i === 10 ? { ...row, content: "200", current_value: "5.2" } : row
       ),
-      page2_rows: makeRows(34, "別記3-2").map((row, i) =>
+      page2_rows: makeRows(34, "別記3-2").map((row, i) => {
         // row 7: 火災感知装置 感知器（専用/兼用）— 丸囲み確認用に「専用」を投入
-        i === 7 ? { ...row, content: "専用" } : row
-      ),
+        if (i === 7) return { ...row, content: "専用" };
+        // row 20: ポンプ 性能 — 吐出圧力(MPa)=content, 吐出量(L/min)=flow_value
+        if (i === 20) return { ...row, content: "0.85", flow_value: "1800" };
+        return row;
+      }),
       page3_rows: makeRows(36, "別記3-3"),
       page4_rows: makeRows(23, "別記3-4"),
       page5_rows: makeRows(11, "別記3-5"),
@@ -103,10 +106,13 @@ const jobs = [
       page1_rows: makeRows(18, "別記4-1").map((row, i) =>
         i === 10 ? { ...row, content: "200", current_value: "5.2" } : row
       ),
-      page2_rows: makeRows(35, "別記4-2").map((row, i) =>
+      page2_rows: makeRows(35, "別記4-2").map((row, i) => {
         // row 7: 火災感知装置 感知器（専用/兼用）— 丸囲み確認用に「兼用」を投入
-        i === 7 ? { ...row, content: "兼用" } : row
-      ),
+        if (i === 7) return { ...row, content: "兼用" };
+        // row 19: ポンプ 性能 — 吐出圧力(MPa)=content, 吐出量(L/min)=flow_value
+        if (i === 19) return { ...row, content: "0.75", flow_value: "950" };
+        return row;
+      }),
       page3_rows: makeRows(24, "別記4-3"),
     },
   },

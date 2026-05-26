@@ -3,7 +3,7 @@ import { PDFDocument, rgb, PDFPage } from "pdf-lib"
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
-import { drawWrappedTextInCell, formatJapaneseDateText } from "@/lib/pdf-form-helpers"
+import { drawTextInCell, drawWrappedTextInCell, formatJapaneseDateText } from "@/lib/pdf-form-helpers"
 
 type Bekki8Row = {
     content?: string
@@ -25,12 +25,26 @@ type CylinderRow = {
     spec1?: string
     spec2?: string
     spec3?: string
+    // 旧形式（後方互換）
     measure1?: string
     measure2?: string
     measure3?: string
     measure4?: string
     measure5?: string
     measure6?: string
+    // 新形式：6セル × (date, value)
+    measure1_date?: string
+    measure1_value?: string
+    measure2_date?: string
+    measure2_value?: string
+    measure3_date?: string
+    measure3_value?: string
+    measure4_date?: string
+    measure4_value?: string
+    measure5_date?: string
+    measure5_value?: string
+    measure6_date?: string
+    measure6_value?: string
 }
 
 type Bekki8Payload = {
@@ -339,6 +353,34 @@ export async function POST(req: NextRequest) {
             drawRightAt(page1, p1Height, parts.day, anchors.day, PERIOD_ROW.top, PERIOD_ROW.h, 7.8)
         }
 
+        // 1セルを values.length 個の上下サブ領域に等分割し、各サブ領域に1値を描画する。
+        // 各サブ領域は単一行で auto-shrink（drawTextInCell）を使う：日付 "2026/02/22" のような
+        // 1行で読みたい値が、wrap で2行に分かれて読みづらくなるのを防ぐ。
+        // helper の drawTextInCell は安全係数なし（cellW - paddingX*2 をフルに使える）。
+        // PR4 (bekki6) で n=3 (date, temp, value) として流用予定。
+        const drawCellSubRegions = (
+            page: PDFPage,
+            pageHeight: number,
+            values: Array<unknown>,
+            cellX: number,
+            cellTop: number,
+            cellW: number,
+            cellH: number,
+            fontSize: number,
+        ) => {
+            const n = values.length
+            if (n <= 0) return
+            const subH = cellH / n
+            for (let k = 0; k < n; k += 1) {
+                drawTextInCell({
+                    page, pageHeight, font: customFont, text: values[k],
+                    cellX, cellTopFromTop: cellTop + subH * k, cellW, cellH: subH,
+                    fontSize,
+                    options: { paddingX: 1.0, paddingY: 0.5, minFontSize: 3.5, align: "center" },
+                })
+            }
+        }
+
         const drawCylinderRows = (
             page: PDFPage,
             pageHeight: number,
@@ -349,25 +391,27 @@ export async function POST(req: NextRequest) {
                 if (!row) continue
                 const top = P5_ROW_BOUNDS[i]
                 const h = P5_ROW_BOUNDS[i + 1] - top
-                const values = [
-                    row.no,
-                    row.cylinder_no,
-                    row.spec1,
-                    row.spec2,
-                    row.spec3,
-                    row.measure1,
-                    row.measure2,
-                    row.measure3,
-                    row.measure4,
-                    row.measure5,
-                    row.measure6,
-                ]
 
-                for (let c = 0; c < values.length; c += 1) {
+                // 仕様域 (cols 0-4): 1セル=1値
+                const specValues = [row.no, row.cylinder_no, row.spec1, row.spec2, row.spec3]
+                for (let c = 0; c < specValues.length; c += 1) {
                     const x = P5_COLS[c]
                     const w = P5_COLS[c + 1] - P5_COLS[c]
-                    const isShort = c <= 5
-                    drawWrappedInCell(page, pageHeight, values[c], x, top, w, h, isShort ? 6.2 : 5.8)
+                    drawWrappedInCell(page, pageHeight, specValues[c], x, top, w, h, 6.2)
+                }
+
+                // 測定域 (cols 5-10): 1セル=(date, value) 上下2段
+                // 新キー _date/_value を優先、無ければ旧 measure{N} を value にフォールバック
+                const legacy = [row.measure1, row.measure2, row.measure3, row.measure4, row.measure5, row.measure6]
+                const dates = [row.measure1_date, row.measure2_date, row.measure3_date, row.measure4_date, row.measure5_date, row.measure6_date]
+                const values = [row.measure1_value, row.measure2_value, row.measure3_value, row.measure4_value, row.measure5_value, row.measure6_value]
+                for (let m = 0; m < 6; m += 1) {
+                    const c = 5 + m
+                    const x = P5_COLS[c]
+                    const w = P5_COLS[c + 1] - P5_COLS[c]
+                    const date = dates[m] ?? ""
+                    const value = (values[m] && values[m] !== "") ? values[m] : (legacy[m] ?? "")
+                    drawCellSubRegions(page, pageHeight, [date, value], x, top, w, h, 6.0)
                 }
             }
         }

@@ -157,7 +157,7 @@ const jobs = [
       ),
       page3_rows: makeRows(25, "B8-P3"),
       page4_rows: makeRows(11, "B8-P4"),
-      page5_rows: makeCylinderRows(19, 6),
+      page5_rows: makeCylinderRows(19, 6, false, true),
     },
   },
 ];

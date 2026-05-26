@@ -37,12 +37,26 @@ type CylinderRowState = {
     spec1: string
     spec2: string
     spec3: string
+    // 後方互換用（旧データは単一値テキスト、新規入力は _date/_value 経由）
     measure1: string
     measure2: string
     measure3: string
     measure4: string
     measure5: string
     measure6: string
+    // 6回ぶんの (date, value) ペア
+    measure1_date: string
+    measure1_value: string
+    measure2_date: string
+    measure2_value: string
+    measure3_date: string
+    measure3_value: string
+    measure4_date: string
+    measure4_value: string
+    measure5_date: string
+    measure5_value: string
+    measure6_date: string
+    measure6_value: string
 }
 
 type PowderBekki8Payload = {
@@ -244,6 +258,18 @@ const createEmptyCylinderRow = (index: number): CylinderRowState => ({
     measure4: "",
     measure5: "",
     measure6: "",
+    measure1_date: "",
+    measure1_value: "",
+    measure2_date: "",
+    measure2_value: "",
+    measure3_date: "",
+    measure3_value: "",
+    measure4_date: "",
+    measure4_value: "",
+    measure5_date: "",
+    measure5_value: "",
+    measure6_date: "",
+    measure6_value: "",
 })
 
 const coerceString = (value: unknown, fallback = "") => (typeof value === "string" ? value : fallback)
@@ -282,6 +308,18 @@ const coerceCylinderRow = (value: unknown, index: number): CylinderRowState => {
         measure4: coerceString(source.measure4),
         measure5: coerceString(source.measure5),
         measure6: coerceString(source.measure6),
+        measure1_date: coerceString(source.measure1_date),
+        measure1_value: coerceString(source.measure1_value),
+        measure2_date: coerceString(source.measure2_date),
+        measure2_value: coerceString(source.measure2_value),
+        measure3_date: coerceString(source.measure3_date),
+        measure3_value: coerceString(source.measure3_value),
+        measure4_date: coerceString(source.measure4_date),
+        measure4_value: coerceString(source.measure4_value),
+        measure5_date: coerceString(source.measure5_date),
+        measure5_value: coerceString(source.measure5_value),
+        measure6_date: coerceString(source.measure6_date),
+        measure6_value: coerceString(source.measure6_value),
     }
 }
 
@@ -687,7 +725,7 @@ export default function PowderBekki8Form({
                 <CardHeader>
                     <CardTitle>（その5）容器ごとの点検結果</CardTitle>
                     <CardDescription>
-                        ページ5の列順に入力してください（全質量 / 空質量 / ガス質量 / 点検年月日 / 点検時ガス質量1〜5）。
+                        測定1〜6 は容器ごとの点検6回分（点検年月日と点検時加圧用・起動用ガス質量(kg)）を入力してください。各セル上段が日付、下段が値として描画されます。
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -700,12 +738,12 @@ export default function PowderBekki8Form({
                                     <th className="p-2 border w-28">全質量(kg)</th>
                                     <th className="p-2 border w-28">空質量(kg)</th>
                                     <th className="p-2 border w-32">ガス質量(kg)</th>
-                                    <th className="p-2 border w-44">点検年月日</th>
-                                    <th className="p-2 border w-28">点検時ガス1</th>
-                                    <th className="p-2 border w-28">点検時ガス2</th>
-                                    <th className="p-2 border w-28">点検時ガス3</th>
-                                    <th className="p-2 border w-28">点検時ガス4</th>
-                                    <th className="p-2 border w-28">点検時ガス5</th>
+                                    <th className="p-2 border w-32">測定1<br /><span className="text-xs font-normal text-slate-500">日付 / 値</span></th>
+                                    <th className="p-2 border w-32">測定2<br /><span className="text-xs font-normal text-slate-500">日付 / 値</span></th>
+                                    <th className="p-2 border w-32">測定3<br /><span className="text-xs font-normal text-slate-500">日付 / 値</span></th>
+                                    <th className="p-2 border w-32">測定4<br /><span className="text-xs font-normal text-slate-500">日付 / 値</span></th>
+                                    <th className="p-2 border w-32">測定5<br /><span className="text-xs font-normal text-slate-500">日付 / 値</span></th>
+                                    <th className="p-2 border w-32">測定6<br /><span className="text-xs font-normal text-slate-500">日付 / 値</span></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -726,24 +764,28 @@ export default function PowderBekki8Form({
                                         <td className="p-1 border">
                                             <Input value={row.spec3} onChange={(e) => updateCylinderField(idx, "spec3", e.target.value)} placeholder="ガス質量" />
                                         </td>
-                                        <td className="p-1 border">
-                                            <Input value={row.measure1} onChange={(e) => updateCylinderField(idx, "measure1", e.target.value)} placeholder="2026/02/22" />
-                                        </td>
-                                        <td className="p-1 border">
-                                            <Input value={row.measure2} onChange={(e) => updateCylinderField(idx, "measure2", e.target.value)} />
-                                        </td>
-                                        <td className="p-1 border">
-                                            <Input value={row.measure3} onChange={(e) => updateCylinderField(idx, "measure3", e.target.value)} />
-                                        </td>
-                                        <td className="p-1 border">
-                                            <Input value={row.measure4} onChange={(e) => updateCylinderField(idx, "measure4", e.target.value)} />
-                                        </td>
-                                        <td className="p-1 border">
-                                            <Input value={row.measure5} onChange={(e) => updateCylinderField(idx, "measure5", e.target.value)} />
-                                        </td>
-                                        <td className="p-1 border">
-                                            <Input value={row.measure6} onChange={(e) => updateCylinderField(idx, "measure6", e.target.value)} />
-                                        </td>
+                                        {([1, 2, 3, 4, 5, 6] as const).map((n) => {
+                                            const dateKey = `measure${n}_date` as const
+                                            const valueKey = `measure${n}_value` as const
+                                            return (
+                                                <td key={`m${n}`} className="p-1 border">
+                                                    <div className="space-y-1">
+                                                        <Input
+                                                            value={row[dateKey]}
+                                                            onChange={(e) => updateCylinderField(idx, dateKey, e.target.value)}
+                                                            placeholder={n === 1 ? "2026/02/22" : "日付"}
+                                                            className="h-8 text-xs"
+                                                        />
+                                                        <Input
+                                                            value={row[valueKey]}
+                                                            onChange={(e) => updateCylinderField(idx, valueKey, e.target.value)}
+                                                            placeholder={n === 1 ? "41.0" : "値"}
+                                                            className="h-8 text-xs"
+                                                        />
+                                                    </div>
+                                                </td>
+                                            )
+                                        })}
                                     </tr>
                                 ))}
                             </tbody>

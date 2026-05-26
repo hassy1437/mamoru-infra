@@ -23,6 +23,9 @@ type RowState = {
     bad_content: string
     action_content: string
     current_value: string  // 電圧計・電流計行の電流値（A）
+    flow_value: string     // ポンプ性能行の吐出量（L/min）
+    hose_count: string     // ホース行の本数
+    nozzle_dia: string     // ホース行のノズル径（mm）
 }
 
 type DeviceState = {
@@ -196,6 +199,9 @@ const createEmptyRow = (): RowState => ({
     bad_content: "",
     action_content: "",
     current_value: "",
+    flow_value: "",
+    hose_count: "",
+    nozzle_dia: "",
 })
 
 const createEmptyDevice = (): DeviceState => ({
@@ -218,6 +224,9 @@ const coerceRow = (value: unknown): RowState => {
         bad_content: coerceString(source.bad_content),
         action_content: coerceString(source.action_content),
         current_value: coerceString(source.current_value),
+        flow_value: coerceString(source.flow_value),
+        hose_count: coerceString(source.hose_count),
+        nozzle_dia: coerceString(source.nozzle_dia),
     }
 }
 
@@ -458,6 +467,8 @@ export default function FoamBekki5Form({
         rows: RowState[],
         setter: Dispatch<SetStateAction<RowState[]>>,
         currentValueRowIndex?: number,
+        perfRowIndex?: number,
+        hoseRowIndex?: number,
     ) => (
         <Card>
             <CardHeader>
@@ -481,7 +492,48 @@ export default function FoamBekki5Form({
                                 <tr key={`${title}-${label}`}>
                                     <td className="p-2 border">{label}</td>
                                     <td className="p-1 border">
-                                        {idx === currentValueRowIndex ? (
+                                        {idx === hoseRowIndex ? (
+                                            <div className="flex gap-1 items-center flex-wrap">
+                                                <Input
+                                                    value={rows[idx].content}
+                                                    onChange={(e) => updateRowField(setter, idx, "content", e.target.value)}
+                                                    placeholder="長さ(m)"
+                                                    className="w-16"
+                                                />
+                                                <span className="text-xs text-muted-foreground">m ×</span>
+                                                <Input
+                                                    value={rows[idx].hose_count}
+                                                    onChange={(e) => updateRowField(setter, idx, "hose_count", e.target.value)}
+                                                    placeholder="本数"
+                                                    className="w-14"
+                                                />
+                                                <span className="text-xs text-muted-foreground">本 /</span>
+                                                <Input
+                                                    value={rows[idx].nozzle_dia}
+                                                    onChange={(e) => updateRowField(setter, idx, "nozzle_dia", e.target.value)}
+                                                    placeholder="口径(mm)"
+                                                    className="w-16"
+                                                />
+                                                <span className="text-xs text-muted-foreground">mm</span>
+                                            </div>
+                                        ) : idx === perfRowIndex ? (
+                                            <div className="flex gap-1 items-center">
+                                                <Input
+                                                    value={rows[idx].content}
+                                                    onChange={(e) => updateRowField(setter, idx, "content", e.target.value)}
+                                                    placeholder="吐出圧力(MPa)"
+                                                    className="w-24"
+                                                />
+                                                <span className="text-xs text-muted-foreground">MPa</span>
+                                                <Input
+                                                    value={rows[idx].flow_value}
+                                                    onChange={(e) => updateRowField(setter, idx, "flow_value", e.target.value)}
+                                                    placeholder="吐出量(L/min)"
+                                                    className="w-24"
+                                                />
+                                                <span className="text-xs text-muted-foreground">L/min</span>
+                                            </div>
+                                        ) : idx === currentValueRowIndex ? (
                                             <div className="flex gap-1 items-center">
                                                 <Input
                                                     value={rows[idx].content}
@@ -636,8 +688,8 @@ export default function FoamBekki5Form({
             </Card>
 
             {renderItemTable("（その1）点検結果", PAGE1_ITEMS, page1Rows, setPage1Rows, 11)}
-            {renderItemTable("（その2）点検結果", PAGE2_ITEMS, page2Rows, setPage2Rows)}
-            {renderItemTable("（その3）点検結果", PAGE3_ITEMS, page3Rows, setPage3Rows)}
+            {renderItemTable("（その2）点検結果", PAGE2_ITEMS, page2Rows, setPage2Rows, undefined, 19)}
+            {renderItemTable("（その3）点検結果", PAGE3_ITEMS, page3Rows, setPage3Rows, undefined, undefined, 21)}
             {renderItemTable("（その4）総合点検", PAGE4_ITEMS, page4Rows, setPage4Rows)}
 
             <Card>

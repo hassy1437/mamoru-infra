@@ -24,6 +24,8 @@ type RowState = {
     action_content: string
     current_value: string  // 電圧計・電流計行の電流値（A）
     flow_value: string     // ポンプ性能行の吐出量（L/min）
+    hose_count: string     // ホース行の本数
+    nozzle_dia: string     // ホース行のノズル径（mm）
 }
 
 type DeviceState = {
@@ -219,6 +221,8 @@ const createEmptyRow = (): RowState => ({
     action_content: "",
     current_value: "",
     flow_value: "",
+    hose_count: "",
+    nozzle_dia: "",
 })
 
 const createEmptyDevice = (): DeviceState => ({
@@ -242,6 +246,8 @@ const coerceRow = (value: unknown): RowState => {
         action_content: coerceString(source.action_content),
         current_value: coerceString(source.current_value),
         flow_value: coerceString(source.flow_value),
+        hose_count: coerceString(source.hose_count),
+        nozzle_dia: coerceString(source.nozzle_dia),
     }
 }
 
@@ -480,6 +486,7 @@ export default function SprinklerBekki3Form({
         setter: Dispatch<SetStateAction<RowState[]>>,
         currentValueRowIndex?: number,
         perfRowIndex?: number,
+        hoseRowIndex?: number,
     ) => (
         <Card>
             <CardHeader>
@@ -503,7 +510,31 @@ export default function SprinklerBekki3Form({
                                 <tr key={`${title}-${label}`}>
                                     <td className="p-2 border">{label}</td>
                                     <td className="p-1 border">
-                                        {idx === perfRowIndex ? (
+                                        {idx === hoseRowIndex ? (
+                                            <div className="flex gap-1 items-center flex-wrap">
+                                                <Input
+                                                    value={rows[idx].content}
+                                                    onChange={(e) => updateRowField(setter, idx, "content", e.target.value)}
+                                                    placeholder="長さ(m)"
+                                                    className="w-16"
+                                                />
+                                                <span className="text-xs text-muted-foreground">m ×</span>
+                                                <Input
+                                                    value={rows[idx].hose_count}
+                                                    onChange={(e) => updateRowField(setter, idx, "hose_count", e.target.value)}
+                                                    placeholder="本数"
+                                                    className="w-14"
+                                                />
+                                                <span className="text-xs text-muted-foreground">本 /</span>
+                                                <Input
+                                                    value={rows[idx].nozzle_dia}
+                                                    onChange={(e) => updateRowField(setter, idx, "nozzle_dia", e.target.value)}
+                                                    placeholder="口径(mm)"
+                                                    className="w-16"
+                                                />
+                                                <span className="text-xs text-muted-foreground">mm</span>
+                                            </div>
+                                        ) : idx === perfRowIndex ? (
                                             <div className="flex gap-1 items-center">
                                                 <Input
                                                     value={rows[idx].content}
@@ -669,7 +700,7 @@ export default function SprinklerBekki3Form({
 
             {renderItemTable("（その1）機器点検", PAGE1_ITEMS, page1Rows, setPage1Rows, 10)}
             {renderItemTable("（その2）機器点検", PAGE2_ITEMS, page2Rows, setPage2Rows, undefined, 20)}
-            {renderItemTable("（その3）機器点検", PAGE3_ITEMS, page3Rows, setPage3Rows)}
+            {renderItemTable("（その3）機器点検", PAGE3_ITEMS, page3Rows, setPage3Rows, undefined, undefined, 25)}
             {renderItemTable("（その4）総合点検", PAGE4_ITEMS, page4Rows, setPage4Rows)}
             {renderItemTable("（その5）補助散水栓", PAGE5_ITEMS, page5Rows, setPage5Rows)}
 

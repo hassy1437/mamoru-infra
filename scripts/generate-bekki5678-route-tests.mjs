@@ -77,11 +77,18 @@ const jobs = [
       page1_rows: makeRows(19, "B5-P1").map((row, i) =>
         i === 11 ? { ...row, content: "200", current_value: "5.2" } : row
       ),
-      page2_rows: makeRows(34, "B5-P2").map((row, i) =>
+      page2_rows: makeRows(34, "B5-P2").map((row, i) => {
         // row 7: 火災感知装置 感知器（専用・兼用）— 丸囲み確認用に「専用」を投入
-        i === 7 ? { ...row, content: "専用" } : row
-      ),
-      page3_rows: makeRows(27, "B5-P3"),
+        if (i === 7) return { ...row, content: "専用" };
+        // row 19: ポンプ 性能 — 吐出圧力(MPa)=content, 吐出量(L/min)=flow_value
+        if (i === 19) return { ...row, content: "0.65", flow_value: "1200" };
+        return row;
+      }),
+      page3_rows: makeRows(27, "B5-P3").map((row, i) => {
+        // row 21: ホース・ノズル / 外形 — 長さ/本数/口径を個別キーで投入
+        if (i === 21) return { ...row, content: "30", hose_count: "2", nozzle_dia: "19" };
+        return row;
+      }),
       page4_rows: makeRows(23, "B5-P4"),
     },
   },

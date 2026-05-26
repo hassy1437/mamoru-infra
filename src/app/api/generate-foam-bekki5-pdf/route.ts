@@ -11,6 +11,9 @@ type Bekki5Row = {
     bad_content?: string
     action_content?: string
     current_value?: string  // 電圧計・電流計行の電流値（A）
+    flow_value?: string     // 性能行の吐出量（L/min）
+    hose_count?: string     // ホース行の本数
+    nozzle_dia?: string     // ホース行のノズル径（mm）
 }
 
 type DeviceRow = {
@@ -377,25 +380,72 @@ export async function POST(req: NextRequest) {
             drawInCell(page1, p1Height, voltRow5.current_value, 261, voltTop, 38, voltH, 6.8)
         }
 
-        drawResultRows(page2, p2Height, body.page2_rows ?? [], P2_ROW_BOUNDS, {
+        const p2Rows5 = body.page2_rows ?? []
+        drawResultRows(page2, p2Height, p2Rows5, P2_ROW_BOUNDS, {
             contentX: 214, contentW: 99,
             judgmentX: 313, judgmentW: 46,
             badX: 359, badW: 86,
             actionX: 445, actionW: 84,
-        }, {}, new Set([7]))
+        }, {}, new Set([7, 19]))
 
         // PAGE2 row 7「火災感知装置 / 感知器（専用・兼用）」: 公式PDF刷り込みの選択を丸囲み
-        drawSelectionCircle(page2, p2Height, body.page2_rows?.[7]?.content ?? "", [
+        drawSelectionCircle(page2, p2Height, p2Rows5[7]?.content ?? "", [
             { label: "専用", cx: 243.6, cy: 228.6, rx: 14, ry: 7 },
             { label: "兼用", cx: 285.7, cy: 228.6, rx: 14, ry: 7 },
         ])
 
-        drawResultRows(page3, p3Height, body.page3_rows ?? [], P3_ROW_BOUNDS, {
+        // PAGE2 row 19「ポンプ / 性能」: 公式PDF刷り込みの MPa(x≈243.5) / L/min(x≈280.3) の間に値を分割描画
+        // 新キー優先（content=吐出圧力MPa, flow_value=吐出量L/min）→ "/" 分割 → 単一content
+        const perfRow5 = p2Rows5[19]
+        if (perfRow5) {
+            const pTop = P2_ROW_BOUNDS[19]
+            const pH = P2_ROW_BOUNDS[20] - P2_ROW_BOUNDS[19]
+            const pContent = normalizeText(perfRow5.content)
+            const pFlow = normalizeText(perfRow5.flow_value)
+            const drawMpa  = (v: string) => { if (v) drawInCell(page2, p2Height, v, 215, pTop, 28, pH, 6.5, { paddingX: 1 }) }
+            const drawLmin = (v: string) => { if (v) drawInCell(page2, p2Height, v, 260, pTop, 20, pH, 6.5, { paddingX: 1 }) }
+            if (pFlow) {
+                drawMpa(pContent); drawLmin(pFlow)
+            } else if (pContent.includes("/")) {
+                const parts = pContent.split("/")
+                drawMpa(parts[0]?.trim() ?? ""); drawLmin(parts[1]?.trim() ?? "")
+            } else if (pContent) {
+                drawMpa(pContent)
+            }
+        }
+
+        const p3Rows5 = body.page3_rows ?? []
+        drawResultRows(page3, p3Height, p3Rows5, P3_ROW_BOUNDS, {
             contentX: 214, contentW: 99,
             judgmentX: 313, judgmentW: 46,
             badX: 359, badW: 86,
             actionX: 445, actionW: 84,
-        })
+        }, {}, new Set([21]))
+
+        // PAGE3 row 21「ホース・ノズル / 外形」: 公式PDF刷り込みの ｍ×(x≈235.2) / 本(x≈277.3) / mm(x≈298.3) の間に分割描画
+        // 新キー優先（content=長さm, hose_count=本数, nozzle_dia=口径mm）→ "/" 分割 → 単一content
+        // 値は行の下半分（ｍ×/本/mmラベルと同じ高さ）に配置
+        const hoseRow5 = p3Rows5[21]
+        if (hoseRow5) {
+            const hTop = P3_ROW_BOUNDS[21]
+            const hH = P3_ROW_BOUNDS[22] - hTop
+            const hValTop = hTop + hH / 2 - 2
+            const hValH = hH / 2 + 2
+            const hContent = normalizeText(hoseRow5.content)
+            const hCount = normalizeText(hoseRow5.hose_count)
+            const nDia = normalizeText(hoseRow5.nozzle_dia)
+            const drawLen = (v: string) => { if (v) drawInCell(page3, p3Height, v, 217, hValTop, 18, hValH, 6.5, { paddingX: 0.5 }) }
+            const drawCnt = (v: string) => { if (v) drawInCell(page3, p3Height, v, 257, hValTop, 20, hValH, 6.0, { paddingX: 0.5 }) }
+            const drawDia = (v: string) => { if (v) drawInCell(page3, p3Height, v, 288, hValTop, 10, hValH, 6.0, { paddingX: 0 }) }
+            if (hCount || nDia) {
+                drawLen(hContent); drawCnt(hCount); drawDia(nDia)
+            } else if (hContent.includes("/")) {
+                const parts = hContent.split("/")
+                drawLen(parts[0]?.trim() ?? ""); drawCnt(parts[1]?.trim() ?? ""); drawDia(parts[2]?.trim() ?? "")
+            } else if (hContent) {
+                drawLen(hContent)
+            }
+        }
 
         drawResultRows(page4, p4Height, body.page4_rows ?? [], P4_ROW_BOUNDS, {
             contentX: 235, contentW: 79,

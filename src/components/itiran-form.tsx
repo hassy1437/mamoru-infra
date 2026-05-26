@@ -273,7 +273,7 @@ export default function ItiranForm({ soukatsuId }: Props) {
                                     rows={2}
                                     value={inspectors[idx].shoubou_notes}
                                     onChange={e => updateInspector(idx, "shoubou_notes", e.target.value)}
-                                    placeholder="備考（誘導灯・誘導標識を点検した場合は電気工事士免状等の種類・交付番号・交付年月日を記載）"
+                                    placeholder="備考（誘導灯及び誘導標識を点検した場合は電気工事士免状等の種類・交付番号・交付年月日を記載）"
                                 />
                             </div>
                         </div>

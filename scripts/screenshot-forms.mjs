@@ -5,22 +5,18 @@
  *   - 開発サーバが起動していること（npm run dev → http://localhost:3000）
  *   - .env.local に以下を記載（認証情報はチャット/コードに残さない）:
  *       TEST_EMAIL / TEST_PASSWORD … 実在するテストユーザーの認証情報
- *       NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY
  *
  * フロー:
  *   1. /login でサインイン
  *   2. /properties/new で全23設備を選択したテスト物件を作成（UI操作）
- *   3. （任意）equipment_types を itiran-input-flow のキーワードに patch
- *      → 様式16(誘導灯)のキーワード不一致を回避（PATCH_EQUIPMENT=1 のとき）
- *   4. /inspection/new?propertyId= で総括表を作成（UI操作）
- *   5. /inspection/{id}/itiran で点検者一覧を作成（UI操作）
- *   6. 23様式のフォーム画面を順に開きフルページ撮影
+ *   3. /inspection/new?propertyId= で総括表を作成（UI操作）
+ *   4. /inspection/{id}/itiran で点検者一覧を作成（UI操作）
+ *   5. 23様式のフォーム画面を順に開きフルページ撮影
  *
  * 実行: node scripts/screenshot-forms.mjs
  * 出力: screenshots/bekkiNN_<slug>.png  +  screenshots/_manifest.json
  */
 import { chromium } from "@playwright/test";
-import { createClient } from "@supabase/supabase-js";
 import fs from "fs";
 import path from "path";
 
@@ -40,7 +36,6 @@ const BASE_URL = process.env.BASE_URL || ENV.BASE_URL || "http://localhost:3000"
 // 認証情報は .env.local からのみ取得（チャット/コードには残さない）
 const EMAIL = ENV.TEST_EMAIL || process.env.TEST_EMAIL;
 const PASSWORD = ENV.TEST_PASSWORD || process.env.TEST_PASSWORD;
-const PATCH_EQUIPMENT = (process.env.PATCH_EQUIPMENT ?? ENV.PATCH_EQUIPMENT) === "1";
 const OUT_DIR = path.join(process.cwd(), "screenshots");
 
 if (!EMAIL || !PASSWORD) {
@@ -53,15 +48,6 @@ const ALL_EQUIPMENT_LABELS = [
   "消火器", "屋内消火栓設備", "スプリンクラー設備", "水噴霧消火設備", "泡消火設備",
   "不活性ガス消火設備", "ハロゲン化物消火設備", "粉末消火設備", "屋外消火栓設備", "動力消防ポンプ設備",
   "自動火災報知設備", "ガス漏れ火災警報設備", "漏電火災警報器", "消防機関へ通報する火災報知設備", "非常警報器具・設備",
-  "避難器具", "誘導灯・誘導標識", "消防用水", "排煙設備", "連結散水設備",
-  "連結送水管", "非常コンセント設備", "無線通信補助設備",
-];
-
-// --- itiran-input-flow.ts の equipmentKeyword（patch 用、部分一致を満たす23キーワード） ---
-const ITIRAN_KEYWORDS = [
-  "消火器", "屋内消火栓設備", "スプリンクラー設備", "水噴霧消火設備", "泡消火設備",
-  "不活性ガス消火設備", "ハロゲン化物消火設備", "粉末消火設備", "屋外消火栓設備", "動力消防ポンプ設備",
-  "自動火災報知設備", "ガス漏れ火災警報設備", "漏電火災警報器", "消防機関へ通報する火災報知設備", "非常警報器具",
   "避難器具", "誘導灯及び誘導標識", "消防用水", "排煙設備", "連結散水設備",
   "連結送水管", "非常コンセント設備", "無線通信補助設備",
 ];
@@ -152,26 +138,10 @@ async function main() {
   const propertyId = propHref.split("/").pop();
   console.log("    propertyId =", propertyId);
 
-  // ---------- 3. （任意）equipment_types を patch（様式16 キーワード不一致回避） ----------
-  if (PATCH_EQUIPMENT) {
-    console.log("[3] equipment_types を itiran キーワードへ patch...");
-    const supa = createClient(ENV.NEXT_PUBLIC_SUPABASE_URL, ENV.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-    const { error: signErr } = await supa.auth.signInWithPassword({ email: EMAIL, password: PASSWORD });
-    if (signErr) throw new Error("Supabase sign-in 失敗: " + signErr.message);
-    const { error: upErr } = await supa
-      .from("properties")
-      .update({ equipment_types: ITIRAN_KEYWORDS })
-      .eq("id", propertyId);
-    if (upErr) throw new Error("equipment_types patch 失敗: " + upErr.message);
-    console.log("    patch OK（23キーワード）");
-  } else {
-    console.log("[3] patch スキップ（PATCH_EQUIPMENT!=1）。様式16 は 404 になる可能性あり");
-  }
-
   const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/;
 
-  // ---------- 4. 総括表(soukatsu)作成（UI） ----------
-  console.log("[4] 総括表を作成...");
+  // ---------- 3. 総括表(soukatsu)作成（UI） ----------
+  console.log("[3] 総括表を作成...");
   await page.goto(`${BASE_URL}/inspection/new?propertyId=${propertyId}`, { waitUntil: "networkidle" });
   await page.click('button[type="submit"]');
   // /inspection/new → /inspection/{uuid} への遷移を待つ（"new" を弾く）
@@ -179,8 +149,8 @@ async function main() {
   const soukatsuId = page.url().match(UUID_RE)[0];
   console.log("    soukatsuId =", soukatsuId);
 
-  // ---------- 5. 点検者一覧(itiran)作成（UI） ----------
-  console.log("[5] 点検者一覧を作成...");
+  // ---------- 4. 点検者一覧(itiran)作成（UI） ----------
+  console.log("[4] 点検者一覧を作成...");
   await page.goto(`${BASE_URL}/inspection/${soukatsuId}/itiran`, { waitUntil: "networkidle" });
   await page.click('button[type="submit"]');
   // /inspection/{id}/itiran → /inspection/{id}/itiran/{uuid} への遷移を待つ
@@ -188,8 +158,8 @@ async function main() {
   const itiranId = page.url().split("/itiran/")[1].match(UUID_RE)[0];
   console.log("    itiranId =", itiranId);
 
-  // ---------- 6. 23様式を撮影 ----------
-  console.log("[6] 23様式を撮影...");
+  // ---------- 5. 23様式を撮影 ----------
+  console.log("[5] 23様式を撮影...");
   for (const f of FORMS) {
     const url = `${BASE_URL}/inspection/${soukatsuId}/itiran/${itiranId}/${f.slug}`;
     const fileName = `bekki${f.no}_${f.slug}.png`;

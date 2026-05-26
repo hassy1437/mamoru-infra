@@ -200,7 +200,7 @@ const testBody = {
         { name: "消防機関へ通報する火災報知設備", result: "指摘なし" },
         { name: "非常警報器具及び設備", result: "指摘なし" },
         { name: "避難器具", result: "要改善", bad_detail: "降下障害あり", action: "障害物除去済み", witness: "管理会社 佐藤" },
-        { name: "誘導灯・誘導標識", result: "指摘なし" },
+        { name: "誘導灯及び誘導標識", result: "指摘なし" },
         { name: "消防用水", result: "指摘なし" },
         { name: "排煙設備", result: "指摘なし" },
         { name: "連結散水設備", result: "指摘なし" },

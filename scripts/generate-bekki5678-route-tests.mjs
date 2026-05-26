@@ -14,7 +14,7 @@ const makeRows = (count, prefix) =>
         : "",
   }));
 
-const makeCylinderRows = (count, cols) =>
+const makeCylinderRows = (count, cols, includeSpec45 = false) =>
   Array.from({ length: count }, (_, i) => {
     const base = {
       no: String(i + 1),
@@ -29,6 +29,10 @@ const makeCylinderRows = (count, cols) =>
     };
     if (cols >= 5) base.measure5 = `${(i % 9) + 1}.5`;
     if (cols >= 6) base.measure6 = `${(i % 9) + 1}.6`;
+    if (includeSpec45) {
+      base.spec4 = "SPEC-D";
+      base.spec5 = "SPEC-E";
+    }
     return base;
   });
 
@@ -107,7 +111,7 @@ const jobs = [
       ),
       page3_rows: makeRows(36, "B6-P3"),
       page4_rows: makeRows(12, "B6-P4"),
-      page5_rows: makeCylinderRows(29, 4),
+      page5_rows: makeCylinderRows(29, 4, true),
     },
   },
   {

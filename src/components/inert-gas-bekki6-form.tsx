@@ -37,6 +37,8 @@ type CylinderRowState = {
     spec1: string
     spec2: string
     spec3: string
+    spec4: string
+    spec5: string
     measure1: string
     measure2: string
     measure3: string
@@ -236,6 +238,8 @@ const createEmptyCylinderRow = (index: number): CylinderRowState => ({
     spec1: "",
     spec2: "",
     spec3: "",
+    spec4: "",
+    spec5: "",
     measure1: "",
     measure2: "",
     measure3: "",
@@ -272,6 +276,8 @@ const coerceCylinderRow = (value: unknown, index: number): CylinderRowState => {
         spec1: coerceString(source.spec1),
         spec2: coerceString(source.spec2),
         spec3: coerceString(source.spec3),
+        spec4: coerceString(source.spec4),
+        spec5: coerceString(source.spec5),
         measure1: coerceString(source.measure1),
         measure2: coerceString(source.measure2),
         measure3: coerceString(source.measure3),
@@ -681,23 +687,25 @@ export default function InertGasBekki6Form({
                 <CardHeader>
                     <CardTitle>（その5）容器ごとの点検結果</CardTitle>
                     <CardDescription>
-                        `spec1〜3` はテンプレートの仕様欄、`測定1〜4` は「点検年月日及び容器表面温度 / 点検時の消火剤量・容器内圧力」欄をまとめて入力してください。
+                        仕様1〜5（全質量/空質量/消火剤量kg/消火剤量m³/充てん圧力MPa）と測定1〜4（点検年月日・容器表面温度・点検時の消火剤量または容器内圧力）を入力してください。
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="overflow-x-auto border rounded-lg">
-                        <table className="min-w-[1450px] w-full text-sm">
+                        <table className="min-w-[1680px] w-full text-sm">
                             <thead className="bg-slate-50">
                                 <tr>
                                     <th className="p-2 border w-16">番号</th>
                                     <th className="p-2 border w-24">容器番号</th>
-                                    <th className="p-2 border w-24">仕様1</th>
-                                    <th className="p-2 border w-28">仕様2</th>
-                                    <th className="p-2 border w-28">仕様3</th>
-                                    <th className="p-2 border w-44">測定1</th>
-                                    <th className="p-2 border w-44">測定2</th>
-                                    <th className="p-2 border w-44">測定3</th>
-                                    <th className="p-2 border w-44">測定4</th>
+                                    <th className="p-2 border w-24">全質量(kg)</th>
+                                    <th className="p-2 border w-24">空質量(kg)</th>
+                                    <th className="p-2 border w-24">消火剤量(kg)</th>
+                                    <th className="p-2 border w-24">消火剤量(m³)</th>
+                                    <th className="p-2 border w-28">充てん圧力(MPa)</th>
+                                    <th className="p-2 border w-40">測定1</th>
+                                    <th className="p-2 border w-40">測定2</th>
+                                    <th className="p-2 border w-40">測定3</th>
+                                    <th className="p-2 border w-40">測定4</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -716,7 +724,13 @@ export default function InertGasBekki6Form({
                                             <Input value={row.spec2} onChange={(e) => updateCylinderField(idx, "spec2", e.target.value)} placeholder="例: 42.0" />
                                         </td>
                                         <td className="p-1 border">
-                                            <Input value={row.spec3} onChange={(e) => updateCylinderField(idx, "spec3", e.target.value)} placeholder="例: 5.7 / 15.0" />
+                                            <Input value={row.spec3} onChange={(e) => updateCylinderField(idx, "spec3", e.target.value)} placeholder="例: 25.2" />
+                                        </td>
+                                        <td className="p-1 border">
+                                            <Input value={row.spec4} onChange={(e) => updateCylinderField(idx, "spec4", e.target.value)} placeholder="例: 13.5" />
+                                        </td>
+                                        <td className="p-1 border">
+                                            <Input value={row.spec5} onChange={(e) => updateCylinderField(idx, "spec5", e.target.value)} placeholder="例: 14.7" />
                                         </td>
                                         <td className="p-1 border">
                                             <Input value={row.measure1} onChange={(e) => updateCylinderField(idx, "measure1", e.target.value)} placeholder="例: 2026/02/22 18℃ 41.0" />

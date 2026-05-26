@@ -25,6 +25,8 @@ type CylinderRow = {
     spec1?: string
     spec2?: string
     spec3?: string
+    spec4?: string
+    spec5?: string
     measure1?: string
     measure2?: string
     measure3?: string
@@ -107,7 +109,10 @@ const P5_ROW_BOUNDS = [
     576.0, 596.0, 616.0, 636.0, 656.0, 676.0, 696.0, 716.0, 736.0, 756.0,
 ]
 
-const P5_COLS = [64.0, 86.67, 125.33, 160.67, 234.67, 310.67, 365.33, 420.0, 474.67, 529.33]
+const P5_COLS = [
+    64.0, 86.67, 125.33, 160.67, 196.09, 234.67,
+    274.09, 310.67, 365.33, 420.0, 474.67, 529.33,
+]
 
 const PERIOD_ROW = { top: 171.33, h: 16.0 }
 const PERIOD_START_ANCHORS = { year: 293.33, month: 335.33, day: 377.33 }
@@ -354,6 +359,8 @@ export async function POST(req: NextRequest) {
                     row.spec1,
                     row.spec2,
                     row.spec3,
+                    row.spec4,
+                    row.spec5,
                     row.measure1,
                     row.measure2,
                     row.measure3,
@@ -363,7 +370,7 @@ export async function POST(req: NextRequest) {
                 for (let c = 0; c < values.length; c += 1) {
                     const x = P5_COLS[c]
                     const w = P5_COLS[c + 1] - P5_COLS[c]
-                    const isShort = c <= 4
+                    const isShort = c <= 6
                     drawWrappedInCell(page, pageHeight, values[c], x, top, w, h, isShort ? 6.3 : 5.9)
                 }
             }

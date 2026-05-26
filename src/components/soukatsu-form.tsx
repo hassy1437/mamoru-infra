@@ -380,8 +380,8 @@ export default function SoukatsuForm({ property, previousData }: SoukatsuFormPro
                 <CardContent>
                     <div className="space-y-3">
                         {equipmentResults.map((item, index) => (
-                            <div key={item.name} className="flex items-center justify-between gap-4 py-2 border-b border-slate-100 last:border-0">
-                                <span className="text-sm font-medium text-slate-700 min-w-[200px]">{item.name}</span>
+                            <div key={item.name} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4 py-2 border-b border-slate-100 last:border-0">
+                                <span className="text-sm font-medium text-slate-700 sm:min-w-[200px]">{item.name}</span>
                                 <div className="flex gap-2">
                                     {(property
                                         ? ["指摘なし", "要改善"] as const

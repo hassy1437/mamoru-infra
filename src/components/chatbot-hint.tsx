@@ -4,8 +4,8 @@ import { useEffect, useState } from "react"
 import { X } from "lucide-react"
 
 const STORAGE_KEY = "chatbot-hint-seen"
-const SCROLL_THRESHOLD = 500
-const AUTO_SHOW_DELAY_MS = 10_000
+const SCROLL_THRESHOLD = 1200
+const AUTO_SHOW_DELAY_MS = 20_000
 const AUTO_HIDE_DELAY_MS = 15_000
 
 export default function ChatbotHint() {
@@ -84,14 +84,14 @@ export default function ChatbotHint() {
     return (
         <div
             aria-live="polite"
-            className={`fixed bottom-[6rem] right-4 max-w-[16rem] transition-all duration-500 ${
+            className={`fixed bottom-20 right-3 sm:bottom-[6rem] sm:right-4 max-w-[12rem] sm:max-w-[16rem] transition-all duration-500 ${
                 visible
                     ? "opacity-100 translate-y-0"
                     : "opacity-0 translate-y-2 pointer-events-none"
             }`}
             style={{ zIndex: visible ? 2147483646 : -1 }}
         >
-            <div className="relative rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-xl">
+            <div className="relative rounded-2xl border border-slate-200 bg-white px-3 py-2.5 sm:px-4 sm:py-3 shadow-xl">
                 <button
                     type="button"
                     onClick={handleDismiss}
@@ -100,10 +100,10 @@ export default function ChatbotHint() {
                 >
                     <X className="h-3.5 w-3.5" />
                 </button>
-                <p className="text-xs font-bold text-slate-900">
+                <p className="text-[11px] sm:text-xs font-bold text-slate-900">
                     お困りですか？ 💬
                 </p>
-                <p className="mt-1 text-[11px] leading-relaxed text-slate-600">
+                <p className="mt-0.5 sm:mt-1 text-[10px] sm:text-[11px] leading-snug sm:leading-relaxed text-slate-600">
                     こちらからチャットで質問できます
                 </p>
                 {/* Pointer tail toward the Dify button */}

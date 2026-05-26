@@ -18,13 +18,13 @@ export default async function InspectionPage() {
         <main className="min-h-screen bg-gray-50 py-10">
             <div className="max-w-4xl mx-auto px-4">
                 {/* ヘッダー */}
-                <div className="flex items-center justify-between mb-8">
-                    <div>
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
+                    <div className="min-w-0">
                         <Link href="/tool" className="text-sm text-blue-600 hover:underline mb-2 block">
                             ← ツール選択に戻る
                         </Link>
                         <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                            <ClipboardCheck className="w-7 h-7 text-emerald-600" />
+                            <ClipboardCheck className="w-7 h-7 text-emerald-600 shrink-0" />
                             消防設備点検スタート
                         </h1>
                         <p className="text-slate-500 mt-1 text-sm">
@@ -33,7 +33,7 @@ export default async function InspectionPage() {
                     </div>
                     <Link
                         href="/properties/new"
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+                        className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 w-full sm:w-auto"
                     >
                         <Plus className="w-4 h-4" />
                         物件を登録

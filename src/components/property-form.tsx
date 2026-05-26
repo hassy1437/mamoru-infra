@@ -36,7 +36,7 @@ const EQUIPMENT_CATEGORIES: { label: string; items: string[] }[] = [
     },
     {
         label: "避難・誘導設備",
-        items: ["避難器具", "誘導灯・誘導標識"],
+        items: ["避難器具", "誘導灯及び誘導標識"],
     },
     {
         label: "消防活動用設備等",

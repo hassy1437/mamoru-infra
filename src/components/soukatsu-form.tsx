@@ -16,6 +16,7 @@ import type { Property } from "@/types/database"
 import { ALL_EQUIPMENT_TYPES } from "@/lib/equipment-config"
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes"
 import FormProgress from "@/components/form-progress"
+import { toDateInputValue } from "@/lib/date-utils"
 
 const FORM_SECTIONS = [
     "点検基本情報",
@@ -180,13 +181,14 @@ export default function SoukatsuForm({ property, previousData }: SoukatsuFormPro
                     <CardDescription>点検の日付・種別・期間を入力してください。</CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-6 md:grid-cols-2">
-                    <div className="space-y-2">
+                    <div className="space-y-2 min-w-0">
                         <Label htmlFor="inspectionDate" required>点検年月日</Label>
                         <Input
                             id="inspectionDate"
                             type="date"
+                            className="min-w-0"
                             required
-                            value={inspectionDate}
+                            value={toDateInputValue(inspectionDate)}
                             onChange={(e) => setInspectionDate(e.target.value)}
                         />
                     </div>
@@ -217,21 +219,23 @@ export default function SoukatsuForm({ property, previousData }: SoukatsuFormPro
                             </label>
                         </div>
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-2 min-w-0">
                         <Label htmlFor="periodStart">点検期間（開始）</Label>
                         <Input
                             id="periodStart"
                             type="date"
-                            value={periodStart}
+                            className="min-w-0"
+                            value={toDateInputValue(periodStart)}
                             onChange={(e) => setPeriodStart(e.target.value)}
                         />
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-2 min-w-0">
                         <Label htmlFor="periodEnd">点検期間（終了）</Label>
                         <Input
                             id="periodEnd"
                             type="date"
-                            value={periodEnd}
+                            className="min-w-0"
+                            value={toDateInputValue(periodEnd)}
                             onChange={(e) => setPeriodEnd(e.target.value)}
                         />
                     </div>

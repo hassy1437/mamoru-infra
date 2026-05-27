@@ -11,6 +11,7 @@ import { Plus, Trash2, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { friendlyError } from "@/lib/error-messages"
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes"
+import { toDateInputValue } from "@/lib/date-utils"
 
 type EquipmentItem = {
     id: string
@@ -122,13 +123,14 @@ export default function InspectionForm() {
                     <CardDescription>報告書の基本情報を入力してください。</CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-6 md:grid-cols-2">
-                    <div className="space-y-2">
+                    <div className="space-y-2 min-w-0">
                         <Label htmlFor="reportDate">報告日</Label>
                         <Input
                             id="reportDate"
                             type="date"
+                            className="min-w-0"
                             required
-                            value={reportDate}
+                            value={toDateInputValue(reportDate)}
                             onChange={(e) => setReportDate(e.target.value)}
                         />
                     </div>

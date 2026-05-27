@@ -495,13 +495,13 @@ export default function ShokakiBekki1Form({
                     </div>
 
                     <div className="grid md:grid-cols-4 gap-4">
-                        <div className="space-y-1">
+                        <div className="space-y-1 min-w-0">
                             <Label>点検期間（開始）</Label>
-                            <Input type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} />
+                            <Input type="date" className="min-w-0" value={toDateInputValue(periodStart)} onChange={(e) => setPeriodStart(e.target.value)} />
                         </div>
-                        <div className="space-y-1">
+                        <div className="space-y-1 min-w-0">
                             <Label>点検期間（終了）</Label>
-                            <Input type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} />
+                            <Input type="date" className="min-w-0" value={toDateInputValue(periodEnd)} onChange={(e) => setPeriodEnd(e.target.value)} />
                         </div>
                         <div className="space-y-1">
                             <Label>点検者 氏名</Label>

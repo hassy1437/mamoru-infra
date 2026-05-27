@@ -13,6 +13,12 @@ import { toast } from "sonner"
 import { friendlyError } from "@/lib/error-messages"
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes"
 import type { InspectorData, ShoubouLicense, KensaLicense } from "@/types/database"
+import {
+    toDateInputValueFromParts,
+    splitDateInputValue,
+    toMonthInputValueFromParts,
+    splitMonthInputValue,
+} from "@/lib/date-utils"
 
 const SHOUBOU_TYPES = [
     { key: "toku",   label: "甲　種　特　類" },
@@ -230,36 +236,39 @@ export default function ItiranForm({ soukatsuId }: Props) {
                                     <tbody>
                                         {SHOUBOU_TYPES.map(({ key, label }) => {
                                             const lic = inspectors[idx].shoubou_licenses[key]
+                                            const issueDate = toDateInputValueFromParts(lic.issue_year, lic.issue_month, lic.issue_day)
+                                            const trainingMonth = toMonthInputValueFromParts(lic.training_year, lic.training_month)
                                             return (
                                                 <tr key={key}>
                                                     <td className="border border-gray-300 px-2 py-1 text-sm whitespace-nowrap">{label}</td>
-                                                    <td className="border border-gray-300 px-1 py-1">
-                                                        <Input className="h-9 w-16 text-sm px-1" placeholder="年" value={lic.issue_year}
-                                                            onChange={e => updateShoubouLicense(idx, key, "issue_year", e.target.value)} />
+                                                    {/* 交付年月日 (colSpan=3) */}
+                                                    <td className="border border-gray-300 px-1 py-1" colSpan={3}>
+                                                        <Input type="date" className="h-9 w-full min-w-0 text-sm" value={issueDate}
+                                                            onChange={e => {
+                                                                const { year, month, day } = splitDateInputValue(e.target.value)
+                                                                updateShoubouLicense(idx, key, "issue_year", year)
+                                                                updateShoubouLicense(idx, key, "issue_month", month)
+                                                                updateShoubouLicense(idx, key, "issue_day", day)
+                                                            }} />
                                                     </td>
+                                                    {/* 交付番号 */}
                                                     <td className="border border-gray-300 px-1 py-1">
-                                                        <Input className="h-9 w-14 text-sm px-1" placeholder="月" value={lic.issue_month}
-                                                            onChange={e => updateShoubouLicense(idx, key, "issue_month", e.target.value)} />
-                                                    </td>
-                                                    <td className="border border-gray-300 px-1 py-1">
-                                                        <Input className="h-9 w-14 text-sm px-1" placeholder="日" value={lic.issue_day}
-                                                            onChange={e => updateShoubouLicense(idx, key, "issue_day", e.target.value)} />
-                                                    </td>
-                                                    <td className="border border-gray-300 px-1 py-1">
-                                                        <Input className="h-9 w-28 text-sm px-1" placeholder="交付番号" value={lic.license_number}
+                                                        <Input className="h-9 w-full min-w-0 text-sm px-1" placeholder="交付番号" value={lic.license_number}
                                                             onChange={e => updateShoubouLicense(idx, key, "license_number", e.target.value)} />
                                                     </td>
+                                                    {/* 交付知事 */}
                                                     <td className="border border-gray-300 px-1 py-1">
-                                                        <Input className="h-9 w-20 text-sm px-1" placeholder="知事名" value={lic.issuing_governor}
+                                                        <Input className="h-9 w-full min-w-0 text-sm px-1" placeholder="知事名" value={lic.issuing_governor}
                                                             onChange={e => updateShoubouLicense(idx, key, "issuing_governor", e.target.value)} />
                                                     </td>
-                                                    <td className="border border-gray-300 px-1 py-1">
-                                                        <Input className="h-9 w-16 text-sm px-1" placeholder="年" value={lic.training_year}
-                                                            onChange={e => updateShoubouLicense(idx, key, "training_year", e.target.value)} />
-                                                    </td>
-                                                    <td className="border border-gray-300 px-1 py-1">
-                                                        <Input className="h-9 w-14 text-sm px-1" placeholder="月" value={lic.training_month}
-                                                            onChange={e => updateShoubouLicense(idx, key, "training_month", e.target.value)} />
+                                                    {/* 講習受講年月 (colSpan=2) */}
+                                                    <td className="border border-gray-300 px-1 py-1" colSpan={2}>
+                                                        <Input type="month" className="h-9 w-full min-w-0 text-sm" value={trainingMonth}
+                                                            onChange={e => {
+                                                                const { year, month } = splitMonthInputValue(e.target.value)
+                                                                updateShoubouLicense(idx, key, "training_year", year)
+                                                                updateShoubouLicense(idx, key, "training_month", month)
+                                                            }} />
                                                     </td>
                                                 </tr>
                                             )
@@ -294,36 +303,35 @@ export default function ItiranForm({ soukatsuId }: Props) {
                                     <tbody>
                                         {KENSA_TYPES.map(({ key, label }) => {
                                             const lic = inspectors[idx].kensa_licenses[key]
+                                            const issueDate = toDateInputValueFromParts(lic.issue_year, lic.issue_month, lic.issue_day)
+                                            const expiryDate = toDateInputValueFromParts(lic.expiry_year, lic.expiry_month, lic.expiry_day)
                                             return (
                                                 <tr key={key}>
                                                     <td className="border border-gray-300 px-2 py-1 text-sm whitespace-nowrap">{label}</td>
-                                                    <td className="border border-gray-300 px-1 py-1">
-                                                        <Input className="h-9 w-16 text-sm px-1" placeholder="年" value={lic.issue_year}
-                                                            onChange={e => updateKensaLicense(idx, key, "issue_year", e.target.value)} />
+                                                    {/* 交付年月日 (colSpan=3) */}
+                                                    <td className="border border-gray-300 px-1 py-1" colSpan={3}>
+                                                        <Input type="date" className="h-9 w-full min-w-0 text-sm" value={issueDate}
+                                                            onChange={e => {
+                                                                const { year, month, day } = splitDateInputValue(e.target.value)
+                                                                updateKensaLicense(idx, key, "issue_year", year)
+                                                                updateKensaLicense(idx, key, "issue_month", month)
+                                                                updateKensaLicense(idx, key, "issue_day", day)
+                                                            }} />
                                                     </td>
+                                                    {/* 交付番号 */}
                                                     <td className="border border-gray-300 px-1 py-1">
-                                                        <Input className="h-9 w-14 text-sm px-1" placeholder="月" value={lic.issue_month}
-                                                            onChange={e => updateKensaLicense(idx, key, "issue_month", e.target.value)} />
-                                                    </td>
-                                                    <td className="border border-gray-300 px-1 py-1">
-                                                        <Input className="h-9 w-14 text-sm px-1" placeholder="日" value={lic.issue_day}
-                                                            onChange={e => updateKensaLicense(idx, key, "issue_day", e.target.value)} />
-                                                    </td>
-                                                    <td className="border border-gray-300 px-1 py-1">
-                                                        <Input className="h-9 w-28 text-sm px-1" placeholder="交付番号" value={lic.license_number}
+                                                        <Input className="h-9 w-full min-w-0 text-sm px-1" placeholder="交付番号" value={lic.license_number}
                                                             onChange={e => updateKensaLicense(idx, key, "license_number", e.target.value)} />
                                                     </td>
-                                                    <td className="border border-gray-300 px-1 py-1">
-                                                        <Input className="h-9 w-16 text-sm px-1" placeholder="年" value={lic.expiry_year}
-                                                            onChange={e => updateKensaLicense(idx, key, "expiry_year", e.target.value)} />
-                                                    </td>
-                                                    <td className="border border-gray-300 px-1 py-1">
-                                                        <Input className="h-9 w-14 text-sm px-1" placeholder="月" value={lic.expiry_month}
-                                                            onChange={e => updateKensaLicense(idx, key, "expiry_month", e.target.value)} />
-                                                    </td>
-                                                    <td className="border border-gray-300 px-1 py-1">
-                                                        <Input className="h-9 w-14 text-sm px-1" placeholder="日" value={lic.expiry_day}
-                                                            onChange={e => updateKensaLicense(idx, key, "expiry_day", e.target.value)} />
+                                                    {/* 有効期限 (colSpan=3) */}
+                                                    <td className="border border-gray-300 px-1 py-1" colSpan={3}>
+                                                        <Input type="date" className="h-9 w-full min-w-0 text-sm" value={expiryDate}
+                                                            onChange={e => {
+                                                                const { year, month, day } = splitDateInputValue(e.target.value)
+                                                                updateKensaLicense(idx, key, "expiry_year", year)
+                                                                updateKensaLicense(idx, key, "expiry_month", month)
+                                                                updateKensaLicense(idx, key, "expiry_day", day)
+                                                            }} />
                                                     </td>
                                                 </tr>
                                             )

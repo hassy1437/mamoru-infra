@@ -83,11 +83,27 @@ export default async function RootLayout({
               #dify-chatbot-bubble-button {
                 background-color: #1C64F2 !important;
                 animation: mamoru-chatbot-pulse 2.5s ease-in-out infinite;
+                /* embed.min.js のデフォルト位置に依存せず明示固定 (iOS Safari のロード遅延フラッシュ対策) */
+                position: fixed !important;
+                bottom: max(1rem, env(safe-area-inset-bottom, 1rem)) !important;
+                right: max(1rem, env(safe-area-inset-right, 1rem)) !important;
+                top: auto !important;
+                left: auto !important;
               }
               #dify-chatbot-bubble-window {
                 position: fixed !important;
                 top: auto !important;
                 bottom: 5rem !important;
+                right: 1rem !important;
+                left: auto !important;
+                /* 拡大時の inline style (min-width:24rem; width:48%; min-height:43.75rem; height:88%) を !important で上書き。
+                   embed.min.js の style.cssText には !important がないため CSS rule が勝つ。
+                   結果: 拡大ボタンを押しても見た目が変わらず、画面上部に張り付く問題が起きない。 */
+                width: min(24rem, calc(100vw - 2rem)) !important;
+                height: min(43.75rem, calc(100vh - 6rem)) !important;
+                min-width: unset !important;
+                min-height: unset !important;
+                max-width: calc(100vw - 2rem) !important;
                 max-height: 65vh !important;
                 border-radius: 1rem !important;
                 box-shadow: 0 8px 32px rgba(0,0,0,0.12) !important;

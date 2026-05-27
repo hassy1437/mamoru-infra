@@ -783,8 +783,9 @@ export default function HalogenBekki7Form({
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div className="overflow-x-auto border rounded-lg">
-                        <table className="min-w-[1800px] w-full text-sm">
+                    {/* Desktop: table layout */}
+                    <div className="hidden md:block overflow-x-auto border rounded-lg">
+                        <table className="w-full text-sm">
                             <thead className="bg-slate-50">
                                 <tr>
                                     <th className="p-2 border w-16">番号</th>
@@ -844,6 +845,80 @@ export default function HalogenBekki7Form({
                                 ))}
                             </tbody>
                         </table>
+                    </div>
+
+                    {/* Mobile: 1 容器 = 1 カード */}
+                    <div className="md:hidden space-y-4">
+                        {page5Rows.map((row, idx) => (
+                            <div key={`p5-mobile-${idx}`} className="border rounded-lg p-3 space-y-3 bg-white">
+                                {/* 容器ヘッダ */}
+                                <div className="flex items-center gap-2 pb-2 border-b">
+                                    <span className="text-sm font-bold text-slate-800 whitespace-nowrap">容器 {idx + 1}</span>
+                                    <Input
+                                        value={row.no}
+                                        onChange={(e) => updateCylinderField(idx, "no", e.target.value)}
+                                        placeholder="番号"
+                                        className="h-8 w-16 text-xs"
+                                    />
+                                    <Input
+                                        value={row.cylinder_no}
+                                        onChange={(e) => updateCylinderField(idx, "cylinder_no", e.target.value)}
+                                        placeholder="容器番号"
+                                        className="h-8 flex-1 text-xs min-w-0"
+                                    />
+                                </div>
+
+                                {/* 仕様 (spec1-3) */}
+                                <div>
+                                    <div className="text-xs text-slate-500 mb-1">仕様</div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div className="space-y-1 min-w-0">
+                                            <span className="text-xs text-slate-500">全質量(kg)</span>
+                                            <Input value={row.spec1} onChange={(e) => updateCylinderField(idx, "spec1", e.target.value)} placeholder="全質量" className="h-9 text-sm" />
+                                        </div>
+                                        <div className="space-y-1 min-w-0">
+                                            <span className="text-xs text-slate-500">空質量(kg)</span>
+                                            <Input value={row.spec2} onChange={(e) => updateCylinderField(idx, "spec2", e.target.value)} placeholder="空質量" className="h-9 text-sm" />
+                                        </div>
+                                        <div className="space-y-1 min-w-0 col-span-2">
+                                            <span className="text-xs text-slate-500">ガス質量(kg)</span>
+                                            <Input value={row.spec3} onChange={(e) => updateCylinderField(idx, "spec3", e.target.value)} placeholder="ガス質量" className="h-9 text-sm" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* 測定 1-6 (温度なし) */}
+                                {([1, 2, 3, 4, 5, 6] as const).map((n) => {
+                                    const dateKey = `measure${n}_date` as const
+                                    const valueKey = `measure${n}_value` as const
+                                    return (
+                                        <div key={`m${n}-mobile`}>
+                                            <div className="text-xs text-slate-500 mb-1">測定 {n}</div>
+                                            <div className="space-y-2">
+                                                <div className="space-y-1 min-w-0">
+                                                    <span className="text-xs text-slate-500">日付</span>
+                                                    <Input
+                                                        value={row[dateKey]}
+                                                        onChange={(e) => updateCylinderField(idx, dateKey, e.target.value)}
+                                                        placeholder={n === 1 ? "2026/02/22" : "日付"}
+                                                        className="h-9 text-sm"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1 min-w-0">
+                                                    <span className="text-xs text-slate-500">値</span>
+                                                    <Input
+                                                        value={row[valueKey]}
+                                                        onChange={(e) => updateCylinderField(idx, valueKey, e.target.value)}
+                                                        placeholder={n === 1 ? "41.0" : "値"}
+                                                        className="h-9 text-sm"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        ))}
                     </div>
                 </CardContent>
             </Card>

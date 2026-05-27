@@ -550,8 +550,9 @@ export default function PowderBekki8Form({
                 <CardDescription>種別・容量等の内容、判定、不良内容、措置内容を入力してください。</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="overflow-x-auto border rounded-lg">
-                    <table className="min-w-[1080px] w-full text-sm">
+                {/* Desktop: table layout */}
+                <div className="hidden md:block overflow-x-auto border rounded-lg">
+                    <table className="w-full text-sm">
                         <thead className="bg-slate-50">
                             <tr>
                                 <th className="p-2 border w-80 text-left">点検項目</th>
@@ -601,6 +602,57 @@ export default function PowderBekki8Form({
                             ))}
                         </tbody>
                     </table>
+                </div>
+
+                {/* Mobile: card layout */}
+                <div className="md:hidden space-y-3">
+                    {labels.map((label, idx) => (
+                        <div key={`${title}-${idx}-mobile`} className="border rounded-lg p-3 space-y-2 bg-white">
+                            <div className="font-medium text-sm text-slate-800">{label}</div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="space-y-1">
+                                    <span className="text-xs text-slate-500">内容</span>
+                                    <Input
+                                        value={rows[idx]?.content ?? ""}
+                                        onChange={(e) => updateRowField(setter, idx, "content", e.target.value)}
+                                        className="h-9 text-sm"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <span className="text-xs text-slate-500">判定</span>
+                                    <select
+                                        className="w-full h-9 border border-input rounded-md bg-background px-2 text-sm"
+                                        value={rows[idx]?.judgment ?? ""}
+                                        onChange={(e) => updateRowField(setter, idx, "judgment", e.target.value)}
+                                    >
+                                        <option value="">未選択</option>
+                                        <option value="良">良</option>
+                                        <option value="否">否</option>
+                                    </select>
+                                </div>
+                            </div>
+                            {(rows[idx]?.judgment === "否" || rows[idx]?.bad_content || rows[idx]?.action_content) && (
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-1">
+                                        <span className="text-xs text-slate-500">不良内容</span>
+                                        <Input
+                                            value={rows[idx]?.bad_content ?? ""}
+                                            onChange={(e) => updateRowField(setter, idx, "bad_content", e.target.value)}
+                                            className="h-9 text-sm"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <span className="text-xs text-slate-500">措置内容</span>
+                                        <Input
+                                            value={rows[idx]?.action_content ?? ""}
+                                            onChange={(e) => updateRowField(setter, idx, "action_content", e.target.value)}
+                                            className="h-9 text-sm"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ))}
                 </div>
             </CardContent>
         </Card>

@@ -69,3 +69,20 @@ body {
   color: var(--foreground);
   font-family: "Noto Sans JP", "BIZ UDPGothic", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
 }
+
+/* iOS Safari の input[type=date|month|time|...] は WebKit 固有の
+ * -webkit-min-logical-width: intrinsic で日付フォーマット表示用の最小幅
+ * (日本語ロケール ~160-180px) を持ち、CSS の min-width: 0 や width: 100%
+ * では覆せず親要素を超えてはみ出す。-webkit-min-logical-width: 0 を
+ * 明示することで iOS Safari でも親幅に収まるようにする。Chromium には
+ * このプロパティが存在せず影響しないため、回帰なし。 */
+input[type="date"],
+input[type="month"],
+input[type="time"],
+input[type="datetime-local"],
+input[type="week"] {
+  -webkit-min-logical-width: 0;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}

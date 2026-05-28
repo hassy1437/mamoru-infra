@@ -75,12 +75,23 @@ body {
  * (日本語ロケール ~160-180px) を持ち、CSS の min-width: 0 や width: 100%
  * では覆せず親要素を超えてはみ出す。-webkit-min-logical-width: 0 を
  * 明示することで iOS Safari でも親幅に収まるようにする。Chromium には
- * このプロパティが存在せず影響しないため、回帰なし。 */
+ * このプロパティが存在せず影響しないため、回帰なし。
+ *
+ * v2: 上記でも iOS WebKit では右端が親カードの padding を侵食する症状が
+ * 残った (実機で確認)。native widget スタイル (-webkit-appearance: auto)
+ * が内部に padding-inline-end を暗黙予約していて box-sizing: border-box の
+ * 計算に乗らないのが原因と推定。-webkit-appearance: none / appearance: none
+ * で native widget スタイルを解除し、通常の border-box 入力欄として
+ * 振る舞わせる。iOS 14+ ではタップでネイティブピッカーは引き続き起動する。
+ * 副作用: placeholder の "yyyy/mm/dd" 表示やカレンダーアイコンが消える
+ * 可能性がある (機能は維持)。 */
 input[type="date"],
 input[type="month"],
 input[type="time"],
 input[type="datetime-local"],
 input[type="week"] {
+  -webkit-appearance: none;
+  appearance: none;
   -webkit-min-logical-width: 0;
   min-width: 0;
   max-width: 100%;

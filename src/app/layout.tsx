@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Noto_Sans_JP } from "next/font/google";
 import { Geist_Mono } from "next/font/google";
 import Script from "next/script";
@@ -26,12 +26,18 @@ export const metadata: Metadata = {
   title: "Mamoru Infra — 消防設備点検の報告書作成を効率化",
   description: "スマホで入力するだけで、消防設備点検結果報告書のPDFをその場で自動生成。消火器・屋内消火栓・スプリンクラー等7設備に対応。インストール不要・無料で利用可能。",
   manifest: "/manifest.json",
-  themeColor: "#2563eb",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "Mamoru Infra",
   },
+};
+
+// アプリはライトモード固定。colorScheme: 'light' で OS のダーク配色を拾わない。
+// themeColor は metadata から viewport export へ移設（Next の警告も解消）。
+export const viewport: Viewport = {
+  themeColor: "#2563eb",
+  colorScheme: "light",
 };
 
 export default async function RootLayout({

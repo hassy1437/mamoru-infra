@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { ArrowRight, Building, ClipboardCheck, Settings, Wrench, Clock, FileText } from "lucide-react"
+import { ArrowRight, Building, ClipboardCheck, Settings, Wrench, Clock, FileText, Users } from "lucide-react"
 import LogoutButton from "@/components/logout-button"
 import { InstallPrompt } from "@/components/install-prompt"
 import { createClient } from "@/lib/supabase/server"
@@ -122,6 +122,14 @@ export default async function ToolPage() {
             <Button size="lg" variant="outline" className="w-full text-base px-10 py-6 gap-3 border-slate-300 hover:bg-slate-50 hover:-translate-y-0.5 transition-all duration-300 rounded-xl font-medium text-slate-600">
               <Settings className="w-5 h-5" />
               設備出力設定
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </Button>
+          </Link>
+
+          <Link href="/inspectors" className="w-full group">
+            <Button size="lg" variant="outline" className="w-full text-base px-10 py-6 gap-3 border-slate-300 hover:bg-slate-50 hover:-translate-y-0.5 transition-all duration-300 rounded-xl font-medium text-slate-600">
+              <Users className="w-5 h-5" />
+              点検者マスタ
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Button>
           </Link>

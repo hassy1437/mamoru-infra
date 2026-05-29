@@ -11,34 +11,9 @@ import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { friendlyError } from "@/lib/error-messages"
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes"
-import type { InspectorData, ShoubouLicense, KensaLicense } from "@/types/database"
+import type { InspectorData } from "@/types/database"
 import { LicenseEditor, type LicenseEditorValue } from "@/components/license-editor"
-
-const emptyShobouLicense = (): ShoubouLicense => ({
-    issue_year: "", issue_month: "", issue_day: "",
-    license_number: "", issuing_governor: "",
-    training_year: "", training_month: "",
-})
-
-const emptyKensaLicense = (): KensaLicense => ({
-    issue_year: "", issue_month: "", issue_day: "",
-    license_number: "",
-    expiry_year: "", expiry_month: "", expiry_day: "",
-})
-
-const emptyInspector = (): InspectorData => ({
-    address: "", name: "", company: "", phone: "", equipment_names: "",
-    shoubou_licenses: {
-        toku: emptyShobouLicense(), class1: emptyShobouLicense(),
-        class2: emptyShobouLicense(), class3: emptyShobouLicense(),
-        class4: emptyShobouLicense(), class5: emptyShobouLicense(),
-        class6: emptyShobouLicense(), class7: emptyShobouLicense(),
-    },
-    shoubou_notes: "",
-    kensa_licenses: {
-        toku: emptyKensaLicense(), class1: emptyKensaLicense(), class2: emptyKensaLicense(),
-    },
-})
+import { emptyInspector } from "@/lib/inspector-helpers"
 
 interface Props {
     soukatsuId: string

@@ -662,3 +662,21 @@ export interface InspectorData {
         class2: KensaLicense
     }
 }
+
+// 点検者マスタ (inspectors テーブル)
+// migration: supabase/migrations/20260529000000_create_inspectors_table.sql
+export interface Inspector {
+    id: string
+    user_id: string
+    label: string
+    inspector_data: InspectorData
+    created_at: string
+    updated_at: string
+}
+
+export type InspectorInsert = Omit<Inspector, "id" | "user_id" | "created_at" | "updated_at"> & {
+    id?: string
+    user_id?: string
+    created_at?: string
+    updated_at?: string
+}

@@ -78,6 +78,17 @@ interface Props {
 
 const MARKS: MarkKey[] = ["A", "B", "C", "D", "E", "F"]
 
+// A〜F の器種名（テンプレ s50_kokuji14_bekki1.pdf 備考第2項に準拠）。
+// ★アルファベット順ではない（A=粉末 … F=水）。marks のキーは "A"〜"F" のまま、表示ラベルのみ。
+const MARK_TYPES: { key: MarkKey; label: string }[] = [
+    { key: "A", label: "粉末" },
+    { key: "B", label: "泡" },
+    { key: "C", label: "強化液" },
+    { key: "D", label: "二酸化炭素" },
+    { key: "E", label: "ハロゲン化物" },
+    { key: "F", label: "水" },
+]
+
 const PAGE1_ITEMS = [
     "設置場所",
     "設置間隔",
@@ -403,7 +414,8 @@ export default function ShokakiBekki1Form({
                 <CardDescription>各行で種別(A〜F)、判定、不良内容、措置内容を入力してください。</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="overflow-x-auto border rounded-lg">
+                {/* Desktop: table layout（md 以上。デスクトップは現状維持） */}
+                <div className="hidden md:block overflow-x-auto border rounded-lg">
                     <table className="min-w-[1000px] w-full text-sm">
                         <thead className="bg-slate-50">
                             <tr>
@@ -460,6 +472,79 @@ export default function ShokakiBekki1Form({
                             ))}
                         </tbody>
                     </table>
+                </div>
+
+                {/* Mobile: card layout（md 未満） */}
+                <div className="md:hidden space-y-3">
+                    {labels.map((label, idx) => {
+                        const row = rows[idx]
+                        const showMarks = noMarkFromIndex === undefined || idx < noMarkFromIndex
+                        const showDefect = row.judgment === "否" || Boolean(row.bad_content) || Boolean(row.action_content)
+                        return (
+                            <div key={`${page}-mobile-${idx}`} className="border rounded-lg p-3 space-y-2 bg-white">
+                                <div className="font-medium text-sm text-slate-800">{label}</div>
+
+                                {showMarks && (
+                                    <div className="space-y-1">
+                                        <span className="text-xs text-slate-500">種別（該当する消火器をタップ）</span>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {MARK_TYPES.map(({ key, label: typeLabel }) => {
+                                                const active = row.marks[key]
+                                                return (
+                                                    <button
+                                                        key={key}
+                                                        type="button"
+                                                        aria-pressed={active}
+                                                        onClick={() => toggleMark(page, idx, key)}
+                                                        className={`min-w-[44px] min-h-[44px] px-1.5 py-1 rounded-md border flex flex-col items-center justify-center leading-tight transition-colors ${active ? "bg-blue-600 border-blue-600 text-white" : "bg-white border-slate-300 text-slate-700"}`}
+                                                    >
+                                                        <span className="text-sm font-bold">{key}</span>
+                                                        <span className="text-[10px] whitespace-nowrap">{typeLabel}</span>
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="space-y-1">
+                                    <span className="text-xs text-slate-500">判定</span>
+                                    <select
+                                        className="w-full h-9 border border-input rounded-md bg-background px-2 text-sm"
+                                        value={row.judgment}
+                                        onChange={(e) => updateRowField(page, idx, "judgment", e.target.value)}
+                                    >
+                                        <option value="">未入力</option>
+                                        <option value="良">良</option>
+                                        <option value="否">否</option>
+                                    </select>
+                                </div>
+
+                                {showDefect && (
+                                    <div className="space-y-2">
+                                        <div className="space-y-1">
+                                            <span className="text-xs text-slate-500">不良内容</span>
+                                            <Input
+                                                value={row.bad_content}
+                                                onChange={(e) => updateRowField(page, idx, "bad_content", e.target.value)}
+                                                className="h-9 text-sm"
+                                                placeholder="不良内容"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <span className="text-xs text-slate-500">措置内容</span>
+                                            <Input
+                                                value={row.action_content}
+                                                onChange={(e) => updateRowField(page, idx, "action_content", e.target.value)}
+                                                className="h-9 text-sm"
+                                                placeholder="措置内容"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )
+                    })}
                 </div>
             </CardContent>
         </Card>
@@ -562,7 +647,8 @@ export default function ShokakiBekki1Form({
                         </div>
                     </div>
 
-                    <div className="overflow-x-auto border rounded-lg">
+                    {/* Desktop: 集計テーブル（md 以上、現状維持） */}
+                    <div className="hidden md:block overflow-x-auto border rounded-lg">
                         <table className="min-w-[760px] w-full text-sm">
                             <thead className="bg-slate-50">
                                 <tr>
@@ -587,6 +673,42 @@ export default function ShokakiBekki1Form({
                                 ))}
                             </tbody>
                         </table>
+                    </div>
+
+                    {/* Mobile: 集計を器種別カードに（md 未満） */}
+                    <div className="md:hidden space-y-3">
+                        {summaryRows.map((row, idx) => (
+                            <div key={`summary-mobile-${idx}`} className="border rounded-lg p-3 space-y-2 bg-white">
+                                <div className="space-y-1">
+                                    <span className="text-xs text-slate-500">器種名</span>
+                                    <Input
+                                        value={row.kind}
+                                        onChange={(e) => updateSummary(idx, "kind", e.target.value)}
+                                        className="h-9 text-sm"
+                                        placeholder="器種名"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {([
+                                        ["installed", "設置数"],
+                                        ["inspected", "点検数"],
+                                        ["passed", "合格数"],
+                                        ["repair_needed", "要修理数"],
+                                        ["removed", "撤去数"],
+                                    ] as const).map(([field, fieldLabel]) => (
+                                        <div key={field} className="space-y-1">
+                                            <span className="text-xs text-slate-500">{fieldLabel}</span>
+                                            <Input
+                                                inputMode="numeric"
+                                                value={row[field]}
+                                                onChange={(e) => updateSummary(idx, field, e.target.value)}
+                                                className="h-9 text-sm"
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </CardContent>
             </Card>

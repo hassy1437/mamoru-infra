@@ -44,12 +44,19 @@ export default function SoukatsuForm({ property, previousData }: SoukatsuFormPro
     const [error, setError] = useState<string | null>(null)
 
     // 基本情報
-    const [inspectionDate, setInspectionDate] = useState(new Date().toISOString().split('T')[0])
+    const initialInspectionDate = new Date().toISOString().split('T')[0]
+    const [inspectionDate, setInspectionDate] = useState(initialInspectionDate)
     const [inspectionType, setInspectionType] = useState<string>(
         (previousData?.inspection_type as string) || "機器点検"
     )
-    const [periodStart, setPeriodStart] = useState("")
-    const [periodEnd, setPeriodEnd] = useState("")
+    // 点検期間は点検年月日に追従する。初期値は点検年月日（today）と同じにして、
+    // フォームを開いた時点で3つとも揃った状態にする。
+    const [periodStart, setPeriodStart] = useState(initialInspectionDate)
+    const [periodEnd, setPeriodEnd] = useState(initialInspectionDate)
+    // 手動編集フラグ: ユーザーが開始/終了を手で変えたら true。true の項目は
+    // 点検年月日を変えても追従させない（開始・終了それぞれ独立に判定）。
+    const [startManuallyEdited, setStartManuallyEdited] = useState(false)
+    const [endManuallyEdited, setEndManuallyEdited] = useState(false)
 
     // 届出者情報（物件マスターから初期化）
     const [notifierAddress, setNotifierAddress] = useState(property?.notifier_address ?? "")
@@ -99,18 +106,6 @@ export default function SoukatsuForm({ property, previousData }: SoukatsuFormPro
         form.addEventListener("input", handler)
         return () => form.removeEventListener("input", handler)
     }, [markDirty])
-
-    // 点検は1日で完了する想定: マウント時、点検年月日に値があり（today 初期値など）
-    // 開始・終了が空なら、開始・終了にも同じ日を入れておく。ユーザーが点検年月日を
-    // 選び直さなくても最初から3つ揃う。空のときだけ補完するので、将来 periodStart/End に
-    // 初期値が入る経路（編集等）が増えても既存値は上書きしない。
-    useEffect(() => {
-        if (inspectionDate) {
-            if (!periodStart) setPeriodStart(inspectionDate)
-            if (!periodEnd) setPeriodEnd(inspectionDate)
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
 
     const updateEquipmentResult = (index: number, result: EquipmentResult["result"]) => {
         markDirty()
@@ -204,11 +199,12 @@ export default function SoukatsuForm({ property, previousData }: SoukatsuFormPro
                             onChange={(e) => {
                                 const value = e.target.value
                                 setInspectionDate(value)
-                                // 点検は1日で完了する想定: 点検年月日を選んだら、点検期間（開始・終了）が
-                                // 空のときだけ同じ日を自動補完する（手入力済みの期間は上書きしない）。
+                                // 手動編集していない項目は点検年月日に追従させる（同じ日にする）。
+                                // 手動フラグが立っている項目は触らない。ここでの setPeriod* は
+                                // 追従によるプログラム更新なので、手動フラグは立てない。
                                 if (value) {
-                                    if (!periodStart) setPeriodStart(value)
-                                    if (!periodEnd) setPeriodEnd(value)
+                                    if (!startManuallyEdited) setPeriodStart(value)
+                                    if (!endManuallyEdited) setPeriodEnd(value)
                                 }
                             }}
                         />
@@ -247,7 +243,11 @@ export default function SoukatsuForm({ property, previousData }: SoukatsuFormPro
                             type="date"
                             className="min-w-0"
                             value={toDateInputValue(periodStart)}
-                            onChange={(e) => setPeriodStart(e.target.value)}
+                            onChange={(e) => {
+                                // ユーザーが手で開始を変更 → 以降この項目は追従させない
+                                setPeriodStart(e.target.value)
+                                setStartManuallyEdited(true)
+                            }}
                         />
                     </div>
                     <div className="space-y-2 min-w-0">
@@ -257,7 +257,11 @@ export default function SoukatsuForm({ property, previousData }: SoukatsuFormPro
                             type="date"
                             className="min-w-0"
                             value={toDateInputValue(periodEnd)}
-                            onChange={(e) => setPeriodEnd(e.target.value)}
+                            onChange={(e) => {
+                                // ユーザーが手で終了を変更 → 以降この項目は追従させない
+                                setPeriodEnd(e.target.value)
+                                setEndManuallyEdited(true)
+                            }}
                         />
                     </div>
                 </CardContent>

@@ -160,12 +160,12 @@ export default function PropertyForm({ property }: PropertyFormProps) {
             {/* 届出者情報 */}
             <Card>
                 <CardHeader>
-                    <CardTitle>届出者情報</CardTitle>
+                    <CardTitle>届出者情報（所有者情報）</CardTitle>
                     <CardDescription>点検報告の届出者情報を入力してください。</CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-6 md:grid-cols-2">
                     <div className="space-y-2 md:col-span-2">
-                        <Label htmlFor="notifierName" required>氏名（名称）</Label>
+                        <Label htmlFor="notifierName" required>氏名（法人名及び役職等）</Label>
                         <Input
                             id="notifierName"
                             placeholder="氏名を入力"

@@ -189,7 +189,16 @@ export default function SoukatsuForm({ property, previousData }: SoukatsuFormPro
                             className="min-w-0"
                             required
                             value={toDateInputValue(inspectionDate)}
-                            onChange={(e) => setInspectionDate(e.target.value)}
+                            onChange={(e) => {
+                                const value = e.target.value
+                                setInspectionDate(value)
+                                // 点検は1日で完了する想定: 点検年月日を選んだら、点検期間（開始・終了）が
+                                // 空のときだけ同じ日を自動補完する（手入力済みの期間は上書きしない）。
+                                if (value) {
+                                    if (!periodStart) setPeriodStart(value)
+                                    if (!periodEnd) setPeriodEnd(value)
+                                }
+                            }}
                         />
                     </div>
                     <div className="space-y-2">

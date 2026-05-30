@@ -19,10 +19,11 @@ export default function Breadcrumb({ items }: BreadcrumbProps) {
                 <li className="flex items-center">
                     <Link
                         href="/tool"
-                        className="text-slate-400 hover:text-blue-600 transition-colors"
                         aria-label="ホーム"
+                        className="flex items-center gap-1 text-slate-500 hover:text-blue-600 hover:bg-slate-50 rounded px-1.5 py-1 transition-colors"
                     >
-                        <Home className="w-4 h-4" />
+                        <Home className="w-4 h-4 shrink-0" />
+                        <span>ホーム</span>
                     </Link>
                 </li>
                 {items.map((item, index) => (

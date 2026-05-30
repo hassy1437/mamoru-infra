@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
+import { UsageSelect } from "@/components/usage-select"
 import { Textarea } from "@/components/ui/textarea"
 import { Loader2, Building2, CheckCircle2, AlertTriangle, MinusCircle } from "lucide-react"
 import { toast } from "sonner"
@@ -331,12 +332,11 @@ export default function SoukatsuForm({ property, previousData }: SoukatsuFormPro
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="buildingUsage" required>用途</Label>
-                            <Input
+                            <UsageSelect
                                 id="buildingUsage"
-                                placeholder="例：共同住宅、事務所"
                                 required
                                 value={buildingUsage}
-                                onChange={(e) => setBuildingUsage(e.target.value)}
+                                onChange={setBuildingUsage}
                             />
                         </div>
                         <div className="space-y-2 md:col-span-2">

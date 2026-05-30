@@ -100,6 +100,18 @@ export default function SoukatsuForm({ property, previousData }: SoukatsuFormPro
         return () => form.removeEventListener("input", handler)
     }, [markDirty])
 
+    // 点検は1日で完了する想定: マウント時、点検年月日に値があり（today 初期値など）
+    // 開始・終了が空なら、開始・終了にも同じ日を入れておく。ユーザーが点検年月日を
+    // 選び直さなくても最初から3つ揃う。空のときだけ補完するので、将来 periodStart/End に
+    // 初期値が入る経路（編集等）が増えても既存値は上書きしない。
+    useEffect(() => {
+        if (inspectionDate) {
+            if (!periodStart) setPeriodStart(inspectionDate)
+            if (!periodEnd) setPeriodEnd(inspectionDate)
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+
     const updateEquipmentResult = (index: number, result: EquipmentResult["result"]) => {
         markDirty()
         setEquipmentResults(prev =>

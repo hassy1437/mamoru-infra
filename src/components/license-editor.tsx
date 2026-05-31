@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -10,6 +11,17 @@ import {
     toMonthInputValueFromParts,
     splitMonthInputValue,
 } from "@/lib/date-utils"
+
+// その分類に値が1つでも入っているか（モバイルの初期タブ選択に使う）。
+// itiran-form の isInspectorFilled と同型。保有フラグは持たず値の有無で判定する。
+const shoubouFilled = (l: ShoubouLicense) => Boolean(
+    l.issue_year || l.issue_month || l.issue_day || l.license_number ||
+    l.issuing_governor || l.training_year || l.training_month,
+)
+const kensaFilled = (l: KensaLicense) => Boolean(
+    l.issue_year || l.issue_month || l.issue_day || l.license_number ||
+    l.expiry_year || l.expiry_month || l.expiry_day,
+)
 
 export type LicenseEditorValue = Pick<
     InspectorData,
@@ -68,11 +80,52 @@ export function LicenseEditor({ value, onChange }: LicenseEditorProps) {
         })
     }
 
+    // ── モバイルの大分類2択タブ（表示制御のみ。保存データ構造は変えない）──
+    // 初期選択は値の有無で決定（マウント時の value から1回だけ算出。effect は使わない）:
+    //   点検資格者に値があれば kensa / なくて消防設備士に値があれば shoubou /
+    //   両方空（新規）はデフォルト kensa（橋本さんがよく使う方）。
+    const [mobileTab, setMobileTab] = useState<"shoubou" | "kensa">(() => {
+        const kensaHas = KENSA_TYPES.some(({ key }) => kensaFilled(value.kensa_licenses[key]))
+        if (kensaHas) return "kensa"
+        const shoubouHas = SHOUBOU_TYPES.some(({ key }) => shoubouFilled(value.shoubou_licenses[key]))
+        if (shoubouHas) return "shoubou"
+        return "kensa"
+    })
+
+    // button への flex は OK（iOS で潰れるのはネイティブ control の input/select のみ）。
+    // 縦中央寄せ＋leading-tight で、1行ラベルと2行ラベルが同じ高さで揃う。
+    const tabClass = (active: boolean) =>
+        `flex-1 min-h-[44px] px-2 py-2 rounded-md border text-sm font-medium leading-tight flex flex-col items-center justify-center transition-colors ${active ? "bg-blue-600 border-blue-600 text-white" : "bg-white border-slate-300 text-slate-700"}`
+
     return (
         <>
+            {/* Mobile: 大分類2択タブ（div の flex は OK。ネイティブ control には付けない） */}
+            <div className="md:hidden flex gap-2">
+                <button
+                    type="button"
+                    aria-pressed={mobileTab === "shoubou"}
+                    onClick={() => setMobileTab("shoubou")}
+                    className={tabClass(mobileTab === "shoubou")}
+                >
+                    消防設備士
+                </button>
+                <button
+                    type="button"
+                    aria-pressed={mobileTab === "kensa"}
+                    onClick={() => setMobileTab("kensa")}
+                    className={tabClass(mobileTab === "kensa")}
+                >
+                    {/* 「消防設備点検資格者」は幅に収まらず「者」だけ折り返すため、
+                        消防設備 / 点検資格者 の2行に明示改行する（正式名称は維持） */}
+                    <span className="block">消防設備</span>
+                    <span className="block">点検資格者</span>
+                </button>
+            </div>
+
             {/* 消防設備士 */}
             <div>
-                <h3 className="font-bold text-sm mb-3 bg-gray-100 px-3 py-2 rounded">資格：消防設備士</h3>
+                {/* 見出しは PC のみ（モバイルはタブが見出しを兼ねる） */}
+                <h3 className="hidden md:block font-bold text-sm mb-3 bg-gray-100 px-3 py-2 rounded">資格：消防設備士</h3>
                 {/* Desktop: table layout */}
                 <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-sm border-collapse">
@@ -126,8 +179,8 @@ export function LicenseEditor({ value, onChange }: LicenseEditorProps) {
                     </table>
                 </div>
 
-                {/* Mobile: 1 免状 = 1 カード */}
-                <div className="md:hidden space-y-3">
+                {/* Mobile: 消防設備士タブ選択時のみ 8 種別カードを表示 */}
+                <div className={mobileTab === "shoubou" ? "md:hidden space-y-3" : "hidden"}>
                     {SHOUBOU_TYPES.map(({ key, label }) => {
                         const lic = value.shoubou_licenses[key]
                         const issueDate = toDateInputValueFromParts(lic.issue_year, lic.issue_month, lic.issue_day)
@@ -165,7 +218,8 @@ export function LicenseEditor({ value, onChange }: LicenseEditorProps) {
                         )
                     })}
                 </div>
-                <div className="mt-2 space-y-1">
+                {/* 備考: PC は常時表示。モバイルは消防設備士タブ選択時のみ表示 */}
+                <div className={mobileTab === "shoubou" ? "mt-2 space-y-1" : "mt-2 space-y-1 hidden md:block"}>
                     <Label className="text-sm">備考</Label>
                     <Textarea
                         rows={2}
@@ -178,7 +232,8 @@ export function LicenseEditor({ value, onChange }: LicenseEditorProps) {
 
             {/* 消防設備点検資格者 */}
             <div>
-                <h3 className="font-bold text-sm mb-3 bg-gray-100 px-3 py-2 rounded">資格：消防設備点検資格者</h3>
+                {/* 見出しは PC のみ（モバイルはタブが見出しを兼ねる） */}
+                <h3 className="hidden md:block font-bold text-sm mb-3 bg-gray-100 px-3 py-2 rounded">資格：消防設備点検資格者</h3>
                 {/* Desktop: table layout */}
                 <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-sm border-collapse">
@@ -226,8 +281,8 @@ export function LicenseEditor({ value, onChange }: LicenseEditorProps) {
                     </table>
                 </div>
 
-                {/* Mobile: 1 免状 = 1 カード */}
-                <div className="md:hidden space-y-3">
+                {/* Mobile: 消防設備点検資格者タブ選択時のみ 3 種別カードを表示 */}
+                <div className={mobileTab === "kensa" ? "md:hidden space-y-3" : "hidden"}>
                     {KENSA_TYPES.map(({ key, label }) => {
                         const lic = value.kensa_licenses[key]
                         const issueDate = toDateInputValueFromParts(lic.issue_year, lic.issue_month, lic.issue_day)

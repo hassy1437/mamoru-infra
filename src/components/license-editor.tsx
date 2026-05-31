@@ -1,15 +1,28 @@
 "use client"
 
+import { useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import type { InspectorData, ShoubouLicense, KensaLicense } from "@/types/database"
+import { emptyShobouLicense, emptyKensaLicense } from "@/lib/inspector-helpers"
 import {
     toDateInputValueFromParts,
     splitDateInputValue,
     toMonthInputValueFromParts,
     splitMonthInputValue,
 } from "@/lib/date-utils"
+
+// その種別に値が1つでも入っているか（モバイルのチップ選択状態の判定に使う）。
+// itiran-form の isInspectorFilled と同型。保有フラグは持たず値の有無で判定する。
+const shoubouFilled = (l: ShoubouLicense) => Boolean(
+    l.issue_year || l.issue_month || l.issue_day || l.license_number ||
+    l.issuing_governor || l.training_year || l.training_month,
+)
+const kensaFilled = (l: KensaLicense) => Boolean(
+    l.issue_year || l.issue_month || l.issue_day || l.license_number ||
+    l.expiry_year || l.expiry_month || l.expiry_day,
+)
 
 export type LicenseEditorValue = Pick<
     InspectorData,
@@ -67,6 +80,55 @@ export function LicenseEditor({ value, onChange }: LicenseEditorProps) {
             },
         })
     }
+
+    // ── モバイルのチップ選択状態（表示制御のみ。保存データ構造は変えない）──
+    // 「選択 = その種別の入力欄を展開」を、レンダー時に value から導出する。
+    //   選択中 = その種別に値がある(filled) OR ユーザーが手動で選んだ(manual)。
+    // filled は value 由来なので、編集・pre-fill で値のある種別は自動で選択・展開される。
+    // manual は「まだ空だがユーザーがタップして開いた種別」を保持する（effect 不要）。
+    const [manualShoubou, setManualShoubou] = useState<Set<string>>(new Set())
+    const [manualKensa, setManualKensa] = useState<Set<string>>(new Set())
+
+    const isShoubouSelected = (key: keyof InspectorData["shoubou_licenses"]) =>
+        shoubouFilled(value.shoubou_licenses[key]) || manualShoubou.has(key)
+    const isKensaSelected = (key: keyof InspectorData["kensa_licenses"]) =>
+        kensaFilled(value.kensa_licenses[key]) || manualKensa.has(key)
+
+    const shoubouSelectedCount = SHOUBOU_TYPES.filter(({ key }) => isShoubouSelected(key)).length
+
+    const toggleShoubou = (key: keyof InspectorData["shoubou_licenses"]) => {
+        if (isShoubouSelected(key)) {
+            // 選択解除: 値があれば confirm のうえクリア（空種別は確認なしで畳む）
+            if (shoubouFilled(value.shoubou_licenses[key])) {
+                if (!window.confirm("入力内容を削除します。よろしいですか？")) return
+                onChange({
+                    ...value,
+                    shoubou_licenses: { ...value.shoubou_licenses, [key]: emptyShobouLicense() },
+                })
+            }
+            setManualShoubou(prev => { const n = new Set(prev); n.delete(key); return n })
+        } else {
+            setManualShoubou(prev => new Set(prev).add(key))
+        }
+    }
+
+    const toggleKensa = (key: keyof InspectorData["kensa_licenses"]) => {
+        if (isKensaSelected(key)) {
+            if (kensaFilled(value.kensa_licenses[key])) {
+                if (!window.confirm("入力内容を削除します。よろしいですか？")) return
+                onChange({
+                    ...value,
+                    kensa_licenses: { ...value.kensa_licenses, [key]: emptyKensaLicense() },
+                })
+            }
+            setManualKensa(prev => { const n = new Set(prev); n.delete(key); return n })
+        } else {
+            setManualKensa(prev => new Set(prev).add(key))
+        }
+    }
+
+    const chipClass = (selected: boolean) =>
+        `min-h-[40px] px-3 py-2 rounded-md border text-sm whitespace-nowrap transition-colors ${selected ? "bg-blue-600 border-blue-600 text-white" : "bg-white border-slate-300 text-slate-700"}`
 
     return (
         <>
@@ -126,9 +188,23 @@ export function LicenseEditor({ value, onChange }: LicenseEditorProps) {
                     </table>
                 </div>
 
-                {/* Mobile: 1 免状 = 1 カード */}
+                {/* Mobile: チップ選択式（持っている種別をタップ → 入力欄展開） */}
                 <div className="md:hidden space-y-3">
-                    {SHOUBOU_TYPES.map(({ key, label }) => {
+                    {/* 種別チップ群（div の flex は OK。ネイティブ control には付けない） */}
+                    <div className="flex flex-wrap gap-2">
+                        {SHOUBOU_TYPES.map(({ key, label }) => (
+                            <button
+                                key={`${key}-chip`}
+                                type="button"
+                                aria-pressed={isShoubouSelected(key)}
+                                onClick={() => toggleShoubou(key)}
+                                className={chipClass(isShoubouSelected(key))}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+                    {SHOUBOU_TYPES.filter(({ key }) => isShoubouSelected(key)).map(({ key, label }) => {
                         const lic = value.shoubou_licenses[key]
                         const issueDate = toDateInputValueFromParts(lic.issue_year, lic.issue_month, lic.issue_day)
                         const trainingMonth = toMonthInputValueFromParts(lic.training_year, lic.training_month)
@@ -165,7 +241,8 @@ export function LicenseEditor({ value, onChange }: LicenseEditorProps) {
                         )
                     })}
                 </div>
-                <div className="mt-2 space-y-1">
+                {/* 備考: PC は常時表示。モバイルは消防設備士チップが1つ以上選択時のみ表示 */}
+                <div className={shoubouSelectedCount > 0 ? "mt-2 space-y-1" : "hidden md:block mt-2 space-y-1"}>
                     <Label className="text-sm">備考</Label>
                     <Textarea
                         rows={2}
@@ -226,9 +303,22 @@ export function LicenseEditor({ value, onChange }: LicenseEditorProps) {
                     </table>
                 </div>
 
-                {/* Mobile: 1 免状 = 1 カード */}
+                {/* Mobile: チップ選択式（持っている種別をタップ → 入力欄展開） */}
                 <div className="md:hidden space-y-3">
-                    {KENSA_TYPES.map(({ key, label }) => {
+                    <div className="flex flex-wrap gap-2">
+                        {KENSA_TYPES.map(({ key, label }) => (
+                            <button
+                                key={`${key}-chip`}
+                                type="button"
+                                aria-pressed={isKensaSelected(key)}
+                                onClick={() => toggleKensa(key)}
+                                className={chipClass(isKensaSelected(key))}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+                    {KENSA_TYPES.filter(({ key }) => isKensaSelected(key)).map(({ key, label }) => {
                         const lic = value.kensa_licenses[key]
                         const issueDate = toDateInputValueFromParts(lic.issue_year, lic.issue_month, lic.issue_day)
                         const expiryDate = toDateInputValueFromParts(lic.expiry_year, lic.expiry_month, lic.expiry_day)

@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
 import { UsageSelect } from "@/components/usage-select"
+import { FloorSelect } from "@/components/floor-select"
 import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { friendlyError } from "@/lib/error-messages"
@@ -248,22 +249,22 @@ export default function PropertyForm({ property }: PropertyFormProps) {
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="floorAbove">地上階数</Label>
-                            <Input
+                            <FloorSelect
                                 id="floorAbove"
-                                type="number"
-                                min="0"
+                                min={1}
+                                max={30}
                                 value={floorAbove}
-                                onChange={(e) => setFloorAbove(e.target.value)}
+                                onChange={setFloorAbove}
                             />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="floorBelow">地下階数</Label>
-                            <Input
+                            <FloorSelect
                                 id="floorBelow"
-                                type="number"
-                                min="0"
+                                min={0}
+                                max={5}
                                 value={floorBelow}
-                                onChange={(e) => setFloorBelow(e.target.value)}
+                                onChange={setFloorBelow}
                             />
                         </div>
                         <div className="space-y-2">
@@ -271,6 +272,7 @@ export default function PropertyForm({ property }: PropertyFormProps) {
                             <Input
                                 id="totalFloorArea"
                                 type="number"
+                                inputMode="decimal"
                                 min="0"
                                 step="0.01"
                                 value={totalFloorArea}

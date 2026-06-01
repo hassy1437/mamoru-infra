@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Eye, FileDown, Loader2, Save } from "lucide-react"
+import { CheckCheck, Eye, FileDown, Loader2, Save } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { toDateInputValue } from "@/lib/date-utils"
 import {
@@ -407,11 +407,25 @@ export default function ShokakiBekki1Form({
         setSummaryRows((prev) => prev.map((row, i) => (i === index ? { ...row, [field]: value } : row)))
     }
 
-    const renderItemTable = (title: string, page: "p1" | "p2", labels: readonly string[], rows: RowState[], noMarkFromIndex?: number) => (
+    const renderItemTable = (title: string, page: "p1" | "p2", labels: readonly string[], rows: RowState[], noMarkFromIndex?: number) => {
+    // 「すべて良にする」: この点検項目テーブル(page1/page2)で判定が空("")の行だけ "良" に。
+    // marks(A〜F)・集計表(summaryRows)・既存の良/否は触らない。
+    const markAllGood = () => {
+        const setter = page === "p1" ? setPage1Rows : setPage2Rows
+        setter((prev) => prev.map((row) => (row.judgment === "" ? { ...row, judgment: "良" } : row)))
+    }
+    return (
         <Card>
             <CardHeader>
-                <CardTitle>{title}</CardTitle>
-                <CardDescription>各行で種別(A〜F)、判定、不良内容、措置内容を入力してください。</CardDescription>
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                        <CardTitle>{title}</CardTitle>
+                        <CardDescription>各行で種別(A〜F)、判定、不良内容、措置内容を入力してください。</CardDescription>
+                    </div>
+                    <Button type="button" variant="outline" size="sm" onClick={markAllGood} className="shrink-0">
+                        <CheckCheck className="w-4 h-4 mr-1.5" />すべて良にする
+                    </Button>
+                </div>
             </CardHeader>
             <CardContent>
                 {/* Desktop: table layout（md 以上。デスクトップは現状維持） */}
@@ -549,6 +563,7 @@ export default function ShokakiBekki1Form({
             </CardContent>
         </Card>
     )
+    }
 
     const busy = saving || loadingPreview || loadingDownload
 

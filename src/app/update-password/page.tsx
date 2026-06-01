@@ -13,21 +13,58 @@ import { Loader2 } from "lucide-react"
 export default function UpdatePasswordPage() {
     const router = useRouter()
 
-    const [checking, setChecking] = useState(true)
+    // メールリンクのエラー（#error=...&error_code=otp_expired 等）は render 時に URL から
+    // 一度だけ導出する（effect 内で setState しない＝set-state-in-effect 回避）。
+    // implicit はフラグメント(#)、PKCE 系はクエリ(?)に来るため両方を見る。
+    const [linkError] = useState<boolean>(() => {
+        if (typeof window === "undefined") return false
+        const hash = window.location.hash.replace(/^#/, "")
+        const search = window.location.search.replace(/^\?/, "")
+        const params = new URLSearchParams(`${hash}&${search}`)
+        return Boolean(params.get("error") || params.get("error_code") || params.get("error_description"))
+    })
+
+    const [checking, setChecking] = useState(!linkError) // リンクエラーなら確認不要
     const [hasSession, setHasSession] = useState(false)
     const [password, setPassword] = useState("")
     const [passwordConfirm, setPasswordConfirm] = useState("")
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
-    // メールのリンク（/auth/callback 経由）でリカバリーセッションが張られているか確認。
-    // 直アクセス等でセッションが無ければ「リンクが無効」を表示する。
+    // メールのリンクから戻った後、リカバリーセッションが張られるのを待つ。
+    // createBrowserClient は detectSessionInUrl が既定ON → URL のトークン
+    // (?code= / #access_token=) を自動でセッションに交換する。これは非同期なので
+    // getUser() の単発呼びだと交換完了前に「無し」と誤判定しうる。onAuthStateChange で待つ。
     useEffect(() => {
+        if (linkError) return // URL にエラーが載っていればセッション確認不要
+
         const supabase = createClient()
-        supabase.auth.getUser().then(({ data: { user } }) => {
-            setHasSession(!!user)
-            setChecking(false)
+        let resolved = false
+
+        const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+            if (event === "PASSWORD_RECOVERY" || session) {
+                resolved = true
+                setHasSession(true)
+                setChecking(false)
+            }
         })
+
+        // フォールバック: 既にセッションがある場合（イベントが来ないケース）
+        supabase.auth.getSession().then(({ data }) => {
+            if (data.session) {
+                resolved = true
+                setHasSession(true)
+                setChecking(false)
+            } else {
+                // 少し待ってもセッションが来なければ「無効」と判定（無限ローディング防止）
+                setTimeout(() => {
+                    if (!resolved) setChecking(false)
+                }, 2000)
+            }
+        })
+
+        return () => sub.subscription.unsubscribe()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -71,14 +108,16 @@ export default function UpdatePasswordPage() {
                         <div className="flex justify-center py-6">
                             <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
                         </div>
-                    ) : !hasSession ? (
+                    ) : (linkError || !hasSession) ? (
                         <div className="space-y-4">
                             <div className="bg-red-50 text-red-600 p-3 rounded-md border border-red-200 text-sm">
-                                リンクが無効か期限切れです。お手数ですが再度お試しください。
+                                {linkError
+                                    ? "リンクの有効期限が切れているか、無効です。お手数ですが、もう一度パスワード再設定をお試しください。"
+                                    : "リンクが無効か期限切れです。お手数ですが再度お試しください。"}
                             </div>
                             <p className="text-center text-sm text-slate-600">
                                 <Link href="/forgot-password" className="text-blue-600 hover:underline">
-                                    パスワードの再設定をやり直す
+                                    再度リクエストする
                                 </Link>
                             </p>
                         </div>

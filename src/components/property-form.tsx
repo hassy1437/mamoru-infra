@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
 import { UsageSelect } from "@/components/usage-select"
 import { FloorSelect } from "@/components/floor-select"
-import { Loader2 } from "lucide-react"
+import { Loader2, Eye } from "lucide-react"
 import { toast } from "sonner"
 import { friendlyError } from "@/lib/error-messages"
 import type { Property } from "@/types/database"
@@ -147,6 +147,45 @@ export default function PropertyForm({ property }: PropertyFormProps) {
             toast.error(msg)
         } finally {
             setLoading(false)
+        }
+    }
+
+    // 報告書表紙(houkoku)プレビュー: 現在の入力値から generate-pdf の body を組み立て、
+    // 別タブで PDF を表示する。保存はしない（DB 非依存・未保存物件でも動く）。
+    // route は無変更。点検年月日(report_date)・消防署名(fire_department_name)は
+    // 物件段階で未定のため空（houkoku 側で空はスキップ＝該当欄が空欄になるだけ）。
+    const [previewing, setPreviewing] = useState(false)
+    const handleHoukokuPreview = async () => {
+        setPreviewing(true)
+        try {
+            const houkokuBody = {
+                report_date: "",
+                fire_department_name: "",
+                notifier_address: notifierAddress,
+                notifier_name: notifierName,
+                notifier_phone: notifierPhone || null,
+                building_address: buildingAddress,
+                building_name: buildingName,
+                building_usage: buildingUsage,
+                floor_above: floorAbove ? parseInt(floorAbove) : null,
+                floor_below: floorBelow ? parseInt(floorBelow) : null,
+                total_floor_area: totalFloorArea ? parseFloat(totalFloorArea) : null,
+                equipment_types: selectedEquipment,
+            }
+            const response = await fetch("/api/generate-pdf", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(houkokuBody),
+            })
+            if (!response.ok) throw new Error("preview failed")
+            const blob = await response.blob()
+            const url = window.URL.createObjectURL(blob)
+            window.open(url, "_blank")
+            window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000)
+        } catch {
+            alert("報告書表紙プレビューの生成に失敗しました")
+        } finally {
+            setPreviewing(false)
         }
     }
 
@@ -347,7 +386,18 @@ export default function PropertyForm({ property }: PropertyFormProps) {
                 </CardContent>
             </Card>
 
-            <div className="flex justify-end pt-4">
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4">
+                <Button
+                    type="button"
+                    variant="outline"
+                    size="lg"
+                    onClick={handleHoukokuPreview}
+                    disabled={previewing}
+                    className="w-full md:w-auto"
+                >
+                    {previewing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Eye className="mr-2 h-4 w-4" />}
+                    報告書表紙プレビュー
+                </Button>
                 <Button type="submit" size="lg" disabled={loading} className="w-full md:w-auto">
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     {loading ? "保存中..." : property ? "物件情報を更新する" : "物件情報を登録する"}

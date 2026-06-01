@@ -20,9 +20,13 @@ export default function ForgotPasswordPage() {
 
         try {
             const supabase = createClient()
-            // メールリンクの戻り先は既存 /auth/callback（exchangeCodeForSession + next 対応）を再利用。
+            // メールリンクの戻り先は /update-password に直接向ける。
+            // ブラウザの createBrowserClient は detectSessionInUrl が既定ONで、
+            // URL のトークン（?code= / #access_token=）を自動でリカバリーセッションに交換する。
+            // （OAuth用の /auth/callback 経由＝server で exchangeCodeForSession は、PKCE の
+            //  code_verifier がブラウザ localStorage にあり server から検証できず recovery と噛み合わないため使わない）
             await supabase.auth.resetPasswordForEmail(email, {
-                redirectTo: `${location.origin}/auth/callback?next=/update-password`,
+                redirectTo: `${location.origin}/update-password`,
             })
         } catch {
             // ネットワークエラー等でも、メール存在の有無は明かさない（ユーザー列挙対策）。

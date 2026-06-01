@@ -36,8 +36,6 @@ export default function UpdatePasswordPage() {
     // (?code= / #access_token=) を自動でセッションに交換する。これは非同期なので
     // getUser() の単発呼びだと交換完了前に「無し」と誤判定しうる。onAuthStateChange で待つ。
     useEffect(() => {
-        // [pwreset] 一時デバッグ: マウント時の URL（トークン形式 #access_token= か ?code= か）の確認用
-        console.log("[pwreset] url at mount:", window.location.href)
         if (linkError) return // URL にエラーが載っていればセッション確認不要
 
         const supabase = createClient()
@@ -85,16 +83,20 @@ export default function UpdatePasswordPage() {
         setLoading(true)
 
         const supabase = createClient()
-        // [pwreset] 一時デバッグ: updateUser 直前のセッション有無
-        const { data: { session: preSession } } = await supabase.auth.getSession()
-        console.log("[pwreset] session at submit:", preSession ? "EXISTS" : "NULL", preSession)
-
         const { error: updateError } = await supabase.auth.updateUser({ password })
 
         if (updateError) {
-            // [pwreset] 一時デバッグ: 実エラーの name/status/message を握りつぶさず確認
-            console.error("[pwreset] updateUser error:", updateError.name, (updateError as { status?: number }).status, updateError.message, updateError)
-            setError(`[debug] ${updateError.name} / ${(updateError as { status?: number }).status} / ${updateError.message}`)
+            const msg = updateError.message || ""
+            const status = (updateError as { status?: number }).status
+            if (msg.includes("should be different") || msg.includes("different from the old")) {
+                setError("新しいパスワードは、現在のパスワードと異なるものを設定してください。")
+            } else if (msg.toLowerCase().includes("expired") || msg.includes("invalid") || status === 401) {
+                setError("リンクの有効期限が切れているか、無効です。お手数ですが、もう一度パスワード再設定をお試しください。")
+            } else if (msg.includes("at least") || (msg.includes("password") && msg.includes("characters"))) {
+                setError("パスワードは6文字以上で設定してください。")
+            } else {
+                setError("パスワードの変更に失敗しました。もう一度お試しください。")
+            }
             setLoading(false)
             return
         }

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
-import { Loader2 } from "lucide-react"
+import { Loader2, CheckCircle } from "lucide-react"
 
 export default function UpdatePasswordPage() {
     const router = useRouter()
@@ -30,6 +30,7 @@ export default function UpdatePasswordPage() {
     const [passwordConfirm, setPasswordConfirm] = useState("")
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [done, setDone] = useState(false) // 更新成功後の完了画面表示
 
     // メールのリンクから戻った後、リカバリーセッションが張られるのを待つ。
     // createBrowserClient は detectSessionInUrl が既定ON → URL のトークン
@@ -101,20 +102,36 @@ export default function UpdatePasswordPage() {
             return
         }
 
-        // 更新後は明示的に再ログインさせる（Q6）。
-        router.push("/login")
-        router.refresh()
+        // 更新成功。すぐ /login には飛ばさず完了画面を出す（ユーザーが「ログイン画面へ」を押す）。
+        // リンク経由の一時ログイン状態（リカバリーセッション）をここで終わらせる。
+        // これをしないと /login で middleware に /tool へ飛ばされうる。signOut のエラーは無視。
+        try {
+            await supabase.auth.signOut()
+        } catch {
+            // 握りつぶしてよい（完了画面は出す）
+        }
+        setLoading(false)
+        setDone(true)
     }
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
             <Card className="w-full max-w-md">
                 <CardHeader className="text-center">
-                    <CardTitle className="text-2xl">新しいパスワードの設定</CardTitle>
-                    <CardDescription>新しいパスワードを入力してください</CardDescription>
+                    <CardTitle className="text-2xl">{done ? "パスワードを変更しました" : "新しいパスワードの設定"}</CardTitle>
+                    <CardDescription>{done ? "新しいパスワードでログインしてください。" : "新しいパスワードを入力してください"}</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    {checking ? (
+                    {done ? (
+                        <div className="space-y-5 text-center">
+                            <div className="flex justify-center">
+                                <CheckCircle className="w-12 h-12 text-green-500" />
+                            </div>
+                            <Button type="button" className="w-full" onClick={() => router.push("/login")}>
+                                ログイン画面へ
+                            </Button>
+                        </div>
+                    ) : checking ? (
                         <div className="flex justify-center py-6">
                             <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
                         </div>

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Eye, FileDown, Loader2, Save, WifiOff } from "lucide-react"
+import { CheckCheck, Eye, FileDown, Loader2, Save, WifiOff } from "lucide-react"
 import { toast } from "sonner"
 import { friendlyError } from "@/lib/error-messages"
 import { supabase } from "@/lib/supabase"
@@ -415,11 +415,35 @@ export default function BekkiResultFormBase({
         }))
     }
 
+    // 「すべて良にする」: そのセクションの判定が空("")の行だけ "良" にする。
+    // 既に "良"/"否" の行は触らない（不良の意図・既入力を上書きしない）。
+    const markAllGoodInSection = (key: BekkiPageRowsKey) => {
+        setRowsByKey((prev) => ({
+            ...prev,
+            [key]: prev[key].map((row) => (row.judgment === "" ? { ...row, judgment: "良" } : row)),
+        }))
+    }
+
     const renderItemTable = (section: SectionConfig) => (
         <Card key={section.key}>
             <CardHeader>
-                <CardTitle>{section.title}</CardTitle>
-                <CardDescription>種別・容量等の内容、判定、不良内容、措置内容を入力してください。</CardDescription>
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                        <CardTitle>{section.title}</CardTitle>
+                        <CardDescription>種別・容量等の内容、判定、不良内容、措置内容を入力してください。</CardDescription>
+                    </div>
+                    {/* 判定が空の行だけ一括で「良」にする（既入力の良/否は変えない） */}
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => markAllGoodInSection(section.key)}
+                        className="shrink-0"
+                    >
+                        <CheckCheck className="w-4 h-4 mr-1.5" />
+                        すべて良にする
+                    </Button>
+                </div>
             </CardHeader>
             <CardContent>
                 {/* Desktop: table layout */}

@@ -76,6 +76,11 @@ function LoginForm() {
                             required
                         />
                     </div>
+                    <p className="text-right text-sm">
+                        <Link href="/forgot-password" className="text-blue-600 hover:underline">
+                            パスワードをお忘れの方
+                        </Link>
+                    </p>
                     <Button type="submit" className="w-full" disabled={loading}>
                         {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                         ログイン

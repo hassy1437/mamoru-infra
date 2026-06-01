@@ -36,6 +36,8 @@ export default function UpdatePasswordPage() {
     // (?code= / #access_token=) を自動でセッションに交換する。これは非同期なので
     // getUser() の単発呼びだと交換完了前に「無し」と誤判定しうる。onAuthStateChange で待つ。
     useEffect(() => {
+        // [pwreset] 一時デバッグ: マウント時の URL（トークン形式 #access_token= か ?code= か）の確認用
+        console.log("[pwreset] url at mount:", window.location.href)
         if (linkError) return // URL にエラーが載っていればセッション確認不要
 
         const supabase = createClient()
@@ -83,10 +85,16 @@ export default function UpdatePasswordPage() {
         setLoading(true)
 
         const supabase = createClient()
+        // [pwreset] 一時デバッグ: updateUser 直前のセッション有無
+        const { data: { session: preSession } } = await supabase.auth.getSession()
+        console.log("[pwreset] session at submit:", preSession ? "EXISTS" : "NULL", preSession)
+
         const { error: updateError } = await supabase.auth.updateUser({ password })
 
         if (updateError) {
-            setError("パスワードの変更に失敗しました。リンクの期限が切れている可能性があります。再度お試しください。")
+            // [pwreset] 一時デバッグ: 実エラーの name/status/message を握りつぶさず確認
+            console.error("[pwreset] updateUser error:", updateError.name, (updateError as { status?: number }).status, updateError.message, updateError)
+            setError(`[debug] ${updateError.name} / ${(updateError as { status?: number }).status} / ${updateError.message}`)
             setLoading(false)
             return
         }

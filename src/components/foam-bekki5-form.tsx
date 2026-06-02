@@ -296,14 +296,7 @@ export default function FoamBekki5Form({
     const [saveMessage, setSaveMessage] = useState<string | null>(
         formatSavedAt(savedUpdatedAt) ? `最終保存: ${formatSavedAt(savedUpdatedAt)}` : null
     )
-    const [pdfUrl, setPdfUrl] = useState<string | null>(null)
-    const pdfUrlRef = useRef<string | null>(null)
 
-    const setNextPdfUrl = (nextUrl: string | null) => {
-        if (pdfUrlRef.current) window.URL.revokeObjectURL(pdfUrlRef.current)
-        pdfUrlRef.current = nextUrl
-        setPdfUrl(nextUrl)
-    }
 
     const payload = useMemo<FoamBekki5Payload>(() => ({
         form_name: formName,
@@ -407,11 +400,11 @@ export default function FoamBekki5Form({
         setError(null)
         try {
             const blob = await generatePdfBlob()
-            const nextUrl = window.URL.createObjectURL(blob)
-            setNextPdfUrl(nextUrl)
+            const url = window.URL.createObjectURL(blob)
+            window.open(url, "_blank")
+            window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000)
         } catch {
-            setError("PDFプレビュー生成に失敗しました。")
-            setNextPdfUrl(null)
+            setError("PDFプレビューの生成に失敗しました。")
         } finally {
             setLoadingPreview(false)
         }
@@ -447,11 +440,7 @@ export default function FoamBekki5Form({
         return () => { persistDraftRef.current(false) }
     }, [])
 
-    useEffect(() => {
-        return () => {
-            if (pdfUrlRef.current) window.URL.revokeObjectURL(pdfUrlRef.current)
-        }
-    }, [])
+
 
     const updateRowField = (
         setter: Dispatch<SetStateAction<RowState[]>>,
@@ -863,11 +852,11 @@ export default function FoamBekki5Form({
             <div className="flex gap-2 flex-wrap items-center">
                 <Button type="button" onClick={handleSave} disabled={busy} className="bg-slate-700 hover:bg-slate-800 text-white">
                     {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                    DB保存
+                    保存
                 </Button>
                 <Button type="button" onClick={handlePreview} disabled={busy} className="bg-blue-600 hover:bg-blue-700 text-white">
                     {loadingPreview ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Eye className="w-4 h-4 mr-2" />}
-                    PDFプレビュー更新
+                    プレビュー
                 </Button>
                 <Button type="button" onClick={handleDownload} disabled={busy} className="bg-emerald-600 hover:bg-emerald-700 text-white">
                     {loadingDownload ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileDown className="w-4 h-4 mr-2" />}
@@ -878,11 +867,7 @@ export default function FoamBekki5Form({
 
             {error && <p className="text-sm text-red-600">{error}</p>}
 
-            {pdfUrl && (
-                <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-                    <iframe src={pdfUrl} title="泡消火設備点検票PDFプレビュー" className="w-full h-[75vh] md:h-[calc(100vh-220px)]" />
-                </div>
-            )}
+
         </div>
     )
 }

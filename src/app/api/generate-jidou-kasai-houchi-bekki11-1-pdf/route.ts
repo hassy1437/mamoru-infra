@@ -3,7 +3,7 @@ import { PDFDocument, rgb, type PDFPage } from "pdf-lib"
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
-import { drawWrappedTextInCell, formatJapaneseDateText } from "@/lib/pdf-form-helpers"
+import { drawWrappedTextInCell, formatJapaneseDateText, formatJudgment } from "@/lib/pdf-form-helpers"
 import { normalizeInspectorNameValue, normalizeWitnessValue } from "@/lib/bekki-header-normalization"
 
 type BekkiRow = { content?: string; judgment?: string; bad_content?: string; action_content?: string }
@@ -297,7 +297,7 @@ export async function POST(req: NextRequest) {
                     const cw = contentOverrides?.[i]?.w ?? cols.contentW
                     drawWrappedInCell(page, pageHeight, row.content, cx, top, cw, h, 6.3)
                 }
-                drawInCell(page, pageHeight, row.judgment, cols.judgmentX, top, cols.judgmentW, h, 7.8, { align: "center" })
+                drawInCell(page, pageHeight, formatJudgment(row.judgment), cols.judgmentX, top, cols.judgmentW, h, 7.8, { align: "center" })
                 drawWrappedInCell(page, pageHeight, row.bad_content, cols.badX, top, cols.badW, h, 6.1)
                 drawWrappedInCell(page, pageHeight, row.action_content, cols.actionX, top, cols.actionW, h, 6.1)
             }

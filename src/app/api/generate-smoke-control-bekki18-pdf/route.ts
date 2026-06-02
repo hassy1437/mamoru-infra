@@ -12,6 +12,7 @@ import {
     parseDateParts,
     type CellDrawOptions,
     type DateAnchors,
+    formatJudgment,
 } from "@/lib/pdf-form-helpers"
 
 type BekkiRow = { content?: string; judgment?: string; bad_content?: string; action_content?: string; current_value?: string }
@@ -143,7 +144,7 @@ export async function POST(req: NextRequest) {
                 const cx = contentOverrides?.[i]?.x ?? cols.contentX
                 const cw = contentOverrides?.[i]?.w ?? cols.contentW
                 drawWrappedInCell(page, pageHeight, row.content, cx, top, cw, h, sizes?.content ?? 6.2)
-                drawInCell(page, pageHeight, row.judgment, cols.judgmentX, top, cols.judgmentW, h, sizes?.judgment ?? 7.2, {
+                drawInCell(page, pageHeight, formatJudgment(row.judgment), cols.judgmentX, top, cols.judgmentW, h, sizes?.judgment ?? 7.2, {
                     align: "center",
                 })
                 drawWrappedInCell(page, pageHeight, row.bad_content, cols.badX, top, cols.badW, h, sizes?.bad ?? 6.0)

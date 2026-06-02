@@ -3,7 +3,7 @@ import { PDFDocument, rgb, type PDFPage } from "pdf-lib"
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
-import { drawWrappedTextInCell, formatJapaneseDateText } from "@/lib/pdf-form-helpers"
+import { drawWrappedTextInCell, formatJapaneseDateText, formatJudgment } from "@/lib/pdf-form-helpers"
 
 type BekkiRow = { content?: string; judgment?: string; bad_content?: string; action_content?: string; hose_count?: string; nozzle_dia?: string }
 type DeviceRow = { name?: string; model?: string; calibrated_at?: string; maker?: string }
@@ -205,7 +205,7 @@ export async function POST(req: NextRequest) {
                 if (!skipContentRows.has(i)) {
                     drawWrappedInCell(page, pageHeight, row.content, columns.contentX, top, columns.contentW, h, 6.4)
                 }
-                drawInCell(page, pageHeight, row.judgment, columns.judgmentX, top, columns.judgmentW, h, 7.8, { align: "center" })
+                drawInCell(page, pageHeight, formatJudgment(row.judgment), columns.judgmentX, top, columns.judgmentW, h, 7.8, { align: "center" })
                 drawWrappedInCell(page, pageHeight, row.bad_content, columns.badX, top, columns.badW, h, 6.2)
                 drawWrappedInCell(page, pageHeight, row.action_content, columns.actionX, top, columns.actionW, h, 6.2)
             }

@@ -3,7 +3,7 @@ import { PDFDocument, rgb, PDFPage } from "pdf-lib"
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
-import { drawWrappedTextInCell, formatJapaneseDateText } from "@/lib/pdf-form-helpers"
+import { drawWrappedTextInCell, formatJapaneseDateText, formatJudgment } from "@/lib/pdf-form-helpers"
 
 type MarkKey = "A" | "B" | "C" | "D" | "E" | "F"
 
@@ -351,7 +351,7 @@ export async function POST(req: NextRequest) {
                 drawMark(page1, p1Height, "\u30EC", col.x, top, col.w, h)
             })
 
-            drawInCell(page1, p1Height, row.judgment, 317.76, top, 30.6, h, 9.2, { align: "center" })
+            drawInCell(page1, p1Height, formatJudgment(row.judgment), 317.76, top, 30.6, h, 9.2, { align: "center" })
             drawWrappedInCell(page1, p1Height, row.bad_content, 349.32, top, 93.48, h, 7.3)
             drawWrappedInCell(page1, p1Height, row.action_content, 444.24, top, 85.32, h, 7.3)
         }
@@ -370,7 +370,7 @@ export async function POST(req: NextRequest) {
                 drawMark(page2, p2Height, "\u30EC", col.x, top, col.w, h)
             })
 
-            drawInCell(page2, p2Height, row.judgment, 323.04, top, 36.24, h, 9.2, { align: "center" })
+            drawInCell(page2, p2Height, formatJudgment(row.judgment), 323.04, top, 36.24, h, 9.2, { align: "center" })
             drawWrappedInCell(page2, p2Height, row.bad_content, 359.5, top, 88.0, h, 7.2)
             drawWrappedInCell(page2, p2Height, row.action_content, 449.0, top, 80.0, h, 7.2)
         }

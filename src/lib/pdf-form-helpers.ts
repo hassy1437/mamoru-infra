@@ -76,6 +76,16 @@ type DrawJapaneseDateInCellArgs = Omit<DrawTextInCellArgs, "text"> & {
 
 export const normalizeText = (value: unknown) => String(value ?? "").replace(/\s+/g, " ").trim()
 
+// 判定の表示記号化（PDF描画専用）。UI・保存値・ロジック判定は "良"/"否" のまま不変。
+// 告示第14号の記号に準拠: 正常=○(U+25CB)、不良=×(U+00D7)。空は空のまま。
+// "不良" は fixture 不備の保険（実フォームは "否" を保存）。
+export const formatJudgment = (value: unknown): string => {
+    const v = String(value ?? "").trim()
+    if (v === "良") return "○" // ○
+    if (v === "否" || v === "不良") return "×" // ×
+    return v
+}
+
 const getDatePartsFromNormalizedText = (raw: string) => {
     const explicitMatch = raw.match(/^(\d{4})\D+(\d{1,2})\D+(\d{1,2})$/)
     if (explicitMatch) {

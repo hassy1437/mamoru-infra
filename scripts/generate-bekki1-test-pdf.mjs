@@ -2,6 +2,8 @@ import { PDFDocument, rgb } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import fs from "fs";
 import path from "path";
+// 判定の表示記号化（実 route の formatJudgment と同じ。baseline 同期用）
+const fmtJudg = (v) => (v === "良" ? "○" : (v === "否" || v === "不良") ? "×" : (v ?? ""));
 
 const pdfPath = path.join(process.cwd(), "public", "PDF", "s50_kokuji14_bekki1.pdf");
 const fontPath = path.join(process.cwd(), "public", "fonts", "NotoSansJP-Regular.ttf");
@@ -290,7 +292,7 @@ const page1Rows = Array.from({ length: 19 }, (_, i) => ({
     C: i % 5 === 0,
     F: i === 2 || i === 10,
   },
-  judgment: i % 4 === 2 ? "不良" : "良",
+  judgment: i % 4 === 2 ? "否" : "良",
   bad_content: i % 4 === 2
     ? "作動不良・圧力低下・表示劣化が見られるため継続使用不可の可能性あり"
     : "",
@@ -304,7 +306,7 @@ const page2Rows = Array.from({ length: 20 }, (_, i) => ({
     B: i % 2 === 0,
     D: i % 5 === 1,
   },
-  judgment: i === 1 || i === 16 ? "不良" : "良",
+  judgment: i === 1 || i === 16 ? "否" : "良",
   bad_content: i === 1
     ? "変形・腐食・漏れ跡あり"
     : (i === 16 ? "放射能力不足が疑われるため再測定要" : ""),
@@ -381,7 +383,7 @@ for (let i = 0; i < Math.min(testBody.page1_rows.length, P1_ROW_BOUNDS.length - 
     drawMark(page1, p1Height, "レ", col.x, top, col.w, h);
   });
 
-  drawInCell(page1, p1Height, row.judgment, 317.76, top, 30.6, h, 9.2, { align: "center" });
+  drawInCell(page1, p1Height, fmtJudg(row.judgment), 317.76, top, 30.6, h, 9.2, { align: "center" });
   drawWrappedInCell(page1, p1Height, row.bad_content, 349.32, top, 93.48, h, 7.3);
   drawWrappedInCell(page1, p1Height, row.action_content, 444.24, top, 85.32, h, 7.3);
 }
@@ -399,7 +401,7 @@ for (let i = 0; i < Math.min(testBody.page2_rows.length, P2_ROW_BOUNDS.length - 
     drawMark(page2, p2Height, "レ", col.x, top, col.w, h);
   });
 
-  drawInCell(page2, p2Height, row.judgment, 323.04, top, 36.24, h, 9.2, { align: "center" });
+  drawInCell(page2, p2Height, fmtJudg(row.judgment), 323.04, top, 36.24, h, 9.2, { align: "center" });
   drawWrappedInCell(page2, p2Height, row.bad_content, 359.5, top, 88.0, h, 7.2);
   drawWrappedInCell(page2, p2Height, row.action_content, 449.0, top, 80.0, h, 7.2);
 }

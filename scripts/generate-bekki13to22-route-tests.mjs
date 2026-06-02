@@ -3,7 +3,7 @@ import { runRoutePdf } from "./run-route-pdf.mjs";
 const makeRows = (count, prefix) =>
   Array.from({ length: count }, (_, i) => ({
     content: `${prefix} 点検項目 ${i + 1}`,
-    judgment: i % 5 === 2 ? "不良" : "良",
+    judgment: i % 5 === 2 ? "否" : "良",
     bad_content:
       i % 5 === 2
         ? "作動不良・圧力低下・表示劣化あり。継続使用前に再点検が必要です。"

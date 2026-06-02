@@ -12,6 +12,7 @@ import {
     parseDateParts,
     type CellDrawOptions,
     type DateAnchors,
+    formatJudgment,
 } from "@/lib/pdf-form-helpers"
 
 type BekkiRow = {
@@ -208,7 +209,7 @@ export async function POST(req: NextRequest) {
                 drawWrappedInCell(page, pageHeight, row.content_tsuro, COL_TSURO.x, top, COL_TSURO.w, h, cSize)
                 // 客席列
                 drawWrappedInCell(page, pageHeight, row.content_kyaku, COL_KYAKU.x, top, COL_KYAKU.w, h, cSize)
-                drawInCell(page, pageHeight, row.judgment, cols.judgmentX, top, cols.judgmentW, h, sizes?.judgment ?? 7.4, { align: "center" })
+                drawInCell(page, pageHeight, formatJudgment(row.judgment), cols.judgmentX, top, cols.judgmentW, h, sizes?.judgment ?? 7.4, { align: "center" })
                 drawWrappedInCell(page, pageHeight, row.bad_content, cols.badX, top, cols.badW, h, sizes?.bad ?? 6.1)
                 drawWrappedInCell(page, pageHeight, row.action_content, cols.actionX, top, cols.actionW, h, sizes?.action ?? 6.1)
             }

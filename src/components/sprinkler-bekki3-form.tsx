@@ -67,6 +67,7 @@ interface Props {
         building_name?: string | null
         building_address?: string | null
         notifier_name?: string | null
+        fire_manager_name?: string | null
         inspector_name?: string | null
         inspection_date?: string | null
     }
@@ -282,7 +283,7 @@ export default function SprinklerBekki3Form({
     const saved = savedPayload ?? {}
 
     const [formName, setFormName] = useState(coerceString(saved.form_name, initial.building_name ?? ""))
-    const [fireManager, setFireManager] = useState(coerceString(saved.fire_manager, initial.notifier_name ?? ""))
+    const [fireManager, setFireManager] = useState(coerceString(saved.fire_manager, initial.fire_manager_name || initial.notifier_name || ""))
     const [witness, setWitness] = useState(normalizeBekkiWitnessForState(coerceString(saved.witness)))
     const [location, setLocation] = useState(coerceString(saved.location, initial.building_address ?? ""))
     const [inspectionType, setInspectionType] = useState(coerceString(saved.inspection_type, "機器・総合"))

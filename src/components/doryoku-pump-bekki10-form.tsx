@@ -9,6 +9,7 @@ interface Props {
         building_name?: string | null
         building_address?: string | null
         notifier_name?: string | null
+        fire_manager_name?: string | null
         inspector_name?: string | null
         inspection_date?: string | null
     }

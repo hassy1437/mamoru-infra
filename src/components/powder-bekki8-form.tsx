@@ -474,6 +474,27 @@ export default function PowderBekki8Form({
         setError(null)
         // ポップアップブロック対策: クリック同期で先に空タブを開く（fetch 後の window.open はブロックされうる、特に iOS Safari）
         const previewWindow = window.open("", "_blank")
+        if (previewWindow) {
+            // 空タブにローディング表示を書き込む（真っ白→「生成中」に。生成後 location.href で差し替え）
+            previewWindow.document.write(`<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PDFプレビュー</title>
+<style>
+  body { margin:0; height:100vh; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; font-family:
+    -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
+    color:#334155; background:#f8fafc; }
+  .spinner { width:40px; height:40px; border:4px solid #cbd5e1;
+    border-top-color:#2563eb; border-radius:50%;
+    animation:spin 0.8s linear infinite; margin-bottom:16px; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .msg { font-size:15px; }
+</style></head>
+<body><div class="spinner"></div>
+<div class="msg">PDFを生成しています…</div></body></html>`)
+            previewWindow.document.close()
+        }
         try {
             const blob = await generatePdfBlob()
             const url = window.URL.createObjectURL(blob)

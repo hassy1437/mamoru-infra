@@ -42,10 +42,10 @@ export default async function HalogenBekki7Page({
     const { data: property } = soukatsu.property_id
         ? await supabase
             .from("properties")
-            .select("equipment_types")
+            .select("equipment_types, fire_manager_name")
             .eq("id", soukatsu.property_id)
             .single()
-        : { data: null as { equipment_types: unknown } | null }
+        : { data: null as { equipment_types: unknown; fire_manager_name: string | null } | null }
 
     if (!hasItiranInputStep(CURRENT_STEP_ID, property?.equipment_types)) {
         return notFound()
@@ -101,6 +101,7 @@ export default async function HalogenBekki7Page({
                         building_name: soukatsu.building_name,
                         building_address: soukatsu.building_address,
                         notifier_name: soukatsu.notifier_name,
+                        fire_manager_name: property?.fire_manager_name ?? null,
                         inspector_name: inspector1?.name ?? "",
                         inspection_date: soukatsu.inspection_date,
                     }}

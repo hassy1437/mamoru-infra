@@ -65,6 +65,9 @@ export default function PropertyForm({ property }: PropertyFormProps) {
     const [notifierAddress, setNotifierAddress] = useState(property?.notifier_address ?? "")
     const [notifierPhone, setNotifierPhone] = useState(property?.notifier_phone ?? "")
 
+    // 防火管理者（氏名のみ・任意）。各点検様式(bekki)の fire_manager 初期値に使う（PR-2）。
+    const [fireManagerName, setFireManagerName] = useState(property?.fire_manager_name ?? "")
+
     // 防火対象物情報
     const [buildingName, setBuildingName] = useState(property?.building_name ?? "")
     const [buildingAddress, setBuildingAddress] = useState(property?.building_address ?? "")
@@ -113,6 +116,7 @@ export default function PropertyForm({ property }: PropertyFormProps) {
                 notifier_name: notifierName,
                 notifier_address: notifierAddress,
                 notifier_phone: notifierPhone || null,
+                fire_manager_name: fireManagerName || null,
                 building_name: buildingName,
                 building_address: buildingAddress,
                 building_usage: buildingUsage,
@@ -213,6 +217,15 @@ export default function PropertyForm({ property }: PropertyFormProps) {
                             required
                             value={notifierName}
                             onChange={(e) => setNotifierName(e.target.value)}
+                        />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                        <Label htmlFor="fireManagerName">防火管理者（氏名）</Label>
+                        <Input
+                            id="fireManagerName"
+                            placeholder="例：山田太郎（選任していない場合は空欄）"
+                            value={fireManagerName}
+                            onChange={(e) => setFireManagerName(e.target.value)}
                         />
                     </div>
                     <div className="space-y-2">

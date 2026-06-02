@@ -22,6 +22,7 @@ export interface Database {
                     notifier_name: string
                     notifier_address: string
                     notifier_phone: string | null
+                    fire_manager_name: string | null
                     building_name: string
                     building_address: string
                     building_usage: string
@@ -43,6 +44,7 @@ export interface Database {
                     notifier_name: string
                     notifier_address: string
                     notifier_phone?: string | null
+                    fire_manager_name?: string | null
                     building_name: string
                     building_address: string
                     building_usage: string
@@ -64,6 +66,7 @@ export interface Database {
                     notifier_name?: string
                     notifier_address?: string
                     notifier_phone?: string | null
+                    fire_manager_name?: string | null
                     building_name?: string
                     building_address?: string
                     building_usage?: string

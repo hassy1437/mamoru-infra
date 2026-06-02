@@ -416,12 +416,22 @@ export default function SprinklerBekki3Form({
     const handlePreview = useCallback(async () => {
         setLoadingPreview(true)
         setError(null)
+        // ポップアップブロック対策: クリック同期で先に空タブを開く（fetch 後の window.open はブロックされうる、特に iOS Safari）
+        const previewWindow = window.open("", "_blank")
         try {
             const blob = await generatePdfBlob()
             const url = window.URL.createObjectURL(blob)
-            window.open(url, "_blank")
+            if (previewWindow) {
+                // 開いておいたタブに生成PDFを流し込む
+                previewWindow.location.href = url
+            } else {
+                // ポップアップが完全に無効な場合のフォールバック（従来どおり開く）
+                window.open(url, "_blank")
+            }
+            // タブが PDF を読み込んだ後に解放（表示は妨げない）
             window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000)
         } catch {
+            if (previewWindow) previewWindow.close()
             setError("PDFプレビューの生成に失敗しました。")
         } finally {
             setLoadingPreview(false)

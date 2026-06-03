@@ -3,15 +3,25 @@ import { PDFDocument, rgb, PDFPage } from "pdf-lib"
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
-import { drawWrappedTextInCell, formatJapaneseDateText, formatJudgment } from "@/lib/pdf-form-helpers"
+import { drawWrappedTextInCell, formatJapaneseDateText } from "@/lib/pdf-form-helpers"
 
 type MarkKey = "A" | "B" | "C" | "D" | "E" | "F"
 
 type BekkiRow = {
     marks?: Partial<Record<MarkKey, boolean>>
     judgment?: string
+    bad_count?: string
     bad_content?: string
     action_content?: string
+}
+
+// 備考3（消火器具の特例）: 判定欄は 正常=○ / 不良=不良個数を記入。空は空。
+// 否で個数未入力のときは × にフォールバック（判定欄が空にならないように）。
+// ※ bekki1 専用。他22様式は A1 の formatJudgment（○/×）のまま。
+const formatBekki1Judgment = (judgment?: string, badCount?: string): string => {
+    if (judgment === "良") return "○"
+    if (judgment === "否") return String(badCount ?? "").trim() || "×"
+    return ""
 }
 
 type DeviceRow = {
@@ -351,7 +361,7 @@ export async function POST(req: NextRequest) {
                 drawMark(page1, p1Height, "\u30EC", col.x, top, col.w, h)
             })
 
-            drawInCell(page1, p1Height, formatJudgment(row.judgment), 317.76, top, 30.6, h, 9.2, { align: "center" })
+            drawInCell(page1, p1Height, formatBekki1Judgment(row.judgment, row.bad_count), 317.76, top, 30.6, h, 9.2, { align: "center" })
             drawWrappedInCell(page1, p1Height, row.bad_content, 349.32, top, 93.48, h, 7.3)
             drawWrappedInCell(page1, p1Height, row.action_content, 444.24, top, 85.32, h, 7.3)
         }
@@ -370,7 +380,7 @@ export async function POST(req: NextRequest) {
                 drawMark(page2, p2Height, "\u30EC", col.x, top, col.w, h)
             })
 
-            drawInCell(page2, p2Height, formatJudgment(row.judgment), 323.04, top, 36.24, h, 9.2, { align: "center" })
+            drawInCell(page2, p2Height, formatBekki1Judgment(row.judgment, row.bad_count), 323.04, top, 36.24, h, 9.2, { align: "center" })
             drawWrappedInCell(page2, p2Height, row.bad_content, 359.5, top, 88.0, h, 7.2)
             drawWrappedInCell(page2, p2Height, row.action_content, 449.0, top, 80.0, h, 7.2)
         }

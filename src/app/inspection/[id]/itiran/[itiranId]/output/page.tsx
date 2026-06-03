@@ -32,8 +32,8 @@ export default async function OutputPage({
     if (!itiran) return notFound()
 
     const { data: property } = soukatsu.property_id
-        ? await supabase.from("properties").select("equipment_types").eq("id", soukatsu.property_id).single()
-        : { data: null as { equipment_types: unknown } | null }
+        ? await supabase.from("properties").select("equipment_types, fire_manager_name").eq("id", soukatsu.property_id).single()
+        : { data: null as { equipment_types: unknown; fire_manager_name: string | null } | null }
 
     const applicableSteps = selectedSteps(property?.equipment_types)
     const applicableStepIds = applicableSteps.map((s) => s.id)
@@ -72,6 +72,9 @@ export default async function OutputPage({
     // Sanitize data to avoid structured clone issues with server→client serialization
     const sanitizedSoukatsu = JSON.parse(JSON.stringify(soukatsu))
     const sanitizedItiran = JSON.parse(JSON.stringify(itiran))
+    // 総括表(別記様式第2)の右ヘッダ: 防火管理者欄=物件の防火管理者名、点検実施責任者欄=点検者1の氏名。
+    sanitizedSoukatsu.fire_manager = property?.fire_manager_name ?? ""
+    sanitizedSoukatsu.inspector_responsible = (itiran.inspector1 as { name?: string } | null)?.name ?? ""
     const sanitizedBekkiPayloads = JSON.parse(JSON.stringify(bekkiPayloads))
 
     return (

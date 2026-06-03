@@ -358,7 +358,7 @@ export async function POST(req: NextRequest) {
             MARK_KEYS.forEach((k, colIndex) => {
                 if (!row?.marks?.[k]) return
                 const col = P1_TYPE_COLS[colIndex]
-                drawMark(page1, p1Height, "\u30EC", col.x, top, col.w, h)
+                drawMark(page1, p1Height, "\u25CB", col.x, top, col.w, h)
             })
 
             drawInCell(page1, p1Height, formatBekki1Judgment(row.judgment, row.bad_count), 317.76, top, 30.6, h, 9.2, { align: "center" })
@@ -377,7 +377,7 @@ export async function POST(req: NextRequest) {
                 if (!row?.marks?.[k]) return
                 if (i >= 18) return // 簡易消化用具行（外形・水量等）はマーク列なし
                 const col = P2_TYPE_COLS[colIndex]
-                drawMark(page2, p2Height, "\u30EC", col.x, top, col.w, h)
+                drawMark(page2, p2Height, "\u25CB", col.x, top, col.w, h)
             })
 
             drawInCell(page2, p2Height, formatBekki1Judgment(row.judgment, row.bad_count), 323.04, top, 36.24, h, 9.2, { align: "center" })

@@ -383,7 +383,7 @@ for (let i = 0; i < Math.min(testBody.page1_rows.length, P1_ROW_BOUNDS.length - 
   MARK_KEYS.forEach((k, colIndex) => {
     if (!row?.marks?.[k]) return;
     const col = P1_TYPE_COLS[colIndex];
-    drawMark(page1, p1Height, "レ", col.x, top, col.w, h);
+    drawMark(page1, p1Height, "○", col.x, top, col.w, h);
   });
 
   drawInCell(page1, p1Height, fmtJudgB1(row.judgment, row.bad_count), 317.76, top, 30.6, h, 9.2, { align: "center" });
@@ -401,7 +401,7 @@ for (let i = 0; i < Math.min(testBody.page2_rows.length, P2_ROW_BOUNDS.length - 
     if (!row?.marks?.[k]) return;
     if (i >= 18) return; // 簡易消化用具行（外形・水量等）はマーク列なし
     const col = P2_TYPE_COLS[colIndex];
-    drawMark(page2, p2Height, "レ", col.x, top, col.w, h);
+    drawMark(page2, p2Height, "○", col.x, top, col.w, h);
   });
 
   drawInCell(page2, p2Height, fmtJudgB1(row.judgment, row.bad_count), 323.04, top, 36.24, h, 9.2, { align: "center" });

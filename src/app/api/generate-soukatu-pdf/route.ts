@@ -246,10 +246,11 @@ export async function POST(req: NextRequest) {
             { paddingX: 4, paddingY: 3, minFontSize: 4.2 },
         );
 
+        // 防火管理者欄（別記様式第2の右上）: 物件の防火管理者名。届出者(notifier)ではない。
         drawInCell(
             page1,
             height,
-            body.notifier_name,
+            body.fire_manager,
             HDR_RIGHT_VAL.x,
             P1_ROW1.top,
             HDR_RIGHT_VAL.endX - HDR_RIGHT_VAL.x,
@@ -271,10 +272,11 @@ export async function POST(req: NextRequest) {
             { paddingX: 4, paddingY: 3, minFontSize: 3.8 },
         );
 
+        // 点検実施責任者欄（別記様式第2の右中）: 点検者の氏名（点検者1）。届出者の住所ではない。
         drawInCell(
             page1,
             height,
-            body.notifier_address,
+            body.inspector_responsible,
             HDR_RIGHT_VAL.x,
             P1_ROW2.top,
             HDR_RIGHT_VAL.endX - HDR_RIGHT_VAL.x,

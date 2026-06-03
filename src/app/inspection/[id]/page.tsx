@@ -23,6 +23,12 @@ export default async function InspectionDetailPage({ params }: { params: Promise
         return notFound()
     }
 
+    // 総括表の防火管理者欄=物件の防火管理者名。点検実施責任者(点検者氏名)はこの確認段階では未入力のため空。
+    const { data: property } = report.property_id
+        ? await supabase.from("properties").select("fire_manager_name").eq("id", report.property_id).single()
+        : { data: null as { fire_manager_name: string | null } | null }
+    const soukatsuData = { ...report, fire_manager: property?.fire_manager_name ?? "", inspector_responsible: "" }
+
     return (
         <div className="min-h-screen bg-gray-100 p-4 md:p-8">
             <div className="max-w-[210mm] mx-auto mb-6">
@@ -38,7 +44,7 @@ export default async function InspectionDetailPage({ params }: { params: Promise
                     &larr; 物件選択に戻る
                 </Link>
                 <div className="flex gap-2 flex-wrap">
-                    <SoukatsuPdfButton data={report} />
+                    <SoukatsuPdfButton data={soukatsuData} />
                     <Link
                         href={`/inspection/${id}/itiran`}
                         className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors"
@@ -50,7 +56,7 @@ export default async function InspectionDetailPage({ params }: { params: Promise
             </div>
 
             <div className="max-w-[210mm] mx-auto">
-                <SoukatsuPdfPreview data={report} />
+                <SoukatsuPdfPreview data={soukatsuData} />
             </div>
         </div>
     )

@@ -22,6 +22,7 @@ type MarkKey = "A" | "B" | "C" | "D" | "E" | "F"
 type RowState = {
     marks: Record<MarkKey, boolean>
     judgment: string
+    bad_count: string // 備考3: 消火器具は不良時に不良個数を判定欄に記入（判定は"良"/"否"のまま）
     bad_content: string
     action_content: string
 }
@@ -160,6 +161,7 @@ const coerceRow = (value: unknown): RowState => {
             F: Boolean(marks.F),
         },
         judgment: coerceString(source.judgment),
+        bad_count: coerceString(source.bad_count), // 既存データ非破壊（無ければ ""）
         bad_content: coerceString(source.bad_content),
         action_content: coerceString(source.action_content),
     }
@@ -484,6 +486,18 @@ export default function ShokakiBekki1Form({
                                             <option value="良">良</option>
                                             <option value="否">否</option>
                                         </select>
+                                        {/* 備考3: 消火器具は不良時に不良個数を判定欄に記入。否のときのみ表示 */}
+                                        {rows[idx].judgment === "否" && (
+                                            <input
+                                                type="text"
+                                                inputMode="numeric"
+                                                pattern="[0-9]*"
+                                                value={rows[idx].bad_count}
+                                                onChange={(e) => updateRowField(page, idx, "bad_count", e.target.value.replace(/[^0-9]/g, ""))}
+                                                placeholder="不良個数"
+                                                className="w-full h-8 border rounded px-2 mt-1"
+                                            />
+                                        )}
                                     </td>
                                     <td className="p-1 border">
                                         <Input
@@ -549,6 +563,18 @@ export default function ShokakiBekki1Form({
                                         <option value="良">良</option>
                                         <option value="否">否</option>
                                     </select>
+                                    {/* 備考3: 不良時は不良個数を判定欄に記入。否のときのみ表示 */}
+                                    {row.judgment === "否" && (
+                                        <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            pattern="[0-9]*"
+                                            value={row.bad_count}
+                                            onChange={(e) => updateRowField(page, idx, "bad_count", e.target.value.replace(/[^0-9]/g, ""))}
+                                            placeholder="不良個数"
+                                            className="w-full h-9 border border-input rounded-md bg-background px-2 text-sm"
+                                        />
+                                    )}
                                 </div>
 
                                 {showDefect && (

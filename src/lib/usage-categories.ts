@@ -82,3 +82,25 @@ export function formatUsageShort(value: string | null | undefined): string | und
   if (arabic === undefined) return v
   return `${arabic}項${m[2] ?? ""}`
 }
+
+/**
+ * 用途（USAGE_CATEGORIES.value）を画面表示用ラベル「N項X 用途名」へ整形する。
+ * 例: "(六)イ 病院、診療所又は助産所" → "6項イ 病院、診療所又は助産所"
+ *     "(四) 百貨店…" → "4項 百貨店…" ／ "(十六の二) 地下街" → "16の2項 地下街"
+ * - 項区分は formatUsageShort と同じ規則で数字化し、用途名はそのまま残す。
+ * - 令別表形式でない自由記述（既存値「事務所兼自宅」等）→ 原文をそのまま返す。
+ * - null/空 → ""（表示用なので空文字）。
+ * 表示専用。保存値・DB・USAGE_CATEGORIES の value は変更しない。
+ */
+export function formatUsageLabel(value: string | null | undefined): string {
+  if (value == null) return ""
+  const v = value.trim()
+  if (v.length === 0) return ""
+  const m = v.match(/^\(([一二三四五六七八九十]+(?:の[一二三四五六七八九十]+)?)\)([イロハニ])?\s*(.*)$/)
+  if (!m) return v
+  const arabic = KANJI_TO_ARABIC[m[1]]
+  if (arabic === undefined) return v
+  const kubun = `${arabic}項${m[2] ?? ""}`
+  const name = m[3]
+  return name ? `${kubun} ${name}` : kubun
+}

@@ -3,6 +3,7 @@ import { PDFDocument, rgb } from "pdf-lib"
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
+import { formatUsageShort } from "@/lib/usage-categories"
 
 type GeneratePdfBody = {
     report_date?: string
@@ -79,7 +80,7 @@ export async function POST(req: NextRequest) {
         const tableX = 150
         draw(toText(body.building_address), tableX, 269, 10.5, 350)
         draw(toText(body.building_name), tableX, 305, 10.5, 350)
-        draw(toText(body.building_usage), tableX, 340, 10.5, 180)
+        draw(formatUsageShort(body.building_usage), tableX, 340, 10.5, 180)
 
         draw(toText(body.floor_above), 190, 381)
         draw(toText(body.floor_below) ?? "0", 300, 381)

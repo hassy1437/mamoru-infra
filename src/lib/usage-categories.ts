@@ -47,3 +47,38 @@ export const USAGE_CATEGORIES: UsageCategory[] = [
   { group: "(十九)",   value: "(十九) 市町村長の指定する山林", label: "(十九) 市町村長の指定する山林" },
   { group: "(二十)",   value: "(二十) 総務省令で定める舟車", label: "(二十) 総務省令で定める舟車" },
 ]
+
+/**
+ * 消防法施行令別表第一の項番号（漢数字）→算用数字の対応表。
+ * 報告書PDF(別記様式第1)の用途欄を「N項X」形式で出すための変換に使う。
+ * USAGE_CATEGORIES に実在する番号のみ。枝番は法令の「(十六の二)項」表記に
+ * 忠実に「16の2」とする。保存値・DB・USAGE_CATEGORIES の value は変更しない。
+ */
+const KANJI_TO_ARABIC: Record<string, string> = {
+  "一": "1", "二": "2", "三": "3", "四": "4", "五": "5",
+  "六": "6", "七": "7", "八": "8", "九": "9", "十": "10",
+  "十一": "11", "十二": "12", "十三": "13", "十四": "14", "十五": "15",
+  "十六": "16", "十七": "17", "十八": "18", "十九": "19", "二十": "20",
+  "十六の二": "16の2", "十六の三": "16の3",
+}
+
+/**
+ * 防火対象物の用途（USAGE_CATEGORIES.value）を、報告書PDF(別記様式第1)の
+ * 用途欄向けに令別表第一の項区分「N項X」形式へ整形する。
+ * 例: "(六)イ 病院、診療所又は助産所" → "6項イ" ／ "(四) 百貨店…" → "4項"
+ *     "(十六の二) 地下街" → "16の2項"
+ * - null/空/undefined → undefined（描画スキップ。従来の toText と同挙動）
+ * - 令別表形式でない自由記述（既存値「事務所兼自宅」等）→ 原文をそのまま返す
+ *   （フォールバック・非破壊。用途欄を空にしない）
+ * - 出力に用途名は含めない。整形は報告書PDF描画時のみ（保存値・DBは不変）。
+ */
+export function formatUsageShort(value: string | null | undefined): string | undefined {
+  if (value == null) return undefined
+  const v = value.trim()
+  if (v.length === 0) return undefined
+  const m = v.match(/^\(([一二三四五六七八九十]+(?:の[一二三四五六七八九十]+)?)\)([イロハニ])?/)
+  if (!m) return v
+  const arabic = KANJI_TO_ARABIC[m[1]]
+  if (arabic === undefined) return v
+  return `${arabic}項${m[2] ?? ""}`
+}

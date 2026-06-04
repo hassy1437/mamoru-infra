@@ -1,7 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { USAGE_CATEGORIES } from "@/lib/usage-categories"
+import { USAGE_CATEGORIES, formatUsageLabel } from "@/lib/usage-categories"
 
 interface UsageSelectProps {
     id?: string
@@ -46,9 +46,9 @@ export function UsageSelect({ id, value, onChange, required, className }: UsageS
         >
             <option value="">用途を選択してください</option>
             {groupedCategories().map((g) => (
-                <optgroup key={g.group} label={g.group}>
+                <optgroup key={g.group} label={formatUsageLabel(g.group)}>
                     {g.items.map((c) => (
-                        <option key={c.value} value={c.value}>{c.label}</option>
+                        <option key={c.value} value={c.value}>{formatUsageLabel(c.value)}</option>
                     ))}
                 </optgroup>
             ))}

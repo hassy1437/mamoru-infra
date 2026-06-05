@@ -99,8 +99,7 @@ const PAGE2_CHOICES: Record<number, readonly { value: string; label: string }[]>
     // 熱感知器 スポット型: 差動・定温（再）・熱アナログ
     5: [
         { value: "差動", label: "差動" },
-        { value: "定温", label: "定温" },
-        { value: "再", label: "（再）" },
+        { value: "定温", label: "定温（再）" },
         { value: "熱アナログ", label: "熱アナログ" },
     ],
     // 煙感知器 スポット型: イオン・光電・アナログ

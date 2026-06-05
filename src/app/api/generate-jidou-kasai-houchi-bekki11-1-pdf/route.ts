@@ -386,8 +386,7 @@ export async function POST(req: NextRequest) {
         if (p2Rows[5]) {
             drawSelectionCircle(page2, p2Height, p2Rows[5].content ?? "", [
                 { label: "差動", cx: 242.5, cy: 211.5, rx: 13, ry: 7 },
-                { label: "定温", cx: 262.2, cy: 211.5, rx: 13, ry: 7 },
-                { label: "再", cx: 281.5, cy: 211.5, rx: 10, ry: 7 },
+                { label: "定温", cx: 274.0, cy: 211.5, rx: 22, ry: 7 },  // 定温（再）= 1印字単位(x254.4-293.8)を1○で囲む（旧 定温+再 の2○を統合）
                 { label: "熱アナログ", cx: 317.0, cy: 211.5, rx: 18, ry: 7 },
             ])
         }

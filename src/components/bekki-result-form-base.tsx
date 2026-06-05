@@ -10,7 +10,7 @@ import { CheckCheck, Eye, FileDown, Loader2, Save, WifiOff } from "lucide-react"
 import { toast } from "sonner"
 import { friendlyError } from "@/lib/error-messages"
 import { supabase } from "@/lib/supabase"
-import { saveDraftLocal } from "@/lib/local-draft"
+import { loadDraftLocal, saveDraftLocal } from "@/lib/local-draft"
 import { toDateInputValue } from "@/lib/date-utils"
 import CameraInput from "@/components/camera-input"
 import {
@@ -423,9 +423,57 @@ export default function BekkiResultFormBase({
         return () => clearTimeout(timer)
     }, [payload])
 
-    // Auto-save on unmount (navigation away)
+    // 復元完了フラグ: 復元前の自動保存（StrictMode の擬似アンマウントや復元前の離脱）で
+    // 新しいローカル下書きをサーバー初期値で上書きしないためのガード。
+    const restoreReadyRef = useRef(false)
+
+    // Auto-save on unmount (navigation away)。復元が完了するまでは保存しない。
     useEffect(() => {
-        return () => { persistDraftRef.current(false) }
+        return () => { if (restoreReadyRef.current) persistDraftRef.current(false) }
+    }, [])
+
+    // オフライン下書きの復元: ローカル(IndexedDB)がサーバー保存より新しければ初期化後に復元する。
+    // saveDraftLocal で常にローカル保存しているが従来は読み戻していなかった（書込専用）ため追加。
+    // 完了後に restoreReadyRef を立て、以降の自動保存（unmount 等）を許可する。
+    useEffect(() => {
+        let cancelled = false
+        loadDraftLocal(`${dbTable}:${itiranId}`).then((draft) => {
+            if (cancelled) return
+            try {
+                if (!draft) return
+                const serverAt = savedUpdatedAt ?? ""
+                if (serverAt && draft.savedAt <= serverAt) return // サーバーが同等以上に新しい→復元不要
+                const p = (draft.payload as { payload?: Partial<BekkiBasePayload> } | null)?.payload
+                if (!p || typeof p !== "object") return
+                setFormName(coerceString(p.form_name, initial.building_name ?? ""))
+                setFireManager(coerceString(p.fire_manager, initial.fire_manager_name || initial.notifier_name || ""))
+                setWitness(normalizeBekkiWitnessForState(coerceString(p.witness)))
+                setLocation(coerceString(p.location, initial.building_address ?? ""))
+                setInspectionType(coerceString(p.inspection_type, defaultInspectionType))
+                setPeriodStart(coerceString(p.period_start, initial.inspection_date ?? ""))
+                setPeriodEnd(coerceString(p.period_end, initial.inspection_date ?? ""))
+                setInspectorName(normalizeBekkiInspectorNameForState(coerceString(p.inspector_name, initial.inspector_name ?? "")))
+                setInspectorCompany(coerceString(p.inspector_company))
+                setInspectorAddress(coerceString(p.inspector_address))
+                setInspectorTel(coerceString(p.inspector_tel))
+                setNotes(coerceString(p.notes))
+                setDevice1(coerceDevice(p.device1 ?? createEmptyDevice()))
+                setDevice2(coerceDevice(p.device2 ?? createEmptyDevice()))
+                setExtraFieldValues(Object.fromEntries(extraFields.map((f) => [f.key, coerceString((p.extra_fields ?? {})[f.key])])))
+                setRowsByKey(() => {
+                    const next: Record<BekkiPageRowsKey, BekkiRowState[]> = { page1_rows: [], page2_rows: [], page3_rows: [], page4_rows: [] }
+                    for (const section of sections) {
+                        next[section.key] = hydrateRows(section.labels.length, (p as Record<string, unknown>)[section.key] as unknown[] | undefined)
+                    }
+                    return next
+                })
+                setSaveMessage("オフラインの下書きを復元しました")
+            } finally {
+                if (!cancelled) restoreReadyRef.current = true
+            }
+        }).catch(() => { if (!cancelled) restoreReadyRef.current = true })
+        return () => { cancelled = true }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
 

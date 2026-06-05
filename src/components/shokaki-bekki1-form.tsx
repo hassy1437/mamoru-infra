@@ -1,6 +1,7 @@
 ﻿"use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { loadDraftLocal, saveDraftLocal } from "@/lib/local-draft"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -284,6 +285,24 @@ export default function ShokakiBekki1Form({
             setSaveMessage(null)
         }
 
+        // オフライン耐性: 入力を常にローカル(IndexedDB)へ保存（base/他22様式と同等）
+        try {
+            await saveDraftLocal(`inspection_shokaki_bekki1:${itiranId}`, {
+                soukatsu_id: soukatsuId,
+                itiran_id: itiranId,
+                property_id: propertyId ?? null,
+                payload,
+            })
+        } catch {
+            // IndexedDB 失敗は致命的でない
+        }
+
+        // オフライン時はローカル保存で完了（Supabase 送信はスキップ）
+        if (!navigator.onLine) {
+            setSaveMessage(`ローカル保存済み (オフライン): ${new Date().toLocaleString("ja-JP")}`)
+            return true
+        }
+
         const { error: saveError } = await supabase
             .from("inspection_shokaki_bekki1")
             .upsert({
@@ -399,8 +418,63 @@ export default function ShokakiBekki1Form({
     // Auto-save on unmount (navigation away)
     const persistDraftRef = useRef(persistDraft)
     useEffect(() => { persistDraftRef.current = persistDraft }, [persistDraft])
+    // 復元完了フラグ: 復元前の自動保存（StrictMode の擬似アンマウントや復元前の離脱）で
+    // 新しいローカル下書きをサーバー初期値で上書きしないためのガード。
+    const restoreReadyRef = useRef(false)
     useEffect(() => {
-        return () => { persistDraftRef.current(false) }
+        return () => { if (restoreReadyRef.current) persistDraftRef.current(false) }
+    }, [])
+
+    // Debounced auto-save: 最終入力から5秒後に保存（base/他22様式と同間隔）
+    const isInitialMount = useRef(true)
+    useEffect(() => {
+        if (isInitialMount.current) {
+            isInitialMount.current = false
+            return
+        }
+        const timer = setTimeout(() => {
+            persistDraftRef.current(false).then((ok) => {
+                if (ok) setSaveMessage(`自動保存済み: ${new Date().toLocaleString("ja-JP")}`)
+            })
+        }, 5000)
+        return () => clearTimeout(timer)
+    }, [payload])
+
+    // オフライン下書きの復元: ローカルがサーバー保存より新しければ復元（base と同優先ルール）。
+    // 完了後に restoreReadyRef を立て、以降の自動保存を許可する。
+    useEffect(() => {
+        let cancelled = false
+        loadDraftLocal(`inspection_shokaki_bekki1:${itiranId}`).then((draft) => {
+            if (cancelled) return
+            try {
+                if (!draft) return
+                const serverAt = savedUpdatedAt ?? ""
+                if (serverAt && draft.savedAt <= serverAt) return
+                const p = (draft.payload as { payload?: Partial<ShokakiBekki1Payload> } | null)?.payload
+                if (!p || typeof p !== "object") return
+                setFormName(coerceString(p.form_name, initial.building_name ?? ""))
+                setFireManager(coerceString(p.fire_manager, initial.fire_manager_name || initial.notifier_name || ""))
+                setWitness(normalizeBekkiWitnessForState(coerceString(p.witness)))
+                setLocation(coerceString(p.location, initial.building_address ?? ""))
+                setPeriodStart(coerceString(p.period_start, initial.inspection_date ?? ""))
+                setPeriodEnd(coerceString(p.period_end, initial.inspection_date ?? ""))
+                setInspectorName(normalizeBekkiInspectorNameForState(coerceString(p.inspector_name, initial.inspector_name ?? "")))
+                setInspectorCompany(coerceString(p.inspector_company))
+                setInspectorAddress(coerceString(p.inspector_address))
+                setInspectorTel(coerceString(p.inspector_tel))
+                setNotes(coerceString(p.notes))
+                setDevice1(coerceDevice(p.device1 ?? createEmptyDevice()))
+                setDevice2(coerceDevice(p.device2 ?? createEmptyDevice()))
+                setPage1Rows(hydrateRows(PAGE1_ITEMS.length, p.page1_rows))
+                setPage2Rows(hydrateRows(PAGE2_ITEMS.length, p.page2_rows))
+                setSummaryRows(hydrateSummaryRows(6, p.summary_rows))
+                setSaveMessage("オフラインの下書きを復元しました")
+            } finally {
+                if (!cancelled) restoreReadyRef.current = true
+            }
+        }).catch(() => { if (!cancelled) restoreReadyRef.current = true })
+        return () => { cancelled = true }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
 

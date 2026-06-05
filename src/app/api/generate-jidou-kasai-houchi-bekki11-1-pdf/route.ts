@@ -376,7 +376,11 @@ export async function POST(req: NextRequest) {
             actionX: 450.67, actionW: 78.66,
         }, new Set([
             5,  // スポット型(熱): テンプレートに「差動 定温 (再) 熱アナログ」印刷済み → circle
+            6,  // 分布型(熱) 空気管式: 説明列の種別名を○で囲む
+            7,  // 分布型(熱) 熱電対式・熱半導体式: 説明列の種別名を○で囲む
+            8,  // 感知線型(熱): 説明列の種別名を○で囲む
             9,  // スポット型(煙): テンプレートに「イオン 光電 アナログ」印刷済み → circle
+            10, // 分離型(煙): 説明列の種別名を○で囲む
             11, // 炎感知器: テンプレートに「赤外線 紫外線」印刷済み → circle
             22, // 鳴動方式: テンプレートに「一斉 区分 相互 再鳴動」印刷済み → circle
         ]))
@@ -413,6 +417,30 @@ export async function POST(req: NextRequest) {
                 { label: "区分", cx: 267.0, cy: 601.8, rx: 13, ry: 7 },
                 { label: "相互", cx: 290.0, cy: 601.8, rx: 13, ry: 7 },
                 { label: "再鳴動", cx: 320.0, cy: 601.8, rx: 16, ry: 7 },
+            ])
+        }
+
+        // P2 Row 6,7,8,10: 分布型(空気管式/熱電対式・熱半導体式)・感知線型・分離型 —
+        // 右の選択肢列が無く種別名が説明列に印字されるため、種別ラベル自体を○で囲む（D1）
+        if (p2Rows[6]) {
+            drawSelectionCircle(page2, p2Height, p2Rows[6].content ?? "", [
+                { label: "空気管", cx: 174.9, cy: 233.3, rx: 51, ry: 7 },
+            ])
+        }
+        if (p2Rows[7]) {
+            drawSelectionCircle(page2, p2Height, p2Rows[7].content ?? "", [
+                { label: "熱電対", cx: 174.5, cy: 254.6, rx: 52, ry: 7 },
+                { label: "熱半導体", cx: 174.5, cy: 254.6, rx: 52, ry: 7 },
+            ])
+        }
+        if (p2Rows[8]) {
+            drawSelectionCircle(page2, p2Height, p2Rows[8].content ?? "", [
+                { label: "感知線", cx: 165.9, cy: 279.3, rx: 60, ry: 7 },
+            ])
+        }
+        if (p2Rows[10]) {
+            drawSelectionCircle(page2, p2Height, p2Rows[10].content ?? "", [
+                { label: "分離", cx: 165.9, cy: 325.4, rx: 60, ry: 7 },
             ])
         }
 

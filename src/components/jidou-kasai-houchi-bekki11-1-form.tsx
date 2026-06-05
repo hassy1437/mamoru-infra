@@ -92,6 +92,37 @@ const PAGE3_ITEMS = [
     "※総合作動",
 ] as const
 
+// 同一セル複数選択欄（罫線座標で確認: 選択肢が1セルに並ぶ行）のチェックボックス定義。
+// value は PDF route の drawSelectionCircle options.label と完全一致（不一致だと○が出ない）。
+// 複数該当可（併用式・複数型）。独立セル(空気管式/熱電対式・熱半導体式/感知線型/分離型)は対象外。
+const PAGE2_CHOICES: Record<number, readonly { value: string; label: string }[]> = {
+    // 熱感知器 スポット型: 差動・定温（再）・熱アナログ
+    5: [
+        { value: "差動", label: "差動" },
+        { value: "定温", label: "定温" },
+        { value: "再", label: "（再）" },
+        { value: "熱アナログ", label: "熱アナログ" },
+    ],
+    // 煙感知器 スポット型: イオン・光電・アナログ
+    9: [
+        { value: "イオン", label: "イオン" },
+        { value: "光電", label: "光電" },
+        { value: "アナログ", label: "アナログ" },
+    ],
+    // 炎感知器: 赤外線・紫外線
+    11: [
+        { value: "赤外線", label: "赤外線" },
+        { value: "紫外線", label: "紫外線" },
+    ],
+    // 音響装置 鳴動方式: 一斉・区分・相互・再鳴動
+    22: [
+        { value: "一斉", label: "一斉" },
+        { value: "区分", label: "区分" },
+        { value: "相互", label: "相互" },
+        { value: "再鳴動", label: "再鳴動" },
+    ],
+}
+
 export default function JidouKasaiHouchiBekki11_1Form(props: Props) {
     return (
         <BekkiResultFormBase
@@ -103,7 +134,7 @@ export default function JidouKasaiHouchiBekki11_1Form(props: Props) {
             downloadFilenamePrefix="自動火災報知設備点検票"
             sections={[
                 { key: "page1_rows", title: "（その1）機器点検", labels: PAGE1_ITEMS },
-                { key: "page2_rows", title: "（その2）機器点検", labels: PAGE2_ITEMS },
+                { key: "page2_rows", title: "（その2）機器点検", labels: PAGE2_ITEMS, choiceRows: PAGE2_CHOICES },
                 { key: "page3_rows", title: "（その3）総合点検", labels: PAGE3_ITEMS },
             ]}
             extraFieldsTitle="設備情報"

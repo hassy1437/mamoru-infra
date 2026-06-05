@@ -72,6 +72,7 @@ type SectionConfig = {
     splitTypeCapacity?: boolean    // 種別容量を避難口/通路/客席の3列入力にする（様式16）
     pumpPerfRowIndex?: number      // ポンプ性能行: 吐出圧力(content)/吐出量(flow_value) の2欄入力
     hoseRowIndexes?: readonly number[]  // ホース行: 長さ(content)/本数(hose_count)/口径(nozzle_dia) の3列入力
+    choiceRows?: Record<number, readonly { value: string; label: string }[]>  // 同一セル複数選択行: チェックボックス群（選択語を content にスペース区切りで保存）
 }
 
 type ExtraFieldConfig = {
@@ -436,6 +437,53 @@ export default function BekkiResultFormBase({
         }))
     }
 
+    // 同一セル複数選択(choiceRows)のトグル: content を語の集合として扱い、選択肢の定義順で再結合する。
+    // 既知の選択肢以外の語は捨てる（これらの行は PDF 非表示の keyword 専用列のため実害なし）。
+    const toggleChoiceValue = (
+        key: BekkiPageRowsKey,
+        index: number,
+        options: readonly { value: string; label: string }[],
+        value: string,
+    ) => {
+        setRowsByKey((prev) => ({
+            ...prev,
+            [key]: prev[key].map((row, i) => {
+                if (i !== index) return row
+                const tokens = new Set(row.content.split(/\s+/).filter(Boolean))
+                if (tokens.has(value)) tokens.delete(value)
+                else tokens.add(value)
+                const next = options.filter((o) => tokens.has(o.value)).map((o) => o.value).join(" ")
+                return { ...row, content: next }
+            }),
+        }))
+    }
+
+    // 同一セル複数選択行のチェックボックス群。選択語は content にスペース区切りで保存され、
+    // PDF 側の drawSelectionCircle(content.includes(keyword)) がそのまま○を描く（route 不変）。
+    // iOS 教訓によりコントロール自身に flex は付けない（input は h-4 w-4 のみ）。
+    const renderChoiceCheckboxes = (
+        section: SectionConfig,
+        idx: number,
+        options: readonly { value: string; label: string }[],
+    ) => {
+        const tokens = (rowsByKey[section.key]?.[idx]?.content ?? "").split(/\s+/).filter(Boolean)
+        return (
+            <div className="flex flex-wrap gap-x-3 gap-y-1">
+                {options.map((opt) => (
+                    <label key={opt.value} className="inline-flex items-center gap-1 text-sm cursor-pointer">
+                        <input
+                            type="checkbox"
+                            className="h-4 w-4"
+                            checked={tokens.includes(opt.value)}
+                            onChange={() => toggleChoiceValue(section.key, idx, options, opt.value)}
+                        />
+                        <span>{opt.label}</span>
+                    </label>
+                ))}
+            </div>
+        )
+    }
+
     // 「すべて良にする」: そのセクションの判定が空("")の行だけ "良" にする。
     // 既に "良"/"否" の行は触らない（不良の意図・既入力を上書きしない）。
     const markAllGoodInSection = (key: BekkiPageRowsKey) => {
@@ -484,7 +532,9 @@ export default function BekkiResultFormBase({
                                 <tr key={`${section.key}-${idx}`}>
                                     <td className="p-2 border">{label}</td>
                                     <td className="p-1 border">
-                                        {section.hoseRowIndexes?.includes(idx) ? (
+                                        {section.choiceRows?.[idx] ? (
+                                            renderChoiceCheckboxes(section, idx, section.choiceRows[idx])
+                                        ) : section.hoseRowIndexes?.includes(idx) ? (
                                             <div className="flex gap-1 items-center">
                                                 <Input
                                                     value={rowsByKey[section.key]?.[idx]?.content ?? ""}
@@ -602,7 +652,9 @@ export default function BekkiResultFormBase({
                             <div className="grid grid-cols-2 gap-2">
                                 <div className="space-y-1">
                                     <span className="text-xs text-slate-500">内容</span>
-                                    {section.hoseRowIndexes?.includes(idx) ? (
+                                    {section.choiceRows?.[idx] ? (
+                                        renderChoiceCheckboxes(section, idx, section.choiceRows[idx])
+                                    ) : section.hoseRowIndexes?.includes(idx) ? (
                                         <div className="flex gap-1 items-center">
                                             <Input
                                                 value={rowsByKey[section.key]?.[idx]?.content ?? ""}

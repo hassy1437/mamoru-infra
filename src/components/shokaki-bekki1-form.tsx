@@ -477,6 +477,31 @@ export default function ShokakiBekki1Form({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
+    // 背面化/離脱時にローカル(IndexedDB)へ即フラッシュ（直近の入力の消失対策）。
+    // Supabase は叩かない（ネットワーク前提の保存をしない）。復元前は保存しない（restoreReadyRef を尊重）。
+    const flushLocalRef = useRef<() => void>(() => {})
+    useEffect(() => {
+        flushLocalRef.current = () => {
+            if (!restoreReadyRef.current) return
+            void saveDraftLocal(`inspection_shokaki_bekki1:${itiranId}`, {
+                soukatsu_id: soukatsuId,
+                itiran_id: itiranId,
+                property_id: propertyId ?? null,
+                payload,
+            })
+        }
+    })
+    useEffect(() => {
+        const onVisibility = () => { if (document.visibilityState === "hidden") flushLocalRef.current() }
+        const onPageHide = () => { flushLocalRef.current() }
+        document.addEventListener("visibilitychange", onVisibility)
+        window.addEventListener("pagehide", onPageHide)
+        return () => {
+            document.removeEventListener("visibilitychange", onVisibility)
+            window.removeEventListener("pagehide", onPageHide)
+        }
+    }, [])
+
 
 
     const updateRowField = (

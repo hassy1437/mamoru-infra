@@ -1,7 +1,8 @@
 import { PDF_MERGE_CONFIG } from "./pdf-merge-config"
 import { selectedSteps } from "./itiran-input-flow"
 import type { ItiranInputStepId } from "./itiran-input-flow"
-import type { SupabaseClient } from "@supabase/supabase-js"
+// 型のみの import なので、next/headers への実行時依存は持ち込まない
+import type { AppSupabaseClient } from "./supabase/server"
 
 export type EquipmentProgress = {
     stepId: string
@@ -11,7 +12,7 @@ export type EquipmentProgress = {
 }
 
 export async function getEquipmentProgress(
-    supabase: SupabaseClient,
+    supabase: AppSupabaseClient,
     itiranId: string,
     soukatsuId: string,
     equipmentTypes: unknown

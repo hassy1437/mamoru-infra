@@ -39,6 +39,11 @@ export default function SignupPage() {
         const { error: authError } = await supabase.auth.signUp({
             email,
             password,
+            // 点検アプリの利用者は業者。統合後はマッチング側の on_auth_user_created が
+            // この intended_role を読んで public.profiles.role を決める。渡さないと
+            // 既定の 'owner' に落ちてしまう（業者なのにオーナー扱いになる）。
+            // 統合前の現プロジェクトにはこのトリガが無く、options.data は無視されるだけで無害。
+            options: { data: { intended_role: 'vendor' } },
         })
 
         if (authError) {

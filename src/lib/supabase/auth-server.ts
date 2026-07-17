@@ -1,10 +1,9 @@
-import { createClient } from './server'
+import { createClient, type AppSupabaseClient } from './server'
 import { redirect } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
-import type { SupabaseClient } from '@supabase/supabase-js'
 
 export async function getAuthenticatedClient(): Promise<{
-    supabase: SupabaseClient
+    supabase: AppSupabaseClient
     user: User
 }> {
     const supabase = await createClient()

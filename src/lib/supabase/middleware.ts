@@ -16,6 +16,9 @@ export async function updateSession(request: NextRequest) {
         supabaseUrl,
         supabaseAnonKey,
         {
+            // ここは auth.getUser() しか使わないので schema 指定は現状 no-op だが、
+            // 将来 .from() が足されたときに public を向いたままにならないよう他2つと揃える。
+            db: { schema: process.env.NEXT_PUBLIC_SUPABASE_SCHEMA ?? 'public' },
             cookies: {
                 getAll() {
                     return request.cookies.getAll()

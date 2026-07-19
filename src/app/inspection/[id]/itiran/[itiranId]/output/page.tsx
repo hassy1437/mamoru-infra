@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
 import { CheckCircle2, MinusCircle } from "lucide-react"
 import CombinedPdfButton from "@/components/combined-pdf-button"
+import DeliverReportButton, { type DeliveryStatus } from "@/components/deliver-report-button"
 import StepIndicator from "@/components/step-indicator"
 import { INSPECTION_STEPS } from "@/lib/inspection-steps"
 import Breadcrumb from "@/components/breadcrumb"
@@ -32,8 +33,19 @@ export default async function OutputPage({
     if (!itiran) return notFound()
 
     const { data: property } = soukatsu.property_id
-        ? await supabase.from("properties").select("equipment_types, fire_manager_name").eq("id", soukatsu.property_id).single()
-        : { data: null as { equipment_types: unknown; fire_manager_name: string | null } | null }
+        ? await supabase.from("properties").select("equipment_types, fire_manager_name, source_match_id").eq("id", soukatsu.property_id).single()
+        : { data: null as { equipment_types: unknown; fire_manager_name: string | null; source_match_id: string | null } | null }
+
+    // マッチング由来（納品先オーナーが居る）物件のみ納品可能。source_match_id で判定する。
+    // 納品状態は inspection.get_match_deliveries RPC で取得する（点検クライアントは
+    // schema=inspection 固定で public.report_deliveries を直接 select できないため）。
+    const sourceMatchId =
+        (property as { source_match_id?: string | null } | null)?.source_match_id ?? null
+    let deliveryStatus: DeliveryStatus | null = null
+    if (sourceMatchId) {
+        const { data: ds } = await supabase.rpc("get_match_deliveries", { p_match_id: sourceMatchId })
+        deliveryStatus = (ds as DeliveryStatus | null) ?? null
+    }
 
     const applicableSteps = selectedSteps(property?.equipment_types)
     const applicableStepIds = applicableSteps.map((s) => s.id)
@@ -123,6 +135,21 @@ export default async function OutputPage({
                             equipmentTypes={property?.equipment_types as string[] | undefined}
                         />
                     </div>
+
+                    {sourceMatchId && (
+                        <DeliverReportButton
+                            soukatsuData={sanitizedSoukatsu}
+                            itiranData={sanitizedItiran}
+                            bekkiPayloads={sanitizedBekkiPayloads}
+                            applicableStepIds={applicableStepIds}
+                            buildingName={soukatsu.building_name}
+                            equipmentTypes={property?.equipment_types as string[] | undefined}
+                            matchId={sourceMatchId}
+                            inspectionType={soukatsu.inspection_type as string}
+                            inspectionDate={soukatsu.inspection_date as string}
+                            status={deliveryStatus}
+                        />
+                    )}
                 </div>
             </div>
         </div>

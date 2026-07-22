@@ -36,14 +36,21 @@ type EquipmentResult = {
 interface SoukatsuFormProps {
     property?: Property
     previousData?: Record<string, unknown> | null
+    /** 複製元 soukatsu の id。指定時は複製モード（プリフィル元=複製元soukatsu・submit後にサブツリー複製）。 */
+    copyFromId?: string | null
+    /** 複製元 itiran の id（output の「この報告書を複製」で明示。未指定なら RPC が本命 itiran を自動選択）。 */
+    sourceItiranId?: string | null
 }
 
-export default function SoukatsuForm({ property, previousData }: SoukatsuFormProps) {
+export default function SoukatsuForm({ property, previousData, copyFromId, sourceItiranId }: SoukatsuFormProps) {
     const router = useRouter()
     const { user } = useAuth()
     const { markDirty, markClean } = useUnsavedChanges()
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    // 複製モード: プリフィル元は物件マスタでなく「複製元 soukatsu」(= previousData 全列)。
+    const isClone = !!copyFromId
+    const src = (k: string) => (previousData?.[k] != null ? String(previousData[k]) : "")
 
     // 基本情報
     const initialInspectionDate = new Date().toISOString().split('T')[0]
@@ -53,26 +60,28 @@ export default function SoukatsuForm({ property, previousData }: SoukatsuFormPro
     )
     // 点検期間は点検年月日に追従する。初期値は点検年月日（today）と同じにして、
     // フォームを開いた時点で3つとも揃った状態にする。
-    const [periodStart, setPeriodStart] = useState(initialInspectionDate)
-    const [periodEnd, setPeriodEnd] = useState(initialInspectionDate)
+    // 複製時は期間も複製元からプリフィル（req5: 期間はコピーして業者に確認させる）。
+    const [periodStart, setPeriodStart] = useState(isClone ? src("inspection_period_start") : initialInspectionDate)
+    const [periodEnd, setPeriodEnd] = useState(isClone ? src("inspection_period_end") : initialInspectionDate)
     // 手動編集フラグ: ユーザーが開始/終了を手で変えたら true。true の項目は
     // 点検年月日を変えても追従させない（開始・終了それぞれ独立に判定）。
-    const [startManuallyEdited, setStartManuallyEdited] = useState(false)
-    const [endManuallyEdited, setEndManuallyEdited] = useState(false)
+    // 複製時は複製元の期間で埋まっているので、点検年月日(today)への追従で上書きしない＝手動扱いで開始。
+    const [startManuallyEdited, setStartManuallyEdited] = useState(isClone)
+    const [endManuallyEdited, setEndManuallyEdited] = useState(isClone)
 
-    // 届出者情報（物件マスターから初期化）
-    const [notifierAddress, setNotifierAddress] = useState(property?.notifier_address ?? "")
-    const [notifierName, setNotifierName] = useState(property?.notifier_name ?? "")
-    const [notifierPhone, setNotifierPhone] = useState(property?.notifier_phone ?? "")
+    // 届出者情報（複製時は複製元 soukatsu、通常は物件マスターから初期化）
+    const [notifierAddress, setNotifierAddress] = useState(isClone ? src("notifier_address") : (property?.notifier_address ?? ""))
+    const [notifierName, setNotifierName] = useState(isClone ? src("notifier_name") : (property?.notifier_name ?? ""))
+    const [notifierPhone, setNotifierPhone] = useState(isClone ? src("notifier_phone") : (property?.notifier_phone ?? ""))
 
-    // 防火対象物情報（物件マスターから初期化）
-    const [buildingAddress, setBuildingAddress] = useState(property?.building_address ?? "")
-    const [buildingName, setBuildingName] = useState(property?.building_name ?? "")
-    const [buildingUsage, setBuildingUsage] = useState(property?.building_usage ?? "")
-    const [buildingStructure, setBuildingStructure] = useState(property?.building_structure ?? "")
-    const [floorAbove, setFloorAbove] = useState(property?.floor_above?.toString() ?? "")
-    const [floorBelow, setFloorBelow] = useState(property?.floor_below?.toString() ?? "")
-    const [totalFloorArea, setTotalFloorArea] = useState(property?.total_floor_area?.toString() ?? "")
+    // 防火対象物情報（複製時は複製元 soukatsu、通常は物件マスターから初期化）
+    const [buildingAddress, setBuildingAddress] = useState(isClone ? src("building_address") : (property?.building_address ?? ""))
+    const [buildingName, setBuildingName] = useState(isClone ? src("building_name") : (property?.building_name ?? ""))
+    const [buildingUsage, setBuildingUsage] = useState(isClone ? src("building_usage") : (property?.building_usage ?? ""))
+    const [buildingStructure, setBuildingStructure] = useState(isClone ? src("building_structure") : (property?.building_structure ?? ""))
+    const [floorAbove, setFloorAbove] = useState(isClone ? src("floor_above") : (property?.floor_above?.toString() ?? ""))
+    const [floorBelow, setFloorBelow] = useState(isClone ? src("floor_below") : (property?.floor_below?.toString() ?? ""))
+    const [totalFloorArea, setTotalFloorArea] = useState(isClone ? src("total_floor_area") : (property?.total_floor_area?.toString() ?? ""))
 
     // 点検結果：物件マスターで選択した設備のみ表示、初期値「指摘なし」
     // 物件なしの場合は有効設備のみ・初期値「該当なし」
@@ -151,6 +160,40 @@ export default function SoukatsuForm({ property, previousData }: SoukatsuFormPro
             if (insertError) throw insertError
 
             markClean()
+
+            // 複製モード: soukatsu は上で通常どおり作成済み。ここでサブツリー（点検者一覧表+様式群）を
+            // 複製し、複製マーカーを立てる。通常作成パスは一切変えていない（回帰リスクゼロ）。
+            if (isClone && copyFromId) {
+                const { data: newItiran, error: cloneErr } = await supabase.rpc("clone_report_forms", {
+                    p_new_soukatsu_id: data.id,
+                    p_source_soukatsu_id: copyFromId,
+                    p_source_itiran_id: sourceItiranId ?? null,
+                })
+                if (!cloneErr && newItiran) {
+                    toast.success("前回の報告書を複製しました。各様式を開いて内容をご確認ください。")
+                    router.push(`/inspection/${data.id}/itiran/${newItiran as string}`)
+                    return
+                }
+                const code = (cloneErr as { code?: string } | null)?.code
+                const cmsg = (cloneErr as { message?: string } | null)?.message ?? ""
+                if (code === "P0409" || cmsg.includes("ALREADY_CLONED")) {
+                    // 非原子性の副作用: 複製は既に成功していたのに再試行された。エラーでなく既存ハブへ。
+                    const { data: it } = await supabase
+                        .from("inspection_itiran")
+                        .select("id")
+                        .eq("soukatsu_id", data.id)
+                        .order("created_at")
+                        .limit(1)
+                        .maybeSingle()
+                    router.push(it ? `/inspection/${data.id}/itiran/${it.id as string}` : `/inspection/${data.id}`)
+                    return
+                }
+                // graceful degradation: soukatsu は通常の新規報告書として作成済み（cloned_at 未設定＝ゲート無し）。
+                toast.error("前回内容の複製に失敗しました。通常の新規報告書として作成されています。各様式をご入力ください。")
+                router.push(`/inspection/${data.id}`)
+                return
+            }
+
             toast.success("総括表を保存しました")
             router.push(`/inspection/${data.id}`)
         } catch (err: unknown) {
@@ -172,8 +215,16 @@ export default function SoukatsuForm({ property, previousData }: SoukatsuFormPro
                 </div>
             )}
 
-            {/* 物件マスター転記バナー */}
-            {property && (
+            {/* 複製 / 物件マスター転記バナー */}
+            {isClone ? (
+                <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+                    <Building2 className="w-5 h-5 text-amber-600 shrink-0" />
+                    <div className="text-sm">
+                        <span className="font-semibold text-amber-800">前回の報告書から複製</span>
+                        <span className="text-amber-700"> しています。内容を確認・修正して保存すると、各様式もコピーされます。保存後に各様式を開いて確認してください。</span>
+                    </div>
+                </div>
+            ) : property && (
                 <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
                     <Building2 className="w-5 h-5 text-blue-600 shrink-0" />
                     <div className="text-sm">

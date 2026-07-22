@@ -28,6 +28,14 @@ export type DeliveryStatus = {
     deliveries: Delivery[]
 }
 
+/** 複製由来の報告書の納品ゲート情報。null = 通常作成（ゲートなし）。 */
+export type CloneMeta = {
+    soukatsuId: string
+    clonedAt: string // これが存在する = 複製由来。最終確認チェックは「常に」描画する。
+    cloneConfirmedAt: string | null
+    unconfirmedCount: number
+}
+
 interface DeliverReportButtonProps {
     // マージ入力（CombinedPdfButton と同じ）
     soukatsuData: Record<string, unknown>
@@ -38,9 +46,11 @@ interface DeliverReportButtonProps {
     equipmentTypes?: string[]
     // 納品コンテキスト
     matchId: string
+    itiranId: string // p_source_itiran_id（複製ゲート用・常に渡す＝迂回しない）
     inspectionType: string // この soukatsu の種別（機器点検 / 総合点検）
     inspectionDate: string // p_inspection_date（YYYY-MM-DD）
     status: DeliveryStatus | null // get_match_deliveries の結果
+    cloneMeta?: CloneMeta | null // 複製由来なら最終確認ゲートを描画
 }
 
 type Phase = "idle" | "building" | "uploading" | "recording" | "done" | "error"
@@ -69,9 +79,11 @@ export default function DeliverReportButton({
     buildingName,
     equipmentTypes,
     matchId,
+    itiranId,
     inspectionType,
     inspectionDate,
     status,
+    cloneMeta,
 }: DeliverReportButtonProps) {
     const router = useRouter()
     const supabase = createClient()
@@ -79,6 +91,34 @@ export default function DeliverReportButton({
     const [phase, setPhase] = useState<Phase>("idle")
     const [progress, setProgress] = useState({ done: 0, total: 0 })
     const [message, setMessage] = useState<string | null>(null)
+
+    // 複製ゲート: cloneMeta があれば最終確認チェックを「常に」描画（複製元0本itiran＝未確認0でも
+    // 描画しないと clone_confirmed_at を立てられず永久に納品不能になる）。無効化は未確認が残る間だけ。
+    const [confirmed, setConfirmed] = useState(!!cloneMeta?.cloneConfirmedAt)
+    const [confirmSaving, setConfirmSaving] = useState(false)
+    // ★描画条件は「複製由来 = cloned_at がある」こと。unconfirmedCount には一切依存させない
+    //   （未確認0でもチェックを出さないと clone_confirmed_at を立てられず永久に納品不能になるため）。
+    const isClone = !!cloneMeta?.clonedAt
+    const hasUnconfirmed = (cloneMeta?.unconfirmedCount ?? 0) > 0
+    // 複製由来は「未確認ゼロ」かつ「最終確認済み」でなければ納品不可（deliver_report ゲートの先回り）。
+    const cloneBlocked = isClone && (hasUnconfirmed || !confirmed)
+
+    const toggleConfirm = async (checked: boolean) => {
+        if (!cloneMeta) return
+        setConfirmSaving(true)
+        // clone_confirmed_at を直接 update（RLS: soukatsu は owner の ALL。専用RPC不要＝deliver_report が本体ゲート）。
+        const { error } = await supabase
+            .from("inspection_soukatsu")
+            .update({ clone_confirmed_at: checked ? new Date().toISOString() : null })
+            .eq("id", cloneMeta.soukatsuId)
+        setConfirmSaving(false)
+        if (error) {
+            setMessage(`最終確認の保存に失敗しました: ${error.message}`)
+            return
+        }
+        setConfirmed(checked)
+        router.refresh()
+    }
 
     const input: ReportInputs = {
         soukatsuData,
@@ -156,6 +196,8 @@ export default function DeliverReportButton({
                 p_file_name: fileNameJa,
                 p_inspection_date: inspectionDate,
                 p_note: null,
+                // 複製ゲート用に常に itiran を渡す（複製由来でなければサーバ側で素通り）。迂回しない。
+                p_source_itiran_id: itiranId,
             })
             if (rpcError) {
                 // RPC失敗 = 孤児ファイルが残るがオーナーには見えない（納品レコード無し）。
@@ -214,9 +256,32 @@ export default function DeliverReportButton({
                 })}
             </div>
 
+            {/* 複製由来の最終確認（★clonedAt があれば未確認0でも常に描画・無効化は未確認が残る間だけ） */}
+            {isClone && (
+                <label
+                    className={`flex items-start gap-2 rounded-md border p-3 text-sm ${
+                        hasUnconfirmed ? "border-slate-200 bg-slate-50 opacity-70" : "border-amber-300 bg-amber-50"
+                    }`}
+                >
+                    <input
+                        type="checkbox"
+                        className="mt-0.5 h-4 w-4"
+                        checked={confirmed}
+                        disabled={confirmSaving || hasUnconfirmed}
+                        onChange={(e) => toggleConfirm(e.target.checked)}
+                    />
+                    <span>
+                        各様式の内容が、今回実施した点検の結果であることを確認しました。
+                        <span className="block text-xs text-slate-500">
+                            （この報告書は前回から複製されています。前回の内容のまま提出していないことをご確認ください）
+                        </span>
+                    </span>
+                </label>
+            )}
+
             <Button
                 onClick={handleDeliver}
-                disabled={busy}
+                disabled={busy || cloneBlocked}
                 className="bg-teal-700 hover:bg-teal-800 text-white"
             >
                 {busy ? (
@@ -237,6 +302,14 @@ export default function DeliverReportButton({
                     </>
                 )}
             </Button>
+
+            {cloneBlocked && (
+                <p className="text-xs text-amber-600">
+                    {hasUnconfirmed
+                        ? "未確認の様式があります。各様式を開いて保存してから納品してください。"
+                        : "「今回実施した点検の結果である」に最終確認のチェックを入れると納品できます。"}
+                </p>
+            )}
 
             {message && (
                 <p

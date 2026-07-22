@@ -30,3 +30,15 @@ export const PDF_MERGE_CONFIG: Record<ItiranInputStepId, PdfMergeStepConfig> = {
     "emergency-power-outlet":       { apiRoute: "/api/generate-emergency-power-outlet-bekki21-pdf",       dbTable: "inspection_emergency_power_outlet_bekki21" },
     "radio-communication-support":  { apiRoute: "/api/generate-radio-communication-support-bekki22-pdf",  dbTable: "inspection_radio_communication_support_bekki22" },
 }
+
+// dbTable → stepId の逆引き。複製の「未確認様式」（inspection.unconfirmed_cloned_forms が返す
+// テーブル名）を、既存の STEPS.title（ラベル）と buildItiranInputHref（リンク）へ橋渡しするために使う。
+// 設備名の定義をここで増やさず、PDF_MERGE_CONFIG と itiran-input-flow の既存定義から導出する。
+// report_form_tables() ⇔ PDF_MERGE_CONFIG の23本一致は DB 側 drift テストが保証する。
+const DB_TABLE_TO_STEP: Record<string, ItiranInputStepId> = Object.fromEntries(
+    Object.entries(PDF_MERGE_CONFIG).map(([stepId, cfg]) => [cfg.dbTable, stepId as ItiranInputStepId]),
+)
+
+export function formTableToStep(dbTable: string): ItiranInputStepId | null {
+    return DB_TABLE_TO_STEP[dbTable] ?? null
+}

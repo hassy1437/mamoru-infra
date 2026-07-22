@@ -23,7 +23,7 @@ export default async function ItiranDetailPage({
 
     const { data: soukatsu } = await supabase
         .from("inspection_soukatsu")
-        .select("building_name, property_id")
+        .select("building_name, property_id, cloned_at, cloned_from_soukatsu_id")
         .eq("id", id)
         .single()
 
@@ -36,9 +36,12 @@ export default async function ItiranDetailPage({
     const nextLabel = nextStep ? getItiranInputNextLabel(nextStep) : null
 
     const { steps: progressSteps, completedCount, totalCount } = await getEquipmentProgress(
-        supabase, itiranId, id, property?.equipment_types
+        supabase, itiranId, id, property?.equipment_types,
+        (soukatsu?.cloned_at as string | null) ?? null
     )
     const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
+    const isClone = !!soukatsu?.cloned_from_soukatsu_id
+    const unconfirmedCount = progressSteps.filter((s) => s.unconfirmed).length
 
     return (
         <div className="min-h-screen bg-gray-100 p-4 md:p-8">
@@ -76,6 +79,18 @@ export default async function ItiranDetailPage({
                 </div>
             </div>
 
+            {/* 複製バナー: 各様式を開いて確認するよう促す */}
+            {isClone && (
+                <div className="max-w-[210mm] mx-auto mb-6 rounded-xl border border-amber-300 bg-amber-50 p-4">
+                    <p className="text-sm font-semibold text-amber-800">前回の報告書から複製された報告書です。</p>
+                    <p className="text-sm text-amber-700 mt-1">
+                        {unconfirmedCount > 0
+                            ? `各様式を開いて内容を確認・更新してください（未確認 ${unconfirmedCount} 件）。全て確認すると納品できます。`
+                            : "全ての様式を確認しました。結果出力から最終確認のうえ納品できます。"}
+                    </p>
+                </div>
+            )}
+
             {/* 設備入力の進捗ダッシュボード */}
             {totalCount > 0 && (
                 <div className="max-w-[210mm] mx-auto mb-6 bg-white rounded-xl border border-slate-200 p-6 space-y-4">
@@ -110,6 +125,11 @@ export default async function ItiranDetailPage({
                                 <span className={`text-sm flex-1 ${step.ready ? "text-slate-700" : "text-slate-500"}`}>
                                     {step.title}
                                 </span>
+                                {step.unconfirmed && (
+                                    <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                                        要確認
+                                    </span>
+                                )}
                                 <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 shrink-0" />
                             </Link>
                         ))}

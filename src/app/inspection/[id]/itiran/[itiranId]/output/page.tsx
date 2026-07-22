@@ -1,13 +1,14 @@
 import { createClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
-import { CheckCircle2, MinusCircle } from "lucide-react"
+import Link from "next/link"
+import { CheckCircle2, MinusCircle, Copy } from "lucide-react"
 import CombinedPdfButton from "@/components/combined-pdf-button"
 import DeliverReportButton, { type DeliveryStatus } from "@/components/deliver-report-button"
 import StepIndicator from "@/components/step-indicator"
 import { INSPECTION_STEPS } from "@/lib/inspection-steps"
 import Breadcrumb from "@/components/breadcrumb"
-import { PDF_MERGE_CONFIG } from "@/lib/pdf-merge-config"
-import { selectedSteps } from "@/lib/itiran-input-flow"
+import { PDF_MERGE_CONFIG, formTableToStep } from "@/lib/pdf-merge-config"
+import { selectedSteps, buildItiranInputHref, getItiranInputPageTitle } from "@/lib/itiran-input-flow"
 import type { ItiranInputStepId } from "@/lib/itiran-input-flow"
 
 export default async function OutputPage({
@@ -45,6 +46,27 @@ export default async function OutputPage({
     if (sourceMatchId) {
         const { data: ds } = await supabase.rpc("get_match_deliveries", { p_match_id: sourceMatchId })
         deliveryStatus = (ds as DeliveryStatus | null) ?? null
+    }
+
+    // 複製由来か・未確認様式（★判定は unconfirmed_cloned_forms RPC 1箇所に集約＝ハブ/ゲートと一致）。
+    const isCloneReport = !!(soukatsu as { cloned_from_soukatsu_id?: string | null }).cloned_from_soukatsu_id
+    const clonedAt = (soukatsu as { cloned_at?: string | null }).cloned_at ?? null
+    const cloneConfirmedAt = (soukatsu as { clone_confirmed_at?: string | null }).clone_confirmed_at ?? null
+    const clonePropertyId = (soukatsu as { property_id?: string | null }).property_id ?? null
+    let unconfirmedForms: { table: string; title: string; href: string }[] = []
+    if (clonedAt) {
+        const { data: uc } = await supabase.rpc("unconfirmed_cloned_forms", {
+            p_itiran_id: itiranId,
+            p_cloned_at: clonedAt,
+        })
+        unconfirmedForms = ((uc as string[] | null) ?? [])
+            .map((table) => {
+                const step = formTableToStep(table)
+                return step
+                    ? { table, title: getItiranInputPageTitle(step), href: buildItiranInputHref(step, id, itiranId) }
+                    : null
+            })
+            .filter((x): x is { table: string; title: string; href: string } => x !== null)
     }
 
     const applicableSteps = selectedSteps(property?.equipment_types)
@@ -106,6 +128,29 @@ export default async function OutputPage({
                         以下のPDFを結合して一括ダウンロードします。
                     </p>
 
+                    {/* 複製バッジ＋未確認様式一覧（納品ゲートの案内。最終確認チェックは納品セクション内） */}
+                    {isCloneReport && (
+                        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 space-y-2">
+                            <p className="text-sm font-semibold text-amber-800">この報告書は前回から複製されています</p>
+                            {unconfirmedForms.length > 0 ? (
+                                <div className="text-sm text-amber-700">
+                                    <p>未確認の様式（開いて保存すると確認済みになります）:</p>
+                                    <ul className="mt-1 list-disc pl-5 space-y-1">
+                                        {unconfirmedForms.map((u) => (
+                                            <li key={u.table}>
+                                                <Link href={u.href} className="text-amber-800 underline hover:text-amber-900">
+                                                    {u.title}
+                                                </Link>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            ) : (
+                                <p className="text-sm text-amber-700">全ての様式を確認しました。納品セクションで最終確認のうえ納品してください。</p>
+                            )}
+                        </div>
+                    )}
+
                     <div className="space-y-2">
                         {pdfList.map((item, idx) => (
                             <div key={idx} className="flex items-center gap-2 text-sm">
@@ -145,10 +190,35 @@ export default async function OutputPage({
                             buildingName={soukatsu.building_name}
                             equipmentTypes={property?.equipment_types as string[] | undefined}
                             matchId={sourceMatchId}
+                            itiranId={itiranId}
                             inspectionType={soukatsu.inspection_type as string}
                             inspectionDate={soukatsu.inspection_date as string}
                             status={deliveryStatus}
+                            cloneMeta={
+                                clonedAt
+                                    ? {
+                                          soukatsuId: id,
+                                          clonedAt,
+                                          cloneConfirmedAt,
+                                          unconfirmedCount: unconfirmedForms.length,
+                                      }
+                                    : null
+                            }
                         />
+                    )}
+
+                    {/* この報告書を複製（itiran を明示的に渡す＝事故の2本目でなくこの報告書を確実に複製）。
+                        property_id が null（物件未紐付け）の報告書では新規作成に propertyId が要るため出さない。 */}
+                    {clonePropertyId && (
+                        <div className="pt-2 border-t border-slate-100">
+                            <Link
+                                href={`/inspection/new?propertyId=${clonePropertyId}&copyFrom=${id}&sourceItiran=${itiranId}`}
+                                className="inline-flex items-center gap-2 text-sm text-teal-700 hover:text-teal-900 hover:underline"
+                            >
+                                <Copy className="w-4 h-4" />
+                                この報告書を複製して次回点検を作成
+                            </Link>
+                        </div>
                     )}
                 </div>
             </div>

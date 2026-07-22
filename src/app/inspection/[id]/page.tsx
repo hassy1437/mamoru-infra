@@ -29,6 +29,31 @@ export default async function InspectionDetailPage({ params }: { params: Promise
         : { data: null as { fire_manager_name: string | null } | null }
     const soukatsuData = { ...report, fire_manager: property?.fire_manager_name ?? "", inspector_responsible: "" }
 
+    // 「次へ」の遷移先を決める。1報告書＝点検者一覧表(itiran)1本が正で、押すたび新規作成すると
+    // itiran が二重生成される（過去のデータ破損の原因）。既存 itiran があればそのハブへ寄せ、
+    // 無ければ従来どおり新規フォームへ。複数ある場合（過去の二重生成）は様式行が最多の本命へ
+    // （複製の fallback と同じ inspection.itiran_form_count を使い、寄せ方を1箇所に統一）。
+    const { data: itirans } = await supabase
+        .from("inspection_itiran")
+        .select("id")
+        .eq("soukatsu_id", id)
+    let nextItiranId: string | null = null
+    if (itirans && itirans.length === 1) {
+        nextItiranId = itirans[0].id as string
+    } else if (itirans && itirans.length > 1) {
+        const counts = await Promise.all(
+            itirans.map(async (it) => {
+                const { data } = await supabase.rpc("itiran_form_count", { p_itiran_id: it.id as string })
+                return { id: it.id as string, count: (data as number) ?? 0 }
+            }),
+        )
+        counts.sort((a, b) => b.count - a.count)
+        nextItiranId = counts[0]?.id ?? (itirans[0].id as string)
+    }
+    const nextItiranHref = nextItiranId
+        ? `/inspection/${id}/itiran/${nextItiranId}`
+        : `/inspection/${id}/itiran`
+
     return (
         <div className="min-h-screen bg-gray-100 p-4 md:p-8">
             <div className="max-w-[210mm] mx-auto mb-6">
@@ -46,10 +71,10 @@ export default async function InspectionDetailPage({ params }: { params: Promise
                 <div className="flex gap-2 flex-wrap">
                     <SoukatsuPdfButton data={soukatsuData} />
                     <Link
-                        href={`/inspection/${id}/itiran`}
+                        href={nextItiranHref}
                         className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors"
                     >
-                        次へ: 点検者一覧表を入力
+                        {nextItiranId ? "次へ: 点検者一覧表を確認" : "次へ: 点検者一覧表を入力"}
                         <ArrowRight className="w-4 h-4" />
                     </Link>
                 </div>

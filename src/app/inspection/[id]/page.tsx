@@ -1,7 +1,7 @@
 ﻿import { getAuthenticatedClient } from "@/lib/supabase/auth-server"
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { ArrowRight } from "lucide-react"
+import { ArrowRight, Pencil } from "lucide-react"
 import SoukatsuPdfButton from "@/components/soukatsu-pdf-button"
 import SoukatsuPdfPreview from "@/components/soukatsu-pdf-preview"
 import StepIndicator from "@/components/step-indicator"
@@ -69,6 +69,13 @@ export default async function InspectionDetailPage({ params }: { params: Promise
                     &larr; 物件選択に戻る
                 </Link>
                 <div className="flex gap-2 flex-wrap">
+                    <Link
+                        href={`/inspection/${id}/edit`}
+                        className="inline-flex items-center gap-2 px-4 py-2 border border-slate-300 hover:bg-slate-50 text-slate-600 text-sm font-medium rounded-lg transition-colors"
+                    >
+                        <Pencil className="w-4 h-4" />
+                        編集
+                    </Link>
                     <SoukatsuPdfButton data={soukatsuData} />
                     <Link
                         href={nextItiranHref}

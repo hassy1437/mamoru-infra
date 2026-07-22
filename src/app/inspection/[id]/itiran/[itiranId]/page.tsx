@@ -23,7 +23,7 @@ export default async function ItiranDetailPage({
 
     const { data: soukatsu } = await supabase
         .from("inspection_soukatsu")
-        .select("building_name, property_id, cloned_at, cloned_from_soukatsu_id")
+        .select("building_name, property_id, cloned_at")
         .eq("id", id)
         .single()
 
@@ -40,7 +40,9 @@ export default async function ItiranDetailPage({
         (soukatsu?.cloned_at as string | null) ?? null
     )
     const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
-    const isClone = !!soukatsu?.cloned_from_soukatsu_id
+    // 複製由来の判定は cloned_at に統一（ゲート/未確認判定と同列。cloned_from は FK が
+    // ON DELETE SET NULL で複製元削除時に NULL 化するため由来記録専用にし、判定には使わない）。
+    const isClone = !!soukatsu?.cloned_at
     const unconfirmedCount = progressSteps.filter((s) => s.unconfirmed).length
 
     return (

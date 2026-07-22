@@ -49,7 +49,9 @@ export default async function OutputPage({
     }
 
     // 複製由来か・未確認様式（★判定は unconfirmed_cloned_forms RPC 1箇所に集約＝ハブ/ゲートと一致）。
-    const isCloneReport = !!(soukatsu as { cloned_from_soukatsu_id?: string | null }).cloned_from_soukatsu_id
+    // 複製由来の判定は cloned_at に統一（deliver_report ゲートと同列）。cloned_from_soukatsu_id は
+    // FK が ON DELETE SET NULL で複製元削除時に NULL 化する＝由来の記録専用にし、判定には使わない。
+    const isCloneReport = !!(soukatsu as { cloned_at?: string | null }).cloned_at
     const clonedAt = (soukatsu as { cloned_at?: string | null }).cloned_at ?? null
     const cloneConfirmedAt = (soukatsu as { clone_confirmed_at?: string | null }).clone_confirmed_at ?? null
     const clonePropertyId = (soukatsu as { property_id?: string | null }).property_id ?? null

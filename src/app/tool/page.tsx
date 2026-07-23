@@ -100,9 +100,14 @@ export default async function ToolPage() {
         {/* Recent Inspections */}
         {recentInspections.length > 0 && (
           <div className="relative z-10 text-left">
-            <div className="flex items-center gap-2 mb-3">
-              <Clock className="w-4 h-4 text-slate-400" />
-              <span className="text-sm font-semibold text-slate-500">最近の点検</span>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-slate-400" />
+                <span className="text-sm font-semibold text-slate-500">最近の点検</span>
+              </div>
+              <Link href="/reports" className="text-xs font-medium text-blue-600 hover:underline shrink-0">
+                すべての報告書を見る →
+              </Link>
             </div>
             <div className="space-y-2">
               {recentInspections.map((insp) => (
@@ -152,6 +157,14 @@ export default async function ToolPage() {
               <ClipboardCheck className="w-6 h-6" />
               消防設備点検スタート
               <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+            </Button>
+          </Link>
+
+          <Link href="/reports" className="w-full group">
+            <Button size="lg" variant="outline" className="w-full text-base px-10 py-6 gap-3 border-slate-300 hover:bg-slate-50 hover:-translate-y-0.5 transition-all duration-300 rounded-xl font-medium text-slate-600">
+              <FileText className="w-5 h-5" />
+              点検報告書一覧
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Button>
           </Link>
 

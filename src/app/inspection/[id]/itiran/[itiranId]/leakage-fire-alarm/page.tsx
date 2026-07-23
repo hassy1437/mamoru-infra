@@ -1,18 +1,8 @@
 ﻿import { createClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
-import Link from "next/link"
-import { ArrowRight } from "lucide-react"
 import LeakageFireAlarmBekki12Form from "@/components/leakage-fire-alarm-bekki12-form"
-import {
-    buildItiranInputHref,
-    getItiranInputBackLabel,
-    getItiranInputNextLabel,
-    getItiranInputPageTitle,
-    getNextItiranInputStep,
-    getPrevItiranInputStep,
-    hasItiranInputStep,
-    type ItiranInputStepId,
-} from "@/lib/itiran-input-flow"
+import { hasItiranInputStep, type ItiranInputStepId } from "@/lib/itiran-input-flow"
+import ItiranFormNav from "@/components/itiran-form-nav"
 
 
 const CURRENT_STEP_ID: ItiranInputStepId = "leakage-fire-alarm"
@@ -51,13 +41,6 @@ export default async function LeakageFireAlarmBekki12Page({
         return notFound()
     }
 
-    const prevStep = getPrevItiranInputStep(CURRENT_STEP_ID, property?.equipment_types)
-    const nextStep = getNextItiranInputStep(CURRENT_STEP_ID, property?.equipment_types)
-
-    const backHref = prevStep ? buildItiranInputHref(prevStep, id, itiranId) : `/inspection/${id}/itiran/${itiranId}`
-    const backLabel = prevStep ? getItiranInputBackLabel(prevStep) : "点検者一覧に戻る"
-    const nextHref = nextStep ? buildItiranInputHref(nextStep, id, itiranId) : null
-    const nextLabel = nextStep ? getItiranInputNextLabel(nextStep) : null
 
     const { data: saved } = await supabase
         .from("inspection_leakage_fire_alarm_bekki12")
@@ -70,31 +53,12 @@ export default async function LeakageFireAlarmBekki12Page({
     return (
         <main className="min-h-screen bg-gray-100 py-8">
             <div className="max-w-6xl mx-auto px-4">
-                <div className="mb-6">
-                    <div className="flex items-center justify-between gap-3 flex-wrap">
-                        <Link href={backHref} className="text-blue-600 hover:underline text-sm">
-                            &larr; {backLabel}
-                        </Link>
-                        {nextHref && nextLabel ? (
-                            <Link
-                                href={nextHref}
-                                className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors"
-                            >
-                                {nextLabel}
-                                <ArrowRight className="w-4 h-4" />
-                            </Link>
-                        ) : (
-                            <Link
-                                href={`/inspection/${id}/itiran/${itiranId}/output`}
-                                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
-                            >
-                                結果出力へ
-                                <ArrowRight className="w-4 h-4" />
-                            </Link>
-                        )}
-                    </div>
-                    <h1 className="text-2xl font-bold text-slate-900 mt-2">{getItiranInputPageTitle(CURRENT_STEP_ID)}</h1>
-                </div>
+                <ItiranFormNav
+                    soukatsuId={id}
+                    itiranId={itiranId}
+                    currentStepId={CURRENT_STEP_ID}
+                    equipmentTypes={property?.equipment_types}
+                />
 
                 <LeakageFireAlarmBekki12Form
                     initial={{

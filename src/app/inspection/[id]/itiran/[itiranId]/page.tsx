@@ -2,12 +2,11 @@ import { createClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import ItiranPdfButton from "@/components/itiran-pdf-button"
-import ItiranPdfPreview from "@/components/itiran-pdf-preview"
+import ItiranPdfPreviewCollapsible from "@/components/itiran-pdf-preview-collapsible"
 import StepIndicator from "@/components/step-indicator"
 import { INSPECTION_STEPS } from "@/lib/inspection-steps"
 import Breadcrumb from "@/components/breadcrumb"
 import { ArrowRight, CheckCircle2, Circle, FileDown, Pencil } from "lucide-react"
-import { buildItiranInputHref, getItiranInputNextLabel, getNextItiranInputStep } from "@/lib/itiran-input-flow"
 import { getEquipmentProgress } from "@/lib/inspection-progress"
 
 export default async function ItiranDetailPage({
@@ -31,10 +30,6 @@ export default async function ItiranDetailPage({
         ? await supabase.from("properties").select("equipment_types").eq("id", soukatsu.property_id).single()
         : { data: null as { equipment_types: unknown } | null }
 
-    const nextStep = getNextItiranInputStep(null, property?.equipment_types)
-    const nextHref = nextStep ? buildItiranInputHref(nextStep, id, itiranId) : null
-    const nextLabel = nextStep ? getItiranInputNextLabel(nextStep) : null
-
     const { steps: progressSteps, completedCount, totalCount } = await getEquipmentProgress(
         supabase, itiranId, id, property?.equipment_types,
         (soukatsu?.cloned_at as string | null) ?? null
@@ -44,6 +39,21 @@ export default async function ItiranDetailPage({
     // ON DELETE SET NULL で複製元削除時に NULL 化するため由来記録専用にし、判定には使わない）。
     const isClone = !!soukatsu?.cloned_at
     const unconfirmedCount = progressSteps.filter((s) => s.unconfirmed).length
+
+    // ★主CTAの状態機械: 次の作業＝「未入力 or 未確認」の最初の様式（通常=未入力/複製=未確認を1式で拾う。
+    //   要確認バッジと同じ first-unconfirmed を指すので整合）。無ければ完了→結果出力を主に。
+    //   getNextItiranInputStep(null,…) は進捗を見ず常に先頭を返すので主CTAには使わない。
+    const outputHref = `/inspection/${id}/itiran/${itiranId}/output`
+    const nextAction = progressSteps.find((s) => !s.ready || s.unconfirmed)
+    const isComplete = !nextAction
+    const primaryCta = nextAction
+        ? {
+            href: nextAction.href,
+            label: nextAction.ready
+                ? `次の様式を確認: ${nextAction.title}`   // ready かつ未確認（複製）
+                : `次の様式を入力: ${nextAction.title}`,  // 未入力（通常）
+        }
+        : { href: outputHref, label: "結果出力へ" }
 
     return (
         <div className="min-h-screen bg-gray-100 p-4 md:p-8">
@@ -60,31 +70,16 @@ export default async function ItiranDetailPage({
                 <Link href={`/inspection/${id}`} className="text-blue-600 hover:underline">
                     &larr; 総括表に戻る
                 </Link>
+                {/* 補助アクション（小・弱く）。主動作は下の進捗カード上の主CTA1つに集約。 */}
                 <div className="flex gap-2 flex-wrap">
                     <Link
                         href={`/inspection/${id}/itiran/${itiranId}/edit`}
-                        className="inline-flex items-center gap-2 px-4 py-2 border border-slate-300 hover:bg-slate-50 text-slate-600 text-sm font-medium rounded-lg transition-colors"
+                        className="inline-flex items-center gap-2 px-3 py-1.5 border border-slate-300 hover:bg-slate-50 text-slate-600 text-sm font-medium rounded-lg transition-colors"
                     >
                         <Pencil className="w-4 h-4" />
                         点検者を編集
                     </Link>
                     <ItiranPdfButton data={record} buildingName={soukatsu?.building_name} />
-                    <Link
-                        href={`/inspection/${id}/itiran/${itiranId}/output`}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
-                    >
-                        <FileDown className="w-4 h-4" />
-                        結果出力
-                    </Link>
-                    {nextHref && nextLabel && (
-                        <Link
-                            href={nextHref}
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors"
-                        >
-                            {nextLabel}
-                            <ArrowRight className="w-4 h-4" />
-                        </Link>
-                    )}
                 </div>
             </div>
 
@@ -99,6 +94,27 @@ export default async function ItiranDetailPage({
                     </p>
                 </div>
             )}
+
+            {/* ★主CTA（大・1つだけ）: 未入力/未確認があれば次の様式へ、無ければ結果出力へ。 */}
+            <div className="max-w-[210mm] mx-auto mb-6">
+                <Link
+                    href={primaryCta.href}
+                    className={`flex items-center justify-center gap-2 w-full px-6 py-4 rounded-xl text-white font-bold text-base shadow-sm transition-colors ${
+                        isComplete ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"
+                    }`}
+                >
+                    {isComplete && <FileDown className="w-5 h-5" />}
+                    {primaryCta.label}
+                    <ArrowRight className="w-5 h-5" />
+                </Link>
+                {!isComplete && (
+                    <div className="mt-2 text-center">
+                        <Link href={outputHref} className="text-sm text-slate-500 hover:text-slate-700 hover:underline">
+                            先に結果出力を確認する →
+                        </Link>
+                    </div>
+                )}
+            </div>
 
             {/* 設備入力の進捗ダッシュボード */}
             {totalCount > 0 && (
@@ -147,7 +163,7 @@ export default async function ItiranDetailPage({
             )}
 
             <div className="max-w-[210mm] mx-auto">
-                <ItiranPdfPreview data={record} />
+                <ItiranPdfPreviewCollapsible data={record} />
             </div>
         </div>
     )

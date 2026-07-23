@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react"
 import Link from "next/link"
 import {
-    Search, Calendar, Copy, Unlink, CheckCircle2, AlertTriangle, ClipboardCheck, ArrowRight,
+    Search, Calendar, Copy, Unlink, CheckCircle2, AlertTriangle, ClipboardCheck, ArrowRight, Send,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 
@@ -23,6 +23,7 @@ export type ReportSummary = {
     form_type_count: number
     form_row_count: number
     last_activity_at: string | null
+    delivered_at: string | null   // 非null=納品済み（source_soukatsu_id 経由・RLSで自分の納品だけ）
 }
 
 // ★ステージ導出は「1箇所」に集約（form_type_count>0 → 様式n件 / has_itiran → 点検者済 / else 総括表のみ）。
@@ -158,6 +159,11 @@ export default function ReportList({ reports }: { reports: ReportSummary[] }) {
                                         {!r.property_id && (
                                             <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-600">
                                                 <Unlink className="w-3 h-3" />物件未紐付け
+                                            </span>
+                                        )}
+                                        {r.delivered_at && (
+                                            <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-teal-600 px-2 py-0.5 text-[11px] font-medium text-white">
+                                                <Send className="w-3 h-3" />納品済み
                                             </span>
                                         )}
                                     </div>

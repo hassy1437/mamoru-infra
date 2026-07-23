@@ -12,6 +12,7 @@ import { Loader2, Plus, X } from "lucide-react"
 import { toast } from "sonner"
 import { friendlyError } from "@/lib/error-messages"
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes"
+import { useAuth } from "@/components/auth-provider"
 import type { Inspector, InspectorData } from "@/types/database"
 import { LicenseEditor, type LicenseEditorValue } from "@/components/license-editor"
 import { emptyInspector } from "@/lib/inspector-helpers"
@@ -19,6 +20,10 @@ import { emptyInspector } from "@/lib/inspector-helpers"
 interface Props {
     soukatsuId: string
     masters: Inspector[]
+    // 編集モード: 既存 itiran を渡すと initial を初期値に流し、submit が update になる。
+    // 未指定(=作成モード)なら従来どおり insert（分岐は下で早期returnし、insertコードは1行も変えない）。
+    initial?: [InspectorData, InspectorData] | null
+    itiranId?: string
 }
 
 // 一覧表示と同じ規則: label → name → 「（無題）」（inspector-list.tsx と一致）
@@ -42,15 +47,21 @@ function isInspectorFilled(d: InspectorData): boolean {
     )
 }
 
-export default function ItiranForm({ soukatsuId, masters }: Props) {
+export default function ItiranForm({ soukatsuId, masters, initial, itiranId }: Props) {
     const router = useRouter()
+    const { user } = useAuth()
     const { markDirty, markClean } = useUnsavedChanges()
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
+    // 編集モード（既存 itiran を編集）か。initial が渡されたら true。
+    const isEditMode = !!initial
+
     // payload 互換のため state は常に [InspectorData, InspectorData] のタプルを維持する。
-    // itiran-form は insert 専用（既存データを load する経路はない）ので初期値は常に空。
-    const initialInspectors: [InspectorData, InspectorData] = [emptyInspector(), emptyInspector()]
+    // 作成モードは空・編集モードは既存 inspector を初期値に（欠損フィールドは emptyInspector で補完）。
+    const initialInspectors: [InspectorData, InspectorData] = initial
+        ? [{ ...emptyInspector(), ...initial[0] }, { ...emptyInspector(), ...initial[1] }]
+        : [emptyInspector(), emptyInspector()]
     const [inspectors, setInspectors] = useState<[InspectorData, InspectorData]>(initialInspectors)
     // 点検者2 の表示制御。初期値は inspector2 が非空かどうか（Q11 前方互換。
     // 今は editing 経路がないため常に false だが、将来 load 対応した際の保険）。
@@ -68,7 +79,8 @@ export default function ItiranForm({ soukatsuId, masters }: Props) {
     // マウント時の自動 pre-fill（A3 自動部分）: マスタが 1 件以上あれば最新（先頭）を
     // 点検者1 に流し込む。新規フォーム表示時の 1 回のみ。dirty にはしない（自動補完のため）。
     useEffect(() => {
-        if (masters.length > 0) {
+        // 作成モードのみ: マスタ最新を点検者1に自動プリフィル。編集モードでは既存を上書きしないため実行しない。
+        if (!isEditMode && masters.length > 0) {
             setInspectors(prev => [structuredClone(masters[0].inspector_data), prev[1]])
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -119,6 +131,30 @@ export default function ItiranForm({ soukatsuId, masters }: Props) {
         e.preventDefault()
         setLoading(true)
         setError(null)
+
+        // ★編集モード: 既存 itiran を update（inspector1/inspector2 だけ・.eq(id).eq(user_id) 二重防御）。
+        //   ここで早期 return するので、下の「作成(insert)コード」は1行も変えていない。
+        if (isEditMode && itiranId) {
+            const { error: updateError } = await supabase
+                .from("inspection_itiran")
+                .update({
+                    inspector1: inspectors[0] as unknown,
+                    inspector2: (showSecond ? inspectors[1] : emptyInspector()) as unknown,
+                })
+                .eq("id", itiranId)
+                .eq("user_id", user?.id ?? "")
+            if (updateError) {
+                const msg = friendlyError(updateError)
+                setError(msg)
+                toast.error(msg)
+                setLoading(false)
+                return
+            }
+            markClean()
+            toast.success("点検者情報を更新しました")
+            router.push(`/inspection/${soukatsuId}/itiran/${itiranId}`)
+            return
+        }
 
         // payload 構造は不変: inspector1 / inspector2 の 2 jsonb 固定。
         // showSecond=false のときは inspector2 を emptyInspector() で保存（現状と完全一致）。

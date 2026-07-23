@@ -6,7 +6,7 @@ import ItiranPdfPreview from "@/components/itiran-pdf-preview"
 import StepIndicator from "@/components/step-indicator"
 import { INSPECTION_STEPS } from "@/lib/inspection-steps"
 import Breadcrumb from "@/components/breadcrumb"
-import { ArrowRight, CheckCircle2, Circle, FileDown } from "lucide-react"
+import { ArrowRight, CheckCircle2, Circle, FileDown, Pencil } from "lucide-react"
 import { buildItiranInputHref, getItiranInputNextLabel, getNextItiranInputStep } from "@/lib/itiran-input-flow"
 import { getEquipmentProgress } from "@/lib/inspection-progress"
 
@@ -61,6 +61,13 @@ export default async function ItiranDetailPage({
                     &larr; 総括表に戻る
                 </Link>
                 <div className="flex gap-2 flex-wrap">
+                    <Link
+                        href={`/inspection/${id}/itiran/${itiranId}/edit`}
+                        className="inline-flex items-center gap-2 px-4 py-2 border border-slate-300 hover:bg-slate-50 text-slate-600 text-sm font-medium rounded-lg transition-colors"
+                    >
+                        <Pencil className="w-4 h-4" />
+                        点検者を編集
+                    </Link>
                     <ItiranPdfButton data={record} buildingName={soukatsu?.building_name} />
                     <Link
                         href={`/inspection/${id}/itiran/${itiranId}/output`}

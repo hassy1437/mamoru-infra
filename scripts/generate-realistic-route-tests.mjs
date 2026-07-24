@@ -55,14 +55,66 @@ const BAD = "変形あり"
 const ACTION = "部品交換"
 const NUMERIC = "0.45"
 
-/** ルート実装から contentOverrides の行番号を読む（数値欄＝幅を絞ったセル） */
-const numericRowIndexes = (routePath) => {
+/** 括弧の対応を見て drawResultRows(...) の引数列を丸ごと取り出す */
+const callArgs = (src, start) => {
+    let depth = 0
+    for (let i = start; i < src.length; i += 1) {
+        const c = src[i]
+        if (c === "(") depth += 1
+        else if (c === ")") {
+            depth -= 1
+            if (depth === 0) return src.slice(start + 1, i)
+        }
+    }
+    return ""
+}
+
+/**
+ * ルート実装から「数値欄（幅を絞ったセル）」の行番号を rows配列ごとに読む。
+ *
+ * ★contentOverrides という語は関数シグネチャにも出るので、そこを拾ってはいけない。
+ *   最初はシグネチャ側の `= {}` を掴んでしまい、置換が黙って効かず、
+ *   現実値セットに存在しないはずの切り詰めが6件出ていた（＝合否判定が狂う）。
+ *   呼び出し側の実引数を括弧の対応で取り出し、最後のオブジェクトリテラルから読む。
+ */
+const numericRowsByKey = (routePath) => {
     const src = fs.readFileSync(path.join(process.cwd(), routePath), "utf8")
-    const out = new Set()
-    const block = src.match(/contentOverrides[\s\S]{0,200}?\{([\s\S]*?)\n\s*\}\s*\)/)
-    const scan = block ? block[1] : src
-    for (const m of scan.matchAll(/(\d+):\s*\{\s*x:/g)) out.add(Number(m[1]))
-    return out
+    const map = new Map() // payloadのキー -> Set<行番号>
+    let idx = src.indexOf("drawResultRows(")
+    while (idx !== -1) {
+        const args = callArgs(src, idx + "drawResultRows".length)
+        const rowsExpr = args.split(",")[2] ?? ""
+        // rows が局所変数なら const 宣言をたどって body.pageN_rows を解決する
+        let key = rowsExpr.match(/page\d+_rows/)?.[0]
+        if (!key) {
+            const local = rowsExpr.trim().match(/^[A-Za-z_$][\w$]*/)?.[0]
+            if (local) {
+                const decl = src.match(new RegExp(`const\\s+${local}\\s*=([^\\n]*)`))
+                key = decl?.[1].match(/page\d+_rows/)?.[0]
+            }
+        }
+        const indexes = new Set()
+        // (a) contentOverrides: 幅を絞ったセル
+        for (const m of args.matchAll(/(\d+):\s*\{\s*x:\s*[\d.]+\s*,\s*w:\s*[\d.]+\s*\}/g)) {
+            indexes.add(Number(m[1]))
+        }
+        // (b) skip集合 new Set([...]): 汎用描画から外して専用コードが描く行。
+        //     bekki10 の「ホース・ノズル等」のように content が長さ(m)＝数値を意味する。
+        // ★skip集合は複数行＋行コメント付きで書かれる。コメントを外してから数字を拾う
+        //   （カンマ分割だと "// …" を含む要素が NaN になり、その行番号を取りこぼす）
+        const skip = args.match(/new Set\(\[([\s\S]*?)\]\)/)
+        if (skip) {
+            const cleaned = skip[1].replace(/\/\/.*/g, "")
+                for (const m of cleaned.matchAll(/\d+/g)) indexes.add(Number(m[0]))
+        }
+        if (key && indexes.size) {
+            const cur = map.get(key) ?? new Set()
+            for (const v of indexes) cur.add(v)
+            map.set(key, cur)
+        }
+        idx = src.indexOf("drawResultRows(", idx + 1)
+    }
+    return map
 }
 
 const realisticValue = (key, original) => {
@@ -71,18 +123,20 @@ const realisticValue = (key, original) => {
     return original
 }
 
-const transform = (node, numericRows, key = "", rowIndex = null) => {
+const transform = (node, numericByKey, key = "", rowIndex = null, rowsKey = "") => {
     if (Array.isArray(node)) {
-        return node.map((v, i) => transform(v, numericRows, key, key.endsWith("_rows") ? i : rowIndex))
+        const isRows = key.endsWith("_rows")
+        return node.map((v, i) => transform(v, numericByKey, key, isRows ? i : rowIndex, isRows ? key : rowsKey))
     }
     if (node && typeof node === "object") {
         const out = {}
-        for (const [k, v] of Object.entries(node)) out[k] = transform(v, numericRows, k, rowIndex)
+        for (const [k, v] of Object.entries(node)) out[k] = transform(v, numericByKey, k, rowIndex, rowsKey)
         return out
     }
     if (typeof node !== "string") return node
     if (key === "content") {
-        if (rowIndex !== null && numericRows.has(rowIndex)) return NUMERIC
+        // その rows配列 の、その行が数値欄なら数値を入れる（配列ごとに上書き対象が違う）
+        if (rowIndex !== null && numericByKey.get(rowsKey)?.has(rowIndex)) return NUMERIC
         return CONTENTS[(rowIndex ?? 0) % CONTENTS.length]
     }
     if (key === "bad_content") return node ? BAD : node
@@ -106,8 +160,8 @@ for (const jobPath of jobs) {
     const payloadPath = jobPath.replace(/\.job\.json$/, ".payload.json")
     if (!fs.existsSync(payloadPath)) continue
     const name = path.basename(jobPath).replace(/\.job\.json$/, "")
-    const numericRows = numericRowIndexes(routePath)
-    const payload = transform(JSON.parse(fs.readFileSync(payloadPath, "utf8")), numericRows)
+    const numericByKey = numericRowsByKey(routePath)
+    const payload = transform(JSON.parse(fs.readFileSync(payloadPath, "utf8")), numericByKey)
     const outPdfPath = path.join(OUT_DIR, `${name}.pdf`)
     const result = await runRoutePdf({ routePath, payload, outPdfPath })
     fs.writeFileSync(outPdfPath.replace(/[.]pdf$/, ".payload.json"), JSON.stringify(payload))

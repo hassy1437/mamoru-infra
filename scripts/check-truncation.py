@@ -10,9 +10,15 @@
   PDFに描かれた文字列だけでは「何文字落ちたか」が分からないので、生成時の入力
   （tmp/**/<name>.payload.json）と突き合わせる。生成スクリプトが PDF と同じ場所に書き出す。
 
-■ ラン分割への対応
+■ ラン分割への対応（★2度踏んだ落とし穴）
   ①b 以降、1つの値が英数字/日本語のランに分かれて複数スパンになる。
-  同一行（yがほぼ同じ）のスパンをx順に連結してから「...」を探す。
+  連結する際に間違えやすい点が2つある:
+   (1) 空白だけのスパンを捨てると、値が隙間で分断されて別セル扱いになる
+   (2) ★スパンbboxの中心yで束ねてはいけない。日本語(NotoSansJP)とASCII(Helvetica)は
+       上下の張り出しが違うため、同じ1行を描いても bbox 中心が 0.6pt ほどズレる。
+       中心yで束ねると「別記3-2点検項目12」が「別記/点検項目」と「3-2/12」に割れ、
+       実際には切り詰められていない行を「3文字しか出ていない」と誤報する（実測で発生）。
+       文字のベースライン(origin.y)は同じ描画呼び出しなら完全に一致するのでそれで束ねる。
 
 使い方: python scripts/check-truncation.py <pdf...>
   切り詰めが無ければ NO_TRUNCATION を出力し exit 0。あれば内訳を出して exit 1。
@@ -68,19 +74,26 @@ def drawn_lines(page) -> list[tuple[float, str]]:
     そこで x の隙間が GAP_TOL を超えたら別セルとして切る。
     """
     items: list[tuple[float, float, float, str]] = []
-    for block in page.get_text("dict").get("blocks", []):
+    for block in page.get_text("rawdict").get("blocks", []):
         for line in block.get("lines", []):
             for span in line.get("spans", []):
                 if not is_overlay(span.get("font", "")):
                     continue
+                chars = span.get("chars", [])
+                if not chars:
+                    continue
                 # ★空白だけのスパンを捨ててはいけない。①b のラン分割で "一番一号 サンプル" の
                 #   空白が独立スパンになるため、捨てると隙間が空いて1つの値が別セル扱いになる。
-                x0, y0, x1, y1 = span["bbox"]
-                items.append((round((y0 + y1) / 2, 1), x0, x1, span["text"]))
+                # ★束ねる基準は bbox 中心ではなくベースライン(origin.y)。フォントごとに
+                #   bbox の張り出しが違うので、中心yだと同じ行が2つに割れる。
+                baseline = round(chars[0]["origin"][1], 1)
+                x0 = min(c["bbox"][0] for c in chars)
+                x1 = max(c["bbox"][2] for c in chars)
+                items.append((baseline, x0, x1, "".join(c["c"] for c in chars)))
 
     bands: dict[float, list[tuple[float, float, str]]] = {}
     for cy, x0, x1, text in items:
-        key = next((k for k in bands if abs(k - cy) < 0.6), cy)
+        key = next((k for k in bands if abs(k - cy) < 0.3), cy)
         bands.setdefault(key, []).append((x0, x1, text))
 
     out: list[tuple[float, str]] = []

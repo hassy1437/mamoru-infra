@@ -6,6 +6,7 @@ import {
     type ReportFonts,
     measureRuns,
     drawTextRuns,
+    FIT_EPSILON,
 } from "@/lib/pdf-form-helpers"
 ;
 import fs from "fs";
@@ -176,7 +177,7 @@ export async function POST(req: NextRequest) {
             currentSize = Math.max(currentSize, minFontSize);
 
             const truncateToFit = (value: string) => {
-                if (measureRuns(fonts, String(value ?? ""), currentSize) <= maxWidth) {
+                if (measureRuns(fonts, String(value ?? ""), currentSize) <= maxWidth + FIT_EPSILON) {
                     return value;
                 }
 
@@ -187,7 +188,7 @@ export async function POST(req: NextRequest) {
                 let cut = value.length;
                 while (cut > 0) {
                     const candidate = `${value.slice(0, cut).trimEnd()}${suffix}`;
-                    if (measureRuns(fonts, String(candidate ?? ""), currentSize) <= maxWidth) {
+                    if (measureRuns(fonts, String(candidate ?? ""), currentSize) <= maxWidth + FIT_EPSILON) {
                         return candidate;
                     }
                     cut -= 1;

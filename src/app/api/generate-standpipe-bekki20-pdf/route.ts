@@ -17,6 +17,7 @@ import {
     type ReportFonts,
     measureRuns,
     drawTextRuns,
+    FIT_EPSILON,
 } from "@/lib/pdf-form-helpers"
 
 type BekkiRow = { content?: string; judgment?: string; bad_content?: string; action_content?: string; current_value?: string; flow_value?: string; hose_count?: string; nozzle_dia?: string }
@@ -168,7 +169,7 @@ export async function POST(req: NextRequest) {
                 let cut = normalized.length
                 while (cut > 0) {
                     const candidate = `${normalized.slice(0, cut).trimEnd()}${suffix}`
-                    if (measureRuns(font, String(candidate ?? ""), currentSize) <= maxWidth) { textToDraw = candidate; break }
+                    if (measureRuns(font, String(candidate ?? ""), currentSize) <= maxWidth + FIT_EPSILON) { textToDraw = candidate; break }
                     cut -= 1
                 }
             }

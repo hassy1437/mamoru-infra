@@ -11,6 +11,7 @@ import {
     type ReportFonts,
     measureRuns,
     drawTextRuns,
+    FIT_EPSILON,
 } from "@/lib/pdf-form-helpers"
 import { normalizeInspectorNameValue, normalizeWitnessValue } from "@/lib/bekki-header-normalization"
 
@@ -139,7 +140,7 @@ export async function POST(req: NextRequest) {
 
         const truncateToFitWidth = (value: string, size: number, maxWidth: number) => {
             if (!value) return ""
-            if (measureRuns(fonts, String(value ?? ""), size) <= maxWidth) return value
+            if (measureRuns(fonts, String(value ?? ""), size) <= maxWidth + FIT_EPSILON) return value
 
             const suffix = "..."
             if (measureRuns(fonts, String(suffix ?? ""), size) > maxWidth) return ""
@@ -147,7 +148,7 @@ export async function POST(req: NextRequest) {
             let cut = value.length
             while (cut > 0) {
                 const candidate = `${value.slice(0, cut).trimEnd()}${suffix}`
-                if (measureRuns(fonts, String(candidate ?? ""), size) <= maxWidth) return candidate
+                if (measureRuns(fonts, String(candidate ?? ""), size) <= maxWidth + FIT_EPSILON) return candidate
                 cut -= 1
             }
 
@@ -250,7 +251,7 @@ export async function POST(req: NextRequest) {
                 let cut = normalized.length
                 while (cut > 0) {
                     const candidate = `${normalized.slice(0, cut).trimEnd()}${suffix}`
-                    if (measureRuns(font, String(candidate ?? ""), currentSize) <= maxWidth) { textToDraw = candidate; break }
+                    if (measureRuns(font, String(candidate ?? ""), currentSize) <= maxWidth + FIT_EPSILON) { textToDraw = candidate; break }
                     cut -= 1
                 }
             }

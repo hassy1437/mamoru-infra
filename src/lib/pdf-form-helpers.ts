@@ -249,7 +249,7 @@ export const truncateToFitWidth = (
     const suffix = options?.suffix ?? "..."
     const forceSuffix = options?.forceSuffix ?? false
 
-    if (!forceSuffix && font.widthOfTextAtSize(value, size) <= maxWidth) {
+    if (!forceSuffix && font.widthOfTextAtSize(value, size) <= maxWidth + FIT_EPSILON) {
         return value
     }
 
@@ -260,7 +260,7 @@ export const truncateToFitWidth = (
     let cut = value.length
     while (cut > 0) {
         const candidate = `${value.slice(0, cut).trimEnd()}${suffix}`
-        if (font.widthOfTextAtSize(candidate, size) <= maxWidth) {
+        if (font.widthOfTextAtSize(candidate, size) <= maxWidth + FIT_EPSILON) {
             return candidate
         }
         cut -= 1
@@ -268,6 +268,19 @@ export const truncateToFitWidth = (
 
     return suffix
 }
+
+/**
+ * 幅の収まり判定に使う許容誤差。
+ * ★これはレイアウトの余裕ではなく IEEE754 の丸め誤差を吸収するためのものである。
+ *   drawInCell 系は「セル幅にちょうど収まる」ようフォントサイズを
+ *   size *= maxWidth / measure(size) で決める。数学的には measure(size) == maxWidth に
+ *   なるが、浮動小数では最後の桁がわずかに上振れすることがあり（実測 +5.68e-14）、
+ *   許容誤差なしで比較すると「収まっているのに末尾1文字だけ切り詰める」が起きる。
+ *   実際 2026-07-24 時点の切り詰め32件はほぼ全てがちょうど1文字の欠落だった。
+ *   1e-6pt は 300dpi で 1/10000 px 未満＝視覚的に完全にゼロで、実測誤差に対して8桁の余裕がある。
+ *   レイアウト上の余白が欲しくなってもこの値を大きくしないこと（それは別の問題の隠蔽になる）。
+ */
+export const FIT_EPSILON = 1e-6
 
 /**
  * ラン分割した文字列を maxWidth に収まるまで末尾から切り詰める。
@@ -280,7 +293,7 @@ const truncateRunsToFitWidth = (
     maxWidth: number,
 ) => {
     if (!value) return ""
-    if (measureRuns(fonts, value, size) <= maxWidth) return value
+    if (measureRuns(fonts, value, size) <= maxWidth + FIT_EPSILON) return value
 
     const suffix = "..."
     if (measureRuns(fonts, suffix, size) > maxWidth) return ""
@@ -288,7 +301,7 @@ const truncateRunsToFitWidth = (
     let cut = value.length
     while (cut > 0) {
         const candidate = `${value.slice(0, cut).trimEnd()}${suffix}`
-        if (measureRuns(fonts, candidate, size) <= maxWidth) return candidate
+        if (measureRuns(fonts, candidate, size) <= maxWidth + FIT_EPSILON) return candidate
         cut -= 1
     }
     return suffix
@@ -378,6 +391,10 @@ const wrapTextByWidth = (fonts: ReportFonts, value: string, size: number, maxWid
         if (!current && ch === " ") continue
 
         const candidate = `${current}${ch}`
+        // ★この 0.1 は FIT_EPSILON（丸め誤差の吸収）とは別物。
+        //   セル幅を 0.1pt だけ超えることを許して1文字多く行に載せるレイアウト上の余白で、
+        //   FIT_EPSILON(1e-6) に置き換えると bekki18 の措置内容が 2行→3行に増える（実測）。
+        //   ＝挙動を変える値なので、折り返し方針を見直す時（⑧）に一緒に判断すること。
         if (current && measureRuns(fonts, candidate, size) > maxWidth + 0.1) {
             const trimmed = current.trimEnd()
             if (trimmed) lines.push(trimmed)

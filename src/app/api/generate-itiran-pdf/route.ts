@@ -5,6 +5,7 @@ import {
     type ReportFonts,
     measureRuns,
     drawTextRuns,
+    FIT_EPSILON,
 } from "@/lib/pdf-form-helpers"
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
@@ -118,7 +119,7 @@ export async function POST(req: NextRequest) {
         const page = pages[0]
 
         const truncateToFitWidth = (value: string, size: number, maxWidth: number) => {
-            if (measureRuns(fonts, String(value ?? ""), size) <= maxWidth) return value
+            if (measureRuns(fonts, String(value ?? ""), size) <= maxWidth + FIT_EPSILON) return value
 
             const suffix = "..."
             const suffixWidth = measureRuns(fonts, String(suffix ?? ""), size)
@@ -127,7 +128,7 @@ export async function POST(req: NextRequest) {
             let cut = value.length
             while (cut > 0) {
                 const candidate = `${value.slice(0, cut).trimEnd()}${suffix}`
-                if (measureRuns(fonts, String(candidate ?? ""), size) <= maxWidth) {
+                if (measureRuns(fonts, String(candidate ?? ""), size) <= maxWidth + FIT_EPSILON) {
                     return candidate
                 }
                 cut -= 1

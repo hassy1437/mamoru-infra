@@ -62,9 +62,44 @@ const P1_ROW_BOUNDS = [
 
 const P2_ROW_BOUNDS = [105.96, 129.0, 152.04, 174.96, 198.0]
 
-const PERIOD_ROW = { top: 162.0, h: 14.0 }
-const PERIOD_START_ANCHORS = { year: 316.5, month: 353.0, day: 388.5 }
-const PERIOD_END_ANCHORS = { year: 440.0, month: 476.5, day: 512.0 }
+// ★ヘッダ各セルはテンプレートPDFの罫線・印字グリフから実測した値（2026-07-24）。
+//   旧定数（名称/所在を x=83.33 幅365.34 で描く）は別スケールの版に合わせたもので、
+//   値が左のラベル欄「名　称」「所　在」に重なり、罫線 x=117.4 を越えていた。
+//   セル境界: 64.6 | 117.4 …ラベル | 393.1 …名称/所在の値 | 435.6 | 529.6 …防火管理者/立会者
+const HEADER = {
+    nameRow: { top: 117.5, h: 25.8 },
+    locationRow: { top: 143.8, h: 25.8 },
+    valueX: 117.8,
+    valueW: 275.3, // 117.8 → 393.1
+    rightX: 436.1,
+    rightW: 93.5, // 436.1 → 529.6
+}
+
+// 点検種別/点検年月日の行。旧値 top=162.0 は1行分上にずれており、
+// 日付が上の「所在」行に食い込んで罫線 x=435.6 を越えていた。
+const PERIOD_ROW = { top: 170.0, h: 16.5 }
+const PERIOD_CELL = { x: 280.6, w: 249.0 } // 280.6 → 529.6
+
+// 点検種別はテンプレートに「機　器　・　総　合」が印字済み。値を重ね書きすると
+// 二重表記になるため、該当語を丸で囲む（bekki5/6/7 と同じ方式）。座標は印字グリフの実測値。
+const TYPE_CHOICES = [
+    { label: "機器", cx: 137.9, cy: 177.6, rx: 18.0, ry: 8.0 },
+    { label: "総合", cx: 196.5, cy: 177.6, rx: 18.0, ry: 8.0 },
+]
+
+// 点検者ブロック。セル内に「氏名」「社名」「TEL」「住所」が印字されているため、
+// 値はその右の空きに置き、上下位置は印字ラベルの中心に合わせる。
+const INSPECTOR = {
+    name: { x: 147.0, top: 189.6, w: 67.6, h: 14.0 },
+    company: { x: 310.0, top: 187.0, w: 99.0, h: 14.0 },
+    tel: { x: 430.0, top: 187.0, w: 97.6, h: 14.0 },
+    address: { x: 310.0, top: 213.2, w: 217.6, h: 14.0 },
+}
+
+// 年/月/日は印字文字の左端に右寄せで置く（実測: 年317.2 月348.7 日380.2 / 年432.7 月464.3 日495.8）。
+// 旧値は bekki11-2 の座標を流用したもので、月・日が印字に重なっていた。
+const PERIOD_START_ANCHORS = { year: 317.2, month: 348.7, day: 380.2 }
+const PERIOD_END_ANCHORS = { year: 432.7, month: 464.3, day: 495.8 }
 
 const normalizeText = (value: unknown) => String(value ?? "").replace(/\s+/g, " ").trim()
 
@@ -258,11 +293,22 @@ export async function POST(req: NextRequest) {
         }
 
         const drawHeader = (page: PDFPage, pageHeight: number) => {
-            drawInCell(page, pageHeight, body.form_name, 83.33, 114.0, 365.34, 24.0, 8.6)
-            drawInCell(page, pageHeight, body.fire_manager, 448.67, 114.0, 80.66, 24.0, 7.8)
-            drawInCell(page, pageHeight, body.location, 83.33, 138.0, 365.34, 24.0, 8.1)
-            drawInCell(page, pageHeight, body.witness, 448.67, 138.0, 80.66, 24.0, 7.8)
-            drawInCell(page, pageHeight, body.inspection_type || "", 83.33, PERIOD_ROW.top, 146.67, PERIOD_ROW.h, 7.0, { align: "center" })
+            drawInCell(page, pageHeight, body.form_name, HEADER.valueX, HEADER.nameRow.top, HEADER.valueW, HEADER.nameRow.h, 8.6)
+            drawInCell(page, pageHeight, body.fire_manager, HEADER.rightX, HEADER.nameRow.top, HEADER.rightW, HEADER.nameRow.h, 7.8)
+            drawInCell(page, pageHeight, body.location, HEADER.valueX, HEADER.locationRow.top, HEADER.valueW, HEADER.locationRow.h, 8.1)
+            drawInCell(page, pageHeight, body.witness, HEADER.rightX, HEADER.locationRow.top, HEADER.rightW, HEADER.locationRow.h, 7.8)
+            const inspectionType = normalizeText(body.inspection_type) || "機器・総合"
+            for (const choice of TYPE_CHOICES) {
+                if (!inspectionType.includes(choice.label)) continue
+                page.drawEllipse({
+                    x: choice.cx,
+                    y: pageHeight - choice.cy,
+                    xScale: choice.rx,
+                    yScale: choice.ry,
+                    borderColor: rgb(0, 0, 0),
+                    borderWidth: 0.7,
+                })
+            }
 
             const periodText = (() => {
                 const start = formatDateText(body.period_start)
@@ -273,13 +319,13 @@ export async function POST(req: NextRequest) {
                 drawPeriodDate(page, pageHeight, body.period_start, PERIOD_START_ANCHORS)
                 drawPeriodDate(page, pageHeight, body.period_end, PERIOD_END_ANCHORS)
             } else {
-                drawInCell(page, pageHeight, periodText, 230.0, PERIOD_ROW.top, 299.33, PERIOD_ROW.h, 6.8)
+                drawInCell(page, pageHeight, periodText, PERIOD_CELL.x, PERIOD_ROW.top, PERIOD_CELL.w, PERIOD_ROW.h, 6.8)
             }
 
-            drawInCell(page, pageHeight, body.inspector_name, 83.33, 176.0, 146.67, 48.0, 7.2)
-            drawInCell(page, pageHeight, body.inspector_company, 335.33, 176.0, 113.34, 24.0, 7.0)
-            drawInCell(page, pageHeight, body.inspector_tel, 448.67, 176.0, 80.66, 24.0, 7.0)
-            drawInCell(page, pageHeight, body.inspector_address, 335.33, 200.0, 194.0, 24.0, 6.8)
+            drawInCell(page, pageHeight, body.inspector_name, INSPECTOR.name.x, INSPECTOR.name.top, INSPECTOR.name.w, INSPECTOR.name.h, 7.2)
+            drawInCell(page, pageHeight, body.inspector_company, INSPECTOR.company.x, INSPECTOR.company.top, INSPECTOR.company.w, INSPECTOR.company.h, 7.0)
+            drawInCell(page, pageHeight, body.inspector_tel, INSPECTOR.tel.x, INSPECTOR.tel.top, INSPECTOR.tel.w, INSPECTOR.tel.h, 7.0)
+            drawInCell(page, pageHeight, body.inspector_address, INSPECTOR.address.x, INSPECTOR.address.top, INSPECTOR.address.w, INSPECTOR.address.h, 6.8)
         }
 
         drawHeader(page1, p1Height)

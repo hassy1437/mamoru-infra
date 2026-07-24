@@ -1,4 +1,5 @@
 import { runRoutePdf } from "./run-route-pdf.mjs";
+import fs from "fs";
 
 const makeRows = (count, prefix) =>
   Array.from({ length: count }, (_, i) => ({
@@ -180,5 +181,8 @@ const jobs = [
 
 for (const job of jobs) {
   const result = await runRoutePdf(job);
+  // 切り詰め内訳の突き合わせ用に入力値も残す（scripts/check-truncation.py が読む）。
+  // PDFに描かれた「…」付きの文字列だけでは、何文字落ちたかが分からないため。
+  fs.writeFileSync(job.outPdfPath.replace(/[.]pdf$/, '.payload.json'), JSON.stringify(job.payload));
   console.log(job.key, result.outPdfPath, result.bytes);
 }

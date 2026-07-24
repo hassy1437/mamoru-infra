@@ -219,11 +219,13 @@ export async function POST(req: NextRequest) {
             }
         }
 
+        // ★名称/所在の値セル幅はテンプレート罫線の実測値。旧値は右隣の「防火管理者/立会者」
+        // ラベル欄まで食い込む幅で定義されており、長い住所が罫線を越えていた（2026-07-24 実測）。
         const drawHeader = () => {
-            drawInCell(page1, p1Height, body.form_name, 117.24, 108.24, 294.0, 27.84, 8.1)
-            drawInCell(page1, p1Height, body.fire_manager, 411.24, 108.24, 118.8, 27.84, 7.3)
-            drawInCell(page1, p1Height, body.location, 117.24, 136.08, 294.0, 24.48, 7.9)
-            drawInCell(page1, p1Height, body.witness, 411.24, 136.08, 118.8, 24.48, 7.3)
+            drawInCell(page1, p1Height, body.form_name, 117.5, 108.24, 251.0, 27.84, 8.1)
+            drawInCell(page1, p1Height, body.fire_manager, 411.5, 108.24, 118.1, 27.84, 7.3)
+            drawInCell(page1, p1Height, body.location, 117.5, 136.08, 251.0, 24.48, 7.9)
+            drawInCell(page1, p1Height, body.witness, 411.5, 136.08, 118.1, 24.48, 7.3)
             // 点検種別はテンプレートに「機器・総合」が印刷済みのため描画不要
 
             const periodText = (() => {

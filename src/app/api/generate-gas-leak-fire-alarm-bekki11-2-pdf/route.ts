@@ -66,7 +66,40 @@ const P2_ROW_BOUNDS = [
     298.0, 319.5, 341.0, 362.5, 384.0, 405.5, 427.0, 448.5, 470.0, 491.5,
 ]
 
-const PERIOD_ROW = { top: 162.0, h: 14.0 }
+// ★ヘッダ各セルはテンプレートPDFの罫線から実測した値（2026-07-24）。
+//   旧定数（名称/所在を x=83.33 幅365.34 で描く）は別スケールの版に合わせたもので、
+//   値が左のラベル欄「名　称」「所　在」の上に重なって描かれ、罫線 x=117.4 を越えていた。
+//   セル境界: 64.6 | 117.4 …ラベル | 391.3 …名称/所在の値 | 433.8 | 529.6 …防火管理者/立会者
+const HEADER = {
+    nameRow: { top: 117.5, h: 25.8 },
+    locationRow: { top: 143.8, h: 25.8 },
+    valueX: 117.8,
+    valueW: 273.5, // 117.8 → 391.3
+    rightX: 434.3,
+    rightW: 95.3, // 434.3 → 529.6
+}
+
+// 点検種別/点検年月日の行。旧値 top=162.0 は1行分上にずれており、
+// 日付が上の「所在」行に食い込んで罫線 x=433.8 を越えていた。
+const PERIOD_ROW = { top: 170.0, h: 16.0 }
+const PERIOD_CELL = { x: 280.6, w: 249.0 } // 280.6 → 529.6
+
+// 点検種別はテンプレートに「機　器　・　総　合」が印字済み。値の文字を重ねて描くと
+// 二重表記になる（旧実装はこれをやっていた）ので、該当する語を丸で囲む方式に統一する
+// （bekki5/6/7 が既に採っている方式）。座標は印字グリフの実測値。
+const TYPE_CHOICES = [
+    { label: "機器", cx: 137.9, cy: 177.4, rx: 18.0, ry: 8.0 }, // 機 122.8-133.3 / 器 142.3-152.9
+    { label: "総合", cx: 196.5, cy: 177.4, rx: 18.0, ry: 8.0 }, // 総 181.4-192.0 / 合 201.0-211.5
+]
+
+// 点検者ブロック。セル内に「氏名」「社名」「TEL」「住所」が印字されているため、
+// 値はその右の空きに置き、上下位置は印字ラベルの中心に合わせる（実測値）。
+const INSPECTOR = {
+    name: { x: 147.0, top: 189.1, w: 67.6, h: 14.0 }, // 氏名 122.8-143.9 の右、セル右端 216.6
+    company: { x: 310.0, top: 186.5, w: 99.0, h: 14.0 }, // 社名 285.6-306.7 の右、TEL 411.7 の手前
+    tel: { x: 430.0, top: 186.5, w: 97.6, h: 14.0 }, // TEL 411.7-427.6 の右、セル右端 529.6
+    address: { x: 310.0, top: 212.8, w: 217.6, h: 14.0 }, // 住所 285.6-306.7 の右
+}
 const PERIOD_START_ANCHORS = { year: 316.5, month: 353.0, day: 388.5 }
 const PERIOD_END_ANCHORS = { year: 440.0, month: 476.5, day: 512.0 }
 
@@ -261,11 +294,22 @@ export async function POST(req: NextRequest) {
         }
 
         // page1 header (layout aligns closely with 別記様弁E1の1)
-        drawInCell(page1, p1Height, body.form_name, 83.33, 114.0, 365.34, 24.0, 8.6)
-        drawInCell(page1, p1Height, body.fire_manager, 448.67, 114.0, 80.66, 24.0, 7.8)
-        drawInCell(page1, p1Height, body.location, 83.33, 138.0, 365.34, 24.0, 8.1)
-        drawInCell(page1, p1Height, body.witness, 448.67, 138.0, 80.66, 24.0, 7.8)
-        drawInCell(page1, p1Height, body.inspection_type || "機器・総合", 83.33, 162.0, 146.67, 14.0, 7.0, { align: "center" })
+        drawInCell(page1, p1Height, body.form_name, HEADER.valueX, HEADER.nameRow.top, HEADER.valueW, HEADER.nameRow.h, 8.6)
+        drawInCell(page1, p1Height, body.fire_manager, HEADER.rightX, HEADER.nameRow.top, HEADER.rightW, HEADER.nameRow.h, 7.8)
+        drawInCell(page1, p1Height, body.location, HEADER.valueX, HEADER.locationRow.top, HEADER.valueW, HEADER.locationRow.h, 8.1)
+        drawInCell(page1, p1Height, body.witness, HEADER.rightX, HEADER.locationRow.top, HEADER.rightW, HEADER.locationRow.h, 7.8)
+        const inspectionType = normalizeText(body.inspection_type) || "機器・総合"
+        for (const choice of TYPE_CHOICES) {
+            if (!inspectionType.includes(choice.label)) continue
+            page1.drawEllipse({
+                x: choice.cx,
+                y: p1Height - choice.cy,
+                xScale: choice.rx,
+                yScale: choice.ry,
+                borderColor: rgb(0, 0, 0),
+                borderWidth: 0.7,
+            })
+        }
 
         const periodText = (() => {
             const start = formatDateText(body.period_start)
@@ -276,13 +320,13 @@ export async function POST(req: NextRequest) {
             drawPeriodDate(body.period_start, PERIOD_START_ANCHORS)
             drawPeriodDate(body.period_end, PERIOD_END_ANCHORS)
         } else {
-            drawInCell(page1, p1Height, periodText, 230.0, PERIOD_ROW.top, 299.33, PERIOD_ROW.h, 6.8)
+            drawInCell(page1, p1Height, periodText, PERIOD_CELL.x, PERIOD_ROW.top, PERIOD_CELL.w, PERIOD_ROW.h, 6.8)
         }
 
-        drawInCell(page1, p1Height, body.inspector_name, 83.33, 176.0, 146.67, 48.0, 7.2)
-        drawInCell(page1, p1Height, body.inspector_company, 335.33, 176.0, 113.34, 24.0, 7.0)
-        drawInCell(page1, p1Height, body.inspector_tel, 448.67, 176.0, 80.66, 24.0, 7.0)
-        drawInCell(page1, p1Height, body.inspector_address, 335.33, 200.0, 194.0, 24.0, 6.8)
+        drawInCell(page1, p1Height, body.inspector_name, INSPECTOR.name.x, INSPECTOR.name.top, INSPECTOR.name.w, INSPECTOR.name.h, 7.2)
+        drawInCell(page1, p1Height, body.inspector_company, INSPECTOR.company.x, INSPECTOR.company.top, INSPECTOR.company.w, INSPECTOR.company.h, 7.0)
+        drawInCell(page1, p1Height, body.inspector_tel, INSPECTOR.tel.x, INSPECTOR.tel.top, INSPECTOR.tel.w, INSPECTOR.tel.h, 7.0)
+        drawInCell(page1, p1Height, body.inspector_address, INSPECTOR.address.x, INSPECTOR.address.top, INSPECTOR.address.w, INSPECTOR.address.h, 6.8)
 
         // 点検設備名 row has fixed labels for 受信橁E/ 中継器 in the left cells.
         drawInCell(page1, p1Height, getExtra(body, "receiver_maker"), 222.5, 271.5, 99.5, 16.5, 6.8)

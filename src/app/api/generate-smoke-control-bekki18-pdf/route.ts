@@ -158,11 +158,13 @@ export async function POST(req: NextRequest) {
             }
         }
 
+        // ★名称/所在の値セル幅はテンプレート罫線の実測値。旧値は右隣の「防火管理者/立会者」
+        // ラベル欄まで食い込む幅で定義されており、長い住所が罫線を越えていた（2026-07-24 実測）。
         const drawHeader = (page: PDFPage, pageHeight: number) => {
-            drawInCell(page, pageHeight, body.form_name, 117.6, 114.72, 307.44, 25.08, 8.0)
-            drawInCell(page, pageHeight, body.fire_manager, 425.04, 114.72, 105.0, 25.08, 7.3)
-            drawInCell(page, pageHeight, body.location, 117.6, 139.8, 307.44, 24.96, 7.8)
-            drawInCell(page, pageHeight, body.witness, 425.04, 139.8, 105.0, 24.96, 7.3)
+            drawInCell(page, pageHeight, body.form_name, 117.8, 114.72, 264.5, 25.08, 8.0)
+            drawInCell(page, pageHeight, body.fire_manager, 425.3, 114.72, 104.3, 25.08, 7.3)
+            drawInCell(page, pageHeight, body.location, 117.8, 139.8, 264.5, 24.96, 7.8)
+            drawInCell(page, pageHeight, body.witness, 425.3, 139.8, 104.3, 24.96, 7.3)
             drawInCell(page, pageHeight, body.inspection_type || "", 117.6, 164.76, 88.68, 17.04, 6.4, { align: "center" })
 
             const periodText = (() => {

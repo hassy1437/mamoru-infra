@@ -251,11 +251,13 @@ export async function POST(req: NextRequest) {
             drawRightAt(page1, p1Height, parts.day, anchors.day, PERIOD_ROW.top, PERIOD_ROW.h, 7.6)
         }
 
+        // ★名称/所在の値セル幅はテンプレート罫線の実測値。旧値は右隣の「防火管理者/立会者」
+        // ラベル欄まで食い込む幅で定義されており、長い住所が罫線を越えていた（2026-07-24 実測）。
         // header page1
-        drawInCell(page1, p1Height, body.form_name, 106.67, 110.67, 330.66, 28.0, 8.8)
-        drawInCell(page1, p1Height, body.fire_manager, 437.33, 110.67, 92.0, 28.0, 8.0)
-        drawInCell(page1, p1Height, body.location, 106.67, 138.67, 330.66, 28.0, 8.2)
-        drawInCell(page1, p1Height, body.witness, 437.33, 138.67, 92.0, 28.0, 8.0)
+        drawInCell(page1, p1Height, body.form_name, 107.3, 110.67, 266.7, 28.0, 8.8)
+        drawInCell(page1, p1Height, body.fire_manager, 415.1, 110.67, 114.5, 28.0, 8.0)
+        drawInCell(page1, p1Height, body.location, 107.3, 138.67, 266.7, 28.0, 8.2)
+        drawInCell(page1, p1Height, body.witness, 415.1, 138.67, 114.5, 28.0, 8.0)
         drawInCell(page1, p1Height, body.inspection_type || "機器・総合", 106.67, 166.67, 104.66, 28.0, 7.6, { align: "center" })
 
         const periodText = (() => {

@@ -338,10 +338,20 @@ export async function POST(req: NextRequest) {
         drawInCell(page1, p1Height, body.inspector_address, 307.33, 208.67, 222.0, 26.0, 7.3)
 
         // The left cells here are fixed labels (ポンチE/ 電動橁E, so avoid overwriting them.
-        drawInCell(page1, p1Height, getExtra(body, "pump_maker"), 164, 207, 74, 21, 7.2)
-        drawInCell(page1, p1Height, getExtra(body, "pump_model"), 164, 228, 74, 21, 7.2)
-        drawInCell(page1, p1Height, getExtra(body, "motor_maker"), 359, 207, 96, 21, 7.2)
-        drawInCell(page1, p1Height, getExtra(body, "motor_model"), 359, 228, 96, 21, 7.2)
+        // ★製造者名/型式等の値セル（テンプレート罫線・印字グリフから実測 2026-07-24）。
+        //   旧値 (164, 207) は印字ラベル「製造者名」と同じ x で、かつ y が1ブロック上。
+        //   値が上の「点検者/所属会社」欄の上に重なって描かれ、罫線 x=207.0 を越えていた。
+        //   行帯: 製造者名 y235.7-256.2 / 型式等 y256.7-277.2（h=20.5）
+        //   セル: [159.4, 322.1] 内に印字ラベル 164.8-206.9 → 値は 209 から
+        //         [369.4, 529.6] 内に印字ラベル 374.8-416.9 → 値は 419 から
+        const MAKER_ROW = { top: 235.7, h: 20.5 }
+        const MODEL_ROW = { top: 256.7, h: 20.5 }
+        const LEFT_VALUE = { x: 209.0, w: 113.1 }
+        const RIGHT_VALUE = { x: 419.0, w: 110.6 }
+        drawInCell(page1, p1Height, getExtra(body, "pump_maker"), LEFT_VALUE.x, MAKER_ROW.top, LEFT_VALUE.w, MAKER_ROW.h, 7.2)
+        drawInCell(page1, p1Height, getExtra(body, "pump_model"), LEFT_VALUE.x, MODEL_ROW.top, LEFT_VALUE.w, MODEL_ROW.h, 7.2)
+        drawInCell(page1, p1Height, getExtra(body, "motor_maker"), RIGHT_VALUE.x, MAKER_ROW.top, RIGHT_VALUE.w, MAKER_ROW.h, 7.2)
+        drawInCell(page1, p1Height, getExtra(body, "motor_model"), RIGHT_VALUE.x, MODEL_ROW.top, RIGHT_VALUE.w, MODEL_ROW.h, 7.2)
 
         const p1Rows9 = body.page1_rows ?? []
         drawResultRows(page1, p1Height, p1Rows9, P1_ROW_BOUNDS, {

@@ -442,10 +442,16 @@ export async function POST(req: NextRequest) {
             drawInCell(page1, p1Height, periodText, 263.33, PERIOD_ROW.top, 265.34, PERIOD_ROW.h, 7.8)
         }
 
-        drawInCell(page1, p1Height, body.inspector_name, 113.33, 187.33, 92.0, 48.0, 8.0)
-        drawInCell(page1, p1Height, body.inspector_company, 263.33, 187.33, 143.0, 23.0, 7.8)
-        drawInCell(page1, p1Height, body.inspector_tel, 406.33, 187.33, 122.34, 23.0, 7.8)
-        drawInCell(page1, p1Height, body.inspector_address, 263.33, 210.0, 265.34, 25.33, 7.6)
+        // ★点検者ブロック。セル内に「氏名」「社名」「TEL」「住所」が印字されているので
+        //   値はその右の空きに置く（実測 2026-07-24）。
+        //   行: 176.4-200.9 / 201.4-225.8　セル: 110.5|209.8 ‖ 211.2|268.1 …ラベル| 528.1
+        //   印字: 氏名 116.0-137.2 / 社名 273.6-294.7 / TEL 441.7-457.6 / 住所 273.6-294.7
+        //   旧値は社名・住所を 263.33 から描いており、印字「社名/住所」に重なった上に
+        //   罫線 268.1 を越えていた。
+        drawInCell(page1, p1Height, body.inspector_name, 140.0, 176.4, 69.8, 24.5, 8.0)
+        drawInCell(page1, p1Height, body.inspector_company, 297.0, 176.4, 142.7, 24.5, 7.8)
+        drawInCell(page1, p1Height, body.inspector_tel, 460.0, 176.4, 68.1, 24.5, 7.8)
+        drawInCell(page1, p1Height, body.inspector_address, 297.0, 201.4, 231.1, 24.4, 7.6)
 
         drawResultRows(page1, p1Height, body.page1_rows ?? [], P1_ROW_BOUNDS, {
             contentX: 231.67, contentW: 99.66,
@@ -490,10 +496,12 @@ export async function POST(req: NextRequest) {
         drawInCell(page4, p4Height, formatJapaneseDateText(device1.calibrated_at), 191.0, 660.33, 55.33, 20.67, 7.0)
         drawInCell(page4, p4Height, device1.maker, 246.33, 660.33, 54.67, 20.67, 7.0)
 
-        drawInCell(page4, p4Height, device2.name, 364.0, 660.33, 54.0, 20.67, 7.0)
-        drawInCell(page4, p4Height, device2.model, 418.0, 660.33, 46.0, 20.67, 7.0)
-        drawInCell(page4, p4Height, formatJapaneseDateText(device2.calibrated_at), 471.67, 660.33, 58.0, 20.67, 7.0)
-        drawInCell(page4, p4Height, device2.maker, 464.0, 681.0, 65.67, 20.67, 7.0)
+        // ★device2 は列が丸ごと1つ右にずれており、製造者名は次の行に落ちていた。
+        //   実測の列境界: 301.9 | 363.8 | 417.7 | 471.5 | 529.1（device1 側は元から一致）。
+        drawInCell(page4, p4Height, device2.name, 301.9, 660.4, 61.9, 20.5, 7.0)
+        drawInCell(page4, p4Height, device2.model, 363.8, 660.4, 53.9, 20.5, 7.0)
+        drawInCell(page4, p4Height, formatJapaneseDateText(device2.calibrated_at), 417.7, 660.4, 53.8, 20.5, 7.0)
+        drawInCell(page4, p4Height, device2.maker, 471.5, 660.4, 57.6, 20.5, 7.0)
 
         drawCylinderRows(page5, p5Height, body.page5_rows ?? [])
 

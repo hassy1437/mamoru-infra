@@ -422,10 +422,13 @@ export async function POST(req: NextRequest) {
         // Page1 header
         drawInCell(page1, p1Height, body.zone_name, 470, 82, 54, 12, 7.6)
         drawInCell(page1, p1Height, body.equipment_system, 150, 100, 145, 12, 7.6)
-        drawInCell(page1, p1Height, body.form_name, 113.33, 116.0, 266.0, 27.33, 8.8)
-        drawInCell(page1, p1Height, body.fire_manager, 422.67, 116.0, 106.0, 27.33, 8.4)
-        drawInCell(page1, p1Height, body.location, 113.33, 143.33, 266.0, 28.0, 8.5)
-        drawInCell(page1, p1Height, normalizedWitness, 422.67, 143.33, 106.0, 28.0, 8.3)
+        // ★セル境界の実測値（2026-07-24）: 63.6 | 106.0 …ラベル | 376.2 …名称/所在の値
+        //   | 377.6 | 413.4 …ラベル | 528.7 …防火管理者/立会者
+        //   旧値は幅266で 379.3 まで伸び、長い住所が罫線 376.2 を越えていた。
+        drawInCell(page1, p1Height, body.form_name, 106.5, 114.7, 269.2, 27.9, 8.8)
+        drawInCell(page1, p1Height, body.fire_manager, 413.9, 114.7, 114.3, 27.9, 8.4)
+        drawInCell(page1, p1Height, body.location, 106.5, 143.0, 269.2, 27.9, 8.5)
+        drawInCell(page1, p1Height, normalizedWitness, 413.9, 143.0, 114.3, 27.9, 8.3)
         const start = formatDateText(body.period_start)
         const end = formatDateText(body.period_end)
         if (parseDateParts(body.period_start) || parseDateParts(body.period_end)) {
@@ -479,15 +482,22 @@ export async function POST(req: NextRequest) {
 
         const device1 = body.device1 ?? {}
         const device2 = body.device2 ?? {}
-        drawInCell(page4, p4Height, device1.name, 96.67, 650.0, 32.0, 20.67, 7.0)
-        drawInCell(page4, p4Height, device1.model, 132.67, 650.0, 34.66, 20.67, 7.0)
-        drawInCell(page4, p4Height, formatJapaneseDateText(device1.calibrated_at), 171.33, 650.0, 47.34, 20.67, 6.6)
-        drawInCell(page4, p4Height, device1.maker, 222.67, 650.0, 48.0, 20.67, 6.8)
+        // ★点検に使用した機器の列。実測の列境界（2026-07-24）:
+        //   80.5 | 148.8 | 202.6 | 256.4 | 309.7 ‖ 311.2 | 364.0 | 417.8 | 471.6 | 529.2
+        //   旧値は device1 側が列より左にずれ、かつ列幅より狭く定義されていたため
+        //   型式・校正年月日・製造者名が順に右の罫線を越えていた（device2 側は元から概ね一致）。
+        const DEV_ROW = { top: 650.5, h: 20.5 }
+        const DEV1_COLS = { name: [80.5, 68.3], model: [148.8, 53.8], date: [202.6, 53.8], maker: [256.4, 53.3] }
+        const DEV2_COLS = { name: [311.2, 52.8], model: [364.0, 53.8], date: [417.8, 53.8], maker: [471.6, 57.6] }
+        drawInCell(page4, p4Height, device1.name, DEV1_COLS.name[0], DEV_ROW.top, DEV1_COLS.name[1], DEV_ROW.h, 7.0)
+        drawInCell(page4, p4Height, device1.model, DEV1_COLS.model[0], DEV_ROW.top, DEV1_COLS.model[1], DEV_ROW.h, 7.0)
+        drawInCell(page4, p4Height, formatJapaneseDateText(device1.calibrated_at), DEV1_COLS.date[0], DEV_ROW.top, DEV1_COLS.date[1], DEV_ROW.h, 6.6)
+        drawInCell(page4, p4Height, device1.maker, DEV1_COLS.maker[0], DEV_ROW.top, DEV1_COLS.maker[1], DEV_ROW.h, 6.8)
 
-        drawInCell(page4, p4Height, device2.name, 325.33, 650.0, 48.67, 20.67, 7.0)
-        drawInCell(page4, p4Height, device2.model, 378.0, 650.0, 48.0, 20.67, 7.0)
-        drawInCell(page4, p4Height, formatJapaneseDateText(device2.calibrated_at), 430.0, 650.0, 48.0, 20.67, 6.6)
-        drawInCell(page4, p4Height, device2.maker, 482.0, 650.0, 47.33, 20.67, 6.8)
+        drawInCell(page4, p4Height, device2.name, DEV2_COLS.name[0], DEV_ROW.top, DEV2_COLS.name[1], DEV_ROW.h, 7.0)
+        drawInCell(page4, p4Height, device2.model, DEV2_COLS.model[0], DEV_ROW.top, DEV2_COLS.model[1], DEV_ROW.h, 7.0)
+        drawInCell(page4, p4Height, formatJapaneseDateText(device2.calibrated_at), DEV2_COLS.date[0], DEV_ROW.top, DEV2_COLS.date[1], DEV_ROW.h, 6.6)
+        drawInCell(page4, p4Height, device2.maker, DEV2_COLS.maker[0], DEV_ROW.top, DEV2_COLS.maker[1], DEV_ROW.h, 6.8)
 
         drawCylinderRows(page5, p5Height, body.page5_rows ?? [])
 

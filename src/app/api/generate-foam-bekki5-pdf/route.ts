@@ -360,8 +360,11 @@ export async function POST(req: NextRequest) {
         drawInCell(page1, p1Height, body.inspector_address, 312, 209, 216, 28, 8.0)
 
         drawInCell(page1, p1Height, body.equipment_name, 112, 237, 45, 40, 7.2)
-        drawInCell(page1, p1Height, body.pump_maker, 206, 237, 87, 20, 7.1)
-        drawInCell(page1, p1Height, body.pump_model, 206, 257, 87, 20, 7.1)
+        // ★ポンプ側だけ幅87で定義されており、右隣「電動機」のラベル欄（罫線 249.8）まで
+        //   食い込んで越えていた。実測の値セルは 207.4→249.8（印字ラベル「製造者名」163.3-205.4 の右）。
+        //   電動機・泡消火薬剤側（343/495）は元から実測値に一致していたので触らない。
+        drawInCell(page1, p1Height, body.pump_maker, 207.4, 237.5, 42.4, 19.5, 7.1)
+        drawInCell(page1, p1Height, body.pump_model, 207.4, 257.5, 42.4, 19.5, 7.1)
         drawInCell(page1, p1Height, body.motor_maker, 343, 237, 34, 20, 7.1)
         drawInCell(page1, p1Height, body.motor_model, 343, 257, 34, 20, 7.1)
         drawInCell(page1, p1Height, body.foam_maker, 495, 237, 33, 20, 7.1)

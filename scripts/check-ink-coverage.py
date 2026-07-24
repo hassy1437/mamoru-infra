@@ -90,6 +90,11 @@ def main() -> int:
         api_w = row.get("apiWidth") or row.get("pickApi") or 0.0
         if api_w <= 0:
             continue
+        # ★空白のみの文字列は advance を持つのにインクが無いので、そのままだと必ず誤検出になる。
+        #   本番経路では normalizeText が trim するため発生しないが、検出器側でも明示的に除外する
+        #   （誤検出する検出器は使われなくなって死ぬ）。空文字は上の api_w<=0 で既に除外済み。
+        if not row["text"].strip():
+            continue
         # pdf-lib は下原点。ベースライン y から上下に余裕を取って矩形を作る
         top = page_h - (row["y"] + size * 0.95)
         bot = page_h - (row["y"] - size * 0.35)

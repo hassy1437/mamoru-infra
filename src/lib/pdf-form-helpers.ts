@@ -118,6 +118,12 @@ export type WrappedCellDrawOptions = {
     minFontSize?: number
     maxFontSize?: number
     lineGap?: number
+    /**
+     * 縦位置。既定は "center"（従来の挙動）。
+     * 縦に大きく余ったセル（itiran の資格保有設備欄など）で中央寄せすると
+     * 文字列が空白の中に浮いて見えるため、そこだけ "top" を指定する。
+     */
+    verticalAlign?: "center" | "top"
 }
 
 export type DateAnchors = {
@@ -470,7 +476,10 @@ export const drawWrappedTextInCell = ({
 
     const lineHeight = currentSize + lineGap
     const totalHeight = visibleLines.length * lineHeight
-    let top = cellTopFromTop + (cellH - totalHeight) / 2
+    let top =
+        options?.verticalAlign === "top"
+            ? cellTopFromTop + paddingY
+            : cellTopFromTop + (cellH - totalHeight) / 2
 
     for (const line of visibleLines) {
         const textHeight = fonts.jp.heightAtSize(currentSize, { descender: true })

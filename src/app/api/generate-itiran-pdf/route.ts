@@ -5,6 +5,7 @@ import {
     type ReportFonts,
     measureRuns,
     drawTextRuns,
+    drawWrappedTextInCell,
     FIT_EPSILON,
 } from "@/lib/pdf-form-helpers"
 import fontkit from "@pdf-lib/fontkit"
@@ -30,7 +31,12 @@ const INSP1 = {
     name_x:           340.1, name_w:    95.2,   // 氏名 value (x=339-435)
     company_x:        110.8, company_w: 180.4,  // 社名 value
     phone_x:          340.1, phone_w:   95.2,   // 電話番号 value
-    equipment_x:      437.0, equipment_w: 95.0, equipment_top: 80.0, equipment_h: 135.0,
+    // ★資格保有設備欄はテンプレート実測で x 436.7-532.2 / y 95.6-363.0（95.5 × 267.4）。
+    //   旧値 (top:80, h:135) は上端がセルの外から始まり高さも半分で、1行に収める前提だった。
+    //   設備名の列挙は1行に入らないため 3.5pt まで縮んだ上に切り詰められ、
+    //   現実データでも「連結送水管,スプリンクラー設備」が消えていた（点検可能な設備の記載欠落）。
+    //   縦に余白があるので、規定の優先順位どおり折り返しを第一手として使う。
+    equipment_x:      436.9, equipment_w: 95.3, equipment_top: 95.8, equipment_h: 267.0,
 }
 
 // Inspector 2 は Inspector 1 の fromTop + OFFSET2
@@ -218,9 +224,18 @@ export async function POST(req: NextRequest) {
                 INSP1.phone_w, INSP1.row_h, 7)
 
             // 設備名 (右カラム)
-            drawInCell(page, inspector.equipment_names,
-                INSP1.equipment_x, INSP1.equipment_top + topOffset,
-                INSP1.equipment_w, INSP1.equipment_h, 6)
+            drawWrappedTextInCell({
+                page,
+                pageHeight: PAGE_HEIGHT,
+                fonts,
+                text: inspector.equipment_names,
+                cellX: INSP1.equipment_x,
+                cellTopFromTop: INSP1.equipment_top + topOffset,
+                cellW: INSP1.equipment_w,
+                cellH: INSP1.equipment_h,
+                fontSize: 6,
+                options: { verticalAlign: "top" },
+            })
 
             // 消防設備士 ライセンス行
             const shoubouKeys = ["toku", "class1", "class2", "class3", "class4", "class5", "class6", "class7"] as const

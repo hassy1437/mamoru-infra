@@ -13,6 +13,7 @@ import {
     measureRuns,
     drawTextRuns,
     FIT_EPSILON,
+    reportIfBelowMinSize,
 } from "@/lib/pdf-form-helpers"
 import { normalizeInspectorNameValue, normalizeWitnessValue } from "@/lib/bekki-header-normalization"
 
@@ -184,6 +185,7 @@ export async function POST(req: NextRequest) {
             const heightAtCurrent = fonts.jp.heightAtSize(currentSize, { descender: true })
             if (heightAtCurrent > maxHeight) currentSize *= maxHeight / heightAtCurrent
             currentSize = Math.max(currentSize, minFontSize)
+            reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth)
             const textToDraw = truncateToFitWidth(normalized, currentSize, maxWidth)
             if (!textToDraw) return
 
@@ -249,6 +251,7 @@ export async function POST(req: NextRequest) {
             const h = font.jp.heightAtSize(currentSize, { descender: true })
             if (h > maxHeight) currentSize = currentSize * (maxHeight / h)
             currentSize = Math.max(currentSize, minFontSize)
+            reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth)
             let textToDraw = normalized
             if (measureRuns(font, String(normalized ?? ""), currentSize) > maxWidth + 0.1) {
                 const suffix = "..."
@@ -460,6 +463,10 @@ export async function POST(req: NextRequest) {
         if (systemOverflow.length) {
             // 業者には直せない（テンプレート固定文言・整形済みの値）＝実装側の不具合として記録
             console.error("[pdf] 収容不能(システム由来)", { form: "別記様式第11の1", items: systemOverflow })
+        }
+        if (fonts.fit?.smalls.length) {
+            // 判読しづらい大きさで描かれた項目。単独では止められない（上記コメント参照）ので記録のみ
+            console.warn("[pdf] 極小フォントで描画", { count: fonts.fit.smalls.length })
         }
         const fitError = buildFitError("別記様式第11の1", fonts.fit!)
         if (fitError) return NextResponse.json(fitError, { status: 422 })

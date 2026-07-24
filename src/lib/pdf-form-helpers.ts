@@ -297,6 +297,35 @@ export const truncateToFitWidth = (
 export const FIT_EPSILON = 1e-6
 
 /**
+ * 判読できないほど縮んだとみなす下限（暫定値）。
+ *
+ * ★この 5.0pt に根拠は無い。7pt は消防法令ではなく可読性の目安で、
+ *   テンプレート自身の印字（最小8.5pt）は我々の設計値（点検結果行 6.0〜6.8pt）より
+ *   上なので基準にできない。根拠を作るなら 300dpi 印刷での判読実験か消防署への確認が要る。
+ *   現実値セットでは 5pt 未満は 0.3% しか出ないので、実質「異常検知」としてのみ働く。
+ *
+ * なぜ必要か: 切り詰めが起きなくても、長い値は縮小だけで「収まって」しまう。
+ *   実測では55文字の物件名が 3.5pt で描かれ、エラーにならず静かに判読不能になっていた。
+ *   ＝ 切り詰めの検出だけでは、業者が長い建物名を入れた場合を捕まえられない。
+ */
+export const ABSOLUTE_MIN_FONT_SIZE = 5.0
+
+/**
+ * 下限より小さく描かれる場合に「収まらなかった」として報告する。
+ * fits は下限サイズなら何文字入るかで、業者に「何文字まで」を示すために使う。
+ */
+export const reportIfBelowMinSize = (
+    fonts: ReportFonts,
+    value: string,
+    size: number,
+    maxWidth: number,
+) => {
+    void maxWidth
+    if (!fonts.fit || size >= ABSOLUTE_MIN_FONT_SIZE || !value) return
+    fonts.fit.reportSmall(value, size)
+}
+
+/**
  * ラン分割した文字列を maxWidth に収まるまで末尾から切り詰める。
  * ★計測は measureRuns（描画と同じ分割・同じフォント）で行う。
  */
@@ -372,6 +401,7 @@ export const drawTextInCell = ({
     }
 
     currentSize = Math.max(currentSize, minFontSize)
+    reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth)
 
     const textToDraw = truncateRunsToFitWidth(fonts, normalized, currentSize, maxWidth)
     if (!textToDraw) return

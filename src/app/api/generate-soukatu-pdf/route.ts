@@ -7,6 +7,7 @@ import {
     measureRuns,
     drawTextRuns,
     FIT_EPSILON,
+    reportIfBelowMinSize,
 } from "@/lib/pdf-form-helpers"
 import { buildFitError, createFitCollector, systemFitFailures } from "@/lib/pdf-fit-report"
 ;
@@ -175,7 +176,9 @@ export async function POST(req: NextRequest) {
                 currentSize = currentSize * (maxHeight / heightAtCurrent);
             }
 
-            currentSize = Math.max(currentSize, minFontSize);
+            currentSize = Math.max(currentSize, minFontSize)
+
+            reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth);
 
             const truncateToFit = (value: string) => {
                 if (measureRuns(fonts, String(value ?? ""), currentSize) <= maxWidth + FIT_EPSILON) {
@@ -420,6 +423,10 @@ export async function POST(req: NextRequest) {
         if (systemOverflow.length) {
             // 業者には直せない値（テンプレート文言・整形済みの日付など）＝実装側の不具合として記録
             console.error("[pdf] 収容不能(システム由来)", { form: "総括表", items: systemOverflow })
+        }
+        if (fonts.fit?.smalls.length) {
+            // 判読しづらい大きさで描かれた項目。単独では止められない（上記コメント参照）ので記録のみ
+            console.warn("[pdf] 極小フォントで描画", { count: fonts.fit.smalls.length })
         }
         const fitError = buildFitError("総括表", fonts.fit!)
         if (fitError) return NextResponse.json(fitError, { status: 422 })

@@ -13,6 +13,7 @@ import {
     measureRuns,
     drawTextRuns,
     FIT_EPSILON,
+    reportIfBelowMinSize,
 } from "@/lib/pdf-form-helpers"
 
 type Bekki5Row = {
@@ -226,6 +227,8 @@ export async function POST(req: NextRequest) {
             }
 
             currentSize = Math.max(currentSize, minFontSize)
+
+            reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth)
 
             const textToDraw = truncateToFitWidth(normalized, currentSize, maxWidth)
             if (!textToDraw) return
@@ -490,6 +493,10 @@ export async function POST(req: NextRequest) {
         if (systemOverflow.length) {
             // 業者には直せない（テンプレート固定文言・整形済みの値）＝実装側の不具合として記録
             console.error("[pdf] 収容不能(システム由来)", { form: "別記様式第5", items: systemOverflow })
+        }
+        if (fonts.fit?.smalls.length) {
+            // 判読しづらい大きさで描かれた項目。単独では止められない（上記コメント参照）ので記録のみ
+            console.warn("[pdf] 極小フォントで描画", { count: fonts.fit.smalls.length })
         }
         const fitError = buildFitError("別記様式第5", fonts.fit!)
         if (fitError) return NextResponse.json(fitError, { status: 422 })

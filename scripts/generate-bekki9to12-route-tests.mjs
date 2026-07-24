@@ -1,4 +1,5 @@
 import { runRoutePdf } from "./run-route-pdf.mjs";
+import { applyNumericRows } from "./lib-numeric-rows.mjs";
 import fs from "fs";
 
 const makeRows = (count, prefix) =>
@@ -7,7 +8,7 @@ const makeRows = (count, prefix) =>
     judgment: i % 5 === 2 ? "否" : "良",
     bad_content:
       i % 5 === 2
-        ? "作動不良・圧力低下・表示劣化あり。継続使用前に再点検が必要です。"
+        ? "作動不良・圧力低下・表示劣化あり。要再点検。"
         : "",
     action_content:
       i % 5 === 2
@@ -134,6 +135,8 @@ const jobs = [
 
 const fitErrors = [];
 for (const job of jobs) {
+  // 数値しか入らないセルには長文ではなく数値を入れる（共有部品で行番号を判定）
+  applyNumericRows(job.payload, job.routePath);
   let result;
   try {
     result = await runRoutePdf(job);

@@ -49,19 +49,39 @@ export type FitFailure = {
 }
 
 export type FitCollector = {
-    /** 描画側から「収まらなかった」ことを報告する */
+    /** 描画側から「収まらなかった」ことを報告する（＝業者向けエラーになりうる） */
     report: (text: string, fits: number) => void
+    /**
+     * 判読しづらいほど小さく描かれたことの報告。★エラーにはしない。
+     * 絶対下限を業者向けエラーにすると正常な出力まで止まる: 現実データでも
+     * 「設定圧力 ___ MPa」のように設計上そもそも極小のセルがあり、実測の最小は 3.60pt。
+     * 4pt を超える下限を課すと現実値セットの4様式が出力できなくなる（実測）。
+     * ＝ 絶対下限は単独では判定に使えない。設計値からの逸脱と組み合わせる必要がある。
+     * それまでは記録のみ行い、監視で傾向を見る。
+     */
+    reportSmall: (text: string, size: number) => void
     failures: FitFailure[]
+    smalls: { text: string; size: number }[]
     /** 入力(payload)と突き合わせて由来を確定する（描画後に一度だけ呼ぶ） */
     resolve: (body: unknown) => void
 }
 
 export const createFitCollector = (): FitCollector => {
     const failures: FitFailure[] = []
+    const smalls: { text: string; size: number }[] = []
     return {
         failures,
-        report(text, fits) {
+        smalls,
+        reportSmall(text, size) {
             const t = String(text ?? "").trim()
+            if (!t || smalls.some((s) => s.text === t)) return
+            smalls.push({ text: t, size: Math.round(size * 10) / 10 })
+        },
+        report(text, fits) {
+            // ★既に切り詰め済みの文字列を渡してくる経路があるので、末尾の "..." を外してから
+            //   記録する。付いたままだと入力と部分一致すらせず、業者由来の値を
+            //   「システム由来＝実装の不具合」と誤判定してログに流してしまう。
+            const t = String(text ?? "").trim().replace(/\.{3}$/, "").trim()
             if (!t) return
             // 同じ値が複数セルに出ることがあるので重複は畳む
             if (failures.some((f) => f.text === t)) return
@@ -70,7 +90,12 @@ export const createFitCollector = (): FitCollector => {
         resolve(body) {
             const entries = collectStrings(body)
             for (const f of failures) {
-                const hit = entries.find(([, v]) => v === f.text)
+                // ★完全一致だけで判定してはいけない。折り返しの2行目以降を報告する経路が
+                //   あり、その断片は入力そのものとは一致しない。部分一致まで見ないと
+                //   業者由来の値を「システム由来＝実装の不具合」と誤ってログに流してしまう。
+                const hit =
+                    entries.find(([, v]) => v === f.text) ??
+                    entries.find(([, v]) => v.includes(f.text))
                 if (!hit) continue
                 f.fromInput = true
                 f.field = hit[0]
@@ -129,7 +154,12 @@ export type FitErrorBody = {
  * システム整形値の溢れは呼び出し側でログに出すこと。
  */
 export const buildFitError = (form: string, collector: FitCollector): FitErrorBody | null => {
-    const items = collector.failures
+    // 同じ値の断片（折り返しの行）が別項目として並ばないよう、
+    // 他の失敗の一部でしかないものは落とす
+    const whole = collector.failures.filter(
+        (f) => !collector.failures.some((g) => g !== f && g.text.includes(f.text)),
+    )
+    const items = whole
         .filter((f) => f.fromInput && f.field)
         .map<FitErrorItem>((f) => ({
             field: f.field!,

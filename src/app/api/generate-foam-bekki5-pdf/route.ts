@@ -206,7 +206,8 @@ export async function POST(req: NextRequest) {
             const minFontSize = options?.minFontSize ?? 3.5
             let currentSize = Math.min(fontSize, options?.maxFontSize ?? fontSize)
 
-            const maxWidth = Math.max(1, (cellW - paddingX * 2) * 0.85)
+            // 安全係数は撤廃済み（①bで計測が実描画と一致し、②③④でセル座標を実測値に直したため）
+            const maxWidth = Math.max(1, cellW - paddingX * 2)
             const maxHeight = Math.max(1, cellH - paddingY * 2)
 
             const widthAtCurrent = measureRuns(fonts, String(normalized ?? ""), currentSize)

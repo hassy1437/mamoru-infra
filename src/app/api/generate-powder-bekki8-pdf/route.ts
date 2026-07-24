@@ -236,7 +236,8 @@ export async function POST(req: NextRequest) {
             const minFontSize = options?.minFontSize ?? 3.5
             let currentSize = Math.min(fontSize, options?.maxFontSize ?? fontSize)
 
-            const maxWidth = Math.max(1, (cellW - paddingX * 2) * 0.85)
+            // 安全係数は撤廃済み（①bで計測が実描画と一致し、②③④でセル座標を実測値に直したため）
+            const maxWidth = Math.max(1, cellW - paddingX * 2)
             const maxHeight = Math.max(1, cellH - paddingY * 2)
 
             const widthAtCurrent = measureRuns(fonts, String(normalized ?? ""), currentSize)
@@ -426,10 +427,14 @@ export async function POST(req: NextRequest) {
         // Page1 header
         drawInCell(page1, p1Height, body.zone_name, 470, 82, 54, 12, 7.6)
         drawInCell(page1, p1Height, body.equipment_system, 150, 100, 145, 12, 7.6)
-        drawInCell(page1, p1Height, body.form_name, 113.33, 116.0, 266.0, 27.33, 8.8)
-        drawInCell(page1, p1Height, body.fire_manager, 422.67, 116.0, 106.0, 27.33, 8.4)
-        drawInCell(page1, p1Height, body.location, 113.33, 143.33, 266.0, 28.0, 8.5)
-        drawInCell(page1, p1Height, body.witness, 422.67, 143.33, 106.0, 28.0, 8.3)
+        // ★セル境界の実測値（2026-07-24）: 63.1 | 110.5 …ラベル | 375.6 …名称/所在の値
+        //   | 377.0 | 412.8 …ラベル | 528.1 …防火管理者/立会者
+        //   旧値は幅266で 379.3 まで伸びており、安全係数を外した途端に住所が罫線 375.6 を越えた。
+        //   ＝係数がこの幅定義ミスを隠していた。
+        drawInCell(page1, p1Height, body.form_name, 111.0, 108.4, 264.6, 24.4, 8.8)
+        drawInCell(page1, p1Height, body.fire_manager, 413.3, 108.4, 114.8, 24.4, 8.4)
+        drawInCell(page1, p1Height, body.location, 111.0, 133.3, 264.6, 24.6, 8.5)
+        drawInCell(page1, p1Height, body.witness, 413.3, 133.3, 114.8, 24.6, 8.3)
 
         drawInCell(page1, p1Height, body.inspection_type || "機器・総合", 113.33, PERIOD_ROW.top, 92.0, PERIOD_ROW.h, 8.0, { align: "center" })
         const start = formatDateText(body.period_start)

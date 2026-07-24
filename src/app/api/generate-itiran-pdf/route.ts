@@ -151,7 +151,8 @@ export async function POST(req: NextRequest) {
 
             const paddingX = 2
             const paddingY = 2
-            const maxWidth = Math.max(1, (cellW - paddingX * 2) * 0.85)
+            // 安全係数は撤廃済み（①bで計測が実描画と一致し、②③④でセル座標を実測値に直したため）
+            const maxWidth = Math.max(1, cellW - paddingX * 2)
             const maxHeight = Math.max(1, cellH - paddingY * 2)
 
             let currentSize = fontSize

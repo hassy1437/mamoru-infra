@@ -186,7 +186,8 @@ export async function POST(req: NextRequest) {
             const minFontSize = options?.minFontSize ?? 3.5
             let currentSize = Math.min(fontSize, options?.maxFontSize ?? fontSize)
 
-            const maxWidth = Math.max(1, (cellW - paddingX * 2) * 0.85)
+            // 安全係数は撤廃済み（①bで計測が実描画と一致し、②③④でセル座標を実測値に直したため）
+            const maxWidth = Math.max(1, cellW - paddingX * 2)
             const maxHeight = Math.max(1, cellH - paddingY * 2)
 
             const widthAtCurrent = measureRuns(fonts, String(normalized ?? ""), currentSize)
@@ -235,7 +236,8 @@ export async function POST(req: NextRequest) {
             const paddingY = options?.paddingY ?? 2
             const minFontSize = options?.minFontSize ?? 3.5
             let currentSize = Math.min(fontSize, options?.maxFontSize ?? fontSize)
-            const maxWidth = Math.max(1, (cellW - paddingX * 2) * 0.85)
+            // 安全係数は撤廃済み（①bで計測が実描画と一致し、②③④でセル座標を実測値に直したため）
+            const maxWidth = Math.max(1, cellW - paddingX * 2)
             const maxHeight = Math.max(1, cellH - paddingY * 2)
             const w = measureRuns(font, String(normalized ?? ""), currentSize)
             if (w > maxWidth) currentSize = currentSize * (maxWidth / w)
@@ -551,7 +553,9 @@ export async function POST(req: NextRequest) {
             const availW = cellW - padX * 2
             let sz = 7.2
             const w = measureRuns(fonts, String(norm ?? ""), sz)
-            if (w > availW) sz = sz * (availW / w) * 0.98
+            // 0.98 の余白は撤廃（2026-07-24 実測: はみ出し・切り詰め・フォントサイズ分布のどれも変化なし。
+            // 丸め防御を名乗るには2%は大きすぎ、0.85/0.90 と同じ「症状を隠す係数」の系統だった）
+            if (w > availW) sz = sz * (availW / w)
             sz = Math.max(sz, 3.5)
             const drawn = truncateToFitWidth(norm, sz, availW)
             if (!drawn) return

@@ -415,9 +415,13 @@ export const drawWrappedTextInCell = ({
     const lineGap = options?.lineGap ?? 0.7
     let currentSize = Math.min(fontSize, options?.maxFontSize ?? fontSize)
 
-    // NotoSansJP のフォントメトリクスが実際の描画幅を約10%過小評価するため
-    // 0.90の安全係数を適用して折り返し幅を計算する
-    const maxWidth = Math.max(1, (cellW - paddingX * 2) * 0.90)
+    // ★安全係数（旧 0.90）は撤廃した。
+    //   旧コメントは「NotoSansJP のメトリクスが実描画幅を約10%過小評価するため」だったが、
+    //   その過小評価の実体は英数字がCJKグリフに化けていたことで、①b のラン分割で解消済み
+    //   （計測幅と実描画幅は回帰テストで一致を確認している）。
+    //   係数はその後、セル座標の定義ミスを隠す働きしかしておらず、②③④で座標を実測値に
+    //   直した上で撤廃した。再び足したくなったら、まず何がはみ出るのかを実測すること。
+    const maxWidth = Math.max(1, cellW - paddingX * 2)
     const maxHeight = Math.max(1, cellH - paddingY * 2)
 
     const wrapAtSize = (size: number) => {

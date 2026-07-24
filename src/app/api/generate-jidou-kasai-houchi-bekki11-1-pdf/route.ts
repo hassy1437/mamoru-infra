@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { PDFDocument, rgb, type PDFPage, StandardFonts } from "pdf-lib"
+import { buildFitError, createFitCollector, systemFitFailures } from "@/lib/pdf-fit-report"
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
@@ -131,7 +132,7 @@ export async function POST(req: NextRequest) {
         // ASCII(型式・番号・日付等)は Helvetica で描く。NotoSansJP は「英字+ハイフン+数字」で
         // 数字がCJK拡張Aのグリフに化け、計測幅と実描画幅が最大+41.6%ズレて枠をはみ出すため。
         const latinFont = await pdfDoc.embedFont(StandardFonts.Helvetica)
-        const fonts: ReportFonts = { jp: customFont, latin: latinFont }
+        const fonts: ReportFonts = { jp: customFont, latin: latinFont, fit: createFitCollector() }
 
         const [page1, page2, page3] = pdfDoc.getPages()
         const p1Height = page1.getSize().height
@@ -148,7 +149,10 @@ export async function POST(req: NextRequest) {
             let cut = value.length
             while (cut > 0) {
                 const candidate = `${value.slice(0, cut).trimEnd()}${suffix}`
-                if (measureRuns(fonts, String(candidate ?? ""), size) <= maxWidth + FIT_EPSILON) return candidate
+                if (measureRuns(fonts, String(candidate ?? ""), size) <= maxWidth + FIT_EPSILON) {
+                    fonts.fit?.report(value, cut)
+                    return candidate
+                }
                 cut -= 1
             }
 
@@ -251,7 +255,11 @@ export async function POST(req: NextRequest) {
                 let cut = normalized.length
                 while (cut > 0) {
                     const candidate = `${normalized.slice(0, cut).trimEnd()}${suffix}`
-                    if (measureRuns(font, String(candidate ?? ""), currentSize) <= maxWidth + FIT_EPSILON) { textToDraw = candidate; break }
+                    if (measureRuns(font, String(candidate ?? ""), currentSize) <= maxWidth + FIT_EPSILON) {
+                        font.fit?.report(normalized, cut)
+                        textToDraw = candidate
+                        break
+                    }
                     cut -= 1
                 }
             }
@@ -444,6 +452,17 @@ export async function POST(req: NextRequest) {
         drawInCellWithFont(page3, p3Height, fonts, device2.model, 382.4, deviceTableTop, 32.8, deviceTableRowH, 6.2, devOpts)
         drawInCell(page3, p3Height, formatJapaneseDateText(device2.calibrated_at), 419.2, deviceTableTop, 53.2, deviceTableRowH, 5.2)
         drawDeviceMaker(device2.maker, page3, p3Height, 476.4, 53.2, deviceTableTop, deviceTableRowH)
+
+        // ⑧ 枠に収まらなかった項目があればPDFを返さずに一覧を返す。
+        //   黙って "..." で切り詰めると、法定書類から情報が静かに欠落するため。
+        fonts.fit?.resolve(body)
+        const systemOverflow = systemFitFailures(fonts.fit!)
+        if (systemOverflow.length) {
+            // 業者には直せない（テンプレート固定文言・整形済みの値）＝実装側の不具合として記録
+            console.error("[pdf] 収容不能(システム由来)", { form: "別記様式第11の1", items: systemOverflow })
+        }
+        const fitError = buildFitError("別記様式第11の1", fonts.fit!)
+        if (fitError) return NextResponse.json(fitError, { status: 422 })
 
         const pdfBytes = await pdfDoc.save()
         return new NextResponse(pdfBytes as unknown as BodyInit, {

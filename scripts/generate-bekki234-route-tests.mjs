@@ -123,8 +123,22 @@ const jobs = [
   },
 ];
 
+const fitErrors = [];
 for (const job of jobs) {
-  const result = await runRoutePdf(job);
+  let result;
+  try {
+    result = await runRoutePdf(job);
+  } catch (e) {
+    // ⑧ 以降、長文セットは「収まらない」ことを 422 で表明する。
+    // ストレステストなのでそれ自体が期待結果。落とさず記録して次へ進む。
+    if (e.status === 422) {
+      const b = JSON.parse(e.responseBody);
+      fitErrors.push({ key: job.key, form: b.form, items: b.items.length });
+      console.log(job.key, "FIT_FAILED", b.items.length, "件");
+      continue;
+    }
+    throw e;
+  }
   // 切り詰め内訳の突き合わせ用に入力値も残す（scripts/check-truncation.py が読む）。
   // PDFに描かれた「…」付きの文字列だけでは、何文字落ちたかが分からないため。
   fs.writeFileSync(job.outPdfPath.replace(/[.]pdf$/, '.payload.json'), JSON.stringify(job.payload));
@@ -132,3 +146,4 @@ for (const job of jobs) {
   fs.writeFileSync(job.outPdfPath.replace(/[.]pdf$/, '.job.json'), JSON.stringify({ routePath: job.routePath }));
   console.log(job.key, result.outPdfPath, result.bytes);
 }
+if (fitErrors.length) console.log("FIT_FAILED 合計:", JSON.stringify(fitErrors));

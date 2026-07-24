@@ -45,13 +45,27 @@ export default function CombinedPdfButton({
         setProgress({ done: 0, total: 0 })
 
         try {
-            const { blob, failedLabels } = await buildMergedReport(input, (done, total) =>
+            const { blob, failedLabels, fitFailures } = await buildMergedReport(input, (done, total) =>
                 setProgress({ done, total }),
             )
             triggerDownload(blob, `点検報告書_一括_${buildingName || "報告書"}.pdf`)
             if (failedLabels.length > 0) {
                 alert(
-                    `一部のPDF生成に失敗しました: ${failedLabels.join(", ")}\nそれ以外のPDFは結合されています。`,
+                    [
+                    // ★枠に収まらない項目は「どの様式のどの項目が何字超過か」まで出す。
+                    //   ここを「PDF出力に失敗しました」で潰すと業者は直しようがなくなる。
+                    ...fitFailures.flatMap((f) => [
+                        `【${f.label}】`,
+                        ...f.items.map(
+                            (it) =>
+                                `  ${it.label}: ${it.input}文字（${it.over}文字超過・${it.fits}文字まで）\n→ ${it.hint}`,
+                        ),
+                    ]),
+                    ...(failedLabels.filter((l) => !fitFailures.some((f) => f.label === l)).length
+                        ? [`PDF生成に失敗しました: ${failedLabels.filter((l) => !fitFailures.some((f) => f.label === l)).join(", ")}`]
+                        : []),
+                    "それ以外のPDFは結合されています。",
+                    ].filter(Boolean).join("\n"),
                 )
             }
         } catch (e) {

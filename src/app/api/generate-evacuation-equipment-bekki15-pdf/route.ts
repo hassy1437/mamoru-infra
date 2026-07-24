@@ -1,5 +1,6 @@
 ﻿import { NextRequest, NextResponse } from "next/server"
 import { PDFDocument, type PDFPage, rgb, StandardFonts } from "pdf-lib"
+import { buildFitError, createFitCollector, systemFitFailures } from "@/lib/pdf-fit-report"
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
@@ -89,7 +90,7 @@ export async function POST(req: NextRequest) {
         // ASCII(型式・番号・日付等)は Helvetica で描く。NotoSansJP は「英字+ハイフン+数字」で
         // 数字がCJK拡張Aのグリフに化け、計測幅と実描画幅が最大+41.6%ズレて枠をはみ出すため。
         const latinFont = await pdfDoc.embedFont(StandardFonts.Helvetica)
-        const fonts: ReportFonts = { jp: customFont, latin: latinFont }
+        const fonts: ReportFonts = { jp: customFont, latin: latinFont, fit: createFitCollector() }
 
         const [page1, page2] = pdfDoc.getPages()
         const p1Height = page1.getSize().height
@@ -172,7 +173,11 @@ export async function POST(req: NextRequest) {
                 let cut = normalized.length
                 while (cut > 0) {
                     const candidate = `${normalized.slice(0, cut).trimEnd()}${suffix}`
-                    if (measureRuns(font, String(candidate ?? ""), currentSize) <= maxWidth + FIT_EPSILON) { textToDraw = candidate; break }
+                    if (measureRuns(font, String(candidate ?? ""), currentSize) <= maxWidth + FIT_EPSILON) {
+                        font.fit?.report(normalized, cut)
+                        textToDraw = candidate
+                        break
+                    }
                     cut -= 1
                 }
             }
@@ -311,6 +316,17 @@ export async function POST(req: NextRequest) {
         drawInCellWithFont(page2, p2Height, fonts, device2.model, 361.56, deviceRowTop, 56.16, deviceRowH, 5.6, devOpts)
         drawInCell(page2, p2Height, formatJapaneseDateText(device2.calibrated_at), 417.72, deviceRowTop, 56.16, deviceRowH, 5.4)
         drawDeviceMaker(device2.maker, page2, p2Height, 473.88, 56.16, deviceRowTop, deviceRowH)
+
+        // ⑧ 枠に収まらなかった項目があればPDFを返さずに一覧を返す。
+        //   黙って "..." で切り詰めると、法定書類から情報が静かに欠落するため。
+        fonts.fit?.resolve(body)
+        const systemOverflow = systemFitFailures(fonts.fit!)
+        if (systemOverflow.length) {
+            // 業者には直せない（テンプレート固定文言・整形済みの値）＝実装側の不具合として記録
+            console.error("[pdf] 収容不能(システム由来)", { form: "別記様式第15", items: systemOverflow })
+        }
+        const fitError = buildFitError("別記様式第15", fonts.fit!)
+        if (fitError) return NextResponse.json(fitError, { status: 422 })
 
         const pdfBytes = await pdfDoc.save()
         return new NextResponse(pdfBytes as unknown as BodyInit, {

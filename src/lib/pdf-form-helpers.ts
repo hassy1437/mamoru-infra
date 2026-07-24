@@ -1,4 +1,5 @@
 import { PDFFont, PDFPage, rgb } from "pdf-lib"
+import type { FitCollector } from "./pdf-fit-report"
 
 /**
  * 帳票描画に使うフォントの組。jp=NotoSansJP(日本語) / latin=Helvetica(英数字)。
@@ -18,6 +19,13 @@ import { PDFFont, PDFPage, rgb } from "pdf-lib"
 export type ReportFonts = {
     jp: PDFFont
     latin: PDFFont
+    /**
+     * 枠に収まらず切り詰めた項目の収集先（⑧）。
+     * ★描画ヘルパーは全て fonts を受け取るので、ここに載せると呼び出し側を
+     *   一切変えずに全経路から報告できる。項目名は描画後に payload と
+     *   突き合わせて決めるので、呼び出し側に項目名を渡させる必要もない。
+     */
+    fit?: FitCollector
 }
 
 // 印字可能ASCIIのみで構成される文字列か（半角英数字・記号・空白）。
@@ -307,9 +315,13 @@ const truncateRunsToFitWidth = (
     let cut = value.length
     while (cut > 0) {
         const candidate = `${value.slice(0, cut).trimEnd()}${suffix}`
-        if (measureRuns(fonts, candidate, size) <= maxWidth + FIT_EPSILON) return candidate
+        if (measureRuns(fonts, candidate, size) <= maxWidth + FIT_EPSILON) {
+            fonts.fit?.report(value, cut)
+            return candidate
+        }
         cut -= 1
     }
+    fonts.fit?.report(value, 0)
     return suffix
 }
 
@@ -465,6 +477,8 @@ export const drawWrappedTextInCell = ({
     if (!visibleLines.length) return
 
     if (wrapped.lines.length > wrapped.maxLines) {
+        // 折り返しても行数が入らず末尾を落とす＝情報欠落なので報告する
+        fonts.fit?.report(normalized, visibleLines.join("").length)
         const lastIndex = visibleLines.length - 1
         visibleLines[lastIndex] = truncateRunsToFitWidth(
             fonts,

@@ -19,6 +19,7 @@ import {
     drawTextRuns,
     FIT_EPSILON,
 } from "@/lib/pdf-form-helpers"
+import { buildFitError, createFitCollector, systemFitFailures } from "@/lib/pdf-fit-report"
 
 type BekkiRow = { content?: string; judgment?: string; bad_content?: string; action_content?: string; current_value?: string; flow_value?: string; hose_count?: string; nozzle_dia?: string }
 type DeviceRow = { name?: string; model?: string; calibrated_at?: string; maker?: string }
@@ -92,7 +93,7 @@ export async function POST(req: NextRequest) {
         // ASCII(型式・番号・日付等)は Helvetica で描く。NotoSansJP は「英字+ハイフン+数字」で
         // 数字がCJK拡張Aのグリフに化け、計測幅と実描画幅が最大+41.6%ズレて枠をはみ出すため。
         const latinFont = await pdfDoc.embedFont(StandardFonts.Helvetica)
-        const fonts: ReportFonts = { jp: customFont, latin: latinFont }
+        const fonts: ReportFonts = { jp: customFont, latin: latinFont, fit: createFitCollector() }
 
         const normalizeText = (value: unknown) => String(value ?? "").replace(/\s+/g, " ").trim()
 
@@ -169,7 +170,11 @@ export async function POST(req: NextRequest) {
                 let cut = normalized.length
                 while (cut > 0) {
                     const candidate = `${normalized.slice(0, cut).trimEnd()}${suffix}`
-                    if (measureRuns(font, String(candidate ?? ""), currentSize) <= maxWidth + FIT_EPSILON) { textToDraw = candidate; break }
+                    if (measureRuns(font, String(candidate ?? ""), currentSize) <= maxWidth + FIT_EPSILON) {
+                        font.fit?.report(normalized, cut)
+                        textToDraw = candidate
+                        break
+                    }
                     cut -= 1
                 }
             }
@@ -405,6 +410,17 @@ export async function POST(req: NextRequest) {
         drawInCellWithFont(page3, p3Height, fonts, device2.model, 363.6, deviceRowTop, 55.44, deviceRowH, 5.8, devOpts)
         drawInCell(page3, p3Height, formatJapaneseDateText(device2.calibrated_at), 419.04, deviceRowTop, 55.56, deviceRowH, 5.6)
         drawDeviceMaker(device2.maker, page3, p3Height, 474.6, 55.44, deviceRowTop, deviceRowH)
+
+        // ⑧ 枠に収まらなかった項目があればPDFを返さず一覧を返す。
+        //   黙って "..." で切り詰めると法定書類から情報が静かに欠落するため。
+        fonts.fit?.resolve(body)
+        const systemOverflow = systemFitFailures(fonts.fit!)
+        if (systemOverflow.length) {
+            // 業者には直せない値（テンプレート文言・整形済みの日付など）＝実装側の不具合として記録
+            console.error("[pdf] 収容不能(システム由来)", { form: "別記様式第20", items: systemOverflow })
+        }
+        const fitError = buildFitError("別記様式第20", fonts.fit!)
+        if (fitError) return NextResponse.json(fitError, { status: 422 })
 
         const pdfBytes = await pdfDoc.save()
         return new NextResponse(pdfBytes as unknown as BodyInit, {

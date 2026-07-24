@@ -55,7 +55,22 @@ export function reportTaskCount(input: ReportInputs): number {
     return buildTasks(input).length
 }
 
-export type BuildResult = { blob: Blob; failedLabels: string[] }
+/** 枠に収まらなかった項目（各様式ルートが 422 で返す内容） */
+export type FitFailureDetail = {
+    label: string
+    items: { label: string; input: number; fits: number; over: number; hint: string }[]
+}
+
+export type BuildResult = {
+    blob: Blob
+    failedLabels: string[]
+    /**
+     * ★422（枠に収まらない）は業者が自分で直せる情報なので、ここまで運ぶ。
+     *   以前は !res.ok を `${label}: ${status}` にして本文を捨てていたため、
+     *   せっかく様式・項目・超過文字数を返しても UI に届かなかった。
+     */
+    fitFailures: FitFailureDetail[]
+}
 
 /** 全PDF生成に失敗したときに投げるエラーの識別子。 */
 export const ALL_PDF_FAILED = "ALL_PDF_FAILED"
@@ -80,7 +95,23 @@ export async function buildMergedReport(
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(task.body),
             })
-            if (!res.ok) throw new Error(`${task.label}: ${res.status}`)
+            if (!res.ok) {
+                // 422 は「枠に収まらない項目がある」= 業者が直せる。本文を捨てずに運ぶ
+                let detail: FitFailureDetail | null = null
+                if (res.status === 422) {
+                    try {
+                        const body = await res.json()
+                        if (body?.error === "FIT_FAILED" && Array.isArray(body.items)) {
+                            detail = { label: task.label, items: body.items }
+                        }
+                    } catch {
+                        // 本文が読めなければラベルだけで扱う
+                    }
+                }
+                const err = new Error(`${task.label}: ${res.status}`) as Error & { detail?: FitFailureDetail | null }
+                err.detail = detail
+                throw err
+            }
             const buf = await res.arrayBuffer()
             done += 1
             onProgress?.(done, tasks.length)
@@ -90,11 +121,14 @@ export async function buildMergedReport(
 
     const pdfBuffers: (ArrayBuffer | null)[] = tasks.map(() => null)
     const failedLabels: string[] = []
+    const fitFailures: FitFailureDetail[] = []
     results.forEach((result, i) => {
         if (result.status === "fulfilled") {
             pdfBuffers[result.value.index] = result.value.buf
         } else {
             failedLabels.push(tasks[i]?.label ?? "unknown")
+            const detail = (result.reason as { detail?: FitFailureDetail | null } | undefined)?.detail
+            if (detail) fitFailures.push(detail)
         }
     })
 
@@ -111,7 +145,7 @@ export async function buildMergedReport(
     }
     const mergedBytes = await merged.save()
     const blob = new Blob([new Uint8Array(mergedBytes)], { type: "application/pdf" })
-    return { blob, failedLabels }
+    return { blob, failedLabels, fitFailures }
 }
 
 /** Blob を端末にダウンロードさせる。納品時は upload と同一の Blob をここに渡す。 */

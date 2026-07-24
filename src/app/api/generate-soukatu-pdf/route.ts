@@ -1,7 +1,13 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
 import { PDFDocument, rgb, PDFPage, StandardFonts } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
-import { pickFont, type ReportFonts } from "@/lib/pdf-form-helpers";
+import {
+    pickFont,
+    type ReportFonts,
+    measureRuns,
+    drawTextRuns,
+} from "@/lib/pdf-form-helpers"
+;
 import fs from "fs";
 import path from "path";
 
@@ -156,7 +162,7 @@ export async function POST(req: NextRequest) {
             const maxWidth = Math.max(1, (cellW - paddingX * 2) * 0.85);
             const maxHeight = Math.max(1, cellH - paddingY * 2);
 
-            const widthAtCurrent = pickFont(fonts, String(normalized ?? "")).widthOfTextAtSize(normalized, currentSize);
+            const widthAtCurrent = measureRuns(fonts, String(normalized ?? ""), currentSize);
             if (widthAtCurrent > maxWidth) {
                 currentSize = currentSize * (maxWidth / widthAtCurrent);
             }
@@ -169,18 +175,18 @@ export async function POST(req: NextRequest) {
             currentSize = Math.max(currentSize, minFontSize);
 
             const truncateToFit = (value: string) => {
-                if (pickFont(fonts, String(value ?? "")).widthOfTextAtSize(value, currentSize) <= maxWidth) {
+                if (measureRuns(fonts, String(value ?? ""), currentSize) <= maxWidth) {
                     return value;
                 }
 
                 const suffix = "...";
-                const suffixWidth = pickFont(fonts, String(suffix ?? "")).widthOfTextAtSize(suffix, currentSize);
+                const suffixWidth = measureRuns(fonts, String(suffix ?? ""), currentSize);
                 if (suffixWidth > maxWidth) return "";
 
                 let cut = value.length;
                 while (cut > 0) {
                     const candidate = `${value.slice(0, cut).trimEnd()}${suffix}`;
-                    if (pickFont(fonts, String(candidate ?? "")).widthOfTextAtSize(candidate, currentSize) <= maxWidth) {
+                    if (measureRuns(fonts, String(candidate ?? ""), currentSize) <= maxWidth) {
                         return candidate;
                     }
                     cut -= 1;
@@ -192,7 +198,7 @@ export async function POST(req: NextRequest) {
             const textToDraw = truncateToFit(normalized);
             if (!textToDraw) return;
 
-            const textWidth = pickFont(fonts, String(textToDraw ?? "")).widthOfTextAtSize(textToDraw, currentSize);
+            const textWidth = measureRuns(fonts, String(textToDraw ?? ""), currentSize);
             const textHeight = fonts.jp.heightAtSize(currentSize, { descender: true });
             const xOffset = options?.xOffset ?? 0;
             const yOffset = options?.yOffset ?? 0;
@@ -205,13 +211,7 @@ export async function POST(req: NextRequest) {
             const textTopFromTop = cellTopFromTop + (cellH - textHeight) / 2 + yOffset;
             const baselineOffset = textHeight * 0.78;
 
-            page.drawText(textToDraw, {
-                x: textX,
-                y: pageHeight - (textTopFromTop + baselineOffset),
-                size: currentSize,
-                font: pickFont(fonts, String(textToDraw ?? "")),
-                color: rgb(0, 0, 0),
-            });
+            drawTextRuns(page, fonts, String(textToDraw ?? ""), textX, pageHeight - (textTopFromTop + baselineOffset), currentSize);
         };
 
         const drawJudgeCircle = (
@@ -328,31 +328,13 @@ export async function POST(req: NextRequest) {
             const monthStr = String(d.getMonth() + 1);
             const dayStr = String(d.getDate());
 
-            const yearW = pickFont(fonts, String(yearStr ?? "")).widthOfTextAtSize(yearStr, dateSize);
-            const monthW = pickFont(fonts, String(monthStr ?? "")).widthOfTextAtSize(monthStr, dateSize);
-            const dayW = pickFont(fonts, String(dayStr ?? "")).widthOfTextAtSize(dayStr, dateSize);
+            const yearW = measureRuns(fonts, String(yearStr ?? ""), dateSize);
+            const monthW = measureRuns(fonts, String(monthStr ?? ""), dateSize);
+            const dayW = measureRuns(fonts, String(dayStr ?? ""), dateSize);
 
-            page1.drawText(yearStr, {
-                x: anchors.year - yearW,
-                y: height - dateY,
-                size: dateSize,
-                font: pickFont(fonts, String(yearStr ?? "")),
-                color: rgb(0, 0, 0),
-            });
-            page1.drawText(monthStr, {
-                x: anchors.month - monthW,
-                y: height - dateY,
-                size: dateSize,
-                font: pickFont(fonts, String(monthStr ?? "")),
-                color: rgb(0, 0, 0),
-            });
-            page1.drawText(dayStr, {
-                x: anchors.day - dayW,
-                y: height - dateY,
-                size: dateSize,
-                font: pickFont(fonts, String(dayStr ?? "")),
-                color: rgb(0, 0, 0),
-            });
+            drawTextRuns(page1, fonts, String(yearStr ?? ""), anchors.year - yearW, height - dateY, dateSize);
+            drawTextRuns(page1, fonts, String(monthStr ?? ""), anchors.month - monthW, height - dateY, dateSize);
+            drawTextRuns(page1, fonts, String(dayStr ?? ""), anchors.day - dayW, height - dateY, dateSize);
         };
 
         drawDate(body.inspection_period_start || body.inspection_date, {

@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import { PDFDocument, rgb, PDFPage, StandardFonts } from "pdf-lib"
-import { pickFont, type ReportFonts } from "@/lib/pdf-form-helpers"
+import {
+    pickFont,
+    type ReportFonts,
+    measureRuns,
+    drawTextRuns,
+} from "@/lib/pdf-form-helpers"
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
@@ -111,16 +116,16 @@ export async function POST(req: NextRequest) {
         const page = pages[0]
 
         const truncateToFitWidth = (value: string, size: number, maxWidth: number) => {
-            if (pickFont(fonts, String(value ?? "")).widthOfTextAtSize(value, size) <= maxWidth) return value
+            if (measureRuns(fonts, String(value ?? ""), size) <= maxWidth) return value
 
             const suffix = "..."
-            const suffixWidth = pickFont(fonts, String(suffix ?? "")).widthOfTextAtSize(suffix, size)
+            const suffixWidth = measureRuns(fonts, String(suffix ?? ""), size)
             if (suffixWidth > maxWidth) return ""
 
             let cut = value.length
             while (cut > 0) {
                 const candidate = `${value.slice(0, cut).trimEnd()}${suffix}`
-                if (pickFont(fonts, String(candidate ?? "")).widthOfTextAtSize(candidate, size) <= maxWidth) {
+                if (measureRuns(fonts, String(candidate ?? ""), size) <= maxWidth) {
                     return candidate
                 }
                 cut -= 1
@@ -148,7 +153,7 @@ export async function POST(req: NextRequest) {
             const maxHeight = Math.max(1, cellH - paddingY * 2)
 
             let currentSize = fontSize
-            const w = pickFont(fonts, String(normalized ?? "")).widthOfTextAtSize(normalized, currentSize)
+            const w = measureRuns(fonts, String(normalized ?? ""), currentSize)
             if (w > maxWidth) {
                 currentSize = currentSize * (maxWidth / w)
             }
@@ -161,7 +166,7 @@ export async function POST(req: NextRequest) {
             const textToDraw = truncateToFitWidth(normalized, currentSize, maxWidth)
             if (!textToDraw) return
 
-            const textWidth = pickFont(fonts, String(textToDraw ?? "")).widthOfTextAtSize(textToDraw, currentSize)
+            const textWidth = measureRuns(fonts, String(textToDraw ?? ""), currentSize)
             const textHeight = fonts.jp.heightAtSize(currentSize, { descender: true })
             const textTopFromTop = cellTopFromTop + (cellH - textHeight) / 2
             const baselineOffset = textHeight * 0.78
@@ -170,7 +175,7 @@ export async function POST(req: NextRequest) {
                 ? cellX + (cellW - textWidth) / 2
                 : cellX + paddingX
 
-            pg.drawText(textToDraw, { x, y, size: currentSize, font: pickFont(fonts, String(textToDraw ?? "")), color: rgb(0, 0, 0) })
+            drawTextRuns(pg, fonts, String(textToDraw ?? ""), x, y, currentSize)
         }
 
         // ------- helper: 数値を右揃えでアンカーの左に描画 -------
@@ -186,8 +191,8 @@ export async function POST(req: NextRequest) {
             const textHeight = fonts.jp.heightAtSize(size, { descender: true })
             const textTop = rowTop + (rowH - textHeight) / 2
             const y = PAGE_HEIGHT - (textTop + textHeight * 0.78)
-            const w = pickFont(fonts, String(text ?? "")).widthOfTextAtSize(text, size)
-            pg.drawText(text, { x: anchorX - w, y, size, font: pickFont(fonts, String(text ?? "")), color: rgb(0, 0, 0) })
+            const w = measureRuns(fonts, String(text ?? ""), size)
+            drawTextRuns(pg, fonts, String(text ?? ""), anchorX - w, y, size)
         }
 
         // ------- 1人分の inspector データを描画 -------

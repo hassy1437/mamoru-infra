@@ -10,6 +10,17 @@
   2. fonts: ReportFonts を定義している
   3. 生の customFont が「埋め込み行」「fonts定義行」「型注釈(typeof customFont)」以外に残っていない
      ＝ 描画・計測が必ず pickFont / fonts 経由になっている
+  4. ★単一フォントでの計測が残っていない（*.widthOfTextAtSize を直接呼ばない）
+  5. ★単一フォントでの描画が残っていない（*.drawText を直接呼ばない）
+
+4・5 がなぜ要るか（①b の網羅性）:
+  ① で「文字列ごとにフォントを選ぶ」ようにしても、日本語と英数字が混じった1文字列は
+  必ず jp 側に落ち、その中の英数字が化ける（例: "27-P2 点検項目"）。
+  ①b は文字列を英数字/日本語の区間（ラン）に割って区間ごとに測る・描くことで直したが、
+  ルート内にローカルの描画ヘルパーが17個あり、そこは単一フォントのままだった。
+  ＝ 共有ヘルパーを直しただけでは網羅されない。ルート側に生の widthOfTextAtSize /
+     drawText が1つでも残っていれば、その経路だけ静かに再発する。
+  measureRuns / drawTextRuns 以外の入口を機械的に禁止するのがこの2項目。
 
 使い方: python scripts/check-latin-font-coverage.py
 全ルート合格なら LATIN_FONT_COVERAGE_OK を出力して exit 0、欠落があれば一覧して exit 1。
@@ -37,7 +48,7 @@ ALLOWED = (
 )
 
 failures: list[str] = []
-rows: list[tuple[str, str, str, str, int]] = []
+rows: list[tuple[str, str, str, str, str]] = []
 
 for route in routes:
     if not route.exists():
@@ -60,23 +71,30 @@ for route in routes:
             continue
         raw_leaks += 1
 
-    ok = has_latin and has_fonts and raw_leaks == 0
+    # ①b: ラン分割を経ない入口（単一フォントでの計測・描画）が残っていないか
+    single_measure = len(re.findall(r"\.widthOfTextAtSize\(", src))
+    single_draw = len(re.findall(r"(?<!drawText)(?<!Runs)\.drawText\(", src))
+    single = single_measure + single_draw
+
+    ok = has_latin and has_fonts and raw_leaks == 0 and single == 0
     rows.append((name, "OK" if has_latin else "NG", "OK" if has_fonts else "NG",
-                 "OK" if raw_leaks == 0 else f"NG({raw_leaks})", raw_leaks))
+                 "OK" if raw_leaks == 0 else f"NG({raw_leaks})",
+                 "OK" if single == 0 else f"NG(計測{single_measure}/描画{single_draw})"))
     if not ok:
         failures.append(name)
 
-print(f"{'route':<44} {'latin':>6} {'fonts':>6} {'no-raw-customFont':>20}")
-print("-" * 80)
-for name, a, b, c, _ in rows:
-    print(f"{name:<44} {a:>6} {b:>6} {c:>20}")
-print("-" * 80)
+print(f"{'route':<40} {'latin':>6} {'fonts':>6} {'no-raw-custom':>14} {'run-aware only':>22}")
+print("-" * 92)
+for name, a, b, c, d in rows:
+    print(f"{name:<40} {a:>6} {b:>6} {c:>14} {d:>22}")
+print("-" * 92)
 print(f"routes={len(rows)}  passed={len(rows) - len(failures)}  failed={len(failures)}")
 
 if failures:
     print("\nNG:", ", ".join(failures))
-    print("→ latinFont 埋め込み / fonts 定義 / 生 customFont の除去 のいずれかが未対応。")
-    print("  生の customFont が残っていると、その経路だけ字形化けと幅誤判定が再発する。")
+    print("→ latinFont 埋め込み / fonts 定義 / 生 customFont の除去 /")
+    print("  単一フォントでの計測・描画の除去（measureRuns・drawTextRuns 経由）のいずれかが未対応。")
+    print("  1つでも残っていると、その経路だけ字形化けと幅誤判定が静かに再発する。")
     sys.exit(1)
 
 print(f"\nLATIN_FONT_COVERAGE_OK ({len(rows)}/{len(rows)})")

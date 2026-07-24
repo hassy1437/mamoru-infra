@@ -4,9 +4,13 @@ import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
 import {
-    drawWrappedTextInCell, formatJapaneseDateText, formatJudgment,
+    drawWrappedTextInCell,
+    formatJapaneseDateText,
+    formatJudgment,
     pickFont,
     type ReportFonts,
+    measureRuns,
+    drawTextRuns,
 } from "@/lib/pdf-form-helpers"
 
 type Bekki3Row = {
@@ -171,15 +175,15 @@ export async function POST(req: NextRequest) {
 
         const truncateToFitWidth = (value: string, size: number, maxWidth: number) => {
             if (!value) return ""
-            if (pickFont(fonts, String(value ?? "")).widthOfTextAtSize(value, size) <= maxWidth) return value
+            if (measureRuns(fonts, String(value ?? ""), size) <= maxWidth) return value
 
             const suffix = "..."
-            if (pickFont(fonts, String(suffix ?? "")).widthOfTextAtSize(suffix, size) > maxWidth) return ""
+            if (measureRuns(fonts, String(suffix ?? ""), size) > maxWidth) return ""
 
             let cut = value.length
             while (cut > 0) {
                 const candidate = `${value.slice(0, cut).trimEnd()}${suffix}`
-                if (pickFont(fonts, String(candidate ?? "")).widthOfTextAtSize(candidate, size) <= maxWidth) return candidate
+                if (measureRuns(fonts, String(candidate ?? ""), size) <= maxWidth) return candidate
                 cut -= 1
             }
 
@@ -208,7 +212,7 @@ export async function POST(req: NextRequest) {
             const maxWidth = Math.max(1, (cellW - paddingX * 2) * 0.85)
             const maxHeight = Math.max(1, cellH - paddingY * 2)
 
-            const widthAtCurrent = pickFont(fonts, String(normalized ?? "")).widthOfTextAtSize(normalized, currentSize)
+            const widthAtCurrent = measureRuns(fonts, String(normalized ?? ""), currentSize)
             if (widthAtCurrent > maxWidth) {
                 currentSize = currentSize * (maxWidth / widthAtCurrent)
             }
@@ -223,7 +227,7 @@ export async function POST(req: NextRequest) {
             const textToDraw = truncateToFitWidth(normalized, currentSize, maxWidth)
             if (!textToDraw) return
 
-            const textWidth = pickFont(fonts, String(textToDraw ?? "")).widthOfTextAtSize(textToDraw, currentSize)
+            const textWidth = measureRuns(fonts, String(textToDraw ?? ""), currentSize)
             const textHeight = fonts.jp.heightAtSize(currentSize, { descender: true })
             let textX = cellX + paddingX
             if (options?.align === "center") {
@@ -232,19 +236,13 @@ export async function POST(req: NextRequest) {
             const textTopFromTop = cellTopFromTop + (cellH - textHeight) / 2
             const baselineOffset = textHeight * 0.78
 
-            page.drawText(textToDraw, {
-                x: textX,
-                y: pageHeight - (textTopFromTop + baselineOffset),
-                size: currentSize,
-                font: pickFont(fonts, String(textToDraw ?? "")),
-                color: rgb(0, 0, 0),
-            })
+            drawTextRuns(page, fonts, String(textToDraw ?? ""), textX, pageHeight - (textTopFromTop + baselineOffset), currentSize)
         }
 
         const drawInCellWithFont = (
             page: PDFPage,
             pageHeight: number,
-            font: typeof customFont,
+            font: ReportFonts,
             text: unknown,
             cellX: number,
             cellTopFromTop: number,
@@ -261,34 +259,28 @@ export async function POST(req: NextRequest) {
             let currentSize = Math.min(fontSize, options?.maxFontSize ?? fontSize)
             const maxWidth = Math.max(1, (cellW - paddingX * 2) * 0.85)
             const maxHeight = Math.max(1, cellH - paddingY * 2)
-            const w = font.widthOfTextAtSize(normalized, currentSize)
+            const w = measureRuns(font, String(normalized ?? ""), currentSize)
             if (w > maxWidth) currentSize = currentSize * (maxWidth / w)
-            const h = font.heightAtSize(currentSize, { descender: true })
+            const h = font.jp.heightAtSize(currentSize, { descender: true })
             if (h > maxHeight) currentSize = currentSize * (maxHeight / h)
             currentSize = Math.max(currentSize, minFontSize)
             let textToDraw = normalized
-            if (font.widthOfTextAtSize(normalized, currentSize) > maxWidth + 0.1) {
+            if (measureRuns(font, String(normalized ?? ""), currentSize) > maxWidth + 0.1) {
                 const suffix = "..."
                 let cut = normalized.length
                 while (cut > 0) {
                     const candidate = `${normalized.slice(0, cut).trimEnd()}${suffix}`
-                    if (font.widthOfTextAtSize(candidate, currentSize) <= maxWidth) { textToDraw = candidate; break }
+                    if (measureRuns(font, String(candidate ?? ""), currentSize) <= maxWidth) { textToDraw = candidate; break }
                     cut -= 1
                 }
             }
-            const textWidth = font.widthOfTextAtSize(textToDraw, currentSize)
-            const textHeight = font.heightAtSize(currentSize, { descender: true })
+            const textWidth = measureRuns(font, String(textToDraw ?? ""), currentSize)
+            const textHeight = font.jp.heightAtSize(currentSize, { descender: true })
             let textX = cellX + paddingX
             if (options?.align === "center") textX = cellX + (cellW - textWidth) / 2
             const textTopFromTop = cellTopFromTop + (cellH - textHeight) / 2
             const baselineOffset = textHeight * 0.78
-            page.drawText(textToDraw, {
-                x: textX,
-                y: pageHeight - (textTopFromTop + baselineOffset),
-                size: currentSize,
-                font,
-                color: rgb(0, 0, 0),
-            })
+            drawTextRuns(page, font, String(textToDraw ?? ""), textX, pageHeight - (textTopFromTop + baselineOffset), currentSize)
         }
 
         const drawWrappedInCell = (
@@ -376,8 +368,8 @@ export async function POST(req: NextRequest) {
             const textHeight = fonts.jp.heightAtSize(size, { descender: true })
             const textTop = rowTop + (rowH - textHeight) / 2
             const y = pageHeight - (textTop + textHeight * 0.78)
-            const textWidth = pickFont(fonts, String(text ?? "")).widthOfTextAtSize(text, size)
-            page.drawText(text, { x: anchorX - textWidth, y, size, font: pickFont(fonts, String(text ?? "")), color: rgb(0, 0, 0) })
+            const textWidth = measureRuns(fonts, String(text ?? ""), size)
+            drawTextRuns(page, fonts, String(text ?? ""), anchorX - textWidth, y, size)
         }
 
         const drawPeriodDate = (
@@ -499,7 +491,7 @@ export async function POST(req: NextRequest) {
             if (!pressRow) continue
             const pTop = P2_ROW_BOUNDS[ri]
             const pH = P2_ROW_BOUNDS[ri + 1] - P2_ROW_BOUNDS[ri]
-            drawInCellWithFont(page2, p2Height, pickFont(fonts, String(pressRow.content ?? "")), pressRow.content, 285, pTop, 14, pH, 6.5, { paddingX: 0.5 })
+            drawInCellWithFont(page2, p2Height, fonts, pressRow.content, 285, pTop, 14, pH, 6.5, { paddingX: 0.5 })
         }
 
         // 性能 (p2 row 20): 「MPa」/ 「L/min」自動分割
@@ -510,7 +502,7 @@ export async function POST(req: NextRequest) {
             const perfContent = normalizeText(perfRow3.content)
 
             const drawMpaVal = (v: string) => drawWrappedInCell(page2, p2Height, v, 237, perfTop, 38, perfH, 6.7)
-            const drawFlowVal = (v: string) => drawInCellWithFont(page2, p2Height, pickFont(fonts, String(v ?? "")), v, 294, perfTop, 9, perfH, 6.0, { paddingX: 0.5 })
+            const drawFlowVal = (v: string) => drawInCellWithFont(page2, p2Height, fonts, v, 294, perfTop, 9, perfH, 6.0, { paddingX: 0.5 })
 
             if (perfRow3.flow_value) {
                 if (perfContent) drawMpaVal(perfContent)
@@ -558,11 +550,11 @@ export async function POST(req: NextRequest) {
             if (swContent.includes("/")) {
                 const parts = swContent.split("/")
                 // 設定圧力値: 「設定圧力」(x=244-286)の下、「MPa」(x=273)の左
-                drawInCellWithFont(page3, p3Height, pickFont(fonts, String(parts[0]?.trim ?? "")), parts[0]?.trim(), 244, valTop, 28, valH, 6.5, { paddingX: 0.5 })
+                drawInCellWithFont(page3, p3Height, fonts, parts[0]?.trim(), 244, valTop, 28, valH, 6.5, { paddingX: 0.5 })
                 // 作動圧力値: 「作動圧力」(x=296-338)の下、「MPa」(x=326)の左
-                drawInCellWithFont(page3, p3Height, pickFont(fonts, String(parts[1]?.trim ?? "")), parts[1]?.trim(), 296, valTop, 28, valH, 6.5, { paddingX: 0.5 })
+                drawInCellWithFont(page3, p3Height, fonts, parts[1]?.trim(), 296, valTop, 28, valH, 6.5, { paddingX: 0.5 })
             } else if (swContent) {
-                drawInCellWithFont(page3, p3Height, pickFont(fonts, String(swContent ?? "")), swContent, 244, valTop, 28, valH, 6.5, { paddingX: 0.5 })
+                drawInCellWithFont(page3, p3Height, fonts, swContent, 244, valTop, 28, valH, 6.5, { paddingX: 0.5 })
             }
         }
 
@@ -578,9 +570,9 @@ export async function POST(req: NextRequest) {
             // 値は行の下半分（m×, 本, mmラベルと同じ高さ）に配置
             const hValTop = hTop + hH / 2 - 2
             const hValH = hH / 2 + 2
-            const drawLen = (v: string) => { if (v) drawInCellWithFont(page3, p3Height, pickFont(fonts, String(v ?? "")), v, 244, hValTop, 20, hValH, 6.5, { paddingX: 0.5 }) }
-            const drawCnt = (v: string) => { if (v) drawInCellWithFont(page3, p3Height, pickFont(fonts, String(v ?? "")), v, 287, hValTop, 9, hValH, 6.0, { paddingX: 0 }) }
-            const drawDia = (v: string) => { if (v) drawInCellWithFont(page3, p3Height, pickFont(fonts, String(v ?? "")), v, 310, hValTop, 15, hValH, 6.0, { paddingX: 0 }) }
+            const drawLen = (v: string) => { if (v) drawInCellWithFont(page3, p3Height, fonts, v, 244, hValTop, 20, hValH, 6.5, { paddingX: 0.5 }) }
+            const drawCnt = (v: string) => { if (v) drawInCellWithFont(page3, p3Height, fonts, v, 287, hValTop, 9, hValH, 6.0, { paddingX: 0 }) }
+            const drawDia = (v: string) => { if (v) drawInCellWithFont(page3, p3Height, fonts, v, 310, hValTop, 15, hValH, 6.0, { paddingX: 0 }) }
             if (hCount || nDia) {
                 drawLen(hContent); drawCnt(hCount); drawDia(nDia)
             } else if (hContent.includes("/")) {
@@ -631,7 +623,7 @@ export async function POST(req: NextRequest) {
         const device2 = body.device2 ?? {}
         const devOpts: DrawOptions = { paddingX: 1 }
         drawInCell(page5, p5Height, device1.name, 83, 658, 56, 19, 7.2, devOpts)
-        drawInCellWithFont(page5, p5Height, pickFont(fonts, String(device1.model ?? "")), device1.model, 139, 658, 55, 19, 7.2, devOpts)
+        drawInCellWithFont(page5, p5Height, fonts, device1.model, 139, 658, 55, 19, 7.2, devOpts)
         drawInCell(page5, p5Height, formatJapaneseDateText(device1.calibrated_at), 194, 658, 56, 19, 7.2, devOpts)
 
         const drawDeviceMaker = (text: unknown, page: PDFPage, pageH: number, cellX: number, cellW: number, cellTop: number, cellH: number) => {
@@ -640,25 +632,19 @@ export async function POST(req: NextRequest) {
             const padX = 1
             const availW = cellW - padX * 2
             let sz = 7.2
-            const w = pickFont(fonts, String(norm ?? "")).widthOfTextAtSize(norm, sz)
+            const w = measureRuns(fonts, String(norm ?? ""), sz)
             if (w > availW) sz = sz * (availW / w) * 0.98
             sz = Math.max(sz, 3.5)
             const drawn = truncateToFitWidth(norm, sz, availW)
             if (!drawn) return
             const th = fonts.jp.heightAtSize(sz, { descender: true })
             const textTop = cellTop + (cellH - th) / 2
-            page.drawText(drawn, {
-                x: cellX + padX,
-                y: pageH - (textTop + th * 0.78),
-                size: sz,
-                font: pickFont(fonts, String(drawn ?? "")),
-                color: rgb(0, 0, 0),
-            })
+            drawTextRuns(page, fonts, String(drawn ?? ""), cellX + padX, pageH - (textTop + th * 0.78), sz)
         }
         drawDeviceMaker(device1.maker, page5, p5Height, 250, 56, 658, 19)
 
         drawInCell(page5, p5Height, device2.name, 306, 658, 56, 19, 7.2, devOpts)
-        drawInCellWithFont(page5, p5Height, pickFont(fonts, String(device2.model ?? "")), device2.model, 362, 658, 56, 19, 7.2, devOpts)
+        drawInCellWithFont(page5, p5Height, fonts, device2.model, 362, 658, 56, 19, 7.2, devOpts)
         drawInCell(page5, p5Height, formatJapaneseDateText(device2.calibrated_at), 418, 658, 56, 19, 7.2, devOpts)
         drawDeviceMaker(device2.maker, page5, p5Height, 474, 56, 658, 19)
 

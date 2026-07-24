@@ -1,6 +1,11 @@
 ﻿import { NextRequest, NextResponse } from "next/server"
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib"
-import { pickFont, type ReportFonts } from "@/lib/pdf-form-helpers"
+import {
+    pickFont,
+    type ReportFonts,
+    measureRuns,
+    drawTextRuns,
+} from "@/lib/pdf-form-helpers"
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
@@ -53,19 +58,13 @@ export async function POST(req: NextRequest) {
             let currentSize = size
 
             if (maxWidth) {
-                const textWidth = pickFont(fonts, String(text ?? "")).widthOfTextAtSize(text, currentSize)
+                const textWidth = measureRuns(fonts, String(text ?? ""), currentSize)
                 if (textWidth > maxWidth) {
                     currentSize = currentSize * (maxWidth / textWidth)
                 }
             }
 
-            firstPage.drawText(text, {
-                x,
-                y: height - y,
-                size: currentSize,
-                font: pickFont(fonts, String(text ?? "")),
-                color: rgb(0, 0, 0),
-            })
+            drawTextRuns(firstPage, fonts, String(text ?? ""), x, height - y, currentSize)
         }
 
         const d = new Date(body.report_date ?? "")

@@ -22,14 +22,87 @@ export type ReportFonts = {
 
 // 印字可能ASCIIのみで構成される文字列か（半角英数字・記号・空白）。
 const ASCII_ONLY = /^[\x20-\x7E]+$/
+// 1文字が印字可能ASCIIか。
+const IS_ASCII_CHAR = (ch: string) => ch.length > 0 && ch >= "\x20" && ch <= "\x7E"
 
 /**
  * 文字列に応じて描画フォントを選ぶ。ASCIIのみ→latin、日本語を含む→jp。
  * ★計測（widthOfTextAtSize）と描画（drawText）で必ず同じフォントを使うこと。
- *   両者がズレることが、このモジュールが直そうとしている不具合そのもの。
+ *
+ * ※単独では「日本語混在文字列」を救えない（例: "27-P2 点検項目" は jp が選ばれ、
+ *   その中の英数字が化ける）。混在に対応するには splitFontRuns を使うこと。
+ *   本関数は「文字列全体が単一フォントで足りる」場面と後方互換のために残している。
  */
 export const pickFont = (fonts: ReportFonts, text: string): PDFFont =>
     ASCII_ONLY.test(text) ? fonts.latin : fonts.jp
+
+export type FontRun = {
+    text: string
+    font: PDFFont
+}
+
+/**
+ * 文字列を「連続するASCII区間」と「それ以外の区間」に分割し、区間ごとの描画フォントを決める。
+ *
+ * ★なぜ文字列単位のフォント選択では不十分か（2026-07-24 実測）:
+ *   NotoSansJP は英数字の並びを GSUB で別グリフ（CJK拡張A・ID 16625等）に置換する。
+ *   置換自体は正当だが、pdf-lib の埋め込み（subset:false）ではそのグリフの幅が /W に
+ *   出力されず、ビューアが既定幅1000で描くため、計測幅と実描画幅が最大 +41.6% ズレる。
+ *   （subset:true にすると幅は直るが CJK グリフが脱落して描画が壊れるため採用不可）
+ *   → 英数字を Helvetica で描けば GSUB の文脈から切り離せる。文字列単位の選択だと
+ *     "型式 PMP-9000-EX" のような混在が jp 側に落ちて化けるので、区間単位で分ける。
+ *
+ * 副次効果: ASCII は文脈によらず常に Helvetica になるため、同じ型番が
+ *   "PMP-9000-EX" と "型式 PMP-9000-EX" で別書体になる不統一も解消する。
+ */
+export const splitFontRuns = (fonts: ReportFonts, text: string): FontRun[] => {
+    if (!text) return []
+
+    const runs: FontRun[] = []
+    let current = ""
+    let currentIsAscii = IS_ASCII_CHAR(text[0]!)
+
+    for (const ch of Array.from(text)) {
+        const isAscii = IS_ASCII_CHAR(ch)
+        if (isAscii === currentIsAscii) {
+            current += ch
+            continue
+        }
+        if (current) runs.push({ text: current, font: currentIsAscii ? fonts.latin : fonts.jp })
+        current = ch
+        currentIsAscii = isAscii
+    }
+    if (current) runs.push({ text: current, font: currentIsAscii ? fonts.latin : fonts.jp })
+
+    return runs
+}
+
+/**
+ * ラン分割した文字列の実描画幅。各区間を自身のフォントで測って合計する。
+ * ★描画（drawFontRuns）と必ず同じ分割・同じフォントで計算すること。
+ */
+export const measureRuns = (fonts: ReportFonts, text: string, size: number): number =>
+    splitFontRuns(fonts, text).reduce((w, run) => w + run.font.widthOfTextAtSize(run.text, size), 0)
+
+/**
+ * ラン分割した文字列を、指定位置から順に区間ごとのフォントで描画する。
+ * ルート側のローカル描画ヘルパーからも使えるよう公開している
+ * （単一フォントで drawText すると混在文字列で英数字が化けるため、必ずこれを通すこと）。
+ */
+export const drawTextRuns = (
+    page: PDFPage,
+    fonts: ReportFonts,
+    text: string,
+    x: number,
+    y: number,
+    size: number,
+) => {
+    let cursor = x
+    for (const run of splitFontRuns(fonts, text)) {
+        page.drawText(run.text, { x: cursor, y, size, font: run.font, color: rgb(0, 0, 0) })
+        cursor += run.font.widthOfTextAtSize(run.text, size)
+    }
+}
 
 export type CellDrawOptions = {
     align?: "left" | "center"
@@ -196,6 +269,31 @@ export const truncateToFitWidth = (
     return suffix
 }
 
+/**
+ * ラン分割した文字列を maxWidth に収まるまで末尾から切り詰める。
+ * ★計測は measureRuns（描画と同じ分割・同じフォント）で行う。
+ */
+const truncateRunsToFitWidth = (
+    fonts: ReportFonts,
+    value: string,
+    size: number,
+    maxWidth: number,
+) => {
+    if (!value) return ""
+    if (measureRuns(fonts, value, size) <= maxWidth) return value
+
+    const suffix = "..."
+    if (measureRuns(fonts, suffix, size) > maxWidth) return ""
+
+    let cut = value.length
+    while (cut > 0) {
+        const candidate = `${value.slice(0, cut).trimEnd()}${suffix}`
+        if (measureRuns(fonts, candidate, size) <= maxWidth) return candidate
+        cut -= 1
+    }
+    return suffix
+}
+
 const getBaselineY = (
     pageHeight: number,
     textHeight: number,
@@ -222,9 +320,6 @@ export const drawTextInCell = ({
     const normalized = normalizeText(text)
     if (!normalized) return
 
-    // ★計測と描画で必ず同一フォントを使う（ズレると収まり判定が嘘になる）
-    const font = pickFont(fonts, normalized)
-
     const paddingX = options?.paddingX ?? 2.5
     const paddingY = options?.paddingY ?? 1.6
     const minFontSize = options?.minFontSize ?? 3.5
@@ -233,35 +328,38 @@ export const drawTextInCell = ({
     const maxWidth = Math.max(1, cellW - paddingX * 2)
     const maxHeight = Math.max(1, cellH - paddingY * 2)
 
-    const widthAtCurrent = font.widthOfTextAtSize(normalized, currentSize)
+    // ★計測はラン分割（区間ごとに自フォントで測って合計）。描画も同じ分割で行う。
+    const widthAtCurrent = measureRuns(fonts, normalized, currentSize)
     if (widthAtCurrent > maxWidth) {
         currentSize *= maxWidth / widthAtCurrent
     }
 
-    const heightAtCurrent = font.heightAtSize(currentSize, { descender: true })
+    // 高さは jp 基準に固定する。テキストごとに変えると同じ行で縦位置がばらつくため。
+    const heightAtCurrent = fonts.jp.heightAtSize(currentSize, { descender: true })
     if (heightAtCurrent > maxHeight) {
         currentSize *= maxHeight / heightAtCurrent
     }
 
     currentSize = Math.max(currentSize, minFontSize)
 
-    const textToDraw = truncateToFitWidth(font, normalized, currentSize, maxWidth)
+    const textToDraw = truncateRunsToFitWidth(fonts, normalized, currentSize, maxWidth)
     if (!textToDraw) return
 
-    const textWidth = font.widthOfTextAtSize(textToDraw, currentSize)
-    const textHeight = font.heightAtSize(currentSize, { descender: true })
+    const textWidth = measureRuns(fonts, textToDraw, currentSize)
+    const textHeight = fonts.jp.heightAtSize(currentSize, { descender: true })
     const textX =
         options?.align === "center"
             ? cellX + (cellW - textWidth) / 2
             : cellX + paddingX
 
-    page.drawText(textToDraw, {
-        x: textX,
-        y: getBaselineY(pageHeight, textHeight, cellTopFromTop, cellH),
-        size: currentSize,
-        font,
-        color: rgb(0, 0, 0),
-    })
+    drawTextRuns(
+        page,
+        fonts,
+        textToDraw,
+        textX,
+        getBaselineY(pageHeight, textHeight, cellTopFromTop, cellH),
+        currentSize,
+    )
 }
 
 export const drawJapaneseDateInCell = ({
@@ -272,7 +370,7 @@ export const drawJapaneseDateInCell = ({
     text: formatJapaneseDateText(dateValue),
 })
 
-const wrapTextByWidth = (font: PDFFont, value: string, size: number, maxWidth: number) => {
+const wrapTextByWidth = (fonts: ReportFonts, value: string, size: number, maxWidth: number) => {
     const lines: string[] = []
     let current = ""
 
@@ -280,7 +378,7 @@ const wrapTextByWidth = (font: PDFFont, value: string, size: number, maxWidth: n
         if (!current && ch === " ") continue
 
         const candidate = `${current}${ch}`
-        if (current && font.widthOfTextAtSize(candidate, size) > maxWidth + 0.1) {
+        if (current && measureRuns(fonts, candidate, size) > maxWidth + 0.1) {
             const trimmed = current.trimEnd()
             if (trimmed) lines.push(trimmed)
             current = ch === " " ? "" : ch
@@ -311,9 +409,6 @@ export const drawWrappedTextInCell = ({
     const normalized = normalizeText(text)
     if (!normalized) return
 
-    // ★折り返し計算・描画とも同一フォントで行う（全行を通して一貫させる）
-    const font = pickFont(fonts, normalized)
-
     const paddingX = options?.paddingX ?? 2
     const paddingY = options?.paddingY ?? 1
     const minFontSize = options?.minFontSize ?? 4.5
@@ -328,7 +423,7 @@ export const drawWrappedTextInCell = ({
     const wrapAtSize = (size: number) => {
         const lineHeight = size + lineGap
         const maxLines = Math.max(1, Math.floor(maxHeight / lineHeight))
-        const lines = wrapTextByWidth(font, normalized, size, maxWidth)
+        const lines = wrapTextByWidth(fonts, normalized, size, maxWidth)
         return { lines, lineHeight, maxLines }
     }
 
@@ -344,8 +439,8 @@ export const drawWrappedTextInCell = ({
 
     if (wrapped.lines.length > wrapped.maxLines) {
         const lastIndex = visibleLines.length - 1
-        visibleLines[lastIndex] = truncateToFitWidth(
-            font,
+        visibleLines[lastIndex] = truncateRunsToFitWidth(
+            fonts,
             `${visibleLines[lastIndex]}...`,
             currentSize,
             maxWidth,
@@ -357,14 +452,15 @@ export const drawWrappedTextInCell = ({
     let top = cellTopFromTop + (cellH - totalHeight) / 2
 
     for (const line of visibleLines) {
-        const textHeight = font.heightAtSize(currentSize, { descender: true })
-        page.drawText(line, {
-            x: cellX + paddingX,
-            y: getBaselineY(pageHeight, textHeight, top, lineHeight),
-            size: currentSize,
-            font,
-            color: rgb(0, 0, 0),
-        })
+        const textHeight = fonts.jp.heightAtSize(currentSize, { descender: true })
+        drawTextRuns(
+            page,
+            fonts,
+            line,
+            cellX + paddingX,
+            getBaselineY(pageHeight, textHeight, top, lineHeight),
+            currentSize,
+        )
         top += lineHeight
     }
 }
@@ -382,19 +478,18 @@ export const drawRightAt = ({
     const normalized = normalizeText(text)
     if (!normalized) return
 
-    // ★右寄せは幅計測で位置が決まるので、計測と描画のフォント一致が特に効く
-    const font = pickFont(fonts, normalized)
+    // ★右寄せは幅計測で位置が決まるので、計測と描画の一致が特に効く（ラン分割で合計幅を出す）
+    const textWidth = measureRuns(fonts, normalized, fontSize)
+    const textHeight = fonts.jp.heightAtSize(fontSize, { descender: true })
 
-    const textWidth = font.widthOfTextAtSize(normalized, fontSize)
-    const textHeight = font.heightAtSize(fontSize, { descender: true })
-
-    page.drawText(normalized, {
-        x: rightX - textWidth,
-        y: getBaselineY(pageHeight, textHeight, cellTopFromTop, cellH),
-        size: fontSize,
-        font,
-        color: rgb(0, 0, 0),
-    })
+    drawTextRuns(
+        page,
+        fonts,
+        normalized,
+        rightX - textWidth,
+        getBaselineY(pageHeight, textHeight, cellTopFromTop, cellH),
+        fontSize,
+    )
 }
 
 export const drawPeriodDate = ({

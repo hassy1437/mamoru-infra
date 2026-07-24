@@ -1,5 +1,6 @@
 ﻿import { NextRequest, NextResponse } from "next/server"
-import { PDFDocument, rgb } from "pdf-lib"
+import { PDFDocument, rgb, StandardFonts } from "pdf-lib"
+import { pickFont, type ReportFonts } from "@/lib/pdf-form-helpers"
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
@@ -39,6 +40,10 @@ export async function POST(req: NextRequest) {
         const pdfDoc = await PDFDocument.load(existingPdfBytes)
         pdfDoc.registerFontkit(fontkit)
         const customFont = await pdfDoc.embedFont(fontBytes)
+        // ASCII(型式・番号・日付等)は Helvetica で描く。NotoSansJP は「英字+ハイフン+数字」で
+        // 数字がCJK拡張Aのグリフに化け、計測幅と実描画幅が最大+41.6%ズレて枠をはみ出すため。
+        const latinFont = await pdfDoc.embedFont(StandardFonts.Helvetica)
+        const fonts: ReportFonts = { jp: customFont, latin: latinFont }
 
         const firstPage = pdfDoc.getPages()[0]
         const { height } = firstPage.getSize()
@@ -48,7 +53,7 @@ export async function POST(req: NextRequest) {
             let currentSize = size
 
             if (maxWidth) {
-                const textWidth = customFont.widthOfTextAtSize(text, currentSize)
+                const textWidth = pickFont(fonts, String(text ?? "")).widthOfTextAtSize(text, currentSize)
                 if (textWidth > maxWidth) {
                     currentSize = currentSize * (maxWidth / textWidth)
                 }
@@ -58,7 +63,7 @@ export async function POST(req: NextRequest) {
                 x,
                 y: height - y,
                 size: currentSize,
-                font: customFont,
+                font: pickFont(fonts, String(text ?? "")),
                 color: rgb(0, 0, 0),
             })
         }

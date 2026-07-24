@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { PDFDocument, type PDFPage } from "pdf-lib"
+import { PDFDocument, type PDFPage, StandardFonts } from "pdf-lib"
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
@@ -13,6 +13,8 @@ import {
     type CellDrawOptions,
     type DateAnchors,
     formatJudgment,
+    pickFont,
+    type ReportFonts,
 } from "@/lib/pdf-form-helpers"
 
 type BekkiRow = { content?: string; judgment?: string; bad_content?: string; action_content?: string; current_value?: string }
@@ -78,6 +80,10 @@ export async function POST(req: NextRequest) {
         const pdfDoc = await PDFDocument.load(fs.readFileSync(pdfPath))
         pdfDoc.registerFontkit(fontkit)
         const customFont = await pdfDoc.embedFont(fs.readFileSync(fontPath))
+        // ASCII(型式・番号・日付等)は Helvetica で描く。NotoSansJP は「英字+ハイフン+数字」で
+        // 数字がCJK拡張Aのグリフに化け、計測幅と実描画幅が最大+41.6%ズレて枠をはみ出すため。
+        const latinFont = await pdfDoc.embedFont(StandardFonts.Helvetica)
+        const fonts: ReportFonts = { jp: customFont, latin: latinFont }
 
         const [page1, page2] = pdfDoc.getPages()
         const p1Height = page1.getSize().height
@@ -96,7 +102,7 @@ export async function POST(req: NextRequest) {
         ) => drawTextInCell({
             page,
             pageHeight,
-            font: customFont,
+            fonts,
             text,
             cellX,
             cellTopFromTop,
@@ -118,7 +124,7 @@ export async function POST(req: NextRequest) {
         ) => drawWrappedTextInCell({
             page,
             pageHeight,
-            font: customFont,
+            fonts,
             text,
             cellX,
             cellTopFromTop,
@@ -172,7 +178,7 @@ export async function POST(req: NextRequest) {
                     drawPeriodDate({
                         page: page,
                         pageHeight: pageHeight,
-                        font: customFont,
+                        fonts,
                         dateValue: body.period_start,
                         anchors: PERIOD_START_ANCHORS,
                         rowTop: PERIOD_ROW.top,
@@ -184,7 +190,7 @@ export async function POST(req: NextRequest) {
                     drawPeriodDate({
                         page: page,
                         pageHeight: pageHeight,
-                        font: customFont,
+                        fonts,
                         dateValue: body.period_end,
                         anchors: PERIOD_END_ANCHORS,
                         rowTop: PERIOD_ROW.top,

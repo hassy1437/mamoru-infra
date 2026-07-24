@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
-import { PDFDocument, rgb, type PDFPage } from "pdf-lib"
+import { PDFDocument, rgb, type PDFPage, StandardFonts } from "pdf-lib"
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
-import { drawWrappedTextInCell, formatJapaneseDateText, formatJudgment } from "@/lib/pdf-form-helpers"
+import {
+    drawWrappedTextInCell, formatJapaneseDateText, formatJudgment,
+    pickFont,
+    type ReportFonts,
+} from "@/lib/pdf-form-helpers"
 
 type BekkiRow = { content?: string; judgment?: string; bad_content?: string; action_content?: string; hose_count?: string; nozzle_dia?: string }
 type DeviceRow = { name?: string; model?: string; calibrated_at?: string; maker?: string }
@@ -109,6 +113,10 @@ export async function POST(req: NextRequest) {
         const pdfDoc = await PDFDocument.load(fs.readFileSync(pdfPath))
         pdfDoc.registerFontkit(fontkit)
         const customFont = await pdfDoc.embedFont(fs.readFileSync(fontPath))
+        // ASCII(型式・番号・日付等)は Helvetica で描く。NotoSansJP は「英字+ハイフン+数字」で
+        // 数字がCJK拡張Aのグリフに化け、計測幅と実描画幅が最大+41.6%ズレて枠をはみ出すため。
+        const latinFont = await pdfDoc.embedFont(StandardFonts.Helvetica)
+        const fonts: ReportFonts = { jp: customFont, latin: latinFont }
 
         const [page1, page2] = pdfDoc.getPages()
         const p1Height = page1.getSize().height
@@ -116,15 +124,15 @@ export async function POST(req: NextRequest) {
 
         const truncateToFitWidth = (value: string, size: number, maxWidth: number) => {
             if (!value) return ""
-            if (customFont.widthOfTextAtSize(value, size) <= maxWidth) return value
+            if (pickFont(fonts, String(value ?? "")).widthOfTextAtSize(value, size) <= maxWidth) return value
 
             const suffix = "..."
-            if (customFont.widthOfTextAtSize(suffix, size) > maxWidth) return ""
+            if (pickFont(fonts, String(suffix ?? "")).widthOfTextAtSize(suffix, size) > maxWidth) return ""
 
             let cut = value.length
             while (cut > 0) {
                 const candidate = `${value.slice(0, cut).trimEnd()}${suffix}`
-                if (customFont.widthOfTextAtSize(candidate, size) <= maxWidth) return candidate
+                if (pickFont(fonts, String(candidate ?? "")).widthOfTextAtSize(candidate, size) <= maxWidth) return candidate
                 cut -= 1
             }
 
@@ -151,22 +159,22 @@ export async function POST(req: NextRequest) {
 
             const maxWidth = Math.max(1, (cellW - paddingX * 2) * 0.85)
             const maxHeight = Math.max(1, cellH - paddingY * 2)
-            const widthAtCurrent = customFont.widthOfTextAtSize(normalized, currentSize)
+            const widthAtCurrent = pickFont(fonts, String(normalized ?? "")).widthOfTextAtSize(normalized, currentSize)
             if (widthAtCurrent > maxWidth) currentSize *= maxWidth / widthAtCurrent
-            const heightAtCurrent = customFont.heightAtSize(currentSize, { descender: true })
+            const heightAtCurrent = fonts.jp.heightAtSize(currentSize, { descender: true })
             if (heightAtCurrent > maxHeight) currentSize *= maxHeight / heightAtCurrent
             currentSize = Math.max(currentSize, minFontSize)
 
             const textToDraw = truncateToFitWidth(normalized, currentSize, maxWidth)
             if (!textToDraw) return
 
-            const textWidth = customFont.widthOfTextAtSize(textToDraw, currentSize)
-            const textHeight = customFont.heightAtSize(currentSize, { descender: true })
+            const textWidth = pickFont(fonts, String(textToDraw ?? "")).widthOfTextAtSize(textToDraw, currentSize)
+            const textHeight = fonts.jp.heightAtSize(currentSize, { descender: true })
             let textX = cellX + paddingX
             if (options?.align === "center") textX = cellX + (cellW - textWidth) / 2
             const textTop = cellTopFromTop + (cellH - textHeight) / 2
             const baselineOffset = textHeight * 0.78
-            page.drawText(textToDraw, { x: textX, y: pageHeight - (textTop + baselineOffset), size: currentSize, font: customFont, color: rgb(0, 0, 0) })
+            page.drawText(textToDraw, { x: textX, y: pageHeight - (textTop + baselineOffset), size: currentSize, font: pickFont(fonts, String(textToDraw ?? "")), color: rgb(0, 0, 0) })
         }
 
         const drawWrappedInCell = (
@@ -181,7 +189,7 @@ export async function POST(req: NextRequest) {
         ) => drawWrappedTextInCell({
             page,
             pageHeight,
-            font: customFont,
+            fonts,
             text,
             cellX,
             cellTopFromTop,
@@ -221,11 +229,11 @@ export async function POST(req: NextRequest) {
             size = 7.6,
         ) => {
             if (!text) return
-            const textHeight = customFont.heightAtSize(size, { descender: true })
+            const textHeight = fonts.jp.heightAtSize(size, { descender: true })
             const textTop = rowTop + (rowH - textHeight) / 2
             const y = pageHeight - (textTop + textHeight * 0.78)
-            const textWidth = customFont.widthOfTextAtSize(text, size)
-            page.drawText(text, { x: anchorX - textWidth, y, size, font: customFont, color: rgb(0, 0, 0) })
+            const textWidth = pickFont(fonts, String(text ?? "")).widthOfTextAtSize(text, size)
+            page.drawText(text, { x: anchorX - textWidth, y, size, font: pickFont(fonts, String(text ?? "")), color: rgb(0, 0, 0) })
         }
 
         const drawPeriodDate = (

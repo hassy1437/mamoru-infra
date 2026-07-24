@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { PDFDocument, rgb, PDFPage } from "pdf-lib"
+import { PDFDocument, rgb, PDFPage, StandardFonts } from "pdf-lib"
+import { pickFont, type ReportFonts } from "@/lib/pdf-form-helpers"
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
@@ -101,21 +102,25 @@ export async function POST(req: NextRequest) {
         const pdfDoc = await PDFDocument.load(existingPdfBytes)
         pdfDoc.registerFontkit(fontkit)
         const customFont = await pdfDoc.embedFont(fontBytes)
+        // ASCII(型式・番号・日付等)は Helvetica で描く。NotoSansJP は「英字+ハイフン+数字」で
+        // 数字がCJK拡張Aのグリフに化け、計測幅と実描画幅が最大+41.6%ズレて枠をはみ出すため。
+        const latinFont = await pdfDoc.embedFont(StandardFonts.Helvetica)
+        const fonts: ReportFonts = { jp: customFont, latin: latinFont }
 
         const pages = pdfDoc.getPages()
         const page = pages[0]
 
         const truncateToFitWidth = (value: string, size: number, maxWidth: number) => {
-            if (customFont.widthOfTextAtSize(value, size) <= maxWidth) return value
+            if (pickFont(fonts, String(value ?? "")).widthOfTextAtSize(value, size) <= maxWidth) return value
 
             const suffix = "..."
-            const suffixWidth = customFont.widthOfTextAtSize(suffix, size)
+            const suffixWidth = pickFont(fonts, String(suffix ?? "")).widthOfTextAtSize(suffix, size)
             if (suffixWidth > maxWidth) return ""
 
             let cut = value.length
             while (cut > 0) {
                 const candidate = `${value.slice(0, cut).trimEnd()}${suffix}`
-                if (customFont.widthOfTextAtSize(candidate, size) <= maxWidth) {
+                if (pickFont(fonts, String(candidate ?? "")).widthOfTextAtSize(candidate, size) <= maxWidth) {
                     return candidate
                 }
                 cut -= 1
@@ -143,11 +148,11 @@ export async function POST(req: NextRequest) {
             const maxHeight = Math.max(1, cellH - paddingY * 2)
 
             let currentSize = fontSize
-            const w = customFont.widthOfTextAtSize(normalized, currentSize)
+            const w = pickFont(fonts, String(normalized ?? "")).widthOfTextAtSize(normalized, currentSize)
             if (w > maxWidth) {
                 currentSize = currentSize * (maxWidth / w)
             }
-            const h = customFont.heightAtSize(currentSize, { descender: true })
+            const h = fonts.jp.heightAtSize(currentSize, { descender: true })
             if (h > maxHeight) {
                 currentSize = currentSize * (maxHeight / h)
             }
@@ -156,8 +161,8 @@ export async function POST(req: NextRequest) {
             const textToDraw = truncateToFitWidth(normalized, currentSize, maxWidth)
             if (!textToDraw) return
 
-            const textWidth = customFont.widthOfTextAtSize(textToDraw, currentSize)
-            const textHeight = customFont.heightAtSize(currentSize, { descender: true })
+            const textWidth = pickFont(fonts, String(textToDraw ?? "")).widthOfTextAtSize(textToDraw, currentSize)
+            const textHeight = fonts.jp.heightAtSize(currentSize, { descender: true })
             const textTopFromTop = cellTopFromTop + (cellH - textHeight) / 2
             const baselineOffset = textHeight * 0.78
             const y = PAGE_HEIGHT - (textTopFromTop + baselineOffset)
@@ -165,7 +170,7 @@ export async function POST(req: NextRequest) {
                 ? cellX + (cellW - textWidth) / 2
                 : cellX + paddingX
 
-            pg.drawText(textToDraw, { x, y, size: currentSize, font: customFont, color: rgb(0, 0, 0) })
+            pg.drawText(textToDraw, { x, y, size: currentSize, font: pickFont(fonts, String(textToDraw ?? "")), color: rgb(0, 0, 0) })
         }
 
         // ------- helper: 数値を右揃えでアンカーの左に描画 -------
@@ -178,11 +183,11 @@ export async function POST(req: NextRequest) {
             size = 6,
         ) => {
             if (!text) return
-            const textHeight = customFont.heightAtSize(size, { descender: true })
+            const textHeight = fonts.jp.heightAtSize(size, { descender: true })
             const textTop = rowTop + (rowH - textHeight) / 2
             const y = PAGE_HEIGHT - (textTop + textHeight * 0.78)
-            const w = customFont.widthOfTextAtSize(text, size)
-            pg.drawText(text, { x: anchorX - w, y, size, font: customFont, color: rgb(0, 0, 0) })
+            const w = pickFont(fonts, String(text ?? "")).widthOfTextAtSize(text, size)
+            pg.drawText(text, { x: anchorX - w, y, size, font: pickFont(fonts, String(text ?? "")), color: rgb(0, 0, 0) })
         }
 
         // ------- 1人分の inspector データを描画 -------

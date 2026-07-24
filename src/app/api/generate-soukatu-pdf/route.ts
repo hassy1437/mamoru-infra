@@ -1,6 +1,7 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
-import { PDFDocument, rgb, PDFPage } from "pdf-lib";
+import { PDFDocument, rgb, PDFPage, StandardFonts } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
+import { pickFont, type ReportFonts } from "@/lib/pdf-form-helpers";
 import fs from "fs";
 import path from "path";
 
@@ -122,6 +123,10 @@ export async function POST(req: NextRequest) {
         const pdfDoc = await PDFDocument.load(existingPdfBytes);
         pdfDoc.registerFontkit(fontkit);
         const customFont = await pdfDoc.embedFont(fontBytes);
+        // ASCII(型式・番号・日付等)は Helvetica で描く。NotoSansJP は「英字+ハイフン+数字」で
+        // 数字がCJK拡張Aのグリフに化け、計測幅と実描画幅が最大+41.6%ズレて枠をはみ出すため。
+        const latinFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+        const fonts: ReportFonts = { jp: customFont, latin: latinFont };
 
         const pages = pdfDoc.getPages();
         const page1 = pages[0];
@@ -151,12 +156,12 @@ export async function POST(req: NextRequest) {
             const maxWidth = Math.max(1, (cellW - paddingX * 2) * 0.85);
             const maxHeight = Math.max(1, cellH - paddingY * 2);
 
-            const widthAtCurrent = customFont.widthOfTextAtSize(normalized, currentSize);
+            const widthAtCurrent = pickFont(fonts, String(normalized ?? "")).widthOfTextAtSize(normalized, currentSize);
             if (widthAtCurrent > maxWidth) {
                 currentSize = currentSize * (maxWidth / widthAtCurrent);
             }
 
-            const heightAtCurrent = customFont.heightAtSize(currentSize, { descender: true });
+            const heightAtCurrent = fonts.jp.heightAtSize(currentSize, { descender: true });
             if (heightAtCurrent > maxHeight) {
                 currentSize = currentSize * (maxHeight / heightAtCurrent);
             }
@@ -164,18 +169,18 @@ export async function POST(req: NextRequest) {
             currentSize = Math.max(currentSize, minFontSize);
 
             const truncateToFit = (value: string) => {
-                if (customFont.widthOfTextAtSize(value, currentSize) <= maxWidth) {
+                if (pickFont(fonts, String(value ?? "")).widthOfTextAtSize(value, currentSize) <= maxWidth) {
                     return value;
                 }
 
                 const suffix = "...";
-                const suffixWidth = customFont.widthOfTextAtSize(suffix, currentSize);
+                const suffixWidth = pickFont(fonts, String(suffix ?? "")).widthOfTextAtSize(suffix, currentSize);
                 if (suffixWidth > maxWidth) return "";
 
                 let cut = value.length;
                 while (cut > 0) {
                     const candidate = `${value.slice(0, cut).trimEnd()}${suffix}`;
-                    if (customFont.widthOfTextAtSize(candidate, currentSize) <= maxWidth) {
+                    if (pickFont(fonts, String(candidate ?? "")).widthOfTextAtSize(candidate, currentSize) <= maxWidth) {
                         return candidate;
                     }
                     cut -= 1;
@@ -187,8 +192,8 @@ export async function POST(req: NextRequest) {
             const textToDraw = truncateToFit(normalized);
             if (!textToDraw) return;
 
-            const textWidth = customFont.widthOfTextAtSize(textToDraw, currentSize);
-            const textHeight = customFont.heightAtSize(currentSize, { descender: true });
+            const textWidth = pickFont(fonts, String(textToDraw ?? "")).widthOfTextAtSize(textToDraw, currentSize);
+            const textHeight = fonts.jp.heightAtSize(currentSize, { descender: true });
             const xOffset = options?.xOffset ?? 0;
             const yOffset = options?.yOffset ?? 0;
             let textX = cellX + paddingX + xOffset;
@@ -204,7 +209,7 @@ export async function POST(req: NextRequest) {
                 x: textX,
                 y: pageHeight - (textTopFromTop + baselineOffset),
                 size: currentSize,
-                font: customFont,
+                font: pickFont(fonts, String(textToDraw ?? "")),
                 color: rgb(0, 0, 0),
             });
         };
@@ -323,29 +328,29 @@ export async function POST(req: NextRequest) {
             const monthStr = String(d.getMonth() + 1);
             const dayStr = String(d.getDate());
 
-            const yearW = customFont.widthOfTextAtSize(yearStr, dateSize);
-            const monthW = customFont.widthOfTextAtSize(monthStr, dateSize);
-            const dayW = customFont.widthOfTextAtSize(dayStr, dateSize);
+            const yearW = pickFont(fonts, String(yearStr ?? "")).widthOfTextAtSize(yearStr, dateSize);
+            const monthW = pickFont(fonts, String(monthStr ?? "")).widthOfTextAtSize(monthStr, dateSize);
+            const dayW = pickFont(fonts, String(dayStr ?? "")).widthOfTextAtSize(dayStr, dateSize);
 
             page1.drawText(yearStr, {
                 x: anchors.year - yearW,
                 y: height - dateY,
                 size: dateSize,
-                font: customFont,
+                font: pickFont(fonts, String(yearStr ?? "")),
                 color: rgb(0, 0, 0),
             });
             page1.drawText(monthStr, {
                 x: anchors.month - monthW,
                 y: height - dateY,
                 size: dateSize,
-                font: customFont,
+                font: pickFont(fonts, String(monthStr ?? "")),
                 color: rgb(0, 0, 0),
             });
             page1.drawText(dayStr, {
                 x: anchors.day - dayW,
                 y: height - dateY,
                 size: dateSize,
-                font: customFont,
+                font: pickFont(fonts, String(dayStr ?? "")),
                 color: rgb(0, 0, 0),
             });
         };

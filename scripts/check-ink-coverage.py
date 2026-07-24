@@ -8,6 +8,15 @@
   ＝ 検査は「測れと言われた層」しか測らない。テキスト・幅・インクは別の層であり、
      インク層を見る検査が無いと、この種の事故は必ず通り抜ける。
 
+■ ★この検査が捉えるもの／捉えないもの（誤解すると危険）
+  捉える: 行がほぼ空になる「壊滅的なグリフ脱落」。subset:true 事故はこれ。
+  捉えない: 長文の中で一部の字だけ欠ける partial dropout。
+  理由: 列率も文字数正規化インクも統計量であり、実測すると
+        「一部だけ残った長文」(ink/字 最大 0.0305) が
+        「正当に疎な短文」(・・・ の 0.0112) より濃くなる＝原理的に分離できない。
+        誤検出する検出器は使われなくなって死ぬので、ここは誤検出ゼロを優先し、
+        検出範囲を壊滅的ケースに絞った。partial dropout は目視／ベースライン差分で拾う。
+
 ■ 指標（文字数・フォントサイズに依存しない形にする）
   各サンプルの期待矩形（x, apiWidth, フォントサイズから算出）内で
       ink_column_ratio = インクを含むx列の本数 / 矩形の横幅(px)
@@ -22,18 +31,27 @@
       （最小の 0.57 は「ＡＢＣ１２３」= 全角英数。字間が空くため列率が下がる）
   グリフ脱落PDF（subset:true で再現）:
     min 0.06 / median 0.16 / max 0.24
-  → 正常の最小 0.57 と 脱落の最大 0.24 の間を取り、既定閾値を 0.40 とする
+  （列率は参考値。判定には使わない）
+  → 参考: 正常の最小 0.57 と 脱落の最大 0.24
     （両側におよそ 0.17 の余裕。サンプルを増やしたら --report で再確認すること）
 
-■ ★短い文字列は列率が使えない（実測で判明・誤検出すると検出器が信用を失って死ぬ）
+■ 指標の変遷（なぜ列率をやめたか）
+  当初は ink_column_ratio（インクを含むx列の割合）で判定していたが、実測すると
+  字送り幅に対してインクが細い/疎な字で構造的に破綻した:
+    ・=0.19 / 1=0.40（1〜2文字） → 長さでレジームを分けて回避を試みたが、
+    ・・・=0.20 / "1 1"=0.34（3文字以上）でも再発。長さでは切り分けられない。
+  そこで「文字数で正規化したインク量 ink/字」の単一規則に変更した。列率は参考表示のみ残す。
+
+■ （旧）短い文字列は列率が使えない
   判定欄の「○ × － ／ ・」や1〜2桁の数値セルは、字送り幅に対してインクが細いため
   列率が下がる: ・=0.19 / 1=0.40 と、閾値 0.40 を割る or 境界に乗る＝誤検出。
   そこで文字数で規則を分ける:
-    len<=2  … 絶対インク量で判定（正規化インク = ink画素 / (size*scale)^2）
-              実測の最小は － の 0.030、・ 0.034、／ 0.037。グリフ欠落なら 0.000。
-              → floor 0.010 とする（実グリフの1/3・欠落とは明確に分離）
-    len>=3  … 列率で判定（長文で一部グリフだけ残るケースを取り逃さないため、
-              絶対量ではなく分布で見る必要がある）
+  ink/字 の実測（2026-07-24）:
+    正常 短文字列 0.0304-0.1600 / 細字3文字以上 0.0112-0.0928
+    正常 日本語混在 0.1282-0.3262 / ASCII型番 0.0977-0.1464
+    脱落（完全に消えた行） 0.0000-0.0027
+  → floor 0.005（正常の最小 0.0112 の半分・完全脱落とは明確に分離）
+  検証: 正常5種すべて誤検出0 / 脱落は長文5行・短文6行を検出して exit 1
 
 使い方:
   node scripts/digit-mangling-regression.mjs   # tmp/digit-regression.{pdf,json} を作る
@@ -61,7 +79,7 @@ def main() -> int:
     ap.add_argument("--pdf", default=str(ROOT / "tmp" / "digit-regression.pdf"))
     ap.add_argument("--meta", default=str(ROOT / "tmp" / "digit-regression.json"))
     ap.add_argument("--threshold", type=float, default=0.40, help="長文(3文字以上)の列率しきい値")
-    ap.add_argument("--ink-floor", type=float, default=0.010, help="短文(2文字以下)の正規化インクしきい値")
+    ap.add_argument("--ink-floor", type=float, default=0.005, help="1文字あたり正規化インクの下限")
     ap.add_argument("--report", action="store_true", help="判定せず実測値のみ出す")
     args = ap.parse_args()
 
@@ -80,8 +98,8 @@ def main() -> int:
     page_h = meta["pageHeight"]
     x_left = meta["x"]
 
-    hdr = f"{'text':<34} {'width':>7} {'ink列率':>8}"
-    print(hdr + (f" {'ink_px':>8} {'ink正規':>8}" if args.report else "  判定"))
+    hdr = f"{'text':<34} {'width':>7} {'ink/字':>9}"
+    print(hdr + (f" {'ink正規':>8} {'ink/字':>9}" if args.report else "  判定"))
     print("-" * (66 + (18 if args.report else 0)))
 
     failures = []
@@ -113,20 +131,20 @@ def main() -> int:
         ink_px = int(region.sum())
         # サイズ非依存にするため「1pt四方あたりのインク画素数」に正規化する
         ink_norm = ink_px / ((size * SCALE) ** 2)
+        n_chars = max(1, len([c for c in row["text"] if not c.isspace()]))
+        ink_per_char = ink_norm / n_chars
         ratios.append((row["text"], ratio))
 
         label = row["text"] if len(row["text"]) <= 32 else row["text"][:31] + "…"
         if args.report:
-            print(f"{label:<34} {api_w:>7.1f} {ratio:>8.2f} {ink_px:>8} {ink_norm:>8.3f}")
+            print(f"{label:<34} {api_w:>7.1f} {ratio:>8.2f} {ink_norm:>8.3f} {ink_per_char:>9.4f}")
         else:
-            # ★短文字列は列率が構造的に低くなるので絶対インク量で判定する
-            if len(row["text"]) <= 2:
-                ok = ink_norm >= args.ink_floor
-                detail = f"ink={ink_norm:.3f}(短文規則)"
-            else:
-                ok = ratio >= args.threshold
-                detail = f"列率={ratio:.2f}"
-            print(f"{label:<34} {api_w:>7.1f} {ratio:>8.2f}  {'OK' if ok else '★グリフ欠落の疑い ' + detail}")
+            # 文字数で正規化したインク量の単一規則。列率も per-char も統計量なので
+            # 「一部だけ欠落した長文」と「正当に疎な短文」は原理的に区別できない。
+            # ここでは検出対象を「行がほぼ空＝壊滅的な脱落」に絞り、誤検出ゼロを優先する。
+            ok = ink_per_char >= args.ink_floor
+            detail = f"ink/字={ink_per_char:.4f} < {args.ink_floor}"
+            print(f"{label:<34} {api_w:>7.1f} {ink_per_char:>9.4f}  {'OK' if ok else '★グリフ欠落の疑い'}")
             if not ok:
                 failures.append((row["text"], detail))
 

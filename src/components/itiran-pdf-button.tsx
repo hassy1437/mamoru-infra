@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { FileDown, Loader2 } from "lucide-react"
 import type { InspectionItiran } from "@/types/database"
+import { pdfErrorText, pdfRequestError } from "@/lib/pdf-request-error"
 
 interface Props {
     data: InspectionItiran
@@ -22,10 +23,7 @@ export default function ItiranPdfButton({ data, buildingName }: Props) {
                 body: JSON.stringify(data),
             })
 
-            if (!res.ok) {
-                alert("PDF生成に失敗しました")
-                return
-            }
+            if (!res.ok) throw await pdfRequestError(res)
 
             const blob = await res.blob()
             const url = URL.createObjectURL(blob)
@@ -34,8 +32,8 @@ export default function ItiranPdfButton({ data, buildingName }: Props) {
             a.download = `点検者一覧_${buildingName ?? "報告書"}.pdf`
             a.click()
             URL.revokeObjectURL(url)
-        } catch {
-            alert("PDF生成中にエラーが発生しました")
+        } catch (err) {
+            alert(pdfErrorText(err, "PDF生成中にエラーが発生しました"))
         } finally {
             setLoading(false)
         }

@@ -17,6 +17,7 @@ import type { Property } from "@/types/database"
 import { ALL_EQUIPMENT_TYPES, getEnabledEquipmentTypes } from "@/lib/equipment-config"
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes"
 import FormProgress from "@/components/form-progress"
+import { pdfRequestError } from "@/lib/pdf-request-error"
 
 const FORM_SECTIONS = ["届出者情報", "防火対象物", "設備選択"]
 
@@ -204,7 +205,8 @@ export default function PropertyForm({ property }: PropertyFormProps) {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(houkokuBody),
             })
-            if (!response.ok) throw new Error("preview failed")
+            if (!response.ok) throw await pdfRequestError(response)
+
             const blob = await response.blob()
             const url = window.URL.createObjectURL(blob)
             if (previewWindow) {

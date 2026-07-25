@@ -61,6 +61,7 @@ export default function CombinedPdfButton({
                                 (it) =>
                                     `  ${it.label}: ${it.design}pt → ${it.actual}pt（${Math.round(it.deviation)}%縮小）\n${it.text.slice(0, 24)}`,
                             ),
+                            ...(w.omitted > 0 ? [`   …他 ${w.omitted} 件`] : []),
                         ]),
                     ].join("\n"),
                 )

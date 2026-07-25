@@ -155,9 +155,31 @@ export default function DeliverReportButton({
 
         try {
             // 1) Blob を1回だけ生成（この blob を upload と download の両方に使う）
-            const { blob, failedLabels } = await buildMergedReport(input, (done, total) =>
+            const { blob, failedLabels, fitFailures } = await buildMergedReport(input, (done, total) =>
                 setProgress({ done, total }),
             )
+
+            // ★原因で分ける。枠に収まらない項目は業者が直せるので、直してから納品させる。
+            //   ここで「それ以外を結合して納品」を選ばせると、様式が欠けた法定書類が
+            //   オーナーに届き、しかも report_deliveries に版として記録されてしまう。
+            if (fitFailures.length > 0) {
+                setPhase("error")
+                setMessage(
+                    [
+                        "枠に収まらない項目があるため、納品できません。",
+                        "次の項目を短くしてから、もう一度納品してください:",
+                        ...fitFailures.flatMap((f) => [
+                            `【${f.label}】`,
+                            ...f.items.map(
+                                (it) => `  ${it.label}: ${it.input}文字（${it.over}文字超過）`,
+                            ),
+                        ]),
+                    ].join("\n"),
+                )
+                return
+            }
+
+            // サーバ側の不具合・通信断は業者には直せないので、従来どおり選ばせる
             if (failedLabels.length > 0) {
                 const ok = window.confirm(
                     `一部の様式PDF生成に失敗しました（${failedLabels.join(", ")}）。\nそれ以外を結合して納品しますか？`,

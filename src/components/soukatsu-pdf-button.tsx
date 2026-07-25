@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { FileDown, Loader2 } from "lucide-react"
 import { useState } from "react"
+import { pdfRequestError, pdfErrorText } from "@/lib/pdf-request-error"
 
 type SoukatsuPdfData = {
     building_name?: string | null
@@ -20,7 +21,8 @@ export default function SoukatsuPdfButton({ data }: { data: SoukatsuPdfData }) {
                 body: JSON.stringify(data),
             })
 
-            if (!response.ok) throw new Error("Failed")
+            if (!response.ok) throw await pdfRequestError(response)
+
 
             const blob = await response.blob()
             const url = window.URL.createObjectURL(blob)
@@ -30,8 +32,8 @@ export default function SoukatsuPdfButton({ data }: { data: SoukatsuPdfData }) {
             document.body.appendChild(a)
             a.click()
             a.remove()
-        } catch {
-            alert("PDF作成に失敗しました")
+        } catch (err) {
+            alert(pdfErrorText(err, "PDF作成に失敗しました"))
         } finally {
             setLoading(false)
         }

@@ -326,8 +326,22 @@ export const buildShrinkWarning = (form: string, collector: FitCollector): FitWa
  * 描画の 16.9% が縮んでおり、縮小自体は異常ではなく通常動作である。
  * 値は日本語を含むので base64（ヘッダはASCIIしか運べない）。
  */
+/**
+ * ヘッダに載せる件数の上限。
+ * 実測では様式あたり最大4件（重複を畳んだ後）だが、原理的には無制限なので
+ * HTTPヘッダの長さ制限に当たって 431/500 になりうる。上位N件で打ち切り、
+ * 残りは件数だけ伝える（黙って落とさない）。
+ */
+const WARN_HEADER_MAX_ITEMS = 20
+
 export const fitWarningHeader = (form: string, collector: FitCollector): Record<string, string> => {
     const warn = buildShrinkWarning(form, collector)
     if (!warn) return {}
-    return { "X-Fit-Warnings": Buffer.from(JSON.stringify(warn), "utf8").toString("base64") }
+    const shown = warn.items.slice(0, WARN_HEADER_MAX_ITEMS)
+    const body = {
+        form: warn.form,
+        items: shown,
+        omitted: warn.items.length - shown.length,
+    }
+    return { "X-Fit-Warnings": Buffer.from(JSON.stringify(body), "utf8").toString("base64") }
 }

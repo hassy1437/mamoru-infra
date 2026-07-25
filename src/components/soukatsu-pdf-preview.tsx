@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Loader2, RefreshCw } from "lucide-react"
+import { pdfRequestError, pdfErrorText } from "@/lib/pdf-request-error"
 
 type SoukatsuPdfData = {
     building_name?: string | null
@@ -33,15 +34,13 @@ export default function SoukatsuPdfPreview({ data }: { data: SoukatsuPdfData }) 
                 body: JSON.stringify(data),
             })
 
-            if (!response.ok) {
-                throw new Error("PDF generation failed")
-            }
+            if (!response.ok) throw await pdfRequestError(response)
 
             const blob = await response.blob()
             const nextUrl = window.URL.createObjectURL(blob)
             setNextPdfUrl(nextUrl)
-        } catch {
-            setError("PDFプレビューの生成に失敗しました。")
+        } catch (err) {
+            setError(pdfErrorText(err, "PDFプレビューの生成に失敗しました。"))
             setNextPdfUrl(null)
         } finally {
             setLoading(false)

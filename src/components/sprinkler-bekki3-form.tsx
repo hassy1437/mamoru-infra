@@ -16,6 +16,7 @@ import {
     normalizeBekkiWitnessForState,
 } from "@/lib/bekki-form-normalization"
 import CameraInput from "@/components/camera-input"
+import { pdfRequestError, pdfErrorText } from "@/lib/pdf-request-error"
 
 type RowState = {
     content: string
@@ -409,7 +410,8 @@ export default function SprinklerBekki3Form({
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
         })
-        if (!response.ok) throw new Error("PDF generation failed")
+        if (!response.ok) throw await pdfRequestError(response)
+
         return response.blob()
     }, [payload])
 
@@ -451,9 +453,9 @@ export default function SprinklerBekki3Form({
             }
             // タブが PDF を読み込んだ後に解放（表示は妨げない）
             window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000)
-        } catch {
+        } catch (err) {
             if (previewWindow) previewWindow.close()
-            setError("PDFプレビューの生成に失敗しました。")
+            setError(pdfErrorText(err, "PDFプレビューの生成に失敗しました。"))
         } finally {
             setLoadingPreview(false)
         }
@@ -475,8 +477,8 @@ export default function SprinklerBekki3Form({
             a.click()
             a.remove()
             window.URL.revokeObjectURL(url)
-        } catch {
-            setError("PDFダウンロードに失敗しました。")
+        } catch (err) {
+            setError(pdfErrorText(err, "PDFダウンロードに失敗しました。"))
         } finally {
             setLoadingDownload(false)
         }

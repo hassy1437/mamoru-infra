@@ -19,6 +19,7 @@ import {
     normalizeBekkiWitnessForPayload,
     normalizeBekkiWitnessForState,
 } from "@/lib/bekki-form-normalization"
+import { pdfRequestError, pdfErrorText } from "@/lib/pdf-request-error"
 
 export type BekkiRowState = {
     content: string
@@ -329,7 +330,8 @@ export default function BekkiResultFormBase({
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
         })
-        if (!response.ok) throw new Error("PDF generation failed")
+        if (!response.ok) throw await pdfRequestError(response)
+
         return response.blob()
     }, [apiPath, payload])
 
@@ -371,9 +373,9 @@ export default function BekkiResultFormBase({
             }
             // タブが PDF を読み込んだ後に解放（表示は妨げない）
             window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000)
-        } catch {
+        } catch (err) {
             if (previewWindow) previewWindow.close()
-            setError("PDFプレビューの生成に失敗しました。")
+            setError(pdfErrorText(err, "PDFプレビューの生成に失敗しました。"))
         } finally {
             setLoadingPreview(false)
         }
@@ -395,8 +397,8 @@ export default function BekkiResultFormBase({
             a.click()
             a.remove()
             window.URL.revokeObjectURL(url)
-        } catch {
-            setError("PDFダウンロードに失敗しました。")
+        } catch (err) {
+            setError(pdfErrorText(err, "PDFダウンロードに失敗しました。"))
         } finally {
             setLoadingDownload(false)
         }

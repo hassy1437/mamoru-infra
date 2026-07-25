@@ -65,6 +65,8 @@ export type FitFailureDetail = {
 export type ShrinkWarningDetail = {
     label: string
     items: { label: string; design: number; actual: number; deviation: number; text: string }[]
+    /** ヘッダ長の都合で省いた件数（0なら全件） */
+    omitted: number
 }
 
 export type BuildResult = {
@@ -133,7 +135,7 @@ export async function buildMergedReport(
                     )
                     const parsed = JSON.parse(json)
                     if (Array.isArray(parsed?.items) && parsed.items.length) {
-                        warning = { label: task.label, items: parsed.items }
+                        warning = { label: task.label, items: parsed.items, omitted: parsed.omitted ?? 0 }
                     }
                 } catch {
                     // 読めなければ警告なしとして扱う（PDF自体は正常なので止めない）

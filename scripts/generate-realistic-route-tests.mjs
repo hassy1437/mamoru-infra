@@ -47,6 +47,19 @@ const REALISTIC = {
     motor_model: "MTR-2026",
     foam_maker: "薬剤(株)",
     foam_model: "FM-12A",
+    // ★総括表・点検者一覧は payload のキー名が他様式と違う（building_name / address 等）。
+    //   ここを漏らすと、その2様式だけストレス値のまま「現実値セット」に混ざり、
+    //   逸脱分布の上位を占めて閾値の判断を誤らせる（実測で発覚）。
+    building_name: "サンプルビル",
+    building_address: "東京都千代田区丸の内1-1-1",
+    inspector_responsible: "鈴木一郎",
+    bad_detail: "接続部緩み",
+    action: "締め直し",
+    company: "株式会社サンプル防災",
+    address: "東京都港区芝公園4-2-8",
+    phone: "03-1234-5678",
+    equipment_names: "消火器,自動火災報知設備,誘導灯",
+    license_number: "東京 第12345号",
 }
 
 // 点検項目の内容欄に入る典型的な文言

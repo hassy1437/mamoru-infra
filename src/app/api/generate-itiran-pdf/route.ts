@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { PDFDocument, rgb, PDFPage, StandardFonts } from "pdf-lib"
-import { buildFitError, createFitCollector, systemFitFailures } from "@/lib/pdf-fit-report"
+import { buildFitError, createFitCollector, logFitDebug, systemFitFailures } from "@/lib/pdf-fit-report"
 import {
     pickFont,
     type ReportFonts,
@@ -8,6 +8,7 @@ import {
     drawTextRuns,
     drawWrappedTextInCell,
     FIT_EPSILON,
+    reportIfBelowMinSize,
 } from "@/lib/pdf-form-helpers"
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
@@ -164,6 +165,8 @@ export async function POST(req: NextRequest) {
             const maxHeight = Math.max(1, cellH - paddingY * 2)
 
             let currentSize = fontSize
+
+            const designSize = currentSize
             const w = measureRuns(fonts, String(normalized ?? ""), currentSize)
             if (w > maxWidth) {
                 currentSize = currentSize * (maxWidth / w)
@@ -173,6 +176,8 @@ export async function POST(req: NextRequest) {
                 currentSize = currentSize * (maxHeight / h)
             }
             currentSize = Math.max(currentSize, 3.5)
+            fonts.fit?.reportShrink(normalized, designSize, currentSize)
+            reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth)
 
             const textToDraw = truncateToFitWidth(normalized, currentSize, maxWidth)
             if (!textToDraw) return
@@ -294,6 +299,8 @@ export async function POST(req: NextRequest) {
             // 業者には直せない（テンプレート固定文言・整形済みの値）＝実装側の不具合として記録
             console.error("[pdf] 収容不能(システム由来)", { form: "点検者一覧", items: systemOverflow })
         }
+        const fitFormLabel = "点検者一覧"
+        logFitDebug(fitFormLabel, fonts.fit!)
         if (fonts.fit?.smalls.length) {
             // 判読しづらい大きさで描かれた項目。単独では止められない（上記コメント参照）ので記録のみ
             console.warn("[pdf] 極小フォントで描画", { count: fonts.fit.smalls.length })

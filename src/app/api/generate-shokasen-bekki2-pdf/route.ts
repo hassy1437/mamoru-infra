@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { PDFDocument, rgb, PDFPage, StandardFonts } from "pdf-lib"
-import { buildFitError, createFitCollector, systemFitFailures } from "@/lib/pdf-fit-report"
+import { buildFitError, createFitCollector, logFitDebug, systemFitFailures } from "@/lib/pdf-fit-report"
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
@@ -191,6 +191,7 @@ export async function POST(req: NextRequest) {
             const paddingY = options?.paddingY ?? 2
             const minFontSize = options?.minFontSize ?? 3.5
             let currentSize = Math.min(fontSize, options?.maxFontSize ?? fontSize)
+            const designSize = currentSize
 
             // 安全係数は撤廃済み（①bで計測が実描画と一致し、②③④でセル座標を実測値に直したため）
             const maxWidth = Math.max(1, cellW - paddingX * 2)
@@ -207,6 +208,8 @@ export async function POST(req: NextRequest) {
             }
 
             currentSize = Math.max(currentSize, minFontSize)
+
+            fonts.fit?.reportShrink(normalized, designSize, currentSize)
 
             reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth)
 
@@ -244,6 +247,7 @@ export async function POST(req: NextRequest) {
             const paddingY = options?.paddingY ?? 2
             const minFontSize = options?.minFontSize ?? 3.5
             let currentSize = Math.min(fontSize, options?.maxFontSize ?? fontSize)
+            const designSize = currentSize
             // 安全係数は撤廃済み（①bで計測が実描画と一致し、②③④でセル座標を実測値に直したため）
             const maxWidth = Math.max(1, cellW - paddingX * 2)
             const maxHeight = Math.max(1, cellH - paddingY * 2)
@@ -252,6 +256,7 @@ export async function POST(req: NextRequest) {
             const h = font.jp.heightAtSize(currentSize, { descender: true })
             if (h > maxHeight) currentSize = currentSize * (maxHeight / h)
             currentSize = Math.max(currentSize, minFontSize)
+            fonts.fit?.reportShrink(normalized, designSize, currentSize)
             reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth)
             // truncate if still too wide (+ 0.1 tolerance for floating point)
             let textToDraw = normalized
@@ -591,6 +596,8 @@ export async function POST(req: NextRequest) {
             // 業者には直せない（テンプレート固定文言・整形済みの値）＝実装側の不具合として記録
             console.error("[pdf] 収容不能(システム由来)", { form: "別記様式第2", items: systemOverflow })
         }
+        const fitFormLabel = "別記様式第2"
+        logFitDebug(fitFormLabel, fonts.fit!)
         if (fonts.fit?.smalls.length) {
             // 判読しづらい大きさで描かれた項目。単独では止められない（上記コメント参照）ので記録のみ
             console.warn("[pdf] 極小フォントで描画", { count: fonts.fit.smalls.length })

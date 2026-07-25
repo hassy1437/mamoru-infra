@@ -60,18 +60,60 @@ export type FitCollector = {
      * それまでは記録のみ行い、監視で傾向を見る。
      */
     reportSmall: (text: string, size: number) => void
+    /**
+     * ⑨ 設計値からの逸脱の記録。
+     * 各セルには呼び出し側が指定した設計サイズがある。実描画がそこからどれだけ
+     * 縮んだかは相対値なので、「設計上そもそも極小のセル」を巻き込まない
+     * （絶対下限が失敗した理由がこれ）。閾値はキャリブレーションで決めるため、
+     * まずは全ての縮小を記録して分布を測る。
+     */
+    reportShrink: (text: string, design: number, actual: number) => void
     failures: FitFailure[]
     smalls: { text: string; size: number }[]
+    shrinks: FitShrink[]
+    /** 縮小の有無に関わらず描画した回数（分布の母数） */
+    drawCount: number
     /** 入力(payload)と突き合わせて由来を確定する（描画後に一度だけ呼ぶ） */
     resolve: (body: unknown) => void
+}
+
+export type FitShrink = {
+    text: string
+    design: number
+    actual: number
+    /** 逸脱率(%) = (design - actual) / design * 100 */
+    deviation: number
+    fromInput: boolean
+    field?: string
 }
 
 export const createFitCollector = (): FitCollector => {
     const failures: FitFailure[] = []
     const smalls: { text: string; size: number }[] = []
+    const shrinks: FitShrink[] = []
+    const state = { drawCount: 0 }
     return {
         failures,
         smalls,
+        shrinks,
+        get drawCount() {
+            return state.drawCount
+        },
+        reportShrink(text, design, actual) {
+            state.drawCount += 1
+            const t = String(text ?? "").trim()
+            if (!t || !(design > 0)) return
+            const deviation = ((design - actual) / design) * 100
+            // 浮動小数の誤差だけの差は縮小ではない
+            if (deviation < 0.5) return
+            shrinks.push({
+                text: t,
+                design: Math.round(design * 100) / 100,
+                actual: Math.round(actual * 100) / 100,
+                deviation: Math.round(deviation * 10) / 10,
+                fromInput: false,
+            })
+        },
         reportSmall(text, size) {
             const t = String(text ?? "").trim()
             if (!t || smalls.some((s) => s.text === t)) return
@@ -89,6 +131,13 @@ export const createFitCollector = (): FitCollector => {
         },
         resolve(body) {
             const entries = collectStrings(body)
+            for (const f of shrinks) {
+                const hit =
+                    entries.find(([, v]) => v === f.text) ?? entries.find(([, v]) => v.includes(f.text))
+                if (!hit) continue
+                f.fromInput = true
+                f.field = hit[0]
+            }
             for (const f of failures) {
                 // ★完全一致だけで判定してはいけない。折り返しの2行目以降を報告する経路が
                 //   あり、その断片は入力そのものとは一致しない。部分一致まで見ないと
@@ -177,3 +226,26 @@ export const buildFitError = (form: string, collector: FitCollector): FitErrorBo
 /** システム整形値の溢れ（＝実装の不具合）。業者には見せずログに出す。 */
 export const systemFitFailures = (collector: FitCollector): FitFailure[] =>
     collector.failures.filter((f) => !f.fromInput)
+
+/**
+ * ⑨のキャリブレーション用。PDF_FIT_DEBUG=1 のときだけ、逸脱の実測値を1行のJSONで出す。
+ * 閾値を勘で置かないために、まず現実値セットと長文セットの分布を測る。
+ */
+export const logFitDebug = (form: string, collector: FitCollector) => {
+    if (!process.env.PDF_FIT_DEBUG) return
+    console.warn(
+        "[pdf-fit-debug] " +
+            JSON.stringify({
+                form,
+                draws: collector.drawCount,
+                shrinks: collector.shrinks.map((s) => ({
+                    t: s.text.slice(0, 40),
+                    d: s.design,
+                    a: s.actual,
+                    p: s.deviation,
+                    i: s.fromInput,
+                    f: s.field ?? null,
+                })),
+            }),
+    )
+}

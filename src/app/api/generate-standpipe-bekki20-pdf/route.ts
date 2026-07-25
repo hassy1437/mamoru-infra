@@ -18,8 +18,9 @@ import {
     measureRuns,
     drawTextRuns,
     FIT_EPSILON,
+    reportIfBelowMinSize,
 } from "@/lib/pdf-form-helpers"
-import { buildFitError, createFitCollector, systemFitFailures } from "@/lib/pdf-fit-report"
+import { buildFitError, createFitCollector, logFitDebug, systemFitFailures } from "@/lib/pdf-fit-report"
 
 type BekkiRow = { content?: string; judgment?: string; bad_content?: string; action_content?: string; current_value?: string; flow_value?: string; hose_count?: string; nozzle_dia?: string }
 type DeviceRow = { name?: string; model?: string; calibrated_at?: string; maker?: string }
@@ -156,6 +157,7 @@ export async function POST(req: NextRequest) {
             const paddingX = options?.paddingX ?? 3
             const paddingY = options?.paddingY ?? 2
             let currentSize = Math.min(fontSize, options?.maxFontSize ?? fontSize)
+            const designSize = currentSize
             // 安全係数は撤廃済み（①bで計測が実描画と一致し、②③④でセル座標を実測値に直したため）
             const maxWidth = Math.max(1, cellW - paddingX * 2)
             const maxHeight = Math.max(1, cellH - paddingY * 2)
@@ -164,6 +166,8 @@ export async function POST(req: NextRequest) {
             const h = font.jp.heightAtSize(currentSize, { descender: true })
             if (h > maxHeight) currentSize = currentSize * (maxHeight / h)
             currentSize = Math.max(currentSize, options?.minFontSize ?? 3.5)
+            fonts.fit?.reportShrink(normalized, designSize, currentSize)
+            reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth)
             let textToDraw = normalized
             if (measureRuns(font, String(normalized ?? ""), currentSize) > maxWidth + 0.1) {
                 const suffix = "..."
@@ -419,6 +423,8 @@ export async function POST(req: NextRequest) {
             // 業者には直せない値（テンプレート文言・整形済みの日付など）＝実装側の不具合として記録
             console.error("[pdf] 収容不能(システム由来)", { form: "別記様式第20", items: systemOverflow })
         }
+        const fitFormLabel = "別記様式第20"
+        logFitDebug(fitFormLabel, fonts.fit!)
         if (fonts.fit?.smalls.length) {
             // 判読しづらい大きさで描かれた項目。単独では止められない（上記コメント参照）ので記録のみ
             console.warn("[pdf] 極小フォントで描画", { count: fonts.fit.smalls.length })

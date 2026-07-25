@@ -384,6 +384,7 @@ export const drawTextInCell = ({
     const paddingY = options?.paddingY ?? 1.6
     const minFontSize = options?.minFontSize ?? 3.5
     let currentSize = Math.min(fontSize, options?.maxFontSize ?? fontSize)
+    const designSize = currentSize
 
     const maxWidth = Math.max(1, cellW - paddingX * 2)
     const maxHeight = Math.max(1, cellH - paddingY * 2)
@@ -401,6 +402,8 @@ export const drawTextInCell = ({
     }
 
     currentSize = Math.max(currentSize, minFontSize)
+
+    fonts.fit?.reportShrink(normalized, designSize, currentSize)
     reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth)
 
     const textToDraw = truncateRunsToFitWidth(fonts, normalized, currentSize, maxWidth)
@@ -479,6 +482,7 @@ export const drawWrappedTextInCell = ({
     const minFontSize = options?.minFontSize ?? 4.5
     const lineGap = options?.lineGap ?? 0.7
     let currentSize = Math.min(fontSize, options?.maxFontSize ?? fontSize)
+    const designSize = currentSize
 
     // ★安全係数（旧 0.90）は撤廃した。
     //   旧コメントは「NotoSansJP のメトリクスが実描画幅を約10%過小評価するため」だったが、
@@ -502,6 +506,9 @@ export const drawWrappedTextInCell = ({
         wrapped = wrapAtSize(currentSize)
         if (currentSize <= minFontSize) break
     }
+    // 折り返しは縮小ループが別なので、ここでも設計値からの逸脱を記録する
+    fonts.fit?.reportShrink(normalized, designSize, currentSize)
+    reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth)
 
     const visibleLines = wrapped.lines.slice(0, wrapped.maxLines)
     if (!visibleLines.length) return

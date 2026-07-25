@@ -249,3 +249,85 @@ export const logFitDebug = (form: string, collector: FitCollector) => {
             }),
     )
 }
+
+/**
+ * ⑨ 設計値からの逸脱の警告。
+ *
+ * ■ 何を測っているか（★「読めるか」ではない）
+ *   各セルには呼び出し側が指定した設計サイズがある。実描画がそこから何%縮んだかを見る。
+ *   相対値なので「設計上そもそも極小のセル」を巻き込まない（絶対下限が失敗した理由がこれ）。
+ *   ただしこの指標が言えるのは「通常運用で観測された範囲の外にある」ことだけで、
+ *   印刷して判読できるかの保証ではない。それを言うには 300dpi 印刷での判読実験が要る。
+ *
+ * ■ 閾値 30% の根拠（キャリブレーション実測 2026-07-24 / 描画5004件×2セット）
+ *   現実値セット（実際に提出される値）… 縮小 848件・最大 23.7%
+ *   長文セット（ストレス）          … 縮小 1313件・最大 44.4%
+ *   下の除外規則を適用すると現実値は 23.7% で頭打ちになり、25%以上のどこに引いても
+ *   誤検出0になる。谷の中で余裕を取り 30%（現実値最大に対し 6.3pt の余裕）とした。
+ *   ＝ インク層検出器と同じ決め方で、勘では置いていない。
+ *
+ * ■ 除外規則（これが無いと分離しない）
+ *   (a) 入力(payload)由来でないもの … 判定記号「○」「×」等。システムが描くもので
+ *       業者は直せないうえ、狭い判定欄で 33〜39% 縮むのが通常動作。
+ *   (b) 純粋な数値 … 例: bekki3 の flow_value "1800" は設計6pt→3.6pt(40%)まで縮むが、
+ *       これはテンプレートが「___ L/min」と単位を印字していて幅38ptしか無いセルに
+ *       数値を入れる正常動作。★将来「数値も対象にすべきでは」と考えたときは、
+ *       この例を先に見ること。数値欄は設計上そもそも狭い。
+ */
+export const SHRINK_WARN_THRESHOLD = 30
+
+/** 数字と区切り記号だけで構成される値（単位印字済みの狭いセルに入る想定） */
+const PURELY_NUMERIC = /^[\d.,/／\-]+$/
+
+export type FitWarnItem = {
+    field: string
+    label: string
+    design: number
+    actual: number
+    deviation: number
+    text: string
+}
+
+export type FitWarnBody = { form: string; items: FitWarnItem[] }
+
+/**
+ * 警告一覧を作る。該当が無ければ null。
+ * ★重複はここで畳む。同じ値が何行にも出るため、生のまま UI に渡すと
+ *   同一項目が並んで読めなくなる（実測: 生117件 → 畳んで28件）。
+ */
+export const buildShrinkWarning = (form: string, collector: FitCollector): FitWarnBody | null => {
+    const seen = new Set<string>()
+    const items: FitWarnItem[] = []
+    for (const s of collector.shrinks) {
+        if (!s.fromInput || !s.field) continue
+        if (PURELY_NUMERIC.test(s.text)) continue
+        if (s.deviation < SHRINK_WARN_THRESHOLD) continue
+        const key = JSON.stringify([s.field, s.text])
+        if (seen.has(key)) continue
+        seen.add(key)
+        items.push({
+            field: s.field,
+            label: FIELD_LABELS[s.field] ?? s.field,
+            design: s.design,
+            actual: s.actual,
+            deviation: s.deviation,
+            text: s.text,
+        })
+    }
+    if (!items.length) return null
+    items.sort((a, b) => b.deviation - a.deviation)
+    return { form, items }
+}
+
+/**
+ * PDFは返しつつ警告を運ぶためのヘッダ。
+ * 切り詰め（データ欠落）と違い、縮小は情報が残っているのでエラーにはしない。
+ * 止めると「正式名称が長い建物」の業者が出力できなくなるうえ、実測では現実値でも
+ * 描画の 16.9% が縮んでおり、縮小自体は異常ではなく通常動作である。
+ * 値は日本語を含むので base64（ヘッダはASCIIしか運べない）。
+ */
+export const fitWarningHeader = (form: string, collector: FitCollector): Record<string, string> => {
+    const warn = buildShrinkWarning(form, collector)
+    if (!warn) return {}
+    return { "X-Fit-Warnings": Buffer.from(JSON.stringify(warn), "utf8").toString("base64") }
+}

@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
 import { PDFDocument, type PDFPage, StandardFonts } from "pdf-lib"
-import { buildFitError, createFitCollector, logFitDebug, systemFitFailures } from "@/lib/pdf-fit-report"
+import {
+    buildFitError,
+    createFitCollector,
+    fitWarningHeader,
+    logFitDebug,
+    systemFitFailures,
+} from "@/lib/pdf-fit-report"
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
@@ -242,6 +248,8 @@ export async function POST(req: NextRequest) {
             status: 200,
             headers: {
                 "Content-Type": "application/pdf",
+                // ⑨ 設計値から大きく縮んだ項目があれば警告として運ぶ（PDFは返す）
+                ...fitWarningHeader(fitFormLabel, fonts.fit!),
                 "Content-Disposition": 'attachment; filename="s50_kokuji14_bekki22_filled.pdf"',
             },
         })

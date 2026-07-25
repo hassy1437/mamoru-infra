@@ -45,10 +45,26 @@ export default function CombinedPdfButton({
         setProgress({ done: 0, total: 0 })
 
         try {
-            const { blob, failedLabels, fitFailures } = await buildMergedReport(input, (done, total) =>
+            const { blob, failedLabels, fitFailures, shrinkWarnings } = await buildMergedReport(input, (done, total) =>
                 setProgress({ done, total }),
             )
             triggerDownload(blob, `点検報告書_一括_${buildingName || "報告書"}.pdf`)
+            // ⑨ 設計より大きく縮んで描かれた項目。PDFは出ているので止めず、確認を促すだけ。
+            //   重複はサーバ側で畳んである（同じ値が何行にも出るため）。
+            if (shrinkWarnings.length > 0) {
+                alert(
+                    [
+                        "次の項目は枠に収めるため小さく表示されています。印刷して読めるかご確認ください:",
+                        ...shrinkWarnings.flatMap((w) => [
+                            `【${w.label}】`,
+                            ...w.items.map(
+                                (it) =>
+                                    `  ${it.label}: ${it.design}pt → ${it.actual}pt（${Math.round(it.deviation)}%縮小）\n${it.text.slice(0, 24)}`,
+                            ),
+                        ]),
+                    ].join("\n"),
+                )
+            }
             if (failedLabels.length > 0) {
                 alert(
                     [

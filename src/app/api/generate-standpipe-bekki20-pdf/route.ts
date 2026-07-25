@@ -20,7 +20,13 @@ import {
     FIT_EPSILON,
     reportIfBelowMinSize,
 } from "@/lib/pdf-form-helpers"
-import { buildFitError, createFitCollector, logFitDebug, systemFitFailures } from "@/lib/pdf-fit-report"
+import {
+    buildFitError,
+    createFitCollector,
+    fitWarningHeader,
+    logFitDebug,
+    systemFitFailures,
+} from "@/lib/pdf-fit-report"
 
 type BekkiRow = { content?: string; judgment?: string; bad_content?: string; action_content?: string; current_value?: string; flow_value?: string; hose_count?: string; nozzle_dia?: string }
 type DeviceRow = { name?: string; model?: string; calibrated_at?: string; maker?: string }
@@ -437,6 +443,8 @@ export async function POST(req: NextRequest) {
             status: 200,
             headers: {
                 "Content-Type": "application/pdf",
+                // ⑨ 設計値から大きく縮んだ項目があれば警告として運ぶ（PDFは返す）
+                ...fitWarningHeader(fitFormLabel, fonts.fit!),
                 "Content-Disposition": 'attachment; filename="s50_kokuji14_bekki20_filled.pdf"',
             },
         })

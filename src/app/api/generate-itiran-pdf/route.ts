@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
 import { PDFDocument, rgb, PDFPage, StandardFonts } from "pdf-lib"
-import { buildFitError, createFitCollector, logFitDebug, systemFitFailures } from "@/lib/pdf-fit-report"
+import {
+    buildFitError,
+    createFitCollector,
+    fitWarningHeader,
+    logFitDebug,
+    systemFitFailures,
+} from "@/lib/pdf-fit-report"
 import {
     pickFont,
     type ReportFonts,
@@ -314,6 +320,8 @@ export async function POST(req: NextRequest) {
             status: 200,
             headers: {
                 "Content-Type": "application/pdf",
+                // ⑨ 設計値から大きく縮んだ項目があれば警告として運ぶ（PDFは返す）
+                ...fitWarningHeader(fitFormLabel, fonts.fit!),
                 "Content-Disposition": 'attachment; filename="itiran_report.pdf"',
             },
         })

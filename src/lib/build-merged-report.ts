@@ -61,9 +61,20 @@ export type FitFailureDetail = {
     items: { label: string; input: number; fits: number; over: number; hint: string }[]
 }
 
+/** ⑨ 設計値から大きく縮んで描かれた項目（PDFは正常に返っている） */
+export type ShrinkWarningDetail = {
+    label: string
+    items: { label: string; design: number; actual: number; deviation: number; text: string }[]
+}
+
 export type BuildResult = {
     blob: Blob
     failedLabels: string[]
+    /**
+     * ★成功レスポンスにも運ぶべき情報がある。⑧で 422 の本文を捨てていたのと同じ轍。
+     *   サーバが警告を返してもここで落とすと UI に届かない。
+     */
+    shrinkWarnings: ShrinkWarningDetail[]
     /**
      * ★422（枠に収まらない）は業者が自分で直せる情報なので、ここまで運ぶ。
      *   以前は !res.ok を `${label}: ${status}` にして本文を捨てていたため、
@@ -112,19 +123,37 @@ export async function buildMergedReport(
                 err.detail = detail
                 throw err
             }
+            // ⑨ 縮小警告はヘッダで運ばれる（PDF本体は正常）。日本語を含むので base64
+            const warnHeader = res.headers.get("X-Fit-Warnings")
+            let warning: ShrinkWarningDetail | null = null
+            if (warnHeader) {
+                try {
+                    const json = new TextDecoder().decode(
+                        Uint8Array.from(atob(warnHeader), (c) => c.charCodeAt(0)),
+                    )
+                    const parsed = JSON.parse(json)
+                    if (Array.isArray(parsed?.items) && parsed.items.length) {
+                        warning = { label: task.label, items: parsed.items }
+                    }
+                } catch {
+                    // 読めなければ警告なしとして扱う（PDF自体は正常なので止めない）
+                }
+            }
             const buf = await res.arrayBuffer()
             done += 1
             onProgress?.(done, tasks.length)
-            return { index, buf }
+            return { index, buf, warning }
         }),
     )
 
     const pdfBuffers: (ArrayBuffer | null)[] = tasks.map(() => null)
     const failedLabels: string[] = []
     const fitFailures: FitFailureDetail[] = []
+    const shrinkWarnings: ShrinkWarningDetail[] = []
     results.forEach((result, i) => {
         if (result.status === "fulfilled") {
             pdfBuffers[result.value.index] = result.value.buf
+            if (result.value.warning) shrinkWarnings.push(result.value.warning)
         } else {
             failedLabels.push(tasks[i]?.label ?? "unknown")
             const detail = (result.reason as { detail?: FitFailureDetail | null } | undefined)?.detail
@@ -145,7 +174,7 @@ export async function buildMergedReport(
     }
     const mergedBytes = await merged.save()
     const blob = new Blob([new Uint8Array(mergedBytes)], { type: "application/pdf" })
-    return { blob, failedLabels, fitFailures }
+    return { blob, failedLabels, fitFailures, shrinkWarnings }
 }
 
 /** Blob を端末にダウンロードさせる。納品時は upload と同一の Blob をここに渡す。 */

@@ -83,7 +83,8 @@ const jobs = [
         body_maker: "動力消防ポンプ製造株式会社",
         body_model: "ENG-5000",
       },
-      page1_rows: makeRows(25, "B10-P1"),
+      // ★正典（令和6年9月10日最終改正）で「電動機駆動用蓄電池」が行20に入り26行になった
+      page1_rows: makeRows(26, "B10-P1"),
       page2_rows: makeRows(13, "B10-P2").map((row, i) =>
         // row 3: ホース・ノズル等 外形 — 長さ(m)=content, 本数=hose_count, 口径(mm)=nozzle_dia
         i === 3 ? { ...row, content: "20", hose_count: "1", nozzle_dia: "25" } : row

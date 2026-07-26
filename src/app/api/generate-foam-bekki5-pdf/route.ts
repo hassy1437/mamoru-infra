@@ -59,6 +59,9 @@ type Bekki5Payload = {
     motor_model?: string
     foam_maker?: string
     foam_model?: string
+    /** 消火薬剤の型式番号「（泡第 __ ～ __ 号）」の2つの空欄（正典で新設） */
+    foam_type_no_from?: string
+    foam_type_no_to?: string
     page1_rows?: Bekki5Row[]
     page2_rows?: Bekki5Row[]
     page3_rows?: Bekki5Row[]
@@ -99,11 +102,31 @@ const P2_ROW_BOUNDS = [
     620, 637, 654, 671, 688,
 ]
 
+// 消防庁の正典（s50_kokuji14_bekki5.pdf・令和6年9月10日最終改正）の罫線を実測した値。
+// ★行1「消火薬剤」が2段（数量Ｌ／型式番号）になって 22pt→31.6pt に伸び、
+//   行2以降の境界がすべて +9.6pt ずれた。行数は27で変わらない。
 const P3_ROW_BOUNDS = [
-    83, 105, 127, 149, 171, 193, 215, 237, 259, 281,
-    303, 325, 347, 379, 401, 423, 445, 467, 495, 517,
-    539, 561, 589, 611, 633, 655, 677, 699,
+    83, 105, 136.6, 158.6, 180.6, 202.6, 224.6, 246.6, 268.6, 290.6,
+    312.6, 334.6, 356.6, 388.6, 410.6, 432.6, 454.6, 476.6, 504.6, 526.6,
+    548.6, 570.6, 598.6, 620.6, 642.6, 664.6, 686.6, 708.6,
 ]
+
+// 行1（消火薬剤）の内部レイアウト。正典の刷り込み実測:
+//   上段 … 数量。単位「Ｌ」が x=303.5-314.0 / y=106.9-117.5
+//   下段 … 「（泡第 __ ～ __ 号）」が y=122.7-133.2。空欄は全角スペース2つ。
+// ★下段は刷り込み文字なので、上段の数量をセル全体に中央寄せすると重なる。
+//   drawResultRows から行1を外し、上段だけに描く。
+//
+// ★空欄の幅は span の bbox（＝文字送り幅）ではなく、576dpi でラスタライズして
+//   インクの無い列を数えて測った。送り幅だと 10.5pt、実インク間は 11.9pt。
+//   さらに drawInCell の既定 paddingX=3 は左右で 6pt＝この空欄の 57% を食うので、
+//   実測した空白そのものを矩形にして paddingX を 0.5 に落とす。
+//   （既定値のままだと 3桁の型式番号が最小サイズでも入らず「…」に切り詰められる）
+const P3_FOAM_QTY = { top: 105.0, h: 15.5 }
+const P3_TYPE_NO_FROM = { x: 255.9, w: 11.9 }
+const P3_TYPE_NO_TO = { x: 276.6, w: 12.0 }
+// 下段の刷り込み行の中心（122.7+133.2)/2 = 127.95 に合わせる
+const P3_TYPE_NO_ROW = { top: 119.4, h: 17.1 }
 
 const P4_ROW_BOUNDS = [
     83, 104, 125, 146, 167, 188, 209, 230, 251, 272,
@@ -447,7 +470,17 @@ export async function POST(req: NextRequest) {
             judgmentX: 313, judgmentW: 46,
             badX: 359, badW: 86,
             actionX: 445, actionW: 84,
-        }, {}, new Set([21]))
+        }, {}, new Set([1, 21]))
+
+        // PAGE3 row 1「消火薬剤」: 正典で2段になったので content は上段のみ。下段は型式番号の空欄。
+        const foamRow = p3Rows5[1]
+        if (foamRow) {
+            drawWrappedInCell(page3, p3Height, foamRow.content, 214, P3_FOAM_QTY.top, 99, P3_FOAM_QTY.h, 6.7)
+        }
+        drawInCell(page3, p3Height, body.foam_type_no_from, P3_TYPE_NO_FROM.x, P3_TYPE_NO_ROW.top,
+            P3_TYPE_NO_FROM.w, P3_TYPE_NO_ROW.h, 7.0, { align: "center", paddingX: 0.5 })
+        drawInCell(page3, p3Height, body.foam_type_no_to, P3_TYPE_NO_TO.x, P3_TYPE_NO_ROW.top,
+            P3_TYPE_NO_TO.w, P3_TYPE_NO_ROW.h, 7.0, { align: "center", paddingX: 0.5 })
 
         // PAGE3 row 21「ホース・ノズル / 外形」: 公式PDF刷り込みの ｍ×(x≈235.2) / 本(x≈277.3) / mm(x≈298.3) の間に分割描画
         // 新キー優先（content=長さm, hose_count=本数, nozzle_dia=口径mm）→ "/" 分割 → 単一content

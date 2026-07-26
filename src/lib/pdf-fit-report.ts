@@ -35,6 +35,9 @@ export const FIELD_LABELS: Record<string, string> = {
     content: "点検項目の内容",
     bad_content: "不良内容",
     action_content: "措置内容",
+    // 別記様式5（泡消火設備）の消火薬剤 型式番号。刷り込み「（泡第 __ ～ __ 号）」の2つの空欄
+    foam_type_no_from: "消火薬剤 型式番号（泡第 ○ 〜）",
+    foam_type_no_to: "消火薬剤 型式番号（〜 ○ 号）",
 }
 
 export type FitFailure = {

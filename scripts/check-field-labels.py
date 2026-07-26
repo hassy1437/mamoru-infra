@@ -24,7 +24,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 LABELS_TS = ROOT / "src" / "lib" / "pdf-fit-report.ts"
-FORM_TSX = ROOT / "src" / "components" / "bekki-result-form-base.tsx"
+# ★共通フォームだけを見ると、様式固有フォーム（foam-bekki5-form.tsx 等）にしか無い項目が
+#   検査から漏れる。実際 bekki5 の型式番号2欄は共通フォームに存在しない。
+FORM_TSX = sorted([ROOT / "src" / "components" / "bekki-result-form-base.tsx"]
+                  + list((ROOT / "src" / "components").glob("*bekki*-form.tsx")))
 
 # 入力画面に固定ラベルが無い項目（理由は docstring 参照）
 EXEMPT = {"content", "bad_content", "action_content", "equipment_name", "notes"}
@@ -38,9 +41,12 @@ def main() -> int:
         return 2
     labels = dict(re.findall(r'(\w+):\s*"([^"]+)"', block.group(1)))
 
-    form = FORM_TSX.read_text(encoding="utf-8")
-    form_labels = set(re.findall(r"<Label>([^<{]+)</Label>", form))
-    payload_keys = set(re.findall(r"^\s*(\w+):\s*\w", form, re.M))
+    form_labels: set[str] = set()
+    payload_keys: set[str] = set()
+    for f in FORM_TSX:
+        form = f.read_text(encoding="utf-8")
+        form_labels |= set(re.findall(r"<Label>([^<{]+)</Label>", form))
+        payload_keys |= set(re.findall(r"^\s*(\w+):\s*\w", form, re.M))
 
     problems: list[str] = []
     for key, label in labels.items():
@@ -49,9 +55,10 @@ def main() -> int:
         if key not in payload_keys:
             problems.append(f"{key}: payload のキーとして入力画面に見当たらない")
         if label not in form_labels:
-            problems.append(f"{key}: 表記 {label!r} が入力画面の <Label> に無い（画面: {sorted(form_labels)}）")
+            problems.append(f"{key}: 表記 {label!r} が入力画面の <Label> に無い（画面に無い）")
 
-    print(f"対応表 {len(labels)} 項目 / 除外 {len(EXEMPT)} 項目 / 検査 {len(labels) - len(EXEMPT & set(labels))} 項目")
+    print(f"対応表 {len(labels)} 項目 / 除外 {len(EXEMPT)} 項目 / 検査 {len(labels) - len(EXEMPT & set(labels))} 項目"
+          f" / 走査フォーム {len(FORM_TSX)} 件")
     if problems:
         print("\n不一致:")
         for p in problems:

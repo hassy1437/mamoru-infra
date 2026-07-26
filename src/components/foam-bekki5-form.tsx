@@ -55,6 +55,8 @@ type FoamBekki5Payload = {
     motor_model: string
     foam_maker: string
     foam_model: string
+    foam_type_no_from: string
+    foam_type_no_to: string
     page1_rows: RowState[]
     page2_rows: RowState[]
     page3_rows: RowState[]
@@ -280,6 +282,8 @@ export default function FoamBekki5Form({
     const [motorModel, setMotorModel] = useState(coerceString(saved.motor_model))
     const [foamMaker, setFoamMaker] = useState(coerceString(saved.foam_maker))
     const [foamModel, setFoamModel] = useState(coerceString(saved.foam_model))
+    const [foamTypeNoFrom, setFoamTypeNoFrom] = useState(coerceString(saved.foam_type_no_from))
+    const [foamTypeNoTo, setFoamTypeNoTo] = useState(coerceString(saved.foam_type_no_to))
     const [notes, setNotes] = useState(coerceString(saved.notes))
 
     const [device1, setDevice1] = useState<DeviceState>(coerceDevice(saved.device1 ?? createEmptyDevice()))
@@ -318,6 +322,8 @@ export default function FoamBekki5Form({
         motor_model: motorModel,
         foam_maker: foamMaker,
         foam_model: foamModel,
+        foam_type_no_from: foamTypeNoFrom,
+        foam_type_no_to: foamTypeNoTo,
         page1_rows: page1Rows,
         page2_rows: page2Rows,
         page3_rows: page3Rows,
@@ -344,6 +350,8 @@ export default function FoamBekki5Form({
         motorModel,
         foamMaker,
         foamModel,
+        foamTypeNoFrom,
+        foamTypeNoTo,
         page1Rows,
         page2Rows,
         page3Rows,
@@ -830,6 +838,16 @@ export default function FoamBekki5Form({
                         <div className="space-y-1">
                             <Label>泡合成器型式</Label>
                             <Input value={foamModel} onChange={(e) => setFoamModel(e.target.value)} />
+                        </div>
+                        {/* ★正典（令和6年9月10日最終改正）で（その3）消火薬剤欄に新設された刷り込み
+                            「（泡第 __ ～ __ 号）」の2つの空欄。範囲でない場合は開始側だけ入れる */}
+                        <div className="space-y-1">
+                            <Label>消火薬剤 型式番号（泡第 ○ 〜）</Label>
+                            <Input value={foamTypeNoFrom} onChange={(e) => setFoamTypeNoFrom(e.target.value)} />
+                        </div>
+                        <div className="space-y-1">
+                            <Label>消火薬剤 型式番号（〜 ○ 号）</Label>
+                            <Input value={foamTypeNoTo} onChange={(e) => setFoamTypeNoTo(e.target.value)} />
                         </div>
                     </div>
                 </CardContent>

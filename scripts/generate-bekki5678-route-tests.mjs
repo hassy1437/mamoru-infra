@@ -98,6 +98,9 @@ const jobs = [
       motor_model: "MTR-2026",
       foam_maker: "サンプル",
       foam_model: "FM-12A",
+      // ★正典で（その3）消火薬剤欄に新設された「（泡第 __ ～ __ 号）」の2つの空欄（各10.5pt）
+      foam_type_no_from: "123",
+      foam_type_no_to: "45",
       page1_rows: makeRows(19, "B5-P1").map((row, i) =>
         i === 11 ? { ...row, content: "200", current_value: "5.2" } : row
       ),

@@ -47,6 +47,8 @@ const REALISTIC = {
     motor_model: "MTR-2026",
     foam_maker: "薬剤(株)",
     foam_model: "FM-12A",
+    foam_type_no_from: "23",
+    foam_type_no_to: "3",
     // ★総括表・点検者一覧は payload のキー名が他様式と違う（building_name / address 等）。
     //   ここを漏らすと、その2様式だけストレス値のまま「現実値セット」に混ざり、
     //   逸脱分布の上位を占めて閾値の判断を誤らせる（実測で発覚）。

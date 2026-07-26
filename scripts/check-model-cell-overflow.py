@@ -76,6 +76,7 @@ def check(pdf_path: str, scale: float = 4.0) -> int:
         return 1
     else:
         print(f"OK: no overflow (max dark per col={dark_count}px, threshold={MAX_DARK_PER_COL})")
+        print("MODEL_CELL_OVERFLOW_OK")
         return 0
 
 

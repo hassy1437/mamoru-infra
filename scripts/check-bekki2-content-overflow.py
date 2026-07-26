@@ -78,6 +78,7 @@ def check(pdf_path: str, scale: float = 4.0, quiet: bool = False) -> int:
             print(f"OVERFLOW: {overflow_cols} col(s) with >{MAX_DARK_PER_COL}px (max={max_dark}px)")
         else:
             print(f"OK: max dark per col={max_dark}px (threshold={MAX_DARK_PER_COL})")
+            print("BEKKI2_CONTENT_OVERFLOW_OK")
     return 1 if overflow_cols > 0 else 0
 
 

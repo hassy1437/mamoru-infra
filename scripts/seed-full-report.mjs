@@ -95,6 +95,7 @@ const loadMergeConfig = async () => {
 
 const q = (s) => `'${String(s).replace(/'/g, "''")}'`
 const qjson = (o) => `${q(JSON.stringify(o))}::jsonb`
+const qarr = (arr) => `array[${arr.map(q).join(",")}]::text[]`
 
 /** 現実値payload に検証用の値を上書きする（様式ごとにキー名が違うので両方見る） */
 const applySeedValues = (payload) => {
@@ -132,6 +133,23 @@ const loadEquipmentNames = () => {
     return names
 }
 
+/**
+ * 総括表に載せる順序。★テンプレートの設備欄は 6+11=17行しかなく、18件目以降は
+ * エラーになる（黙って捨てない実装に変更済み）。実機テストでは総括表も通したいので、
+ * 1棟に実際に入りそうな17件を先に並べ、特殊設備6件を後ろに寄せる。
+ * ＝ userが総括表を目視したときに不自然な並びにならないようにする。
+ * ★様式の出力対象は properties.equipment_types で決まり、ここの順序とは独立なので、
+ *   23様式はすべて出せる（下の EQUIPMENT_TYPES を参照）。
+ */
+const SOUKATSU_ROW_LIMIT = 17
+const COMMON_FIRST = [
+    "消火器", "屋内消火栓設備", "スプリンクラー設備", "自動火災報知設備",
+    "ガス漏れ火災警報設備", "漏電火災警報器", "消防機関へ通報する火災報知設備",
+    "非常警報器具", "避難器具", "誘導灯及び誘導標識", "消防用水", "排煙設備",
+    "連結送水管", "連結散水設備", "非常コンセント設備", "屋外消火栓設備",
+    "動力消防ポンプ設備",
+]
+
 /** 総括表の列（実カラム）。★payload を写すのではなく組み立てる（上のコメント参照） */
 const buildSoukatsuColumns = (equipmentNames) => ({
     building_name: SEED_NAME,
@@ -150,12 +168,24 @@ const buildSoukatsuColumns = (equipmentNames) => ({
     overall_judgment: "適",
     notes: "全設備の動作を確認。指摘事項なし。",
     // 様式が23種類あるのだから、点検した設備も23件そろえる（食い違いを作らない）
-    equipment_results: equipmentNames.map((name, i) =>
+    // ★17件に絞る。総括表の設備欄はテンプレート実測で 6+11=17行しかなく、
+    //   18件目以降はエラーになる（黙って捨てない実装に変更済み）。
+    //   ここを17件にしても様式の出力数は減らない: 別記ハブも一括出力も
+    //   properties.equipment_types（23件）で決まり、equipment_results とは独立だから。
+    //   ＝ 総括表も一括出力も通り、かつ23様式すべて出せる。
+    equipment_results: orderForSoukatsu(equipmentNames).slice(0, SOUKATSU_ROW_LIMIT).map((name, i) =>
         i === 2
             ? { name, result: "要改善", bad_detail: "接続部緩み", action: "締め直し" }
             : { name, result: "指摘なし" },
     ),
 })
+
+/** 総括表用の並べ替え。COMMON_FIRST の順を先に、残りを後ろに（欠けても正典を落とさない） */
+const orderForSoukatsu = (names) => {
+    const head = COMMON_FIRST.filter((n) => names.includes(n))
+    const tail = names.filter((n) => !head.includes(n))
+    return [...head, ...tail]
+}
 
 /** 点検者一覧の inspector1/2。構造は現実値payloadと実DBで一致しているので流用し、
  *  汚染されている name（「圧力計」になっている）だけ人名に直す。 */
@@ -236,13 +266,21 @@ with existing as (
   select id from inspection.properties
    where user_id = ${q(USER_ID)} and name = ${q(SEED_NAME)} limit 1
 ), ins as (
-  insert into inspection.properties (user_id, name, address, usage_type)
-  select ${q(USER_ID)}, ${q(SEED_NAME)}, ${q(SEED_ADDRESS)}, ${q(soukatsu.building_usage)}
+  insert into inspection.properties (user_id, name, address, usage_type, equipment_types)
+  select ${q(USER_ID)}, ${q(SEED_NAME)}, ${q(SEED_ADDRESS)}, ${q(soukatsu.building_usage)},
+         ${qarr(equipmentNames)}
    where not exists (select 1 from existing)
   returning id
 )
 insert into _seed_ids (k, v)
 select 'property', coalesce((select id from existing), (select id from ins));
+
+-- ★別記ハブに並ぶ様式も一括出力の対象も properties.equipment_types で決まる
+--   （equipment_results ではない）。ここが空だと様式が1つも出力対象にならない。
+--   冪等: 既存物件だったときも入れ直す。
+update inspection.properties
+   set equipment_types = ${qarr(equipmentNames)}, updated_at = now()
+ where id = (select v from _seed_ids where k='property');
 
 -- 総括表は全列を埋める。★ここが空だと「点検を行った消防用設備等」の一覧が空のPDFになる
 with existing as (

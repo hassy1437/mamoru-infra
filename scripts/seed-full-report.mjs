@@ -15,6 +15,16 @@
 //     ＝ 変換不要で素通しでよい。この前提が崩れたら（フォーム側が整形して保存するように
 //     なったら）ここも直すこと。
 //
+// ■ ★親2行（総括表・点検者一覧）は「素通し」できない
+//   23様式は payload jsonb に素通しでよいが、この2つだけは実カラムに写す必要がある。
+//   さらに現実値payload の soukatsu / itiran は汚染されている:
+//   現実値ジェネレータがキー名 `name` を一律「圧力計」に置換するため、
+//   equipment_results[].name（設備名）と inspector1.name（人名）まで「圧力計」になっている。
+//   ＝ ここは payload をそのまま写さず、正しい値を組み立てる。
+//   設備名の正典は src/lib/itiran-input-flow.ts の equipmentKeyword（23件）。
+//   様式が23種類あるのに総括表の設備一覧が別内容だと、「点検したと書いてある設備」と
+//   「様式が存在する設備」が食い違うので、23設備を全て列挙する。
+//
 // ■ ルート⇔テーブルの対応
 //   src/lib/pdf-merge-config.ts の PDF_MERGE_CONFIG から読む。ハードコードしない
 //   （report_form_tables() との23本一致は DB 側の drift テストが保証している）。
@@ -114,6 +124,56 @@ const applySeedValues = (payload) => {
     return p
 }
 
+/** 設備名の正典（itiran-input-flow.ts の equipmentKeyword）。ハードコードしない */
+const loadEquipmentNames = () => {
+    const src = fs.readFileSync("src/lib/itiran-input-flow.ts", "utf8")
+    const names = [...src.matchAll(/id:\s*"[^"]+"[\s\S]{0,120}?equipmentKeyword:\s*"([^"]+)"/g)].map((m) => m[1])
+    if (names.length !== 23) throw new Error(`設備名が23件でない: ${names.length}`)
+    return names
+}
+
+/** 総括表の列（実カラム）。★payload を写すのではなく組み立てる（上のコメント参照） */
+const buildSoukatsuColumns = (equipmentNames) => ({
+    building_name: SEED_NAME,
+    building_address: SEED_ADDRESS,
+    building_usage: "特定防火対象物",
+    building_structure: "鉄筋コンクリート造",
+    floor_above: 5,
+    floor_below: 1,
+    total_floor_area: 2400.5,
+    notifier_name: INSPECTOR_COMPANY,
+    notifier_address: SEED_ADDRESS,
+    notifier_phone: "06-6360-0001",
+    inspection_type: "機器・総合",
+    inspection_period_start: "2026-02-01",
+    inspection_period_end: "2026-02-26",
+    overall_judgment: "適",
+    notes: "全設備の動作を確認。指摘事項なし。",
+    // 様式が23種類あるのだから、点検した設備も23件そろえる（食い違いを作らない）
+    equipment_results: equipmentNames.map((name, i) =>
+        i === 2
+            ? { name, result: "要改善", bad_detail: "接続部緩み", action: "締め直し" }
+            : { name, result: "指摘なし" },
+    ),
+})
+
+/** 点検者一覧の inspector1/2。構造は現実値payloadと実DBで一致しているので流用し、
+ *  汚染されている name（「圧力計」になっている）だけ人名に直す。 */
+const buildInspectors = (itiranPayload) => {
+    const fix = (insp, name) => {
+        if (!insp || typeof insp !== "object") return null
+        const p = structuredClone(insp)
+        p.name = name
+        p.company = INSPECTOR_COMPANY
+        p.address = SEED_ADDRESS
+        return p
+    }
+    return {
+        inspector1: fix(itiranPayload.inspector1, INSPECTOR_NAME),
+        inspector2: fix(itiranPayload.inspector2, "検証 次郎"),
+    }
+}
+
 const config = await loadMergeConfig()
 const entries = Object.entries(config)
 console.log(`PDF_MERGE_CONFIG: ${entries.length} 様式`)
@@ -158,6 +218,15 @@ if (!APPLY) {
 }
 
 // 1つのトランザクションで入れる（途中で失敗したら何も残さない）
+const equipmentNames = loadEquipmentNames()
+const soukatsu = buildSoukatsuColumns(equipmentNames)
+const itiranPayload = byRoute.get("/api/generate-itiran-pdf")
+if (!itiranPayload) {
+    console.error("点検者一覧の現実値payloadが無い")
+    process.exit(2)
+}
+const inspectors = buildInspectors(itiranPayload)
+
 const sql = []
 sql.push("begin;")
 sql.push(`
@@ -168,27 +237,54 @@ with existing as (
    where user_id = ${q(USER_ID)} and name = ${q(SEED_NAME)} limit 1
 ), ins as (
   insert into inspection.properties (user_id, name, address, usage_type)
-  select ${q(USER_ID)}, ${q(SEED_NAME)}, ${q(SEED_ADDRESS)}, '特定防火対象物'
+  select ${q(USER_ID)}, ${q(SEED_NAME)}, ${q(SEED_ADDRESS)}, ${q(soukatsu.building_usage)}
    where not exists (select 1 from existing)
   returning id
 )
 insert into _seed_ids (k, v)
 select 'property', coalesce((select id from existing), (select id from ins));
 
+-- 総括表は全列を埋める。★ここが空だと「点検を行った消防用設備等」の一覧が空のPDFになる
 with existing as (
   select id from inspection.inspection_soukatsu
    where user_id = ${q(USER_ID)} and building_name = ${q(SEED_NAME)} limit 1
 ), ins as (
   insert into inspection.inspection_soukatsu
-    (user_id, building_name, building_address, building_usage,
-     notifier_name, notifier_address, inspection_type, inspection_date)
-  select ${q(USER_ID)}, ${q(SEED_NAME)}, ${q(SEED_ADDRESS)}, '特定防火対象物',
-         ${q(INSPECTOR_COMPANY)}, ${q(SEED_ADDRESS)}, '機器・総合', current_date
+    (user_id, property_id, building_name, building_address, building_usage, building_structure,
+     floor_above, floor_below, total_floor_area,
+     notifier_name, notifier_address, notifier_phone,
+     inspection_type, inspection_date, inspection_period_start, inspection_period_end,
+     equipment_results, overall_judgment, notes)
+  select ${q(USER_ID)}, (select v from _seed_ids where k='property'),
+         ${q(soukatsu.building_name)}, ${q(soukatsu.building_address)}, ${q(soukatsu.building_usage)},
+         ${q(soukatsu.building_structure)}, ${soukatsu.floor_above}, ${soukatsu.floor_below},
+         ${soukatsu.total_floor_area},
+         ${q(soukatsu.notifier_name)}, ${q(soukatsu.notifier_address)}, ${q(soukatsu.notifier_phone)},
+         ${q(soukatsu.inspection_type)}, current_date,
+         ${q(soukatsu.inspection_period_start)}::date, ${q(soukatsu.inspection_period_end)}::date,
+         ${qjson(soukatsu.equipment_results)}, ${q(soukatsu.overall_judgment)}, ${q(soukatsu.notes)}
    where not exists (select 1 from existing)
   returning id
 )
 insert into _seed_ids (k, v)
 select 'soukatsu', coalesce((select id from existing), (select id from ins));
+
+-- 冪等: 既存行だったときも欠けている列を埋め直す（前回は最小限しか入れていなかった）
+update inspection.inspection_soukatsu set
+  property_id = (select v from _seed_ids where k='property'),
+  building_structure = ${q(soukatsu.building_structure)},
+  floor_above = ${soukatsu.floor_above},
+  floor_below = ${soukatsu.floor_below},
+  total_floor_area = ${soukatsu.total_floor_area},
+  notifier_phone = ${q(soukatsu.notifier_phone)},
+  inspection_type = ${q(soukatsu.inspection_type)},
+  inspection_period_start = ${q(soukatsu.inspection_period_start)}::date,
+  inspection_period_end = ${q(soukatsu.inspection_period_end)}::date,
+  equipment_results = ${qjson(soukatsu.equipment_results)},
+  overall_judgment = ${q(soukatsu.overall_judgment)},
+  notes = ${q(soukatsu.notes)},
+  updated_at = now()
+where id = (select v from _seed_ids where k='soukatsu');
 
 with existing as (
   select id from inspection.inspection_itiran
@@ -201,6 +297,13 @@ with existing as (
 )
 insert into _seed_ids (k, v)
 select 'itiran', coalesce((select id from existing), (select id from ins));
+
+-- 点検者一覧。★ここが null だと別記様式第3号（点検者一覧表）が空になる
+update inspection.inspection_itiran set
+  inspector1 = ${qjson(inspectors.inspector1)},
+  inspector2 = ${qjson(inspectors.inspector2)},
+  updated_at = now()
+where id = (select v from _seed_ids where k='itiran');
 `)
 
 for (const [, cfg] of entries) {

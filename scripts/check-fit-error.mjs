@@ -13,6 +13,10 @@
 //   3. その中身が業者の役に立つ形をしている
 //      （様式名 / 画面と同じ項目表記 / 入力字数・収まる字数・超過字数 / 対処）
 //   4. 超過しているのに漏れなく報告される（項目を増やすと件数も増える）
+//   6. ★様式の行数を超えた分を黙って捨てない（総括表の設備欄は17行）
+//      落ちるのは equipment_results の順序で決まるので、一般的な設備でも消えうる。
+//      縮小＝警告 / データが消える＝エラー、の線引きに従いエラーで止める。
+//
 //   5. ★既知の限界を固定する: 幅の広いセル（名称など）は縮小だけで「収まる」ため
 //      止まらない。判読しづらい大きさになっても現状はエラーにできない
 //      （絶対下限を課すと、設計上そもそも極小のセルを持つ正常な出力まで止まるため）。
@@ -93,7 +97,40 @@ check(
     `点検者住所の長文が ${wideRes.status} になった。挙動が変わったなら check-fit-error.mjs の想定も見直すこと`,
 )
 
-for (const f of ["_fit_ok.pdf", "_fit_ng1.pdf", "_fit_ng2.pdf", "_fit_wide.pdf"]) {
+// 6. 様式の行数を超えたらエラー（総括表）。両方向を確かめる
+const SOUKATSU_ROUTE = "src/app/api/generate-soukatu-pdf/route.ts"
+const soukatsuBase = {
+    building_name: "検証ビル",
+    building_address: "大阪市北区",
+    building_usage: "特定防火対象物",
+    notifier_name: "検証防災",
+    notifier_address: "大阪市北区",
+    inspection_type: "機器・総合",
+    equipment_results: [],
+}
+const runSoukatsu = async (n, outName) => {
+    const p = structuredClone(soukatsuBase)
+    p.equipment_results = Array.from({ length: n }, (_, i) => ({ name: `設備${i + 1}`, result: "指摘なし" }))
+    try {
+        await runRoutePdf({ routePath: SOUKATSU_ROUTE, payload: p, outPdfPath: path.join("tmp", outName) })
+        return { status: 200, items: [] }
+    } catch (e) {
+        if (!e.status) throw e
+        const body = JSON.parse(e.responseBody)
+        return { status: e.status, items: (body.items ?? []).filter((i) => i.field === "equipment_results") }
+    }
+}
+const rowsOk = await runSoukatsu(17, "_fit_rows17.pdf")
+check(rowsOk.status === 200, `設備17件（上限ちょうど）が ${rowsOk.status} で止まった`)
+const rowsNg = await runSoukatsu(20, "_fit_rows20.pdf")
+check(rowsNg.status === 422, `設備20件（上限超過）が ${rowsNg.status}。黙って捨てていないか`)
+check(rowsNg.items.length === 3, `落ちた件数の報告が ${rowsNg.items.length} 件（20-17=3のはず）`)
+check(
+    rowsNg.items.every((i) => /17/.test(i.hint)),
+    "エラー文言に上限件数(17)が入っていない＝業者が何件に減らせばよいか分からない",
+)
+
+for (const f of ["_fit_ok.pdf", "_fit_ng1.pdf", "_fit_ng2.pdf", "_fit_wide.pdf", "_fit_rows17.pdf", "_fit_rows20.pdf"]) {
     try { fs.unlinkSync(path.join("tmp", f)) } catch {}
 }
 

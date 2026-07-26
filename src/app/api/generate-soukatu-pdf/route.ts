@@ -385,7 +385,16 @@ export async function POST(req: NextRequest) {
                 row = P2_EQ_ROWS[rowIndex - P1_EQ_ROWS.length];
                 col = P2_COL;
             } else {
-                break;
+                // ★黙って捨てない。この様式の設備欄はテンプレート実測で 6+11=17行しかなく、
+                //   超えた分はPDFに出ない＝法定書類からのデータ欠落になる。
+                //   落ちるのは equipment_results の順序で決まるので、一般的な設備でも消えうる
+                //   （実測で「自動火災報知設備」が落ちた）。切り詰めと同じくエラーで止める。
+                fonts.fit?.reportOverflowRow(
+                    normalizeText(item?.name) || `設備 ${rowIndex + 1} 件目`,
+                    P1_EQ_ROWS.length + P2_EQ_ROWS.length,
+                );
+                rowIndex += 1;
+                continue;
             }
 
             const rowH = row.bottom - row.top;

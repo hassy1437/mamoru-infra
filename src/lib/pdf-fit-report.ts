@@ -68,6 +68,15 @@ export type FitCollector = {
      * まずは全ての縮小を記録して分布を測る。
      */
     reportShrink: (text: string, design: number, actual: number) => void
+    /**
+     * 様式の行数を超えて描けなかった項目の報告。
+     * ★これは縮小(警告)ではなくデータ欠落(エラー)。切り詰めと同じ扱いにする。
+     * 総括表の設備欄はテンプレート実測で 6+11=17行しかなく、18件目以降は
+     * 黙って捨てられていた（落ちるのは順序で決まるので、一般的な設備でも消えうる）。
+     */
+    reportOverflowRow: (text: string, capacity: number) => void
+    /** 行数超過で落ちた項目（業者向けエラーに載せる） */
+    overflowRows: { text: string; capacity: number }[]
     failures: FitFailure[]
     smalls: { text: string; size: number }[]
     shrinks: FitShrink[]
@@ -91,11 +100,18 @@ export const createFitCollector = (): FitCollector => {
     const failures: FitFailure[] = []
     const smalls: { text: string; size: number }[] = []
     const shrinks: FitShrink[] = []
+    const overflowRows: { text: string; capacity: number }[] = []
     const state = { drawCount: 0 }
     return {
         failures,
         smalls,
         shrinks,
+        overflowRows,
+        reportOverflowRow(text, capacity) {
+            const t = String(text ?? "").trim()
+            if (!t || overflowRows.some((o) => o.text === t)) return
+            overflowRows.push({ text: t, capacity })
+        },
         get drawCount() {
             return state.drawCount
         },
@@ -219,6 +235,18 @@ export const buildFitError = (form: string, collector: FitCollector): FitErrorBo
             hint: hintFor(f.field!),
             text: f.text,
         }))
+    // ★行数超過はデータ欠落なのでエラーに載せる（縮小＝警告との線引き）
+    for (const o of collector.overflowRows) {
+        items.push({
+            field: "equipment_results",
+            label: "点検を行った消防用設備等",
+            input: o.text.length,
+            fits: 0,
+            over: o.text.length,
+            hint: `この様式に書ける設備は ${o.capacity} 件までです。件数を減らすか、様式を分けてください`,
+            text: o.text,
+        })
+    }
     if (!items.length) return null
     return { error: "FIT_FAILED", form, items }
 }

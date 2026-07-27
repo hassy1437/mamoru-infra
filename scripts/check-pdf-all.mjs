@@ -141,6 +141,16 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-printed-overlap.py", stage: "生成PDF", needsPdfs: true,
+        why: "アプリの文字が刷り込み（選択肢欄・単位・ラベル）に重なっていないか。罫線基準の検査では出ない次元",
+        runs: [
+            { label: "自己診断", cmd: [PY, "scripts/check-printed-overlap.py", "--self-test"], sentinel: "SELF_TEST_OK" },
+            ...["stress", "realistic"].map((s) => ({
+                label: s, cmd: [PY, "scripts/check-printed-overlap.py", ...pdfsOf(s)], sentinel: "NO_PRINTED_OVERLAP",
+            })),
+        ],
+    },
+    {
         file: "check-model-cell-overflow.py", stage: "生成PDF", needsPdfs: true,
         why: "型式セルのはみ出し",
         // ★既定値は tmp/pdf-test-fixed/bekki1_debug_test.pdf（保守されていない残骸）なので

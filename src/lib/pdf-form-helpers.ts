@@ -619,3 +619,41 @@ export const drawPeriodDate = ({
 
     return true
 }
+
+/** 選択肢を○で囲む位置。テンプレートPDFから実測した値を入れる */
+export type ChoiceMark = { label: string; cx: number; cy: number; rx: number; ry: number }
+
+/**
+ * 刷り込まれた選択肢を○で囲む。
+ *
+ * ★選択肢欄に文字を重ね書きしてはいけない（Phase 1）。テンプレートが
+ *   「機器・総合」「専用・兼用」のように選択肢を刷り込んでいる欄は、
+ *   該当する語を○で囲むのが様式どおりの記入方法。文字列をそのまま描くと
+ *   刷り込みの上に重なり、消防署から見て何を選んだのか分からなくなる。
+ *
+ * ★この関数は各ルートに散らばっていた drawSelectionCircle を1本化したもの。
+ *   実測で3種類に分岐しており（borderWidth 0.7 が8ルート / 0.8 が2ルート、
+ *   normalizeText の有無）、まさにドリフトが起きていた。既定を 0.7 にし、
+ *   0.8 のルートは引数で明示して従来の出力を保つ。
+ */
+export const drawChoiceCircle = (
+    page: PDFPage,
+    pageHeight: number,
+    value: unknown,
+    choices: ChoiceMark[],
+    borderWidth = 0.7,
+) => {
+    const text = String(value ?? "").replace(/\s+/g, " ").trim()
+    if (!text) return
+    for (const c of choices) {
+        if (!text.includes(c.label)) continue
+        page.drawEllipse({
+            x: c.cx,
+            y: pageHeight - c.cy,
+            xScale: c.rx,
+            yScale: c.ry,
+            borderColor: rgb(0, 0, 0),
+            borderWidth,
+        })
+    }
+}

@@ -10,19 +10,7 @@ import {
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
-import {
-    drawPeriodDate,
-    drawTextInCell,
-    drawWrappedTextInCell,
-    formatDateText,
-    formatJapaneseDateText,
-    parseDateParts,
-    type CellDrawOptions,
-    type DateAnchors,
-    formatJudgment,
-    pickFont,
-    type ReportFonts,
-} from "@/lib/pdf-form-helpers"
+import { drawChoiceCircle, drawPeriodDate, drawTextInCell, drawWrappedTextInCell, formatDateText, formatJapaneseDateText, formatJudgment, parseDateParts, pickFont, type CellDrawOptions, type DateAnchors, type ReportFonts } from "@/lib/pdf-form-helpers"
 
 type BekkiRow = { content?: string; judgment?: string; bad_content?: string; action_content?: string; current_value?: string }
 type DeviceRow = { name?: string; model?: string; calibrated_at?: string; maker?: string }
@@ -172,7 +160,12 @@ export async function POST(req: NextRequest) {
             drawInCell(page, pageHeight, body.fire_manager, 425.3, 114.72, 104.3, 25.08, 7.3)
             drawInCell(page, pageHeight, body.location, 117.8, 139.8, 264.5, 24.96, 7.8)
             drawInCell(page, pageHeight, body.witness, 425.3, 139.8, 104.3, 24.96, 7.3)
-            drawInCell(page, pageHeight, body.inspection_type || "", 117.6, 164.76, 88.68, 17.04, 6.4, { align: "center" })
+            // 点検種別: テンプレートに「機器・総合」が刷り込まれているので文字を重ねず○で囲む。
+            // ○の座標はテンプレートPDFの文字を実測（様式ごとに位置が違う）。
+            drawChoiceCircle(page, pageHeight, body.inspection_type || "機器・総合", [
+                { label: "機器", cx: 136.50, cy: 172.57, rx: 16.24, ry: 7.28 },
+                { label: "総合", cx: 187.37, cy: 172.57, rx: 16.24, ry: 7.28 },
+            ])
 
             const periodText = (() => {
                 const start = formatDateText(body.period_start)

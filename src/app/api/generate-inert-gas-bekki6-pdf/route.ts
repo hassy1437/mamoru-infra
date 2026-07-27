@@ -10,18 +10,7 @@ import {
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
-import {
-    drawTextInCell,
-    drawWrappedTextInCell,
-    formatJapaneseDateText,
-    formatJudgment,
-    pickFont,
-    type ReportFonts,
-    measureRuns,
-    drawTextRuns,
-    FIT_EPSILON,
-    reportIfBelowMinSize,
-} from "@/lib/pdf-form-helpers"
+import { FIT_EPSILON, drawChoiceCircle, drawTextInCell, drawTextRuns, drawWrappedTextInCell, formatJapaneseDateText, formatJudgment, measureRuns, pickFont, reportIfBelowMinSize, type ReportFonts } from "@/lib/pdf-form-helpers"
 
 type Bekki6Row = {
     content?: string
@@ -335,24 +324,6 @@ export async function POST(req: NextRequest) {
         }
 
         // 専用/兼用 など選択式セルに〇を描画（bekki9/20 と同一の loop版パターン）
-        const drawSelectionCircle = (
-            page: PDFPage,
-            pageHeight: number,
-            content: string,
-            choices: Array<{ label: string; cx: number; cy: number; rx: number; ry: number }>,
-        ) => {
-            for (const c of choices) {
-                if (!content.includes(c.label)) continue
-                page.drawEllipse({
-                    x: c.cx,
-                    y: pageHeight - c.cy,
-                    xScale: c.rx,
-                    yScale: c.ry,
-                    borderColor: rgb(0, 0, 0),
-                    borderWidth: 0.7,
-                })
-            }
-        }
 
         const drawRightAt = (
             page: PDFPage,
@@ -452,7 +423,12 @@ export async function POST(req: NextRequest) {
         drawInCell(page1, p1Height, body.location, 113.33, 143.33, 266.0, 28.0, 8.5)
         drawInCell(page1, p1Height, body.witness, 422.67, 143.33, 106.0, 28.0, 8.3)
 
-        drawInCell(page1, p1Height, body.inspection_type || "機器・総合", 113.33, 171.33, 92.0, 16.0, 8.0, { align: "center" })
+        // 点検種別: テンプレートに「機器・総合」が刷り込まれているので文字を重ねず○で囲む。
+        // ○の座標はテンプレートPDFの文字を実測（様式ごとに位置が違う）。
+        drawChoiceCircle(page1, p1Height, body.inspection_type || "機器・総合", [
+            { label: "機器", cx: 133.08, cy: 179.53, rx: 16.78, ry: 7.28 },
+            { label: "総合", cx: 186.84, cy: 179.53, rx: 16.78, ry: 7.28 },
+        ])
         const start = formatDateText(body.period_start)
         const end = formatDateText(body.period_end)
         if (parseDateParts(body.period_start) || parseDateParts(body.period_end)) {
@@ -483,7 +459,7 @@ export async function POST(req: NextRequest) {
         }, new Set([17]))
 
         // PAGE2 row 17「起動装置 / 自動式 / 火災感知装置（専用・兼用）」: 公式PDF刷り込みの選択を丸囲み
-        drawSelectionCircle(page2, p2Height, body.page2_rows?.[17]?.content ?? "", [
+        drawChoiceCircle(page2, p2Height, body.page2_rows?.[17]?.content ?? "", [
             { label: "専用", cx: 252.45, cy: 337.0, rx: 14, ry: 7 },
             { label: "兼用", cx: 294.45, cy: 337.0, rx: 14, ry: 7 },
         ])

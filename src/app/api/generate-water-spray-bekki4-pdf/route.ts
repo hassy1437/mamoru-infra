@@ -3,17 +3,7 @@ import { PDFDocument, rgb, PDFPage, StandardFonts } from "pdf-lib"
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
-import {
-    drawWrappedTextInCell,
-    formatJapaneseDateText,
-    formatJudgment,
-    pickFont,
-    type ReportFonts,
-    measureRuns,
-    drawTextRuns,
-    FIT_EPSILON,
-    reportIfBelowMinSize,
-} from "@/lib/pdf-form-helpers"
+import { FIT_EPSILON, drawChoiceCircle, drawTextRuns, drawWrappedTextInCell, formatJapaneseDateText, formatJudgment, measureRuns, pickFont, reportIfBelowMinSize, type ReportFonts } from "@/lib/pdf-form-helpers"
 import {
     buildFitError,
     createFitCollector,
@@ -347,24 +337,6 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        const drawSelectionCircle = (
-            page: PDFPage,
-            pageHeight: number,
-            content: string,
-            choices: Array<{label: string; cx: number; cy: number; rx: number; ry: number}>,
-        ) => {
-            for (const c of choices) {
-                if (!content.includes(c.label)) continue
-                page.drawEllipse({
-                    x: c.cx,
-                    y: pageHeight - c.cy,
-                    xScale: c.rx,
-                    yScale: c.ry,
-                    borderColor: rgb(0, 0, 0),
-                    borderWidth: 0.7,
-                })
-            }
-        }
 
         const drawRightAt = (
             page: PDFPage,
@@ -529,7 +501,7 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        drawSelectionCircle(page2, p2Height, p2Rows4[7]?.content ?? "", [
+        drawChoiceCircle(page2, p2Height, p2Rows4[7]?.content ?? "", [
             { label: "専用", cx: 266.4, cy: 224.05, rx: 13, ry: 7 },
             { label: "兼用", cx: 308.5, cy: 224.05, rx: 13, ry: 7 },
         ])

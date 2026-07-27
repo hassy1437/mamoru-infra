@@ -10,17 +10,7 @@ import {
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
-import {
-    drawWrappedTextInCell,
-    formatJapaneseDateText,
-    formatJudgment,
-    pickFont,
-    type ReportFonts,
-    measureRuns,
-    drawTextRuns,
-    FIT_EPSILON,
-    reportIfBelowMinSize,
-} from "@/lib/pdf-form-helpers"
+import { FIT_EPSILON, drawChoiceCircle, drawTextRuns, drawWrappedTextInCell, formatJapaneseDateText, formatJudgment, measureRuns, pickFont, reportIfBelowMinSize, type ReportFonts } from "@/lib/pdf-form-helpers"
 import { normalizeInspectorNameValue, normalizeWitnessValue } from "@/lib/bekki-header-normalization"
 
 type Bekki7Row = {
@@ -334,24 +324,6 @@ export async function POST(req: NextRequest) {
         }
 
         // 専用/兼用 など選択式セルに〇を描画（bekki9/20 と同一の loop版パターン）
-        const drawSelectionCircle = (
-            page: PDFPage,
-            pageHeight: number,
-            content: string,
-            choices: Array<{ label: string; cx: number; cy: number; rx: number; ry: number }>,
-        ) => {
-            for (const c of choices) {
-                if (!content.includes(c.label)) continue
-                page.drawEllipse({
-                    x: c.cx,
-                    y: pageHeight - c.cy,
-                    xScale: c.rx,
-                    yScale: c.ry,
-                    borderColor: rgb(0, 0, 0),
-                    borderWidth: 0.7,
-                })
-            }
-        }
 
         const drawRightAt = (
             page: PDFPage,
@@ -477,7 +449,7 @@ export async function POST(req: NextRequest) {
         }, new Set([26]))
 
         // PAGE2 row 26「起動装置 / 自動式 / 火災感知装置（専用・兼用）」: 公式PDF刷り込みの選択を丸囲み
-        drawSelectionCircle(page2, p2Height, body.page2_rows?.[26]?.content ?? "", [
+        drawChoiceCircle(page2, p2Height, body.page2_rows?.[26]?.content ?? "", [
             { label: "専用", cx: 258.25, cy: 438.9, rx: 14, ry: 7 },
             { label: "兼用", cx: 298.2, cy: 438.9, rx: 14, ry: 7 },
         ])

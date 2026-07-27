@@ -10,17 +10,7 @@ import {
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
-import {
-    drawWrappedTextInCell,
-    formatJapaneseDateText,
-    formatJudgment,
-    pickFont,
-    type ReportFonts,
-    measureRuns,
-    drawTextRuns,
-    FIT_EPSILON,
-    reportIfBelowMinSize,
-} from "@/lib/pdf-form-helpers"
+import { FIT_EPSILON, drawChoiceCircle, drawTextRuns, drawWrappedTextInCell, formatJapaneseDateText, formatJudgment, measureRuns, pickFont, reportIfBelowMinSize, type ReportFonts } from "@/lib/pdf-form-helpers"
 
 type BekkiRow = {
     content?: string
@@ -285,24 +275,6 @@ export async function POST(req: NextRequest) {
         }
 
         // 専用/兼用 など選択式セルに〇を描画（bekki2/3/4/20 と同一パターン）
-        const drawSelectionCircle = (
-            page: PDFPage,
-            pageHeight: number,
-            content: string,
-            choices: Array<{ label: string; cx: number; cy: number; rx: number; ry: number }>,
-        ) => {
-            for (const c of choices) {
-                if (!content.includes(c.label)) continue
-                page.drawEllipse({
-                    x: c.cx,
-                    y: pageHeight - c.cy,
-                    xScale: c.rx,
-                    yScale: c.ry,
-                    borderColor: rgb(0, 0, 0),
-                    borderWidth: 0.7,
-                })
-            }
-        }
 
         const drawRightAt = (
             page: PDFPage,
@@ -336,7 +308,12 @@ export async function POST(req: NextRequest) {
         drawInCell(page1, p1Height, body.fire_manager, 439.33, 108.67, 90.0, 26.66, 8.0)
         drawInCell(page1, p1Height, body.location, 112.0, 135.33, 237.33, 26.0, 8.2)
         drawInCell(page1, p1Height, body.witness, 439.33, 135.33, 90.0, 26.0, 8.0)
-        drawInCell(page1, p1Height, body.inspection_type || "機器・総合", 112.0, 161.33, 96.0, 21.34, 7.7, { align: "center" })
+        // 点検種別: テンプレートに「機器・総合」が刷り込まれているので文字を重ねず○で囲む。
+        // ○の座標はテンプレートPDFの文字を実測（様式ごとに位置が違う）。
+        drawChoiceCircle(page1, p1Height, body.inspection_type || "機器・総合", [
+            { label: "機器", cx: 132.00, cy: 171.85, rx: 16.90, ry: 7.28 },
+            { label: "総合", cx: 186.77, cy: 171.85, rx: 16.96, ry: 7.28 },
+        ])
 
         const periodText = (() => {
             const start = formatDateText(body.period_start)
@@ -406,7 +383,7 @@ export async function POST(req: NextRequest) {
         }, {}, new Set([7, 21]))
 
         // PAGE2 row 7「遠隔操作部 / 機能（専用・兼用）」: 公式PDF刷り込みの選択を丸囲み
-        drawSelectionCircle(page2, p2Height, body.page2_rows?.[7]?.content ?? "", [
+        drawChoiceCircle(page2, p2Height, body.page2_rows?.[7]?.content ?? "", [
             { label: "専用", cx: 237.24, cy: 210, rx: 14, ry: 7 },
             { label: "兼用", cx: 279.30, cy: 210, rx: 14, ry: 7 },
         ])

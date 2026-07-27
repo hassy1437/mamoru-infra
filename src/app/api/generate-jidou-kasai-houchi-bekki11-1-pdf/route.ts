@@ -10,17 +10,7 @@ import {
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
-import {
-    drawWrappedTextInCell,
-    formatJapaneseDateText,
-    formatJudgment,
-    pickFont,
-    type ReportFonts,
-    measureRuns,
-    drawTextRuns,
-    FIT_EPSILON,
-    reportIfBelowMinSize,
-} from "@/lib/pdf-form-helpers"
+import { FIT_EPSILON, drawChoiceCircle, drawTextRuns, drawWrappedTextInCell, formatJapaneseDateText, formatJudgment, measureRuns, pickFont, reportIfBelowMinSize, type ReportFonts } from "@/lib/pdf-form-helpers"
 import { normalizeInspectorNameValue, normalizeWitnessValue } from "@/lib/bekki-header-normalization"
 
 type BekkiRow = { content?: string; judgment?: string; bad_content?: string; action_content?: string }
@@ -300,16 +290,6 @@ export async function POST(req: NextRequest) {
             drawTextRuns(page, fonts, String(norm ?? ""), cellX + padX, pageH - (textTop + th * 0.78), sz)
         }
 
-        const drawSelectionCircle = (page: PDFPage, pageHeight: number, value: string, options: { label: string; cx: number; cy: number; rx: number; ry: number }[]) => {
-            const norm = normalizeText(value)
-            if (!norm) return
-            for (const opt of options) {
-                if (norm.includes(opt.label)) {
-                    const cy = pageHeight - opt.cy
-                    page.drawEllipse({ x: opt.cx, y: cy, xScale: opt.rx, yScale: opt.ry, borderWidth: 0.8, borderColor: rgb(0, 0, 0), color: undefined, opacity: 0 })
-                }
-            }
-        }
 
         const drawResultRows = (page: PDFPage, pageHeight: number, rows: BekkiRow[], rowBounds: number[], cols: ResultColumns, skipContentRows?: Set<number>, skipAllRows?: Set<number>, contentOverrides?: Record<number, { x: number; w: number }>) => {
             for (let i = 0; i < rowBounds.length - 1; i += 1) {
@@ -410,35 +390,35 @@ export async function POST(req: NextRequest) {
         // P2 Row 5: スポット型(熱) — 差動 定温 (再) 熱アナログ
         const p2Rows = body.page2_rows ?? []
         if (p2Rows[5]) {
-            drawSelectionCircle(page2, p2Height, p2Rows[5].content ?? "", [
+            drawChoiceCircle(page2, p2Height, p2Rows[5].content ?? "", [
                 { label: "差動", cx: 242.5, cy: 211.5, rx: 13, ry: 7 },
                 { label: "定温", cx: 274.0, cy: 211.5, rx: 22, ry: 7 },  // 定温（再）= 1印字単位(x254.4-293.8)を1○で囲む（旧 定温+再 の2○を統合）
                 { label: "熱アナログ", cx: 317.0, cy: 211.5, rx: 18, ry: 7 },
-            ])
+            ], 0.8)
         }
         // P2 Row 9: スポット型(煙) — イオン 光電 アナログ
         if (p2Rows[9]) {
-            drawSelectionCircle(page2, p2Height, p2Rows[9].content ?? "", [
+            drawChoiceCircle(page2, p2Height, p2Rows[9].content ?? "", [
                 { label: "イオン", cx: 247.0, cy: 302.3, rx: 16, ry: 7 },
                 { label: "光電", cx: 278.0, cy: 302.3, rx: 14, ry: 7 },
                 { label: "アナログ", cx: 316.0, cy: 302.3, rx: 18, ry: 7 },
-            ])
+            ], 0.8)
         }
         // P2 Row 11: 炎感知器 — 赤外線 紫外線
         if (p2Rows[11]) {
-            drawSelectionCircle(page2, p2Height, p2Rows[11].content ?? "", [
+            drawChoiceCircle(page2, p2Height, p2Rows[11].content ?? "", [
                 { label: "赤外線", cx: 262.0, cy: 348.3, rx: 18, ry: 7 },
                 { label: "紫外線", cx: 304.0, cy: 348.3, rx: 18, ry: 7 },
-            ])
+            ], 0.8)
         }
         // P2 Row 22: 鳴動方式 — 一斉 区分 相互 再鳴動
         if (p2Rows[22]) {
-            drawSelectionCircle(page2, p2Height, p2Rows[22].content ?? "", [
+            drawChoiceCircle(page2, p2Height, p2Rows[22].content ?? "", [
                 { label: "一斉", cx: 243.0, cy: 601.8, rx: 13, ry: 7 },
                 { label: "区分", cx: 267.0, cy: 601.8, rx: 13, ry: 7 },
                 { label: "相互", cx: 290.0, cy: 601.8, rx: 13, ry: 7 },
                 { label: "再鳴動", cx: 320.0, cy: 601.8, rx: 16, ry: 7 },
-            ])
+            ], 0.8)
         }
 
         drawResultRows(page3, p3Height, body.page3_rows ?? [], P3_ROW_BOUNDS, {

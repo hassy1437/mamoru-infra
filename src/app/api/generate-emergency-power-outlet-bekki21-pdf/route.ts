@@ -10,19 +10,7 @@ import {
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
-import {
-    drawPeriodDate,
-    drawTextInCell,
-    drawWrappedTextInCell,
-    formatDateText,
-    formatJapaneseDateText,
-    parseDateParts,
-    type CellDrawOptions,
-    type DateAnchors,
-    formatJudgment,
-    pickFont,
-    type ReportFonts,
-} from "@/lib/pdf-form-helpers"
+import { drawChoiceCircle, drawPeriodDate, drawTextInCell, drawWrappedTextInCell, formatDateText, formatJapaneseDateText, formatJudgment, parseDateParts, pickFont, type CellDrawOptions, type DateAnchors, type ReportFonts } from "@/lib/pdf-form-helpers"
 
 type BekkiRow = { content?: string; judgment?: string; bad_content?: string; action_content?: string; current_value?: string }
 type DeviceRow = { name?: string; model?: string; calibrated_at?: string; maker?: string }
@@ -150,7 +138,8 @@ export async function POST(req: NextRequest) {
             drawInCell(page, pageHeight, body.fire_manager, 411.0, 108.0, 118.8, 27.84, 7.3)
             drawInCell(page, pageHeight, body.location, 117.0, 135.84, 251.52, 24.48, 7.8)
             drawInCell(page, pageHeight, body.witness, 411.0, 135.84, 118.8, 24.48, 7.3)
-            drawInCell(page, pageHeight, body.inspection_type || "", 117.0, 160.32, 136.08, 24.48, 6.4, { align: "center" })
+            // 点検種別: この様式は総合点検が無く、テンプレートに「機器」だけが刷り込まれている
+            // （正典の Word でもセルの中身は「機器」のみ）。選ぶものが無いので描かない。
             const periodText = (() => {
                 const start = formatDateText(body.period_start)
                 const end = formatDateText(body.period_end)

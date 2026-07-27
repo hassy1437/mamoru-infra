@@ -10,17 +10,7 @@ import {
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
-import {
-    drawWrappedTextInCell,
-    formatJapaneseDateText,
-    formatJudgment,
-    pickFont,
-    type ReportFonts,
-    measureRuns,
-    drawTextRuns,
-    FIT_EPSILON,
-    reportIfBelowMinSize,
-} from "@/lib/pdf-form-helpers"
+import { FIT_EPSILON, drawChoiceCircle, drawTextRuns, drawWrappedTextInCell, formatJapaneseDateText, formatJudgment, measureRuns, pickFont, reportIfBelowMinSize, type ReportFonts } from "@/lib/pdf-form-helpers"
 
 type Bekki2Row = {
     content?: string
@@ -342,24 +332,6 @@ export async function POST(req: NextRequest) {
         }
 
         // 専用/兼用など選択式セルに〇を描画
-        const drawSelectionCircle = (
-            page: PDFPage,
-            pageHeight: number,
-            content: string,
-            choices: Array<{label: string; cx: number; cy: number; rx: number; ry: number}>,
-        ) => {
-            for (const c of choices) {
-                if (!content.includes(c.label)) continue
-                page.drawEllipse({
-                    x: c.cx,
-                    y: pageHeight - c.cy,
-                    xScale: c.rx,
-                    yScale: c.ry,
-                    borderColor: rgb(0, 0, 0),
-                    borderWidth: 0.7,
-                })
-            }
-        }
 
         const drawRightAt = (
             page: PDFPage,
@@ -502,7 +474,7 @@ export async function POST(req: NextRequest) {
         }
 
         // P2 row 7: 機能（専用/兼用）の選択を〇で表示
-        drawSelectionCircle(page2, p2Height, p2Rows[7]?.content ?? "", [
+        drawChoiceCircle(page2, p2Height, p2Rows[7]?.content ?? "", [
             { label: "専用", cx: 266,   cy: 209, rx: 14, ry: 7 },
             { label: "兼用", cx: 318.6, cy: 209, rx: 14, ry: 7 },
         ])
@@ -515,7 +487,7 @@ export async function POST(req: NextRequest) {
         ]))
 
         // P3A row 13: 表示灯（専用/兼用）の選択を〇で表示
-        drawSelectionCircle(page3, p3Height, p3Rows[13]?.content ?? "", [
+        drawChoiceCircle(page3, p3Height, p3Rows[13]?.content ?? "", [
             { label: "専用", cx: 270,   cy: 306.75, rx: 14, ry: 7 },
             { label: "兼用", cx: 312.1, cy: 306.75, rx: 14, ry: 7 },
         ])

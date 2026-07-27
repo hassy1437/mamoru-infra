@@ -3,23 +3,7 @@ import { PDFDocument, type PDFPage, rgb, StandardFonts } from "pdf-lib"
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
-import {
-    drawPeriodDate,
-    drawTextInCell,
-    drawWrappedTextInCell,
-    formatDateText,
-    formatJapaneseDateText,
-    parseDateParts,
-    type CellDrawOptions,
-    type DateAnchors,
-    formatJudgment,
-    pickFont,
-    type ReportFonts,
-    measureRuns,
-    drawTextRuns,
-    FIT_EPSILON,
-    reportIfBelowMinSize,
-} from "@/lib/pdf-form-helpers"
+import { FIT_EPSILON, drawChoiceCircle, drawPeriodDate, drawTextInCell, drawTextRuns, drawWrappedTextInCell, formatDateText, formatJapaneseDateText, formatJudgment, measureRuns, parseDateParts, pickFont, reportIfBelowMinSize, type CellDrawOptions, type DateAnchors, type ReportFonts } from "@/lib/pdf-form-helpers"
 import {
     buildFitError,
     createFitCollector,
@@ -212,16 +196,6 @@ export async function POST(req: NextRequest) {
             drawTextRuns(page, fonts, String(norm ?? ""), cellX + padX, pageH - (textTop + th * 0.78), sz)
         }
 
-        const drawSelectionCircle = (page: PDFPage, pageHeight: number, value: string, options: { label: string; cx: number; cy: number; rx: number; ry: number }[]) => {
-            const norm = normalizeText(value)
-            if (!norm) return
-            for (const opt of options) {
-                if (norm.includes(opt.label)) {
-                    const cy = pageHeight - opt.cy
-                    page.drawEllipse({ x: opt.cx, y: cy, xScale: opt.rx, yScale: opt.ry, borderWidth: 0.8, borderColor: rgb(0, 0, 0), color: undefined, opacity: 0 })
-                }
-            }
-        }
 
         const drawResultRows = (page: PDFPage, pageHeight: number, rows: BekkiRow[], rowBounds: number[], cols: ResultColumns, skipContentRows?: Set<number>) => {
             for (let i = 0; i < rowBounds.length - 1; i += 1) {
@@ -376,10 +350,10 @@ export async function POST(req: NextRequest) {
         const p2Rows = body.page2_rows ?? []
         const funcRow = p2Rows[7]
         if (funcRow) {
-            drawSelectionCircle(page2, p2Height, funcRow.content ?? "", [
+            drawChoiceCircle(page2, p2Height, funcRow.content ?? "", [
                 { label: "専用", cx: 259.0, cy: 222.0, rx: 16, ry: 7 },
                 { label: "兼用", cx: 301.0, cy: 222.0, rx: 16, ry: 7 },
-            ])
+            ], 0.8)
         }
 
         // === P2 Row 18: 性能 (吐出圧力MPa / 吐出量L/min) ===

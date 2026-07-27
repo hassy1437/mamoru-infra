@@ -1,6 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { Noto_Sans_JP } from "next/font/google";
-import { Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import { createClient } from "@/lib/supabase/server";
@@ -9,18 +7,6 @@ import { ServiceWorkerRegistrar } from "@/components/sw-registrar";
 import { OfflineIndicator } from "@/components/offline-indicator";
 import { Toaster } from "@/components/ui/toaster";
 import ChatbotHint from "@/components/chatbot-hint";
-
-const notoSansJP = Noto_Sans_JP({
-  variable: "--font-noto-sans-jp",
-  subsets: ["latin"],
-  weight: ["400", "500", "700"],
-  display: "swap",
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "Mamoru Infra — 消防設備点検の報告書作成を効率化",
@@ -58,7 +44,7 @@ export default async function RootLayout({
   return (
     <html lang="ja">
       <body
-        className={`${notoSansJP.variable} ${geistMono.variable} antialiased`}
+        className="antialiased"
       >
         <AuthProvider initialUser={user}>
           <Toaster />

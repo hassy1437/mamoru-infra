@@ -41,8 +41,14 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --font-sans: var(--font-noto-sans-jp);
-  --font-mono: var(--font-geist-mono);
+  /* ★next/font/google を使わない。ビルドのたびに fonts.gstatic.com へ取りに行くため、
+     取得に失敗するとデプロイ自体が止まる（2026-07-28 に実際に停止し、4コミットが本番へ
+     出せなくなった）。
+     元々 Noto_Sans_JP は subsets:["latin"] で読んでおり日本語グリフは配信されておらず、
+     日本語は端末のフォントに落ちていた。Geist_Mono はどこからも使われていなかった。
+     ＝ 外部取得をやめても失うのは font-sans を当てた箇所のラテン字形だけ。 */
+  --font-sans: "Noto Sans JP", "BIZ UDPGothic", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 }
 
 body {

@@ -141,6 +141,14 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-cell-definition-audit.py", stage: "静的",
+        why: "セル定義そのものが刷り込みに掛かっていないか。値に依存しないので、短い値でたまたま当たっていない潜在箇所も出る",
+        runs: [
+            { label: "自己診断", cmd: [PY, "scripts/check-cell-definition-audit.py", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: [PY, "scripts/check-cell-definition-audit.py"], sentinel: "CELL_DEFINITION_AUDIT_OK" },
+        ],
+    },
+    {
         file: "check-printed-overlap.py", stage: "生成PDF", needsPdfs: true,
         why: "アプリの文字が刷り込み（選択肢欄・単位・ラベル）に重なっていないか。罫線基準の検査では出ない次元",
         runs: [

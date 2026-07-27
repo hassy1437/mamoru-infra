@@ -410,7 +410,10 @@ export async function POST(req: NextRequest) {
         }
 
         // Page1 header
-        drawInCell(page1, p1Height, body.zone_name, 470, 82, 54, 12, 7.6)
+        // 刷り込みに重ねない: 「（区画名：」(-433.8) の右から「）」(517.8-) の手前まで（テンプレート実測）
+        // 高さは刷り込み文字の高さ(10.56)ではなく行の空き(83.0〜設備方式行100.57)に合わせる。
+        // 文字高そのままだと paddingY のぶん縦に潰れ、36.4%縮小の警告が出た。
+        drawInCell(page1, p1Height, body.zone_name, 433.8, 84.5, 84.0, 14.5, 7.6)
         // 設備方式: テンプレートに「（設備方式：全域・局所・移動）」が刷り込まれている。
         // ★従来はこの値を様式タイトルの上（x=150）に文字で描いていた。タイトルは
         //   正典でも完全な刷り込みで記入欄が無く、bekki7/8 では実際に重なっていた。
@@ -437,10 +440,14 @@ export async function POST(req: NextRequest) {
             drawInCell(page1, p1Height, periodText, 263.33, PERIOD_ROW.top, 265.34, PERIOD_ROW.h, 7.8)
         }
 
-        drawInCell(page1, p1Height, normalizedInspectorName, 136.0, 187.33, 69.33, 48.0, 7.8)
-        drawInCell(page1, p1Height, body.inspector_company, 299.0, 187.33, 139.0, 23.0, 7.0)
-        drawInCell(page1, p1Height, body.inspector_tel, 461.0, 187.33, 67.67, 23.0, 7.0)
-        drawInCell(page1, p1Height, body.inspector_address, 299.0, 210.0, 229.67, 25.33, 7.0)
+        // 刷り込みに重ねない: 点検者の行は 196.4-253.1。従来は 9.07pt 上で点検種別の行に食い込んでいた（テンプレート実測）
+        drawInCell(page1, p1Height, normalizedInspectorName, 136.0, 196.4, 69.33, 56.7, 7.8)
+        // 刷り込みに重ねない: 社名/TEL の行は 196.4-224.8（テンプレート実測）
+        drawInCell(page1, p1Height, body.inspector_company, 299.0, 196.4, 139.0, 28.4, 7.0)
+        // 刷り込みに重ねない: 社名/TEL の行は 196.4-224.8（テンプレート実測）
+        drawInCell(page1, p1Height, body.inspector_tel, 461.0, 196.4, 67.67, 28.4, 7.0)
+        // 刷り込みに重ねない: 住所の行は 224.8-253.1。従来は 14.8pt 上で2行にまたがっていた（テンプレート実測）
+        drawInCell(page1, p1Height, body.inspector_address, 299.0, 224.8, 229.67, 28.3, 7.0)
 
         drawResultRows(page1, p1Height, body.page1_rows ?? [], P1_ROW_BOUNDS, {
             contentX: 232.0, contentW: 99.33,

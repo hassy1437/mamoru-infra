@@ -279,8 +279,10 @@ export async function POST(req: NextRequest) {
                 drawInCell(page, pageHeight, periodText, 275.04, PERIOD_ROW.top, 255.0, PERIOD_ROW.h, 6.4)
             }
 
-            drawInCell(page, pageHeight, body.inspector_name, 117.6, 181.2, 88.68, 52.56, 6.7)
-            drawInCell(page, pageHeight, body.inspector_company, 302.4, 181.2, 120.0, 26.28, 6.4)
+            // 刷り込みに重ねない: 前置ラベル「氏名」(-143.9) の右から（テンプレート実測）
+            drawInCell(page, pageHeight, body.inspector_name, 143.9, 181.2, 62.4, 52.56, 6.7)
+            // 刷り込みに重ねない: 「TEL」(406.4-) の手前まで（テンプレート実測）
+            drawInCell(page, pageHeight, body.inspector_company, 302.4, 181.2, 104.0, 26.28, 6.4)
             drawInCell(page, pageHeight, body.inspector_tel, 422.4, 181.2, 107.64, 26.28, 6.3)
             drawInCell(page, pageHeight, body.inspector_address, 302.4, 207.48, 227.64, 26.28, 6.2)
         }

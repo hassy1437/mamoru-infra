@@ -286,14 +286,18 @@ export async function POST(req: NextRequest) {
             drawInCell(page1, p1Height, periodText, 211.33, PERIOD_ROW.top, 318.0, PERIOD_ROW.h, 7.6)
         }
 
-        drawInCell(page1, p1Height, body.inspector_name, 106.67, 194.67, 104.66, 52.66, 7.6)
-        drawInCell(page1, p1Height, body.inspector_company, 306.0, 194.67, 131.33, 26.33, 7.4)
+        // 刷り込みに重ねない: 前置ラベル「氏名」(-133.4) の右から（テンプレート実測）
+        drawInCell(page1, p1Height, body.inspector_name, 133.9, 194.67, 77.4, 52.66, 7.6)
+        // 刷り込みに重ねない: 「TEL」(416.9-) の手前まで（テンプレート実測）
+        drawInCell(page1, p1Height, body.inspector_company, 306.0, 194.67, 110.4, 26.33, 7.4)
         drawInCell(page1, p1Height, body.inspector_tel, 437.33, 194.67, 92.0, 26.33, 7.4)
         drawInCell(page1, p1Height, body.inspector_address, 306.0, 221.0, 223.33, 26.33, 7.2)
 
         // The "本佁E cell is a fixed label in this template, so we do not draw equipment_name here.
-        drawInCell(page1, p1Height, getExtra(body, "body_maker"), 264.4, 221.33, 264.93, 23.34, 7.2)
-        drawInCell(page1, p1Height, getExtra(body, "body_model"), 264.4, 244.67, 264.93, 23.33, 7.2)
+        // 本体の製造者名/型式等は「製造者名」y=247.6-268.6 /「型式等」y=268.6- の行（テンプレート実測）。
+        // 従来は1行上の点検者住所の行にあり、刷り込み「住所」に重なっていた。
+        drawInCell(page1, p1Height, getExtra(body, "body_maker"), 202.2, 247.6, 327.4, 21.0, 7.2)
+        drawInCell(page1, p1Height, getExtra(body, "body_model"), 202.2, 268.6, 327.4, 21.0, 7.2)
 
         drawResultRows(page1, p1Height, body.page1_rows ?? [], P1_ROW_BOUNDS, {
             contentX: 211.33, contentW: 94.67,

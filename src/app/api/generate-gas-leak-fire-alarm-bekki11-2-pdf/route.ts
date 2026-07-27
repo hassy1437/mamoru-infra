@@ -345,10 +345,12 @@ export async function POST(req: NextRequest) {
         drawInCell(page1, p1Height, body.inspector_address, INSPECTOR.address.x, INSPECTOR.address.top, INSPECTOR.address.w, INSPECTOR.address.h, 6.8)
 
         // 点検設備名 row has fixed labels for 受信橁E/ 中継器 in the left cells.
-        drawInCell(page1, p1Height, getExtra(body, "receiver_maker"), 222.5, 271.5, 99.5, 16.5, 6.8)
-        drawInCell(page1, p1Height, getExtra(body, "receiver_model"), 222.5, 288.0, 99.5, 16.5, 6.8)
-        drawInCell(page1, p1Height, getExtra(body, "repeater_maker"), 444.5, 271.5, 85.0, 16.5, 6.8)
-        drawInCell(page1, p1Height, getExtra(body, "repeater_model"), 444.5, 288.0, 85.0, 16.5, 6.8)
+        // 設備情報の帯は 製造者名 y=238.6-255.0 / 型式等 y=255.0-271.6（テンプレート実測）。
+        // 従来は約33pt下にずれ、列見出し「点検結果」「種別・容量等の内容」の行に描いていた。
+        drawInCell(page1, p1Height, getExtra(body, "receiver_maker"), 222.5, 238.6, 99.5, 16.4, 6.8)
+        drawInCell(page1, p1Height, getExtra(body, "receiver_model"), 222.5, 255.0, 99.5, 16.6, 6.8)
+        drawInCell(page1, p1Height, getExtra(body, "repeater_maker"), 444.5, 238.6, 85.0, 16.4, 6.8)
+        drawInCell(page1, p1Height, getExtra(body, "repeater_model"), 444.5, 255.0, 85.0, 16.6, 6.8)
 
         drawResultRows(page1, p1Height, body.page1_rows ?? [], P1_ROW_BOUNDS, {
             contentX: 222.5,

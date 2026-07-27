@@ -416,7 +416,8 @@ export async function POST(req: NextRequest) {
         }
 
         // Page1 header
-        drawInCell(page1, p1Height, body.zone_name, 470, 82, 54, 12, 7.6)
+        // 刷り込みに重ねない: 末尾の刷り込み「）」(522.7-) の手前まで（テンプレート実測）
+        drawInCell(page1, p1Height, body.zone_name, 470.0, 82, 52.7, 12, 7.6)
         drawInCell(page1, p1Height, body.equipment_system, 150, 100, 145, 12, 7.6)
         drawInCell(page1, p1Height, body.form_name, 113.33, 116.0, 266.0, 27.33, 8.8)
         drawInCell(page1, p1Height, body.fire_manager, 422.67, 116.0, 106.0, 27.33, 8.4)
@@ -439,10 +440,14 @@ export async function POST(req: NextRequest) {
             drawInCell(page1, p1Height, periodText, 263.33, PERIOD_ROW.top, 265.34, PERIOD_ROW.h, 7.8)
         }
 
-        drawInCell(page1, p1Height, body.inspector_name, 113.33, 187.33, 92.0, 48.0, 8.0)
-        drawInCell(page1, p1Height, body.inspector_company, 263.33, 187.33, 143.0, 23.0, 7.8)
-        drawInCell(page1, p1Height, body.inspector_tel, 406.33, 187.33, 122.34, 23.0, 7.8)
-        drawInCell(page1, p1Height, body.inspector_address, 263.33, 210.0, 265.34, 25.33, 7.6)
+        // 刷り込みに重ねない: 前置ラベル「氏名」(-139.9) の右から（テンプレート実測）
+        drawInCell(page1, p1Height, body.inspector_name, 140.4, 187.33, 64.9, 48.0, 8.0)
+        // 刷り込みに重ねない: 「社名」(-290.4) の右から「TEL」(395.5-) の手前まで（テンプレート実測）
+        drawInCell(page1, p1Height, body.inspector_company, 290.4, 187.33, 105.1, 23.0, 7.8)
+        // 刷り込みに重ねない: 前置ラベル「TEL」(-411.4) の右から（テンプレート実測）
+        drawInCell(page1, p1Height, body.inspector_tel, 411.4, 187.33, 117.3, 23.0, 7.8)
+        // 刷り込みに重ねない: 前置ラベル「住所」(-290.4) の右から（テンプレート実測）
+        drawInCell(page1, p1Height, body.inspector_address, 290.4, 210.0, 238.3, 25.33, 7.6)
 
         drawResultRows(page1, p1Height, body.page1_rows ?? [], P1_ROW_BOUNDS, {
             contentX: 225.33, contentW: 96.0,

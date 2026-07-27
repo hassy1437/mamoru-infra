@@ -126,7 +126,7 @@ const jobs = [
     payload: {
       ...shared,
       zone_name: "A区画",
-      equipment_system: "不活性ガス消火設備",
+      equipment_system: "全域",
       page1_rows: makeRows(32, "B6-P1"),
       page2_rows: makeRows(40, "B6-P2").map((row, i) =>
         // row 17: 起動装置 自動式 火災感知装置（専用・兼用）— 丸囲み確認用に「兼用」を投入
@@ -144,7 +144,7 @@ const jobs = [
     payload: {
       ...shared,
       zone_name: "B区画",
-      equipment_system: "ハロゲン化物消火設備",
+      equipment_system: "局所",
       page1_rows: makeRows(37, "B7-P1"),
       page2_rows: makeRows(47, "B7-P2").map((row, i) =>
         // row 26: 起動装置 自動式 火災感知装置（専用・兼用）— 丸囲み確認用に「専用」を投入
@@ -162,7 +162,7 @@ const jobs = [
     payload: {
       ...shared,
       zone_name: "C区画",
-      equipment_system: "粉末消火設備",
+      equipment_system: "移動",
       page1_rows: makeRows(39, "B8-P1"),
       page2_rows: makeRows(45, "B8-P2").map((row, i) =>
         // row 26: 起動装置 自動式 火災感知装置（専用・兼用）— 丸囲み確認用に「兼用」を投入

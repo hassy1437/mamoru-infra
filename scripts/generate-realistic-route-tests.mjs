@@ -37,7 +37,9 @@ const REALISTIC = {
     notes: "特記事項なし",
     shoubou_notes: "特記事項なし",
     equipment_name: "屋内消火栓",
-    equipment_system: "屋内消火栓設備",
+    // ★equipment_system は「設備の種類」ではなく設備方式の選択肢（全域・局所・移動）。
+    //   フォームの既定値も "全域"。設備名を入れると○が付かず検証が空振りする。
+    equipment_system: "全域",
     maker: "計測器製作所",
     model: "PG-9000",
     name: "圧力計",

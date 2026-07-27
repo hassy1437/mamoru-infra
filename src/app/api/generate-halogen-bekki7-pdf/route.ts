@@ -411,7 +411,15 @@ export async function POST(req: NextRequest) {
 
         // Page1 header
         drawInCell(page1, p1Height, body.zone_name, 470, 82, 54, 12, 7.6)
-        drawInCell(page1, p1Height, body.equipment_system, 150, 100, 145, 12, 7.6)
+        // 設備方式: テンプレートに「（設備方式：全域・局所・移動）」が刷り込まれている。
+        // ★従来はこの値を様式タイトルの上（x=150）に文字で描いていた。タイトルは
+        //   正典でも完全な刷り込みで記入欄が無く、bekki7/8 では実際に重なっていた。
+        //   選択肢は右側にあるので、該当する語を○で囲む（座標はテンプレート実測）。
+        drawChoiceCircle(page1, p1Height, body.equipment_system, [
+            { label: "全域", cx: 443.4, cy: 105.85, rx: 13.06, ry: 7.28 },
+            { label: "局所", cx: 474.9, cy: 105.85, rx: 13.0, ry: 7.28 },
+            { label: "移動", cx: 506.4, cy: 105.85, rx: 13.06, ry: 7.28 },
+        ])
         // ★セル境界の実測値（2026-07-24）: 63.6 | 106.0 …ラベル | 376.2 …名称/所在の値
         //   | 377.6 | 413.4 …ラベル | 528.7 …防火管理者/立会者
         //   旧値は幅266で 379.3 まで伸び、長い住所が罫線 376.2 を越えていた。

@@ -418,7 +418,15 @@ export async function POST(req: NextRequest) {
         // Page1 header
         // 刷り込みに重ねない: 末尾の刷り込み「）」(522.7-) の手前まで（テンプレート実測）
         drawInCell(page1, p1Height, body.zone_name, 470.0, 82, 52.7, 12, 7.6)
-        drawInCell(page1, p1Height, body.equipment_system, 150, 100, 145, 12, 7.6)
+        // 設備方式: テンプレートに「（設備方式：全域・局所・移動）」が刷り込まれている。
+        // ★従来はこの値を様式タイトルの上（x=150）に文字で描いていた。タイトルは
+        //   正典でも完全な刷り込みで記入欄が無く、bekki7/8 では実際に重なっていた。
+        //   選択肢は右側にあるので、該当する語を○で囲む（座標はテンプレート実測）。
+        drawChoiceCircle(page1, p1Height, body.equipment_system, [
+            { label: "全域", cx: 452.29, cy: 105.9, rx: 14.14, ry: 7.88 },
+            { label: "局所", cx: 481.81, cy: 105.9, rx: 14.14, ry: 7.88 },
+            { label: "移動", cx: 511.1, cy: 105.9, rx: 14.14, ry: 7.88 },
+        ])
         drawInCell(page1, p1Height, body.form_name, 113.33, 116.0, 266.0, 27.33, 8.8)
         drawInCell(page1, p1Height, body.fire_manager, 422.67, 116.0, 106.0, 27.33, 8.4)
         drawInCell(page1, p1Height, body.location, 113.33, 143.33, 266.0, 28.0, 8.5)

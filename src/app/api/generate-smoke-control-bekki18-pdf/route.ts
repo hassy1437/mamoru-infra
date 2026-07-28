@@ -206,7 +206,8 @@ export async function POST(req: NextRequest) {
 
             // 刷り込みに重ねない: 前置ラベル氏名(-143.9) の右から（テンプレート実測）
             drawInCell(page, pageHeight, body.inspector_name, 144.38, 181.8, 61.9, 49.92, 6.4)
-            drawInCell(page, pageHeight, body.inspector_company, 302.28, 181.8, 122.76, 24.96, 6.0)
+            // 刷り込みに重ねない: 後続のTEL(411.7-) の手前まで（テンプレート実測）
+            drawInCell(page, pageHeight, body.inspector_company, 302.28, 181.8, 108.92, 24.96, 6.0)
             drawInCell(page, pageHeight, body.inspector_tel, 425.04, 181.8, 105.0, 24.96, 6.0)
             drawInCell(page, pageHeight, body.inspector_address, 302.28, 206.76, 227.76, 24.96, 5.9)
 

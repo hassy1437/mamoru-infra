@@ -18,6 +18,21 @@ export const callArgs = (src, start) => {
     return ""
 }
 
+/** ★引数をトップレベルのカンマだけで分割する。
+ *  素朴な split(",") だと、入れ子の呼び出しやオブジェクト内のカンマで割れてしまう。 */
+export const splitTopLevelArgs = (args) => {
+    const out = []
+    let depth = 0, cur = ""
+    for (const c of args) {
+        if ("([{".includes(c)) depth += 1
+        else if (")]}".includes(c)) depth -= 1
+        if (c === "," && depth === 0) { out.push(cur); cur = ""; continue }
+        cur += c
+    }
+    if (cur.trim()) out.push(cur)
+    return out
+}
+
 /**
  * ルート実装から「数値欄（幅を絞ったセル）」の行番号を rows配列ごとに読む。
  *
@@ -25,36 +40,61 @@ export const callArgs = (src, start) => {
  *   最初はシグネチャ側の `= {}` を掴んでしまい、置換が黙って効かず、
  *   現実値セットに存在しないはずの切り詰めが6件出ていた（＝合否判定が狂う）。
  *   呼び出し側の実引数を括弧の対応で取り出し、最後のオブジェクトリテラルから読む。
+ *
+ * ★2026-07-28 の事故: rows 引数を blankPrintedRows(rows, new Set([7])) で包んだところ、
+ *   skip集合を拾う正規表現が**引数列の最初の new Set([...]) を非貪欲に**掴み、
+ *   本来の skip 集合 new Set([3]) ではなく包み側の [7] を読んだ。
+ *   その結果 bekki10 の数値行3に数値が入らず、テキストが 21.4pt の狭いセルに落ちて
+ *   ⑧が 422 で止めた（止めなければ壊れたテストデータで全検査が緑になっていた）。
+ *   ＝ 引数の**位置**で見る。skip集合は「それ単体が new Set( で始まる引数」だけ。
  */
 export const numericRowsByKey = (routePath) => {
     const src = fs.readFileSync(path.join(process.cwd(), routePath), "utf8")
     const map = new Map() // payloadのキー -> Set<行番号>
+    let calls = 0
     let idx = src.indexOf("drawResultRows(")
     while (idx !== -1) {
+        // 関数定義（const drawResultRows = (...)）は呼び出しではないので飛ばす
+        const before = src.slice(Math.max(0, idx - 40), idx)
+        if (/const\s+$/.test(before)) { idx = src.indexOf("drawResultRows(", idx + 1); continue }
+        calls += 1
         const args = callArgs(src, idx + "drawResultRows".length)
-        const rowsExpr = args.split(",")[2] ?? ""
+        const parts = splitTopLevelArgs(args)
+        const rowsExpr = parts[2] ?? ""
         // rows が局所変数なら const 宣言をたどって body.pageN_rows を解決する
         let key = rowsExpr.match(/page\d+_rows/)?.[0]
         if (!key) {
-            const local = rowsExpr.trim().match(/^[A-Za-z_$][\w$]*/)?.[0]
-            if (local) {
+            // ★rows が blankPrintedRows(...) のように包まれている場合は中の識別子を見る
+            const inner = rowsExpr.trim().replace(/^[A-Za-z_$][\w$]*\s*\(/, "")
+            const local = (inner.match(/page\d+_rows/)?.[0])
+                ?? inner.trim().match(/^[A-Za-z_$][\w$]*/)?.[0]
+                ?? rowsExpr.trim().match(/^[A-Za-z_$][\w$]*/)?.[0]
+            if (local?.match(/page\d+_rows/)) {
+                key = local
+            } else if (local) {
+                // ★テンプレートリテラル内では \s が s に潰れ \n が実改行になる。
+                //   正規表現を文字列で組むときはエスケープを二重にすること。
                 const decl = src.match(new RegExp(`const\\s+${local}\\s*=([^\\n]*)`))
                 key = decl?.[1].match(/page\d+_rows/)?.[0]
             }
         }
         const indexes = new Set()
-        // (a) contentOverrides: 幅を絞ったセル
-        for (const m of args.matchAll(/(\d+):\s*\{\s*x:\s*[\d.]+\s*,\s*w:\s*[\d.]+\s*\}/g)) {
-            indexes.add(Number(m[1]))
-        }
-        // (b) skip集合 new Set([...]): 汎用描画から外して専用コードが描く行。
-        //     bekki10 の「ホース・ノズル等」のように content が長さ(m)＝数値を意味する。
-        // ★skip集合は複数行＋行コメント付きで書かれる。コメントを外してから数字を拾う
-        //   （カンマ分割だと "// …" を含む要素が NaN になり、その行番号を取りこぼす）
-        const skip = args.match(/new Set\(\[([\s\S]*?)\]\)/)
-        if (skip) {
-            const cleaned = skip[1].replace(/\/\/.*/g, "")
-                for (const m of cleaned.matchAll(/\d+/g)) indexes.add(Number(m[0]))
+        // ★列定義より後ろの引数だけを見る（rows 引数の中身は対象外）
+        for (const part of parts.slice(4)) {
+            // (a) contentOverrides: 幅を絞ったセル
+            for (const m of part.matchAll(/(\d+):\s*\{\s*x:\s*[\d.]+\s*,\s*w:\s*[\d.]+\s*\}/g)) {
+                indexes.add(Number(m[1]))
+            }
+            // (b) skip集合: **その引数自体が** new Set( で始まるものだけ。
+            //     入れ子の new Set(...) を拾わないための位置指定。
+            if (/^\s*new Set\(/.test(part)) {
+                const inner = part.match(/new Set\(\[([\s\S]*)\]\)/)
+                if (inner) {
+                    // 行コメント付きで複数行に書かれるので、コメントを外してから数字を拾う
+                    const cleaned = inner[1].replace(/\/\/.*/g, "")
+                    for (const m of cleaned.matchAll(/\d+/g)) indexes.add(Number(m[0]))
+                }
+            }
         }
         if (key && indexes.size) {
             const cur = map.get(key) ?? new Set()
@@ -62,6 +102,11 @@ export const numericRowsByKey = (routePath) => {
             map.set(key, cur)
         }
         idx = src.indexOf("drawResultRows(", idx + 1)
+    }
+    // ★静かに空を返さない。今回の事故は「壊れても空が返る」のが最悪だった。
+    //   呼び出しが1つも見つからないのは、解析の前提が崩れた証拠なので落とす。
+    if (calls === 0) {
+        throw new Error(`numericRowsByKey: ${routePath} に drawResultRows の呼び出しが見つからない（解析の前提が崩れている）`)
     }
     return map
 }

@@ -111,7 +111,27 @@ def call_sites(route: str):
                 raise SystemExit(f"★{route} p{pno}: 内容列を特定できない（測り方の前提が崩れている）")
             cx, cw = float(body.group(1)), float(body.group(2))
 
-        out.append((pno, rows_key, b, start_index, cx, cw))
+        # 行ごとの内容セルの上書き（x/w のずらし）と、描画を止めている行
+        overrides, skips = {}, set()
+        for part in parts[4:]:
+            for mm in re.finditer(r"(\d+):\s*\{\s*x:\s*([\d.]+)\s*,\s*w:\s*([\d.]+)\s*\}", part):
+                overrides[int(mm.group(1))] = (float(mm.group(2)), float(mm.group(3)))
+            if re.match(r"^\s*new Set\(", part):
+                inner = re.search(r"new Set\(\[([\s\S]*)\]\)", part)
+                if inner:
+                    for mm in re.finditer(r"\d+", re.sub(r"//.*", "", inner.group(1))):
+                        skips.add(int(mm.group(0)))
+        # 行ごと空にする包み（blankPrintedRows(rows, new Set([...]))）も描画されない
+        wrap = re.match(r"\s*blankPrintedRows\(", parts[2])
+        if wrap:
+            inner = re.search(r"new Set\(\[([^\]]*)\]\)", parts[2])
+            if inner:
+                for mm in re.finditer(r"\d+", inner.group(1)):
+                    skips.add(int(mm.group(0)))
+        out.append({
+            "page": pno, "key": rows_key, "bounds": b, "start": start_index,
+            "cx": cx, "cw": cw, "overrides": overrides, "skips": skips,
+        })
         idx = src.find("drawResultRows(", idx + 1)
     return out
 
@@ -132,11 +152,25 @@ def printed_by_row(route: str) -> dict[tuple[str, int], str]:
         return {}
     doc = fitz.open(tpl)
     out: dict[tuple[str, int], str] = {}
-    for pno, key, b, start_index, cx, cw in call_sites(route):
-        if not key or not b or pno - 1 >= doc.page_count:
+    for c in call_sites(route):
+        if not c["key"] or not c["bounds"] or c["page"] - 1 >= doc.page_count:
             continue
-        page = doc[pno - 1]
+        page = doc[c["page"] - 1]
+        b = c["bounds"]
         for i in range(len(b) - 1):
-            out[(key, i + start_index)] = _printed_in_cell(page, b[i], b[i + 1], cx, cx + cw)
+            out[(c["key"], i + c["start"])] = _printed_in_cell(page, b[i], b[i + 1], c["cx"], c["cx"] + c["cw"])
     doc.close()
     return out
+
+
+def printed_glyphs_in_cell(page, top, bot, x0, x1):
+    """セル内の刷り込みグリフを (x0, x1, 文字) で返す（x順）"""
+    chars = []
+    for blk in page.get_text("rawdict")["blocks"]:
+        for ln in blk.get("lines", []):
+            for sp in ln.get("spans", []):
+                for ch in sp.get("chars", []):
+                    cx0, cy0, cx1, cy1 = ch["bbox"]
+                    if top <= (cy0 + cy1) / 2 <= bot and x0 - 2 <= cx0 and cx1 <= x1 + 2 and ch["c"].strip():
+                        chars.append((cx0, cx1, ch["c"]))
+    return sorted(chars)

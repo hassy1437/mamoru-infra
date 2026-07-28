@@ -158,6 +158,15 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-row-cells.py", stage: "静的",
+        why: "行ループ（drawResultRows）が描くセルの定義が刷り込みに掛かっていないか。"
+            + "check-cell-definition-audit はリテラル座標の drawInCell しか見ず、この領域では一度も鳴っていなかった",
+        runs: [
+            { label: "自己診断", cmd: [PY, "scripts/check-row-cells.py", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: [PY, "scripts/check-row-cells.py"], sentinel: "ROW_CELLS_OK" },
+        ],
+    },
+    {
         file: "check-printed-overlap.py", stage: "生成PDF", needsPdfs: true,
         why: "アプリの文字が刷り込み（選択肢欄・単位・ラベル）に重なっていないか。罫線基準の検査では出ない次元",
         runs: [

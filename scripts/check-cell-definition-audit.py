@@ -25,6 +25,11 @@
     （drawWrappedInCell は共有ヘルパー経由で paddingX=2.5 を持つ）
   ＝ ここで0件でも「全部きれい」ではない。検出器と併用すること。
 
+  ★2026-07-28: この但し書きがコメントにしか無かったため「0件＝安全」と読めていた。
+    実際 B-2 で直した9箇所（刷り込みラベルへの重ね書き）は全部この対象外にあり、
+    この監査は一度も鳴っていない。いまは対象外の件数を実行時に必ず出す。
+    行ループ（drawResultRows）が描くセルは scripts/audit-row-cells.py が見る。
+
 使い方:
   python scripts/check-cell-definition-audit.py            # 監査
   python scripts/check-cell-definition-audit.py --raw      # padding を考慮しない数も出す
@@ -85,6 +90,9 @@ def template_glyphs(form: str):
 
 def audit(use_padding: bool = True):
     hits = []
+    # ★対象外にした呼び出しを数える。「0件＝安全」と読めてしまうのを防ぐ。
+    #   実際 B-2 で直した9箇所は全部この外側にあり、この監査は一度も鳴っていない。
+    skipped = {"非リテラル座標": 0, "行ループ(drawWrappedInCell)": 0}
     for route in sorted(API.glob("generate-*/route.ts")):
         key = route.parent.name.replace("generate-", "").replace("-pdf", "")
         m = re.search(r"bekki(\d+_?\d*)$", key)
@@ -100,6 +108,7 @@ def audit(use_padding: bool = True):
             seg = call_span(src, c.start())
             h = HEAD.match(seg)
             if not h:
+                skipped["非リテラル座標"] += 1
                 continue
             pno = PAGE_INDEX.get(h.group(1))
             if pno is None or pno not in glyphs:
@@ -123,7 +132,8 @@ def audit(use_padding: bool = True):
                     "printed": "".join(ch for ch, _ in bad)[:16],
                     "page": pno + 1,
                 })
-    return hits
+        skipped["行ループ(drawWrappedInCell)"] += len(re.findall(r"drawWrappedInCell\(", src))
+    return hits, skipped
 
 
 def self_test() -> int:
@@ -169,9 +179,9 @@ def self_test() -> int:
 def main() -> int:
     if "--self-test" in sys.argv:
         return self_test()
-    hits = audit(use_padding=True)
+    hits, skipped = audit(use_padding=True)
     if "--raw" in sys.argv:
-        raw = audit(use_padding=False)
+        raw, _ = audit(use_padding=False)
         print(f"padding 無視: {len(raw)} 箇所 / {len({h['form'] for h in raw})} 様式")
         print(f"padding 考慮: {len(hits)} 箇所 / {len({h['form'] for h in hits})} 様式")
         print(f"  → 差 {len(raw) - len(hits)} 箇所は「矩形は掛かるが文字は届かない」")
@@ -186,6 +196,11 @@ def main() -> int:
             print(f"    p{h['page']} {h['value']:<30} ({x},{y},{w},{hh}) pad={h['pad'][0]} "
                   f"← 刷り込み[{h['printed']}]")
     print(f"\n監査 {len(hits)} 箇所 / {len(by)} 様式")
+    # ★この監査が見ていない範囲を数値で出す。冒頭コメントにしか書いていないと
+    #   「0件＝安全」と誤読される（B-2 で直した9箇所は全部この外側だった）。
+    print(f"  対象外: 座標が非リテラルの drawInCell {skipped['非リテラル座標']} 箇所 / "
+          f"drawWrappedInCell {skipped['行ループ(drawWrappedInCell)']} 箇所")
+    print("  → 行ループ（drawResultRows）が描くセルは scripts/audit-row-cells.py が見る")
     if hits:
         print("  → 値が短いと検出器には出ないが、長い社名等が来れば必ず重なる。")
         return 1

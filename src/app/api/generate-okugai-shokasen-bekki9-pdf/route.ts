@@ -10,7 +10,7 @@ import {
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
-import { FIT_EPSILON, drawChoiceCircle, drawTextRuns, drawWrappedTextInCell, formatJapaneseDateText, formatJudgment, measureRuns, pickFont, reportIfBelowMinSize, type ReportFonts } from "@/lib/pdf-form-helpers"
+import { FIT_EPSILON, blankPrintedRows, drawChoiceCircle, drawTextRuns, drawWrappedTextInCell, formatJapaneseDateText, formatJudgment, measureRuns, pickFont, reportIfBelowMinSize, type ReportFonts } from "@/lib/pdf-form-helpers"
 
 type BekkiRow = {
     content?: string
@@ -411,7 +411,8 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        drawResultRows(page3, p3Height, body.page3_rows ?? [], P3_ROW_BOUNDS, {
+        // 刷り込みの見出し行には描かない: p3 行11 = 刷り込み「総合点検」（テンプレート実測）
+        drawResultRows(page3, p3Height, blankPrintedRows(body.page3_rows ?? [], new Set([11])), P3_ROW_BOUNDS, {
             contentX: 216.67,
             contentW: 94.66,
             judgmentX: 311.33,

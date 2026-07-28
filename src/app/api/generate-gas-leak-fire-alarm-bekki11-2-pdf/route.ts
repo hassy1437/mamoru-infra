@@ -10,17 +10,7 @@ import {
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
-import {
-    drawWrappedTextInCell,
-    formatJapaneseDateText,
-    formatJudgment,
-    pickFont,
-    type ReportFonts,
-    measureRuns,
-    drawTextRuns,
-    FIT_EPSILON,
-    reportIfBelowMinSize,
-} from "@/lib/pdf-form-helpers"
+import { FIT_EPSILON, blankPrintedRows, drawTextRuns, drawWrappedTextInCell, formatJapaneseDateText, formatJudgment, measureRuns, pickFont, reportIfBelowMinSize, type ReportFonts } from "@/lib/pdf-form-helpers"
 
 type BekkiRow = { content?: string; judgment?: string; bad_content?: string; action_content?: string }
 type DeviceRow = { name?: string; model?: string; calibrated_at?: string; maker?: string }
@@ -352,7 +342,8 @@ export async function POST(req: NextRequest) {
         drawInCell(page1, p1Height, getExtra(body, "repeater_maker"), 444.5, 238.6, 85.0, 16.4, 6.8)
         drawInCell(page1, p1Height, getExtra(body, "repeater_model"), 444.5, 255.0, 85.0, 16.6, 6.8)
 
-        drawResultRows(page1, p1Height, body.page1_rows ?? [], P1_ROW_BOUNDS, {
+        // 刷り込みの見出し行には描かない: p1 行0 = 刷り込み「機器点検」（テンプレート実測）
+        drawResultRows(page1, p1Height, blankPrintedRows(body.page1_rows ?? [], new Set([0])), P1_ROW_BOUNDS, {
             contentX: 222.5,
             contentW: 99.5,
             judgmentX: 322.0,
@@ -363,7 +354,8 @@ export async function POST(req: NextRequest) {
             actionW: 85.0,
         })
 
-        drawResultRows(page2, p2Height, body.page2_rows ?? [], P2_ROW_BOUNDS, {
+        // 刷り込みの見出し行には描かない: p2 行15 = 刷り込み「総合点検」（テンプレート実測）
+        drawResultRows(page2, p2Height, blankPrintedRows(body.page2_rows ?? [], new Set([15])), P2_ROW_BOUNDS, {
             contentX: 217.0,
             contentW: 105.0,
             judgmentX: 322.0,

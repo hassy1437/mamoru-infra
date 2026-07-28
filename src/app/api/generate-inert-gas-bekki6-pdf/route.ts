@@ -10,7 +10,7 @@ import {
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
-import { FIT_EPSILON, drawChoiceCircle, drawTextInCell, drawTextRuns, drawWrappedTextInCell, formatJapaneseDateText, formatJudgment, measureRuns, pickFont, reportIfBelowMinSize, type ReportFonts } from "@/lib/pdf-form-helpers"
+import { FIT_EPSILON, blankPrintedRows, drawChoiceCircle, drawTextInCell, drawTextRuns, drawWrappedTextInCell, formatJapaneseDateText, formatJudgment, measureRuns, pickFont, reportIfBelowMinSize, type ReportFonts } from "@/lib/pdf-form-helpers"
 
 type Bekki6Row = {
     content?: string
@@ -457,7 +457,8 @@ export async function POST(req: NextRequest) {
         // 刷り込みに重ねない: 前置ラベル「住所」(-290.4) の右から（テンプレート実測）
         drawInCell(page1, p1Height, body.inspector_address, 290.4, 210.0, 238.3, 25.33, 7.6)
 
-        drawResultRows(page1, p1Height, body.page1_rows ?? [], P1_ROW_BOUNDS, {
+        // 刷り込みの見出し行には描かない: p1 行0 = 刷り込み「機器点検」（テンプレート実測）
+        drawResultRows(page1, p1Height, blankPrintedRows(body.page1_rows ?? [], new Set([0])), P1_ROW_BOUNDS, {
             contentX: 225.33, contentW: 96.0,
             judgmentX: 321.33, judgmentW: 38.0,
             badX: 359.33, badW: 84.67,
@@ -484,7 +485,8 @@ export async function POST(req: NextRequest) {
             actionX: 444.67, actionW: 84.66,
         })
 
-        drawResultRows(page4, p4Height, body.page4_rows ?? [], P4_ROW_BOUNDS, {
+        // 刷り込みの見出し行には描かない: p4 行0 = 刷り込み「総合点検」（テンプレート実測）
+        drawResultRows(page4, p4Height, blankPrintedRows(body.page4_rows ?? [], new Set([0])), P4_ROW_BOUNDS, {
             contentX: 235.33, contentW: 86.0,
             judgmentX: 321.33, judgmentW: 38.0,
             badX: 359.33, badW: 85.34,

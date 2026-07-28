@@ -51,6 +51,11 @@ export const splitTopLevelArgs = (args) => {
 export const numericRowsByKey = (routePath) => {
     const src = fs.readFileSync(path.join(process.cwd(), routePath), "utf8")
     const map = new Map() // payloadのキー -> Set<行番号>
+    // ★このルートが drawResultRows を使っているか自体を先に見る。
+    //   使っていない様式が実在する（bekki1 / 総括表 / 点検者一覧）ので、
+    //   「呼び出し0件＝異常」にすると正常なものを落とす。実測してから条件を決める。
+    const mentions = (src.match(/drawResultRows\(/g) ?? []).length
+    const map0 = map
     let calls = 0
     let idx = src.indexOf("drawResultRows(")
     while (idx !== -1) {
@@ -104,11 +109,19 @@ export const numericRowsByKey = (routePath) => {
         idx = src.indexOf("drawResultRows(", idx + 1)
     }
     // ★静かに空を返さない。今回の事故は「壊れても空が返る」のが最悪だった。
-    //   呼び出しが1つも見つからないのは、解析の前提が崩れた証拠なので落とす。
-    if (calls === 0) {
-        throw new Error(`numericRowsByKey: ${routePath} に drawResultRows の呼び出しが見つからない（解析の前提が崩れている）`)
+    //   ただし条件は実測してから決める（正常側を測らずに置くと正常を落とす）:
+    //     - 使っていない様式が実在する … bekki1 / 総括表 / 点検者一覧 は drawResultRows を
+    //       持たない。「呼び出し0件＝異常」にすると、この3つを落とす（実際に落とした）
+    //     - 狭いセルも skip集合も無い様式が9つある … 結果が空でも正常
+    //   ＝ 落とすのは「ソースには出現するのに1件も解析できなかった」ときだけ。
+    //     これは解析の前提が崩れた証拠にしかならない。
+    if (mentions > 0 && calls === 0) {
+        throw new Error(
+            `numericRowsByKey: ${routePath} は drawResultRows を ${mentions} 箇所含むのに` +
+            `呼び出しを1つも解析できない（解析の前提が崩れている）`,
+        )
     }
-    return map
+    return map0
 }
 
 /**

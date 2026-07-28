@@ -10,7 +10,7 @@ import {
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
-import { FIT_EPSILON, drawChoiceCircle, drawTextRuns, drawWrappedTextInCell, formatJapaneseDateText, formatJudgment, measureRuns, pickFont, reportIfBelowMinSize, type ReportFonts } from "@/lib/pdf-form-helpers"
+import { FIT_EPSILON, blankPrintedRows, drawChoiceCircle, drawTextRuns, drawWrappedTextInCell, formatJapaneseDateText, formatJudgment, measureRuns, pickFont, reportIfBelowMinSize, type ReportFonts } from "@/lib/pdf-form-helpers"
 
 type Bekki5Row = {
     content?: string
@@ -394,7 +394,8 @@ export async function POST(req: NextRequest) {
         drawInCell(page1, p1Height, body.foam_model, 495, 257, 33, 20, 7.1)
 
         const p1Rows5 = body.page1_rows ?? []
-        drawResultRows(page1, p1Height, p1Rows5, P1_ROW_BOUNDS, {
+        // 刷り込みの見出し行には描かない: p1 行0 = 刷り込み「機器点検」（テンプレート実測）
+        drawResultRows(page1, p1Height, blankPrintedRows(p1Rows5, new Set([0])), P1_ROW_BOUNDS, {
             contentX: 222, contentW: 95,
             judgmentX: 317, judgmentW: 45,
             badX: 362, badW: 88,
@@ -489,7 +490,8 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        drawResultRows(page4, p4Height, body.page4_rows ?? [], P4_ROW_BOUNDS, {
+        // 刷り込みの見出し行には描かない: p4 行0 = 刷り込み「総合点検」（テンプレート実測）
+        drawResultRows(page4, p4Height, blankPrintedRows(body.page4_rows ?? [], new Set([0])), P4_ROW_BOUNDS, {
             contentX: 235, contentW: 79,
             judgmentX: 314, judgmentW: 45,
             badX: 359, badW: 86,

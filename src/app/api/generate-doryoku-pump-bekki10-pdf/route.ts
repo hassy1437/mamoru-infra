@@ -10,7 +10,7 @@ import {
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
-import { FIT_EPSILON, drawChoiceCircle, drawTextRuns, drawWrappedTextInCell, formatJapaneseDateText, formatJudgment, measureRuns, pickFont, reportIfBelowMinSize, type ReportFonts } from "@/lib/pdf-form-helpers"
+import { FIT_EPSILON, blankPrintedRows, drawChoiceCircle, drawTextRuns, drawWrappedTextInCell, formatJapaneseDateText, formatJudgment, measureRuns, pickFont, reportIfBelowMinSize, type ReportFonts } from "@/lib/pdf-form-helpers"
 
 type BekkiRow = { content?: string; judgment?: string; bad_content?: string; action_content?: string; hose_count?: string; nozzle_dia?: string }
 type DeviceRow = { name?: string; model?: string; calibrated_at?: string; maker?: string }
@@ -306,7 +306,8 @@ export async function POST(req: NextRequest) {
             actionX: 437.33, actionW: 92.0,
         })
 
-        drawResultRows(page2, p2Height, body.page2_rows ?? [], P2_ROW_BOUNDS, {
+        // 刷り込みの見出し行には描かない: p2 行7 = 刷り込み「総合点検」（テンプレート実測）
+        drawResultRows(page2, p2Height, blankPrintedRows(body.page2_rows ?? [], new Set([7])), P2_ROW_BOUNDS, {
             contentX: 217.0, contentW: 94.5,
             judgmentX: 311.5, judgmentW: 42.0,
             badX: 353.5, badW: 88.0,

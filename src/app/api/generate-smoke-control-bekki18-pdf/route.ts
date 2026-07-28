@@ -10,7 +10,7 @@ import {
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
-import { drawChoiceCircle, drawPeriodDate, drawTextInCell, drawWrappedTextInCell, formatDateText, formatJapaneseDateText, formatJudgment, parseDateParts, pickFont, type CellDrawOptions, type DateAnchors, type ReportFonts } from "@/lib/pdf-form-helpers"
+import { blankPrintedRows, drawChoiceCircle, drawPeriodDate, drawTextInCell, drawWrappedTextInCell, formatDateText, formatJapaneseDateText, formatJudgment, parseDateParts, pickFont, type CellDrawOptions, type DateAnchors, type ReportFonts } from "@/lib/pdf-form-helpers"
 
 type BekkiRow = { content?: string; judgment?: string; bad_content?: string; action_content?: string; current_value?: string }
 type DeviceRow = { name?: string; model?: string; calibrated_at?: string; maker?: string }
@@ -248,10 +248,11 @@ export async function POST(req: NextRequest) {
             drawInCell(page1, p1Height, voltRow18.current_value, 287, vTop, 33, vH, 5.8)
         }
 
+        // 刷り込みの見出し行には描かない: p2 行13 = 刷り込み「総合点検」（テンプレート実測）
         drawResultRows(
             page2,
             p2Height,
-            body.page2_rows ?? [],
+            blankPrintedRows(body.page2_rows, new Set([13])),
             P2_ROW_BOUNDS,
             {
                 contentX: 227.76,

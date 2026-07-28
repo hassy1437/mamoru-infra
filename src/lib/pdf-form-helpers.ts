@@ -657,3 +657,20 @@ export const drawChoiceCircle = (
         })
     }
 }
+
+/**
+ * テンプレートに刷り込み済みで、アプリが描いてはいけない行を空にする。
+ *
+ * ★用途: 「機器点検」「総合点検」のようなセクション見出しは、様式では**行いっぱいの
+ *   刷り込み**であってデータ行ではない。そこに点検項目や判定を描くと見出しに重なる。
+ *
+ * ★なぜ skipContentRows では足りないか
+ *   各ルートの drawResultRows が持つ skipContentRows は**内容列しか飛ばさない**。
+ *   判定・不良内容・措置内容は描かれてしまうので、見出し行には使えない。
+ *   行データ自体を空にすれば、列の構成やルートごとの引数の違いに関係なく全列止まる。
+ *
+ * ★ここに置く理由: 同じ判断を7ルートに書くと必ずドリフトする（drawSelectionCircle が
+ *   実際に3種類に分かれ、equipment_name の非描画が1様式だけ漏れていた）。定義は1つにする。
+ */
+export const blankPrintedRows = <T>(rows: T[] | undefined, printedRows: ReadonlySet<number>): T[] =>
+    (rows ?? []).map((row, i) => (printedRows.has(i) ? ({} as T) : row))

@@ -114,6 +114,9 @@ const jobs = [
       page3_rows: makeRows(27, "B5-P3").map((row, i) => {
         // row 21: ホース・ノズル / 外形 — 長さ/本数/口径を個別キーで投入
         if (i === 21) return { ...row, content: "30", hose_count: "2", nozzle_dia: "19" };
+        // row 12: 圧力スイッチ — 刷り込み「設定圧力 ___ MPa / 作動圧力 ___ MPa」の2値。
+        //   ★入れないと2つとも一度も描かれず、座標を直しても検証されない（実際に未検証だった）
+        if (i === 12) return { ...row, content: "0.45", current_value: "0.38" };
         return row;
       }),
       page4_rows: makeRows(23, "B5-P4"),

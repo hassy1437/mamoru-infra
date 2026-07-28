@@ -129,7 +129,10 @@ const jobs = [
     payload: {
       ...shared,
       page1_rows: makeRows(23, "B12-P1"),
-      page2_rows: makeRows(4, "B12-P2"),
+      // row 0: 感度範囲 — 刷り込み「－ ___ ％ ～ ＋ ___ ％」の2値。空欄は 10.5pt しかない
+      page2_rows: makeRows(4, "B12-P2").map((row, i) =>
+        i === 0 ? { ...row, content: "10", current_value: "10" } : row
+      ),
     },
   },
 ];

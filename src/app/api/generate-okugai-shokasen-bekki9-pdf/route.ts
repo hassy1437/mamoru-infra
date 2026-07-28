@@ -363,6 +363,8 @@ export async function POST(req: NextRequest) {
         }, {
             // 電圧計・電流計: 「Ｖ」(x=250.2-260.8)・「Ａ」(x=292.3-302.9)印刷済み → V前まで
             10: { x: 208.0, w: 40 },
+            // B-2: 行0 — 刷り込み「種別」(213.72–234.84) の後ろの空欄に描く
+            0: { x: 234.84, w: 72.49 },
         })
 
         // 電圧計・電流計 (row 10): 「Ｖ」と「Ａ」の間に電流値を描画
@@ -382,7 +384,12 @@ export async function POST(req: NextRequest) {
             badW: 90.0,
             actionX: 439.33,
             actionW: 90.0,
-        }, {}, new Set([7, 21]))
+        }, {
+            // B-2: 刷り込み「設定圧力 ___ MPa」「作動圧力 ___ MPa」の空欄に値だけ描く
+            //   （ラベル右端 255.72 〜 MPa 左端 287.16。テンプレート実測）
+            8: { x: 255.72, w: 31.44 },
+            10: { x: 255.72, w: 31.44 },
+        }, new Set([7, 21]))
 
         // PAGE2 row 7「遠隔操作部 / 機能（専用・兼用）」: 公式PDF刷り込みの選択を丸囲み
         drawChoiceCircle(page2, p2Height, fonts, body.page2_rows?.[7]?.content ?? "", [

@@ -403,6 +403,9 @@ export async function POST(req: NextRequest) {
         }, {
             // 電圧計・電流計: 「Ｖ」(x=248.8)・「Ａ」(x=301.3)印刷済み → V前に電圧値
             11: { x: 222, w: 25 },
+            // B-2: 貯水槽 行1 — 刷り込み「種別」(227.28–248.40) の後ろの空欄に描く。
+            //   従来は内容列の左端(222)から描いていたので「種別」に重なっていた。
+            1: { x: 248.40, w: 68.60 },
         })
 
         // 電圧計・電流計 (row 11): 「Ｖ」と「Ａ」の間に電流値を描画
@@ -419,7 +422,12 @@ export async function POST(req: NextRequest) {
             judgmentX: 313, judgmentW: 46,
             badX: 359, badW: 86,
             actionX: 445, actionW: 84,
-        }, {}, new Set([7, 19]))
+        }, {
+            // B-2: 刷り込み「設定圧力 ___ MPa」「作動圧力 ___ MPa」の空欄に値だけ描く。
+            //   ラベルの右端 261.96 から MPa の左端 293.40 まで（テンプレート実測）。
+            4: { x: 261.96, w: 31.44 },
+            6: { x: 261.96, w: 31.44 },
+        }, new Set([7, 19]))
 
         // PAGE2 row 7「火災感知装置 / 感知器（専用・兼用）」: 公式PDF刷り込みの選択を丸囲み
         drawChoiceCircle(page2, p2Height, fonts, p2Rows5[7]?.content ?? "", [
@@ -453,7 +461,20 @@ export async function POST(req: NextRequest) {
             judgmentX: 313, judgmentW: 46,
             badX: 359, badW: 86,
             actionX: 445, actionW: 84,
-        }, {}, new Set([1, 21]))
+        }, {}, new Set([1, 21, 12]))   // 12 = 圧力スイッチ（下の専用描画で2値に分ける）
+
+        // B-2: PAGE3 行12「圧力スイッチ」— 刷り込みが2段組になっている（テンプレート実測）:
+        //   上段 y360.73–371.29 … ラベル「設定圧力」217.32–259.44 ／「作動圧力」269.88–312.00
+        //   下段 y374.41–384.97 … 単位「MPa」254.04–269.88 ／「MPa」290.88–306.72
+        //   ＝ 値は下段の MPa の手前に入る。行の上下中央に描く通常の経路では上段のラベルに
+        //     重なるので、内容列の一括描画からは外して（skip 12）ここで個別に描く。
+        const swRow5 = p3Rows5[12]
+        if (swRow5) {
+            const swTop = 374.41
+            const swH = 10.56
+            drawInCell(page3, p3Height, swRow5.content, 217.32, swTop, 36.72, swH, 5.8)
+            drawInCell(page3, p3Height, swRow5.current_value, 269.88, swTop, 21.00, swH, 5.8)
+        }
 
         // PAGE3 row 1「消火薬剤」: 正典で2段になったので content は上段のみ。下段は型式番号の空欄。
         const foamRow = p3Rows5[1]

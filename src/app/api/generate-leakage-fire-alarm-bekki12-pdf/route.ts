@@ -22,7 +22,14 @@ import {
     reportIfBelowMinSize,
 } from "@/lib/pdf-form-helpers"
 
-type BekkiRow = { content?: string; judgment?: string; bad_content?: string; action_content?: string }
+type BekkiRow = {
+    content?: string
+    judgment?: string
+    bad_content?: string
+    action_content?: string
+    /** 1行に空欄が2つある行の2つ目の値（p2行0「感度範囲 －○％〜＋○％」の ＋ 側） */
+    current_value?: string
+}
 type DeviceRow = { name?: string; model?: string; calibrated_at?: string; maker?: string }
 
 type Bekki12Payload = {
@@ -265,13 +272,19 @@ export async function POST(req: NextRequest) {
             rows: BekkiRow[],
             rowBounds: number[],
             cols: ResultColumns,
+            // 内容列に刷り込み（「設定値 ___ mA」等）がある行は、空欄の位置に値だけ描く
+            contentOverrides: Record<number, { x: number; w: number }> = {},
+            // 内容列に刷り込みがあり、専用コードが描く行（一括描画から外す）
+            skipContentRows: Set<number> = new Set(),
         ) => {
             for (let i = 0; i < rowBounds.length - 1; i += 1) {
                 const row = rows[i]
                 if (!row) continue
                 const top = rowBounds[i]
                 const h = rowBounds[i + 1] - top
-                drawWrappedInCell(page, pageHeight, row.content, cols.contentX, top, cols.contentW, h, 6.2)
+                const cx = contentOverrides[i]?.x ?? cols.contentX
+                const cw = contentOverrides[i]?.w ?? cols.contentW
+                if (!skipContentRows.has(i)) drawWrappedInCell(page, pageHeight, row.content, cx, top, cw, h, 6.2)
                 drawInCell(page, pageHeight, formatJudgment(row.judgment), cols.judgmentX, top, cols.judgmentW, h, 7.4, { align: "center" })
                 drawWrappedInCell(page, pageHeight, row.bad_content, cols.badX, top, cols.badW, h, 6.0)
                 drawWrappedInCell(page, pageHeight, row.action_content, cols.actionX, top, cols.actionW, h, 6.0)
@@ -355,7 +368,26 @@ export async function POST(req: NextRequest) {
             badW: 85.32,
             actionX: 445.08,
             actionW: 84.48,
+        }, {
+            // B-2: 行10 — 刷り込み「設定値 ___ mA」の空欄に値だけ描く
+            //   （ラベル右端 260.64 〜 mA 左端 305.88。テンプレート実測）
+            10: { x: 260.64, w: 45.24 },
         })
+
+        // B-2: PAGE2 行0「感度範囲」— 刷り込み「－ ___ ％ ～ ＋ ___ ％」（テンプレート実測）:
+        //   －  233.04–243.60 ／ ％ 254.16–264.72 ／ ～ 264.60–275.16
+        //   ＋  275.16–285.72 ／ ％ 296.16–306.72
+        //   ＝ 空欄は 243.60–254.16 と 285.72–296.16 の2つ。内容列の一括描画では
+        //     左端(217.56)から描くので「－」と「％～＋」に重なる。個別に描く。
+        //   ★空欄は 10.5pt しか無い。既定の padding 2.5×2 だと 2桁が入らないので
+        //     padding を 1.0 にする（刷り込みが両端を規定していて広げようが無いため）。
+        const sensRow12 = body.page2_rows?.[0]
+        if (sensRow12) {
+            const sTop = P2_ROW_BOUNDS[0]
+            const sH = P2_ROW_BOUNDS[1] - P2_ROW_BOUNDS[0]
+            drawInCell(page2, p2Height, sensRow12.content, 243.60, sTop, 10.56, sH, 5.5, { paddingX: 1.0, align: "center" })
+            drawInCell(page2, p2Height, sensRow12.current_value, 285.72, sTop, 10.44, sH, 5.5, { paddingX: 1.0, align: "center" })
+        }
 
         drawResultRows(page2, p2Height, body.page2_rows ?? [], P2_ROW_BOUNDS, {
             contentX: 217.56,
@@ -366,7 +398,7 @@ export async function POST(req: NextRequest) {
             badW: 85.32,
             actionX: 445.08,
             actionW: 84.48,
-        })
+        }, {}, new Set([0]))   // 0 = 感度範囲（上の専用描画で2値に分ける）
 
         drawWrappedInCell(page2, p2Height, body.notes, 80.52, 198.48, 449.04, 419.52, 7.0)
 

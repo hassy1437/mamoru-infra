@@ -163,7 +163,11 @@ const jobs = [
     outPdfPath: "tmp/pdf-test-bekki13to22/bekki21_test.pdf",
     payload: {
       ...shared,
-      page1_rows: makeRows(12, "B21-P1"),
+      // row 6: 端子電圧 — 刷り込み「常用 ___ V 非常 ___ V」の2値。
+      //   ★current_value を入れていなかったため、非常V側の座標ずれが検出器に出ず潜在していた
+      page1_rows: makeRows(12, "B21-P1").map((row, i) =>
+        i === 6 ? { ...row, content: "100", current_value: "24" } : row
+      ),
     },
   },
   {

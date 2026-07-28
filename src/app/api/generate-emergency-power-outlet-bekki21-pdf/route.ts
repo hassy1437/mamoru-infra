@@ -195,16 +195,22 @@ export async function POST(req: NextRequest) {
             actionX: 453.36,
             actionW: 76.44,
         }, {
-            // Pre-4: 端子電圧（常用Ｖ・非常Ｖ）row 6 — 常用V を「常用V」印字(x=275)前に収める
-            6: { x: 222.36, w: 50 },
+            // B-2: 端子電圧 row 6 —「常用 ___ V 非常 ___ V」の1つ目の空欄。
+            //   ★従来は「常用」の印字を x=275 と誤認して x=222.36 から描いており、
+            //     刷り込みの「常用」(232.92–254.04) に重なっていた。テンプレート実測では
+            //     常用 232.92–254.04 / V 275.04 なので、空欄はちょうど 254.04–275.04。
+            6: { x: 254.04, w: 21.00 },
         })
 
-        // Pre-4: 端子電圧 row 6 — 非常V値を「常用V」(x=275)後・「非常V」(x=322.3)前に描画
+        // B-2: 端子電圧 row 6 — 2つ目の空欄「非常 ___ V」。
+        //   非常 280.21–301.33 / V 322.33 なので空欄は 301.33–322.33（実測）。
+        //   従来の x=287 は「非常」の上に重なっていた（現実値セットに current_value が
+        //   無かったため描かれず、検出器にも出ていなかった＝潜在していた）。
         const termVoltRow = body.page1_rows?.[6]
         if (termVoltRow?.current_value) {
             const tvTop = P1_ROW_BOUNDS[6]
             const tvH = P1_ROW_BOUNDS[7] - P1_ROW_BOUNDS[6]
-            drawInCell(page1, p1Height, termVoltRow.current_value, 287, tvTop, 33, tvH, 5.8)
+            drawInCell(page1, p1Height, termVoltRow.current_value, 301.33, tvTop, 21.00, tvH, 5.8)
         }
 
         drawWrappedInCell(page1, p1Height, body.notes, 85.8, 416.4, 444.0, 233.76, 6.8)

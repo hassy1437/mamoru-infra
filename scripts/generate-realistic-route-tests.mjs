@@ -72,12 +72,31 @@ const BAD = "変形あり"
 const ACTION = "部品交換"
 const NUMERIC = "0.45"
 
-import { numericRowsByKey } from "./lib-numeric-rows.mjs"
+import { numericRowsByKey, applyChoiceRows } from "./lib-numeric-rows.mjs"
 
 const realisticValue = (key, original) => {
     if (key in REALISTIC) return REALISTIC[key]
     if (key === "calibrated_at") return original
     return original
+}
+
+/**
+ * ★選択肢欄の行。一般の content 置換から外して、実際の選択肢の語を入れる。
+ *
+ *   値が選択肢のどれとも一致しないと ○ が1つも描かれず、修正を入れても
+ *   「何も変わらない」ことに気づけない（equipment_system で実際に踏んだ）。
+ *
+ *   ★長文セットと現実値セットで違う語を割り当てる。行が2つしか無いので
+ *     1セットでは2語までしか試せず、4語すべてを回帰で守れないため。
+ *       長文  … 一斉 / 相互（generate-bekki13to22-route-tests.mjs 側）
+ *       現実値 … 区分 / 再鳴動（下の表）
+ *   どちらも鳴動方式として現実的な値なので、現実値セットの意味も壊れない。
+ */
+const CHOICE_ROWS = {
+    "generate-emergency-alarm-bekki14-pdf": {
+        page1_rows: { 23: "区分" },
+        page2_rows: { 30: "再鳴動" },
+    },
 }
 
 const transform = (node, numericByKey, key = "", rowIndex = null, rowsKey = "") => {
@@ -118,7 +137,11 @@ for (const jobPath of jobs) {
     if (!fs.existsSync(payloadPath)) continue
     const name = path.basename(jobPath).replace(/\.job\.json$/, "")
     const numericByKey = numericRowsByKey(routePath)
+    // routePath は "src/app/api/generate-xxx-pdf/route.ts" 形式。ディレクトリ名で引く
     const payload = transform(JSON.parse(fs.readFileSync(payloadPath, "utf8")), numericByKey)
+    // ★選択肢欄は数値置換より後（選択肢の行も skipContentRows に載るため）。
+    //   長文セットと同じ共有部品を通し、宣言と実装のズレはそこで落とす。
+    applyChoiceRows(payload, routePath, CHOICE_ROWS[path.basename(path.dirname(routePath))])
     const outPdfPath = path.join(OUT_DIR, `${name}.pdf`)
     const result = await runRoutePdf({ routePath, payload, outPdfPath })
     fs.writeFileSync(outPdfPath.replace(/[.]pdf$/, ".payload.json"), JSON.stringify(payload))

@@ -10,19 +10,7 @@ import {
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
-import {
-    drawPeriodDate,
-    drawTextInCell,
-    drawWrappedTextInCell,
-    formatDateText,
-    formatJapaneseDateText,
-    parseDateParts,
-    type CellDrawOptions,
-    type DateAnchors,
-    formatJudgment,
-    pickFont,
-    type ReportFonts,
-} from "@/lib/pdf-form-helpers"
+import { drawChoiceCircle, drawPeriodDate, drawTextInCell, drawWrappedTextInCell, formatDateText, formatJapaneseDateText, formatJudgment, parseDateParts, pickFont, type CellDrawOptions, type DateAnchors, type ReportFonts } from "@/lib/pdf-form-helpers"
 import { normalizeInspectorNameValue, normalizeWitnessValue } from "@/lib/bekki-header-normalization"
 
 type BekkiRow = { content?: string; judgment?: string; bad_content?: string; action_content?: string }
@@ -150,13 +138,18 @@ export async function POST(req: NextRequest) {
             fontSize,
         })
 
-        const drawResultRows = (page: PDFPage, pageHeight: number, rows: BekkiRow[], rowBounds: number[], cols: ResultColumns) => {
+        // skipContentRows: 内容列だけ描かない行（他8ルートと同じ引数名・同じ意味）。
+        // 判定・不良内容・措置内容は正当に埋まるので、行ごと空にはしない。
+        const drawResultRows = (page: PDFPage, pageHeight: number, rows: BekkiRow[], rowBounds: number[], cols: ResultColumns,
+                                skipContentRows: Set<number> = new Set()) => {
             for (let i = 0; i < rowBounds.length - 1; i += 1) {
                 const row = rows[i]
                 if (!row) continue
                 const top = rowBounds[i]
                 const h = rowBounds[i + 1] - top
-                drawWrappedInCell(page, pageHeight, row.content, cols.contentX, top, cols.contentW, h, 6.2)
+                if (!skipContentRows.has(i)) {
+                    drawWrappedInCell(page, pageHeight, row.content, cols.contentX, top, cols.contentW, h, 6.2)
+                }
                 drawInCell(page, pageHeight, formatJudgment(row.judgment), cols.judgmentX, top, cols.judgmentW, h, 7.2, { align: "center" })
                 drawWrappedInCell(page, pageHeight, row.bad_content, cols.badX, top, cols.badW, h, 6.0)
                 drawWrappedInCell(page, pageHeight, row.action_content, cols.actionX, top, cols.actionW, h, 6.0)
@@ -224,7 +217,16 @@ export async function POST(req: NextRequest) {
             badW: 84.48,
             actionX: 455.16,
             actionW: 74.64,
-        })
+        }, new Set([23]))   // 行23=鳴動方式（刷り込みの選択肢。下で○を描く）
+
+        // 鳴動方式は「一斉・区分・相互・再鳴動」がテンプレートに刷り込まれた選択肢欄。
+        // 文字を重ねず、該当する語を○で囲む（座標はテンプレートPDFの文字を実測）。
+        drawChoiceCircle(page1, p1Height, body.page1_rows?.[23]?.content ?? "", [
+            { label: "一斉", cx: 237.48, cy: 676.05, rx: 11.98, ry: 7.00 },
+            { label: "区分", cx: 261.05, cy: 676.05, rx: 11.92, ry: 7.00 },
+            { label: "相互", cx: 284.69, cy: 676.05, rx: 11.92, ry: 7.00 },
+            { label: "再鳴動", cx: 313.01, cy: 676.05, rx: 16.72, ry: 7.00 },
+        ])
 
         drawResultRows(page2, p2Height, body.page2_rows ?? [], P2_ROW_BOUNDS, {
             contentX: 221.16,
@@ -235,7 +237,14 @@ export async function POST(req: NextRequest) {
             badW: 85.32,
             actionX: 445.08,
             actionW: 84.48,
-        })
+        }, new Set([30]))   // 行30=鳴動方式（刷り込みの選択肢。下で○を描く）
+
+        drawChoiceCircle(page2, p2Height, body.page2_rows?.[30]?.content ?? "", [
+            { label: "一斉", cx: 236.10, cy: 601.39, rx: 11.44, ry: 6.87 },
+            { label: "区分", cx: 258.36, cy: 601.39, rx: 11.50, ry: 6.87 },
+            { label: "相互", cx: 280.68, cy: 601.39, rx: 11.50, ry: 6.87 },
+            { label: "再鳴動", cx: 307.44, cy: 601.39, rx: 15.94, ry: 6.87 },
+        ])
 
         drawResultRows(page3, p3Height, body.page3_rows ?? [], P3_ROW_BOUNDS, {
             contentX: 222.72,

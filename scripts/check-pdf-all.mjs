@@ -159,6 +159,15 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-bekki14-choice-clearance.py", stage: "生成PDF", needsPdfs: true,
+        why: "選択肢を囲む○が隣の刷り込み語に触れていないか。触れると「一斉と区分の両方が選ばれている」ように見え、"
+            + "法定書類として意味が壊れる。罫線越えでも刷り込みへの重なりでも出ない次元",
+        runs: [
+            { label: "自己診断", cmd: [PY, "scripts/check-bekki14-choice-clearance.py", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: [PY, "scripts/check-bekki14-choice-clearance.py"], sentinel: "CHOICE_CLEARANCE_OK" },
+        ],
+    },
+    {
         file: "check-model-cell-overflow.py", stage: "生成PDF", needsPdfs: true,
         why: "型式セルのはみ出し",
         // ★既定値は tmp/pdf-test-fixed/bekki1_debug_test.pdf（保守されていない残骸）なので

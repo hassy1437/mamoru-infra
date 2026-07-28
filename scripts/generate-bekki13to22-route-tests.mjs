@@ -1,5 +1,5 @@
 import { runRoutePdf } from "./run-route-pdf.mjs";
-import { applyNumericRows } from "./lib-numeric-rows.mjs";
+import { applyNumericRows, applyChoiceRows } from "./lib-numeric-rows.mjs";
 import fs from "fs";
 
 const makeRows = (count, prefix) =>
@@ -59,6 +59,11 @@ const jobs = [
     key: "bekki14",
     routePath: "src/app/api/generate-emergency-alarm-bekki14-pdf/route.ts",
     outPdfPath: "tmp/pdf-test-bekki13to22/bekki14_test.pdf",
+    // ★鳴動方式は選択肢欄（一斉・区分・相互・再鳴動）。値が選択肢と一致しないと
+    //   ○が1つも描かれず、PDFは正常に出たまま情報だけ落ちる。
+    //   長文=一斉/相互、現実値=区分/再鳴動 と分担し、両セット合わせて4語すべてを回帰で守る
+    //   （選択肢の行が2つしか無いので、1セットでは2語までしか試せない）。
+    choiceRows: { page1_rows: { 23: "一斉" }, page2_rows: { 30: "相互" } },
     payload: {
       ...shared,
       page1_rows: makeRows(40, "B14-P1"),
@@ -184,6 +189,9 @@ const fitErrors = [];
 for (const job of jobs) {
   // 数値しか入らないセルには長文ではなく数値を入れる（共有部品で行番号を判定）
   applyNumericRows(job.payload, job.routePath);
+  // ★数値置換の**後**に入れる。選択肢の行も skipContentRows に載るため、
+  //   先に入れると 0.45 で上書きされて○が消える（実際に消えた）。
+  applyChoiceRows(job.payload, job.routePath, job.choiceRows);
   let result;
   try {
     result = await runRoutePdf(job);

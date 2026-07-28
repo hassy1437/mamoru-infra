@@ -125,6 +125,41 @@ export const numericRowsByKey = (routePath) => {
 }
 
 /**
+ * 選択肢欄（テンプレートに刷り込まれた語を○で囲む欄）に、実際の選択肢の語を入れる。
+ *
+ * ★なぜ解析器任せにできないか（2026-07-28 に踏んだ）
+ *   ルートの skipContentRows には**意味の違う2種類**が混ざっている:
+ *     (a) 専用コードが数値を描く行 … 数値を入れるのが正しい
+ *     (b) 刷り込みの選択肢の行     … 選択肢の語を入れないと ○ が1つも描かれない
+ *   ソースからは (a)(b) を区別できない。実際 bekki14 に (b) を足した直後、
+ *   長文セットの「一斉」「相互」が 0.45 で上書きされ、○が描かれないまま
+ *   PDFは正常に生成された（＝黙って回帰が素通りする）。
+ *   よって (b) は呼び出し側が宣言する。宣言と実装のズレはここで落とす。
+ */
+export const applyChoiceRows = (payload, routePath, choiceRows) => {
+    if (!choiceRows) return payload
+    const byKey = numericRowsByKey(routePath)
+    for (const [key, rowMap] of Object.entries(choiceRows)) {
+        const rows = payload?.[key]
+        if (!Array.isArray(rows)) throw new Error(`applyChoiceRows: ${routePath} の payload に ${key} が無い`)
+        for (const [i, word] of Object.entries(rowMap)) {
+            const idx = Number(i)
+            if (!rows[idx]) throw new Error(`applyChoiceRows: ${routePath} ${key}[${idx}] が存在しない`)
+            // ★ルート側が内容列を止めていなければ、語が刷り込みに重なって描かれる。
+            //   行番号がずれた／skip を消した、を黙って通さない。
+            if (!byKey.get(key)?.has(idx)) {
+                throw new Error(
+                    `applyChoiceRows: ${routePath} ${key}[${idx}] を選択肢行として宣言しているが、` +
+                    `ルートは内容列を止めていない（skipContentRows に ${idx} が無い）`,
+                )
+            }
+            rows[idx].content = word
+        }
+    }
+    return payload
+}
+
+/**
  * rows配列のうち「数値欄」に当たる行の content を数値に差し替える。
  *
  * 長文セットでもこれを通す理由: テンプレートが「設定圧力 ___ MPa」のように

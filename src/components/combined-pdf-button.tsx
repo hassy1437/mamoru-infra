@@ -45,10 +45,26 @@ export default function CombinedPdfButton({
         setProgress({ done: 0, total: 0 })
 
         try {
-            const { blob, failedLabels, fitFailures, shrinkWarnings } = await buildMergedReport(input, (done, total) =>
-                setProgress({ done, total }),
+            const { blob, failedLabels, fitFailures, shrinkWarnings, choiceWarnings } = await buildMergedReport(
+                input,
+                (done, total) => setProgress({ done, total }),
             )
             triggerDownload(blob, `点検報告書_一括_${buildingName || "報告書"}.pdf`)
+            // ★選択肢欄の値がどの選択肢とも一致せず、○が1つも描かれていない。
+            //   PDFは正常に出ているので止めないが、**黙って情報が落ちている**ので最初に知らせる。
+            //   縮小警告とは意味が違う（縮小は情報が残っている／これは消えている）ので、
+            //   同じ一覧に混ぜず別のメッセージにする。
+            if (choiceWarnings.length > 0) {
+                alert(
+                    [
+                        "次の項目は選択肢と一致せず、様式に○が付いていません（値は出力されません）:",
+                        ...choiceWarnings.flatMap((w) => [
+                            `【${w.label}】`,
+                            ...w.items.map((it) => `  ${it.hint}`),
+                        ]),
+                    ].join("\n"),
+                )
+            }
             // ⑨ 設計より大きく縮んで描かれた項目。PDFは出ているので止めず、確認を促すだけ。
             //   重複はサーバ側で畳んである（同じ値が何行にも出るため）。
             if (shrinkWarnings.length > 0) {

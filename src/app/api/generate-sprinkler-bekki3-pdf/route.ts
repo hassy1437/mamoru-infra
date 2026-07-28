@@ -517,7 +517,7 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        drawChoiceCircle(page2, p2Height, p2Rows3[7]?.content ?? "", [
+        drawChoiceCircle(page2, p2Height, fonts, p2Rows3[7]?.content ?? "", [
             { label: "専用", cx: 267.2, cy: 239.4, rx: 14, ry: 7 },
             { label: "兼用", cx: 309.2, cy: 239.4, rx: 14, ry: 7 },
         ])

@@ -269,7 +269,7 @@ export async function POST(req: NextRequest) {
         drawInCell(page1, p1Height, body.witness, 415.1, 138.67, 114.5, 28.0, 8.0)
         // 点検種別: テンプレートに「機器・総合」が刷り込まれているので文字を重ねず○で囲む。
         // ○の座標はテンプレートPDFの文字を実測（様式ごとに位置が違う）。
-        drawChoiceCircle(page1, p1Height, body.inspection_type || "機器・総合", [
+        drawChoiceCircle(page1, p1Height, fonts, body.inspection_type || "機器・総合", [
             { label: "機器", cx: 127.38, cy: 180.61, rx: 17.56, ry: 7.28 },
             { label: "総合", cx: 186.11, cy: 180.61, rx: 17.62, ry: 7.28 },
         ])

@@ -418,7 +418,7 @@ export async function POST(req: NextRequest) {
         // ★従来はこの値を様式タイトルの上（x=150）に文字で描いていた。タイトルは
         //   正典でも完全な刷り込みで記入欄が無く、bekki7/8 では実際に重なっていた。
         //   選択肢は右側にあるので、該当する語を○で囲む（座標はテンプレート実測）。
-        drawChoiceCircle(page1, p1Height, body.equipment_system, [
+        drawChoiceCircle(page1, p1Height, fonts, body.equipment_system, [
             { label: "全域", cx: 374.58, cy: 101.65, rx: 13.0, ry: 7.28 },
             { label: "局所", cx: 406.08, cy: 101.65, rx: 13.06, ry: 7.28 },
             { label: "移動", cx: 437.64, cy: 101.65, rx: 13.06, ry: 7.28 },
@@ -434,7 +434,7 @@ export async function POST(req: NextRequest) {
 
         // 点検種別: テンプレートに「機器・総合」が刷り込まれているので文字を重ねず○で囲む。
         // ○の座標はテンプレートPDFの文字を実測（様式ごとに位置が違う）。
-        drawChoiceCircle(page1, p1Height, body.inspection_type || "機器・総合", [
+        drawChoiceCircle(page1, p1Height, fonts, body.inspection_type || "機器・総合", [
             { label: "機器", cx: 131.10, cy: 167.05, rx: 17.56, ry: 7.28 },
             { label: "総合", cx: 189.77, cy: 167.05, rx: 17.56, ry: 7.28 },
         ])
@@ -474,7 +474,7 @@ export async function POST(req: NextRequest) {
         }, new Set([26]))
 
         // PAGE2 row 26「起動装置 / 自動式 / 火災感知装置（専用・兼用）」: 公式PDF刷り込みの選択を丸囲み
-        drawChoiceCircle(page2, p2Height, body.page2_rows?.[26]?.content ?? "", [
+        drawChoiceCircle(page2, p2Height, fonts, body.page2_rows?.[26]?.content ?? "", [
             { label: "専用", cx: 258.0, cy: 438.9, rx: 14, ry: 7 },
             { label: "兼用", cx: 297.95, cy: 438.9, rx: 14, ry: 7 },
         ])

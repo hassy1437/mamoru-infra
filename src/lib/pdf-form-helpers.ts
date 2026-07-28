@@ -639,14 +639,17 @@ export type ChoiceMark = { label: string; cx: number; cy: number; rx: number; ry
 export const drawChoiceCircle = (
     page: PDFPage,
     pageHeight: number,
+    fonts: ReportFonts,
     value: unknown,
     choices: ChoiceMark[],
     borderWidth = 0.7,
 ) => {
     const text = String(value ?? "").replace(/\s+/g, " ").trim()
     if (!text) return
+    let matched = 0
     for (const c of choices) {
         if (!text.includes(c.label)) continue
+        matched += 1
         page.drawEllipse({
             x: c.cx,
             y: pageHeight - c.cy,
@@ -656,6 +659,12 @@ export const drawChoiceCircle = (
             borderWidth,
         })
     }
+    // ★値が入っているのに1つも一致しない＝○が1つも描かれず、PDFは正常に出る。
+    //   罫線越えでも刷り込みへの重なりでも出ず、ベースラインも通る。
+    //   ＝ 全検査が緑のまま情報だけ落ちる唯一の経路なので、必ず報告する。
+    //   エラーにせず警告に留める理由と、Phase 3 での格上げの申し送りは
+    //   FitCollector.reportChoiceMismatch のコメントに書いてある。
+    if (matched === 0) fonts.fit?.reportChoiceMismatch(text, choices.map((c) => c.label))
 }
 
 /**

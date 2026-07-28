@@ -78,6 +78,29 @@ export type FitCollector = {
      * 黙って捨てられていた（落ちるのは順序で決まるので、一般的な設備でも消えうる）。
      */
     reportOverflowRow: (text: string, capacity: number) => void
+    /**
+     * 選択肢欄の値が、刷り込まれたどの選択肢とも一致しなかったことの報告。
+     *
+     * ★これは「黙って情報が落ちる」唯一の経路。○が1つも描かれず、
+     *   PDFは正常終了し、罫線越えも刷り込みへの重なりも出ず、
+     *   ベースラインも（そのセルが元から空なら）通る＝全検査が緑のまま欠落する。
+     *
+     * ★なぜエラー(422)にせず警告に留めるか（格上げの判断を誤らせないため明記する）
+     *   照合は includes による見込み判定で、フォーム側が自由入力を許している。
+     *   全角半角や表記ゆれで外れた瞬間、**正当な値なのに報告書が1枚も出せなくなり、
+     *   業者に回避手段が無い**。失敗の非対称性が明確:
+     *       誤って警告   → 業者は見て直せる／無視しても出せる
+     *       誤ってブロック → 正当な値なのに出力できない
+     *   ＝ 自由入力を許している側の代償を業者に払わせない。
+     *
+     * ★Phase 3 でフォームを選択式にしたら、そのときエラーへ格上げすること。
+     *   選択式なら不一致＝バグなので止めるのが正しくなる。
+     *   （それまでは「データが消えるのにエラーでないのは誤りだ」と見えるが、
+     *     上の非対称性が理由。自由入力のまま格上げすると誤ブロックが起きる）
+     */
+    reportChoiceMismatch: (text: string, choices: string[]) => void
+    /** 選択肢と一致しなかった値（警告に載せる） */
+    choiceMismatches: ChoiceMismatch[]
     /** 行数超過で落ちた項目（業者向けエラーに載せる） */
     overflowRows: { text: string; capacity: number }[]
     failures: FitFailure[]
@@ -87,6 +110,15 @@ export type FitCollector = {
     drawCount: number
     /** 入力(payload)と突き合わせて由来を確定する（描画後に一度だけ呼ぶ） */
     resolve: (body: unknown) => void
+}
+
+export type ChoiceMismatch = {
+    /** 入力された値 */
+    text: string
+    /** その欄に刷り込まれている選択肢 */
+    choices: string[]
+    /** payload 上のキー（分かった場合） */
+    field?: string
 }
 
 export type FitShrink = {
@@ -104,12 +136,19 @@ export const createFitCollector = (): FitCollector => {
     const smalls: { text: string; size: number }[] = []
     const shrinks: FitShrink[] = []
     const overflowRows: { text: string; capacity: number }[] = []
+    const choiceMismatches: ChoiceMismatch[] = []
     const state = { drawCount: 0 }
     return {
         failures,
         smalls,
         shrinks,
         overflowRows,
+        choiceMismatches,
+        reportChoiceMismatch(text, choices) {
+            const t = String(text ?? "").replace(/\s+/g, " ").trim()
+            if (!t || choiceMismatches.some((c) => c.text === t)) return
+            choiceMismatches.push({ text: t, choices: [...choices] })
+        },
         reportOverflowRow(text, capacity) {
             const t = String(text ?? "").trim()
             if (!t || overflowRows.some((o) => o.text === t)) return
@@ -150,6 +189,10 @@ export const createFitCollector = (): FitCollector => {
         },
         resolve(body) {
             const entries = collectStrings(body)
+            for (const c of choiceMismatches) {
+                const hit = entries.find(([, v]) => v === c.text)
+                if (hit) c.field = hit[0]
+            }
             for (const f of shrinks) {
                 const hit =
                     entries.find(([, v]) => v === f.text) ?? entries.find(([, v]) => v.includes(f.text))
@@ -321,6 +364,36 @@ export type FitWarnItem = {
 
 export type FitWarnBody = { form: string; items: FitWarnItem[] }
 
+export type ChoiceWarnItem = {
+    field: string
+    label: string
+    text: string
+    choices: string[]
+    hint: string
+}
+
+/**
+ * 選択肢と一致しなかった値の警告一覧。該当が無ければ null。
+ * ★有効な選択肢を必ず列挙する。「一致しません」だけでは業者は直せない。
+ */
+export const buildChoiceWarning = (form: string, collector: FitCollector): ChoiceWarnItem[] => {
+    const items: ChoiceWarnItem[] = []
+    for (const c of collector.choiceMismatches) {
+        // 入力(payload)に無い値＝システム由来。業者には直しようがないので出さない
+        if (!c.field) continue
+        const label = FIELD_LABELS[c.field] ?? c.field
+        items.push({
+            field: c.field,
+            label,
+            text: c.text,
+            choices: c.choices,
+            hint: `${label}の値「${c.text}」は選択肢と一致しません。`
+                + `${c.choices.join("／")} のいずれかを入力してください`,
+        })
+    }
+    return items
+}
+
 /**
  * 警告一覧を作る。該当が無ければ null。
  * ★重複はここで畳む。同じ値が何行にも出るため、生のまま UI に渡すと
@@ -367,12 +440,15 @@ const WARN_HEADER_MAX_ITEMS = 20
 
 export const fitWarningHeader = (form: string, collector: FitCollector): Record<string, string> => {
     const warn = buildShrinkWarning(form, collector)
-    if (!warn) return {}
-    const shown = warn.items.slice(0, WARN_HEADER_MAX_ITEMS)
+    const choices = buildChoiceWarning(form, collector).slice(0, WARN_HEADER_MAX_ITEMS)
+    // ★縮小が無くても選択肢の不一致だけで警告を出す（片方だけで打ち切らない）
+    if (!warn && !choices.length) return {}
+    const shown = warn ? warn.items.slice(0, WARN_HEADER_MAX_ITEMS) : []
     const body = {
-        form: warn.form,
+        form,
         items: shown,
-        omitted: warn.items.length - shown.length,
+        omitted: warn ? warn.items.length - shown.length : 0,
+        choices,
     }
     return { "X-Fit-Warnings": Buffer.from(JSON.stringify(body), "utf8").toString("base64") }
 }

@@ -351,7 +351,7 @@ export async function POST(req: NextRequest) {
         const p2Rows = body.page2_rows ?? []
         const funcRow = p2Rows[7]
         if (funcRow) {
-            drawChoiceCircle(page2, p2Height, funcRow.content ?? "", [
+            drawChoiceCircle(page2, p2Height, fonts, funcRow.content ?? "", [
                 { label: "専用", cx: 259.0, cy: 222.0, rx: 16, ry: 7 },
                 { label: "兼用", cx: 301.0, cy: 222.0, rx: 16, ry: 7 },
             ], 0.8)

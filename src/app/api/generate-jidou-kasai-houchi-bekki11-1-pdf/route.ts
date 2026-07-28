@@ -390,7 +390,7 @@ export async function POST(req: NextRequest) {
         // P2 Row 5: スポット型(熱) — 差動 定温 (再) 熱アナログ
         const p2Rows = body.page2_rows ?? []
         if (p2Rows[5]) {
-            drawChoiceCircle(page2, p2Height, p2Rows[5].content ?? "", [
+            drawChoiceCircle(page2, p2Height, fonts, p2Rows[5].content ?? "", [
                 { label: "差動", cx: 242.5, cy: 211.5, rx: 13, ry: 7 },
                 { label: "定温", cx: 274.0, cy: 211.5, rx: 22, ry: 7 },  // 定温（再）= 1印字単位(x254.4-293.8)を1○で囲む（旧 定温+再 の2○を統合）
                 { label: "熱アナログ", cx: 317.0, cy: 211.5, rx: 18, ry: 7 },
@@ -398,7 +398,7 @@ export async function POST(req: NextRequest) {
         }
         // P2 Row 9: スポット型(煙) — イオン 光電 アナログ
         if (p2Rows[9]) {
-            drawChoiceCircle(page2, p2Height, p2Rows[9].content ?? "", [
+            drawChoiceCircle(page2, p2Height, fonts, p2Rows[9].content ?? "", [
                 { label: "イオン", cx: 247.0, cy: 302.3, rx: 16, ry: 7 },
                 { label: "光電", cx: 278.0, cy: 302.3, rx: 14, ry: 7 },
                 { label: "アナログ", cx: 316.0, cy: 302.3, rx: 18, ry: 7 },
@@ -406,14 +406,14 @@ export async function POST(req: NextRequest) {
         }
         // P2 Row 11: 炎感知器 — 赤外線 紫外線
         if (p2Rows[11]) {
-            drawChoiceCircle(page2, p2Height, p2Rows[11].content ?? "", [
+            drawChoiceCircle(page2, p2Height, fonts, p2Rows[11].content ?? "", [
                 { label: "赤外線", cx: 262.0, cy: 348.3, rx: 18, ry: 7 },
                 { label: "紫外線", cx: 304.0, cy: 348.3, rx: 18, ry: 7 },
             ], 0.8)
         }
         // P2 Row 22: 鳴動方式 — 一斉 区分 相互 再鳴動
         if (p2Rows[22]) {
-            drawChoiceCircle(page2, p2Height, p2Rows[22].content ?? "", [
+            drawChoiceCircle(page2, p2Height, fonts, p2Rows[22].content ?? "", [
                 { label: "一斉", cx: 243.0, cy: 601.8, rx: 13, ry: 7 },
                 { label: "区分", cx: 267.0, cy: 601.8, rx: 13, ry: 7 },
                 { label: "相互", cx: 290.0, cy: 601.8, rx: 13, ry: 7 },

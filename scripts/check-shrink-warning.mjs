@@ -33,7 +33,13 @@ const check = (ok, message) => {
 const readWarning = (headers) => {
     const b64 = headers?.["x-fit-warnings"] ?? headers?.["X-Fit-Warnings"] ?? null
     if (!b64) return null
-    return JSON.parse(Buffer.from(b64, "base64").toString("utf8"))
+    const body = JSON.parse(Buffer.from(b64, "base64").toString("utf8"))
+    // ★X-Fit-Warnings には縮小(items)以外に選択肢不一致(choices)も載る。
+    //   ヘッダの有無で縮小を判定すると、縮小0でも「警告あり」になり現実値セットが
+    //   全滅する（choices を足した直後に実際に10様式が誤検出になった）。
+    //   この検査が見るのは縮小だけなので、items が空なら警告なしとして扱う。
+    if (!Array.isArray(body?.items) || body.items.length === 0) return null
+    return body
 }
 
 const run = async (routePath, payload, outName) => {

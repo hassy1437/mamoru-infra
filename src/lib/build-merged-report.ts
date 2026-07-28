@@ -69,6 +69,12 @@ export type ShrinkWarningDetail = {
     omitted: number
 }
 
+/** 選択肢欄の値がどの選択肢とも一致しなかった項目（PDFは正常に返っているが○が描かれていない） */
+export type ChoiceWarningDetail = {
+    label: string
+    items: { label: string; text: string; choices: string[]; hint: string }[]
+}
+
 export type BuildResult = {
     blob: Blob
     failedLabels: string[]
@@ -83,6 +89,11 @@ export type BuildResult = {
      *   せっかく様式・項目・超過文字数を返しても UI に届かなかった。
      */
     fitFailures: FitFailureDetail[]
+    /**
+     * ★○が1つも描かれないまま PDF は正常に出る経路。ここで落とすと
+     *   「全検査が緑のまま情報だけ欠落」がそのまま業者に届く。
+     */
+    choiceWarnings: ChoiceWarningDetail[]
 }
 
 /** 全PDF生成に失敗したときに投げるエラーの識別子。 */
@@ -128,6 +139,7 @@ export async function buildMergedReport(
             // ⑨ 縮小警告はヘッダで運ばれる（PDF本体は正常）。日本語を含むので base64
             const warnHeader = res.headers.get("X-Fit-Warnings")
             let warning: ShrinkWarningDetail | null = null
+            let choiceWarning: ChoiceWarningDetail | null = null
             if (warnHeader) {
                 try {
                     const json = new TextDecoder().decode(
@@ -137,6 +149,9 @@ export async function buildMergedReport(
                     if (Array.isArray(parsed?.items) && parsed.items.length) {
                         warning = { label: task.label, items: parsed.items, omitted: parsed.omitted ?? 0 }
                     }
+                    if (Array.isArray(parsed?.choices) && parsed.choices.length) {
+                        choiceWarning = { label: task.label, items: parsed.choices }
+                    }
                 } catch {
                     // 読めなければ警告なしとして扱う（PDF自体は正常なので止めない）
                 }
@@ -144,7 +159,7 @@ export async function buildMergedReport(
             const buf = await res.arrayBuffer()
             done += 1
             onProgress?.(done, tasks.length)
-            return { index, buf, warning }
+            return { index, buf, warning, choiceWarning }
         }),
     )
 
@@ -152,10 +167,12 @@ export async function buildMergedReport(
     const failedLabels: string[] = []
     const fitFailures: FitFailureDetail[] = []
     const shrinkWarnings: ShrinkWarningDetail[] = []
+    const choiceWarnings: ChoiceWarningDetail[] = []
     results.forEach((result, i) => {
         if (result.status === "fulfilled") {
             pdfBuffers[result.value.index] = result.value.buf
             if (result.value.warning) shrinkWarnings.push(result.value.warning)
+            if (result.value.choiceWarning) choiceWarnings.push(result.value.choiceWarning)
         } else {
             failedLabels.push(tasks[i]?.label ?? "unknown")
             const detail = (result.reason as { detail?: FitFailureDetail | null } | undefined)?.detail
@@ -176,7 +193,7 @@ export async function buildMergedReport(
     }
     const mergedBytes = await merged.save()
     const blob = new Blob([new Uint8Array(mergedBytes)], { type: "application/pdf" })
-    return { blob, failedLabels, fitFailures, shrinkWarnings }
+    return { blob, failedLabels, fitFailures, shrinkWarnings, choiceWarnings }
 }
 
 /** Blob を端末にダウンロードさせる。納品時は upload と同一の Blob をここに渡す。 */

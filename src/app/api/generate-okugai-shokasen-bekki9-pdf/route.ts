@@ -310,7 +310,7 @@ export async function POST(req: NextRequest) {
         drawInCell(page1, p1Height, body.witness, 439.33, 135.33, 90.0, 26.0, 8.0)
         // 点検種別: テンプレートに「機器・総合」が刷り込まれているので文字を重ねず○で囲む。
         // ○の座標はテンプレートPDFの文字を実測（様式ごとに位置が違う）。
-        drawChoiceCircle(page1, p1Height, body.inspection_type || "機器・総合", [
+        drawChoiceCircle(page1, p1Height, fonts, body.inspection_type || "機器・総合", [
             { label: "機器", cx: 132.00, cy: 171.85, rx: 16.90, ry: 7.28 },
             { label: "総合", cx: 186.77, cy: 171.85, rx: 16.96, ry: 7.28 },
         ])
@@ -385,7 +385,7 @@ export async function POST(req: NextRequest) {
         }, {}, new Set([7, 21]))
 
         // PAGE2 row 7「遠隔操作部 / 機能（専用・兼用）」: 公式PDF刷り込みの選択を丸囲み
-        drawChoiceCircle(page2, p2Height, body.page2_rows?.[7]?.content ?? "", [
+        drawChoiceCircle(page2, p2Height, fonts, body.page2_rows?.[7]?.content ?? "", [
             { label: "専用", cx: 237.24, cy: 210, rx: 14, ry: 7 },
             { label: "兼用", cx: 279.30, cy: 210, rx: 14, ry: 7 },
         ])

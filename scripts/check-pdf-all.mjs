@@ -190,6 +190,12 @@ const CHECKS = [
         runs: [{ cmd: ["node", "scripts/check-shrink-warning.mjs"], sentinel: "SHRINK_WARNING_CHECK_OK" }],
     },
     {
+        file: "check-choice-mismatch-warning.mjs", stage: "挙動", needsPdfs: true,
+        why: "選択肢欄の値がどれとも一致せず○が1つも描かれないとき、業者に警告が届くか。"
+            + "PDFは正常に出て罫線越えも重なりもベースライン差分も出ない＝全検査が緑のまま情報だけ落ちる唯一の経路",
+        runs: [{ cmd: ["node", "scripts/check-choice-mismatch-warning.mjs"], sentinel: "CHOICE_MISMATCH_WARNING_CHECK_OK" }],
+    },
+    {
         file: "check-pdf-failure-ux.mjs", stage: "挙動",
         why: "422/5xx/壊れた本文/通信断を区別してUIに出すか。納品はfitで止まるか",
         runs: [{ cmd: ["node", "scripts/check-pdf-failure-ux.mjs"], sentinel: "PDF_FAILURE_UX_CHECK_OK" }],

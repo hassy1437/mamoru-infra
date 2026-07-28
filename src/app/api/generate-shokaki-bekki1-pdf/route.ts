@@ -357,7 +357,8 @@ export async function POST(req: NextRequest) {
             drawInCell(page1, p1Height, periodText, 208.92, PERIOD_ROW.top, 320.64, PERIOD_ROW.h, 8.8)
         }
 
-        drawInCell(page1, p1Height, body.inspector_name, 117.84, 187.44, 88.2, 56.4, 8.8)
+        // 刷り込みに重ねない: 前置ラベル氏名(-143.9) の右から（テンプレート実測）
+        drawInCell(page1, p1Height, body.inspector_name, 144.4, 187.44, 61.64, 56.4, 8.8)
         drawInCell(page1, p1Height, body.inspector_company, 291.0, 187.44, 100.0, 28.44, 8.6)
         drawInCell(page1, p1Height, body.inspector_tel, 411.84, 187.44, 117.72, 28.44, 8.6)
         drawInCell(page1, p1Height, body.inspector_address, 291.0, 215.88, 237.0, 27.96, 8.4)

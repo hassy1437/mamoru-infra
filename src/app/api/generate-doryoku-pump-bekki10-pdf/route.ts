@@ -234,14 +234,16 @@ export async function POST(req: NextRequest) {
             },
         })
 
-        const drawResultRows = (page: PDFPage, pageHeight: number, rows: BekkiRow[], rowBounds: number[], columns: ResultColumns, skipContentRows: Set<number> = new Set()) => {
+        const drawResultRows = (page: PDFPage, pageHeight: number, rows: BekkiRow[], rowBounds: number[], columns: ResultColumns, contentOverrides: Record<number, { x: number; w: number }> = {}, skipContentRows: Set<number> = new Set()) => {
             for (let i = 0; i < rowBounds.length - 1; i += 1) {
                 const row = rows[i]
                 if (!row) continue
                 const top = rowBounds[i]
                 const h = rowBounds[i + 1] - top
                 if (!skipContentRows.has(i)) {
-                    drawWrappedInCell(page, pageHeight, row.content, columns.contentX, top, columns.contentW, h, 6.4)
+                    const cx = contentOverrides[i]?.x ?? columns.contentX
+                    const cw = contentOverrides[i]?.w ?? columns.contentW
+                    drawWrappedInCell(page, pageHeight, row.content, cx, top, cw, h, 6.4)
                 }
                 drawInCell(page, pageHeight, formatJudgment(row.judgment), columns.judgmentX, top, columns.judgmentW, h, 7.8, { align: "center" })
                 drawWrappedInCell(page, pageHeight, row.bad_content, columns.badX, top, columns.badW, h, 6.2)
@@ -329,7 +331,7 @@ export async function POST(req: NextRequest) {
             judgmentX: 311.5, judgmentW: 42.0,
             badX: 353.5, badW: 88.0,
             actionX: 441.5, actionW: 88.0,
-        }, new Set([3]))
+        }, {}, new Set([3]))
 
         // PAGE2 row 3「積載器具 / ホース・ノズル等 / 外形」: 長さ(m)/本数/口径(mm) を分割描画
         // 公式PDF実測: ｍ@238.4 / ×@248.9(x1=259.4) / 本@275.2(x1=285.7) / mm@296.2。content列左=217。

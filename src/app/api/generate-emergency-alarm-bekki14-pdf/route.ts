@@ -156,6 +156,7 @@ export async function POST(req: NextRequest) {
         // skipContentRows: 内容列だけ描かない行（他8ルートと同じ引数名・同じ意味）。
         // 判定・不良内容・措置内容は正当に埋まるので、行ごと空にはしない。
         const drawResultRows = (page: PDFPage, pageHeight: number, rows: BekkiRow[], rowBounds: number[], cols: ResultColumns,
+            contentOverrides: Record<number, { x: number; w: number }> = {},
                                 skipContentRows: Set<number> = new Set()) => {
             for (let i = 0; i < rowBounds.length - 1; i += 1) {
                 const row = rows[i]
@@ -163,7 +164,9 @@ export async function POST(req: NextRequest) {
                 const top = rowBounds[i]
                 const h = rowBounds[i + 1] - top
                 if (!skipContentRows.has(i)) {
-                    drawWrappedInCell(page, pageHeight, row.content, cols.contentX, top, cols.contentW, h, 6.2)
+                    const cx = contentOverrides[i]?.x ?? cols.contentX
+                    const cw = contentOverrides[i]?.w ?? cols.contentW
+                    drawWrappedInCell(page, pageHeight, row.content, cx, top, cw, h, 6.2)
                 }
                 drawInCell(page, pageHeight, formatJudgment(row.judgment), cols.judgmentX, top, cols.judgmentW, h, 7.2, { align: "center" })
                 drawWrappedInCell(page, pageHeight, row.bad_content, cols.badX, top, cols.badW, h, 6.0)
@@ -232,7 +235,7 @@ export async function POST(req: NextRequest) {
             badW: 84.48,
             actionX: 455.16,
             actionW: 74.64,
-        }, new Set([23]))   // 行23=鳴動方式（刷り込みの選択肢。下で○を描く）
+        }, {}, new Set([23]))   // 行23=鳴動方式（刷り込みの選択肢。下で○を描く）
 
         // 鳴動方式は「一斉・区分・相互・再鳴動」がテンプレートに刷り込まれた選択肢欄。
         // 文字を重ねず、該当する語を○で囲む（座標はテンプレートPDFの文字を実測）。
@@ -252,7 +255,7 @@ export async function POST(req: NextRequest) {
             badW: 85.32,
             actionX: 445.08,
             actionW: 84.48,
-        }, new Set([30]))   // 行30=鳴動方式（刷り込みの選択肢。下で○を描く）
+        }, {}, new Set([30]))   // 行30=鳴動方式（刷り込みの選択肢。下で○を描く）
 
         drawChoiceCircle(page2, p2Height, fonts, body.page2_rows?.[30]?.content ?? "", [
             { label: "一斉", cx: 236.10, cy: 601.39, rx: 11.44, ry: 6.87 },

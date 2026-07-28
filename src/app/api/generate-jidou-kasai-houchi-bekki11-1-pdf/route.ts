@@ -308,7 +308,7 @@ export async function POST(req: NextRequest) {
         }
 
 
-        const drawResultRows = (page: PDFPage, pageHeight: number, rows: BekkiRow[], rowBounds: number[], cols: ResultColumns, skipContentRows?: Set<number>, skipAllRows?: Set<number>, contentOverrides?: Record<number, { x: number; w: number }>) => {
+        const drawResultRows = (page: PDFPage, pageHeight: number, rows: BekkiRow[], rowBounds: number[], cols: ResultColumns, contentOverrides: Record<number, { x: number; w: number }> = {}, skipContentRows?: Set<number>, skipAllRows?: Set<number>) => {
             for (let i = 0; i < rowBounds.length - 1; i += 1) {
                 const row = rows[i]
                 if (!row) continue
@@ -316,8 +316,8 @@ export async function POST(req: NextRequest) {
                 const top = rowBounds[i]
                 const h = rowBounds[i + 1] - top
                 if (!skipContentRows?.has(i)) {
-                    const cx = contentOverrides?.[i]?.x ?? cols.contentX
-                    const cw = contentOverrides?.[i]?.w ?? cols.contentW
+                    const cx = contentOverrides[i]?.x ?? cols.contentX
+                    const cw = contentOverrides[i]?.w ?? cols.contentW
                     drawWrappedInCell(page, pageHeight, row.content, cx, top, cw, h, 6.3)
                 }
                 drawInCell(page, pageHeight, formatJudgment(row.judgment), cols.judgmentX, top, cols.judgmentW, h, 7.8, { align: "center" })
@@ -385,7 +385,7 @@ export async function POST(req: NextRequest) {
             judgmentX: 335.33, judgmentW: 32.0,
             badX: 367.33, badW: 81.34,
             actionX: 448.67, actionW: 80.66,
-        }, undefined, undefined, {
+        }, {
             // Pre-4: 公式PDFの単位印字 (V/A at x=319.8) と重ならないよう content cell を狭める
             4:  { x: 230.0, w: 88 },  // 端子電圧 Ｖ
             10: { x: 230.0, w: 88 },  // 電圧計 Ｖ
@@ -397,7 +397,7 @@ export async function POST(req: NextRequest) {
             judgmentX: 340.67, judgmentW: 32.0,
             badX: 372.67, badW: 78.0,
             actionX: 450.67, actionW: 78.66,
-        }, new Set([
+        }, {}, new Set([
             5,  // スポット型(熱): テンプレートに「差動 定温 (再) 熱アナログ」印刷済み → circle
             9,  // スポット型(煙): テンプレートに「イオン 光電 アナログ」印刷済み → circle
             11, // 炎感知器: テンプレートに「赤外線 紫外線」印刷済み → circle
@@ -443,7 +443,7 @@ export async function POST(req: NextRequest) {
             judgmentX: 327.0, judgmentW: 34.5,
             badX: 361.5, badW: 84.0,
             actionX: 445.5, actionW: 84.0,
-        }, undefined, new Set([
+        }, {}, undefined, new Set([
             7, // 「総合点検」ヘッダー行 → content/judgment含め全スキップ
         ]))
 

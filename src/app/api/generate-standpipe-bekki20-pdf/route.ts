@@ -215,14 +215,16 @@ export async function POST(req: NextRequest) {
         }
 
 
-        const drawResultRows = (page: PDFPage, pageHeight: number, rows: BekkiRow[], rowBounds: number[], cols: ResultColumns, skipContentRows?: Set<number>) => {
+        const drawResultRows = (page: PDFPage, pageHeight: number, rows: BekkiRow[], rowBounds: number[], cols: ResultColumns, contentOverrides: Record<number, { x: number; w: number }> = {}, skipContentRows?: Set<number>) => {
             for (let i = 0; i < rowBounds.length - 1; i += 1) {
                 const row = rows[i]
                 if (!row) continue
                 const top = rowBounds[i]
                 const h = rowBounds[i + 1] - top
                 if (!skipContentRows?.has(i)) {
-                    drawWrappedInCell(page, pageHeight, row.content, cols.contentX, top, cols.contentW, h, 6.0)
+                    const cx = contentOverrides[i]?.x ?? cols.contentX
+                    const cw = contentOverrides[i]?.w ?? cols.contentW
+                    drawWrappedInCell(page, pageHeight, row.content, cx, top, cw, h, 6.0)
                 }
                 drawInCell(page, pageHeight, formatJudgment(row.judgment), cols.judgmentX, top, cols.judgmentW, h, 7.0, { align: "center" })
                 drawWrappedInCell(page, pageHeight, row.bad_content, cols.badX, top, cols.badW, h, 5.9)
@@ -305,11 +307,11 @@ export async function POST(req: NextRequest) {
             actionW: 76.8,
         }
 
-        drawResultRows(page1, p1Height, body.page1_rows ?? [], P1_ROW_BOUNDS, commonCols, new Set([
+        drawResultRows(page1, p1Height, body.page1_rows ?? [], P1_ROW_BOUNDS, commonCols, {}, new Set([
             7,  // ホース・ノズル: m×本 mm → 手動3分割描画
             17, // 電圧計・電流計: V A → 手動V/A分割描画
         ]))
-        drawResultRows(page2, p2Height, body.page2_rows ?? [], P2_ROW_BOUNDS, commonCols, new Set([
+        drawResultRows(page2, p2Height, body.page2_rows ?? [], P2_ROW_BOUNDS, commonCols, {}, new Set([
             7,  // 機能: テンプレートに「専用 兼用」印刷済み → circle
             18, // 性能: MPa L/min → 手動2分割描画
         ]))

@@ -317,6 +317,7 @@ export async function POST(req: NextRequest) {
             rows: Bekki8Row[],
             rowBounds: number[],
             columns: ResultColumns,
+            contentOverrides: Record<number, { x: number; w: number }> = {},
             skipContentRows: Set<number> = new Set(),
         ) => {
             for (let i = 0; i < rowBounds.length - 1; i += 1) {
@@ -326,7 +327,9 @@ export async function POST(req: NextRequest) {
                 const h = rowBounds[i + 1] - rowBounds[i]
 
                 if (!skipContentRows.has(i)) {
-                    drawWrappedInCell(page, pageHeight, row.content, columns.contentX, top, columns.contentW, h, 6.6)
+                    const cx = contentOverrides[i]?.x ?? columns.contentX
+                    const cw = contentOverrides[i]?.w ?? columns.contentW
+                    drawWrappedInCell(page, pageHeight, row.content, cx, top, cw, h, 6.6)
                 }
                 drawInCell(page, pageHeight, formatJudgment(row.judgment), columns.judgmentX, top, columns.judgmentW, h, 8.0, { align: "center" })
                 drawWrappedInCell(page, pageHeight, row.bad_content, columns.badX, top, columns.badW, h, 6.4)
@@ -486,7 +489,7 @@ export async function POST(req: NextRequest) {
             judgmentX: 327.0, judgmentW: 36.67,
             badX: 363.67, badW: 99.33,
             actionX: 463.0, actionW: 67.0,
-        }, new Set([26]))
+        }, {}, new Set([26]))
 
         // PAGE2 row 26「起動装置 / 自動式 / 火災感知装置（専用・兼用）」: 公式PDF刷り込みの選択を丸囲み
         drawChoiceCircle(page2, p2Height, fonts, body.page2_rows?.[26]?.content ?? "", [

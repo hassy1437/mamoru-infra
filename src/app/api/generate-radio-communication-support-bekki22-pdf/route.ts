@@ -174,7 +174,8 @@ export async function POST(req: NextRequest) {
             } else {
                 drawInCell(page, pageHeight, periodText, 266.4, PERIOD_ROW.top, 263.16, PERIOD_ROW.h, 6.2)
             }
-            drawInCell(page, pageHeight, body.inspector_name, 114.6, 193.2, 98.52, 52.56, 6.4)
+            // 刷り込みに重ねない: 前置ラベル氏名(-141.2) の右から（テンプレート実測）
+            drawInCell(page, pageHeight, body.inspector_name, 141.74, 193.2, 71.38, 52.56, 6.4)
             drawInCell(page, pageHeight, body.inspector_company, 299.52, 193.2, 119.52, 26.28, 6.0)
             drawInCell(page, pageHeight, body.inspector_tel, 419.04, 193.2, 110.52, 26.28, 6.0)
             drawInCell(page, pageHeight, body.inspector_address, 299.52, 219.48, 230.04, 26.28, 5.9)

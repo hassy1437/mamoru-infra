@@ -1,4 +1,4 @@
-// 「数値欄（幅を絞ったセル・専用コードが描く行）」の行番号をルート実装から読む共有部品。
+// 「数値しか入らない欄」の行番号を、各ルートの NUMERIC_ROWS 宣言から読む共有部品。
 // 長文セットと現実値セットの両方が使う。長文セットでも、物理的に数値しか入らない
 // セルに長文を入れるのはレイアウトの検証にならないため（入るはずがない）。
 import fs from "fs"
@@ -34,94 +34,40 @@ export const splitTopLevelArgs = (args) => {
 }
 
 /**
- * ルート実装から「数値欄（幅を絞ったセル）」の行番号を rows配列ごとに読む。
+ * 各ルートの NUMERIC_ROWS 宣言から「数値しか入らない欄」の行番号を読む。
  *
- * ★contentOverrides という語は関数シグネチャにも出るので、そこを拾ってはいけない。
- *   最初はシグネチャ側の `= {}` を掴んでしまい、置換が黙って効かず、
- *   現実値セットに存在しないはずの切り詰めが6件出ていた（＝合否判定が狂う）。
- *   呼び出し側の実引数を括弧の対応で取り出し、最後のオブジェクトリテラルから読む。
- *
- * ★2026-07-28 の事故: rows 引数を blankPrintedRows(rows, new Set([7])) で包んだところ、
- *   skip集合を拾う正規表現が**引数列の最初の new Set([...]) を非貪欲に**掴み、
- *   本来の skip 集合 new Set([3]) ではなく包み側の [7] を読んだ。
- *   その結果 bekki10 の数値行3に数値が入らず、テキストが 21.4pt の狭いセルに落ちて
- *   ⑧が 422 で止めた（止めなければ壊れたテストデータで全検査が緑になっていた）。
- *   ＝ 引数の**位置**で見る。skip集合は「それ単体が new Set( で始まる引数」だけ。
+ * ★以前は contentOverrides / skipContentRows から**推論**していた。これが誤りだった:
+ *   - override の幅は実測で 12〜97pt に連続しており、数値欄と「単に x をずらした
+ *     文字欄」を幅で分離できない。結果、現実値セットの100セル/14様式に "0.45" が入り、
+ *     その範囲では切り詰めもはみ出しも測れていなかった（＝合否の基準が空振り）
+ *   - skipContentRows には「専用コードが数値を描く行」と「刷り込みの選択肢の行」が
+ *     混ざっており、ソースからは区別できない
+ *   - bekki2 は drawResultRows に startIndex を取る。推論は rowBounds 基準の添字を
+ *     返すため、page3 は実際の payload 添字と 22 ずれていた
+ *   ＝ 推論をやめ、宣言だけを根拠にする。
  */
 export const numericRowsByKey = (routePath) => {
     const src = fs.readFileSync(path.join(process.cwd(), routePath), "utf8")
     const map = new Map() // payloadのキー -> Set<行番号>
-    // ★このルートが drawResultRows を使っているか自体を先に見る。
-    //   使っていない様式が実在する（bekki1 / 総括表 / 点検者一覧）ので、
-    //   「呼び出し0件＝異常」にすると正常なものを落とす。実測してから条件を決める。
-    const mentions = (src.match(/drawResultRows\(/g) ?? []).length
-    const map0 = map
-    let calls = 0
-    let idx = src.indexOf("drawResultRows(")
-    while (idx !== -1) {
-        // 関数定義（const drawResultRows = (...)）は呼び出しではないので飛ばす
-        const before = src.slice(Math.max(0, idx - 40), idx)
-        if (/const\s+$/.test(before)) { idx = src.indexOf("drawResultRows(", idx + 1); continue }
-        calls += 1
-        const args = callArgs(src, idx + "drawResultRows".length)
-        const parts = splitTopLevelArgs(args)
-        const rowsExpr = parts[2] ?? ""
-        // rows が局所変数なら const 宣言をたどって body.pageN_rows を解決する
-        let key = rowsExpr.match(/page\d+_rows/)?.[0]
-        if (!key) {
-            // ★rows が blankPrintedRows(...) のように包まれている場合は中の識別子を見る
-            const inner = rowsExpr.trim().replace(/^[A-Za-z_$][\w$]*\s*\(/, "")
-            const local = (inner.match(/page\d+_rows/)?.[0])
-                ?? inner.trim().match(/^[A-Za-z_$][\w$]*/)?.[0]
-                ?? rowsExpr.trim().match(/^[A-Za-z_$][\w$]*/)?.[0]
-            if (local?.match(/page\d+_rows/)) {
-                key = local
-            } else if (local) {
-                // ★テンプレートリテラル内では \s が s に潰れ \n が実改行になる。
-                //   正規表現を文字列で組むときはエスケープを二重にすること。
-                const decl = src.match(new RegExp(`const\\s+${local}\\s*=([^\\n]*)`))
-                key = decl?.[1].match(/page\d+_rows/)?.[0]
-            }
+
+    const decl = src.match(/export const NUMERIC_ROWS[^=]*=\s*\{([\s\S]*?)\n\}/)
+        ?? src.match(/export const NUMERIC_ROWS[^=]*=\s*(\{\})/)
+    if (!decl) {
+        // ★drawResultRows を使う様式は必ず宣言する。「宣言が無い＝未分類」を
+        //   黙って空として扱うと、新しい様式が測られないまま緑になる。
+        if (/drawResultRows\(/.test(src)) {
+            throw new Error(
+                `numericRowsByKey: ${routePath} は drawResultRows を使うのに ` +
+                `NUMERIC_ROWS の宣言が無い（数値欄が無いなら空の宣言を置くこと）`,
+            )
         }
-        const indexes = new Set()
-        // ★列定義より後ろの引数だけを見る（rows 引数の中身は対象外）
-        for (const part of parts.slice(4)) {
-            // (a) contentOverrides: 幅を絞ったセル
-            for (const m of part.matchAll(/(\d+):\s*\{\s*x:\s*[\d.]+\s*,\s*w:\s*[\d.]+\s*\}/g)) {
-                indexes.add(Number(m[1]))
-            }
-            // (b) skip集合: **その引数自体が** new Set( で始まるものだけ。
-            //     入れ子の new Set(...) を拾わないための位置指定。
-            if (/^\s*new Set\(/.test(part)) {
-                const inner = part.match(/new Set\(\[([\s\S]*)\]\)/)
-                if (inner) {
-                    // 行コメント付きで複数行に書かれるので、コメントを外してから数字を拾う
-                    const cleaned = inner[1].replace(/\/\/.*/g, "")
-                    for (const m of cleaned.matchAll(/\d+/g)) indexes.add(Number(m[0]))
-                }
-            }
-        }
-        if (key && indexes.size) {
-            const cur = map.get(key) ?? new Set()
-            for (const v of indexes) cur.add(v)
-            map.set(key, cur)
-        }
-        idx = src.indexOf("drawResultRows(", idx + 1)
+        return map
     }
-    // ★静かに空を返さない。今回の事故は「壊れても空が返る」のが最悪だった。
-    //   ただし条件は実測してから決める（正常側を測らずに置くと正常を落とす）:
-    //     - 使っていない様式が実在する … bekki1 / 総括表 / 点検者一覧 は drawResultRows を
-    //       持たない。「呼び出し0件＝異常」にすると、この3つを落とす（実際に落とした）
-    //     - 狭いセルも skip集合も無い様式が9つある … 結果が空でも正常
-    //   ＝ 落とすのは「ソースには出現するのに1件も解析できなかった」ときだけ。
-    //     これは解析の前提が崩れた証拠にしかならない。
-    if (mentions > 0 && calls === 0) {
-        throw new Error(
-            `numericRowsByKey: ${routePath} は drawResultRows を ${mentions} 箇所含むのに` +
-            `呼び出しを1つも解析できない（解析の前提が崩れている）`,
-        )
+    for (const m of decl[1].matchAll(/(page\d+_rows)\s*:\s*\[([^\]]*)\]/g)) {
+        const idx = new Set([...m[2].matchAll(/\d+/g)].map((x) => Number(x[0])))
+        if (idx.size) map.set(m[1], idx)
     }
-    return map0
+    return map
 }
 
 /**
@@ -136,9 +82,57 @@ export const numericRowsByKey = (routePath) => {
  *   PDFは正常に生成された（＝黙って回帰が素通りする）。
  *   よって (b) は呼び出し側が宣言する。宣言と実装のズレはここで落とす。
  */
+/**
+ * ルートが実際に内容列の描画を止めている行（skipContentRows）を読む。
+ *
+ * ★NUMERIC_ROWS とは別物。NUMERIC_ROWS は「テストデータに数値を入れる欄」の宣言で、
+ *   こちらは「実装が本当に描画を止めているか」の確認用。選択肢欄は数値欄ではないので
+ *   NUMERIC_ROWS には載らないが、内容列は止まっていなければならない。
+ */
+export const skipContentRowsByKey = (routePath) => {
+    const src = fs.readFileSync(path.join(process.cwd(), routePath), "utf8")
+    const map = new Map()
+    let idx = src.indexOf("drawResultRows(")
+    while (idx !== -1) {
+        if (/const\s+$/.test(src.slice(Math.max(0, idx - 40), idx))) {
+            idx = src.indexOf("drawResultRows(", idx + 1)
+            continue
+        }
+        const parts = splitTopLevelArgs(callArgs(src, idx + "drawResultRows".length))
+        const rowsExpr = parts[2] ?? ""
+        let key = rowsExpr.match(/page\d+_rows/)?.[0]
+        if (!key) {
+            const inner = rowsExpr.trim().replace(/^[A-Za-z_$][\w$]*\s*\(/, "")
+            const local = inner.trim().match(/^[A-Za-z_$][\w$]*/)?.[0]
+            if (local) {
+                const decl = src.match(new RegExp(`const\\s+${local}\\s*=([^\\n]*)`))
+                key = decl?.[1].match(/page\d+_rows/)?.[0]
+            }
+        }
+        // ★第5引数が数値の様式がある（bekki2 の startIndex）。payload の添字はそのぶん進む
+        const startIndex = /^\s*\d+\s*$/.test(parts[4] ?? "") ? Number(parts[4]) : 0
+        const indexes = new Set()
+        for (const part of parts.slice(4)) {
+            if (!/^\s*new Set\(/.test(part)) continue
+            const inner = part.match(/new Set\(\[([\s\S]*)\]\)/)
+            if (!inner) continue
+            for (const m of inner[1].replace(/\/\/.*/g, "").matchAll(/\d+/g)) {
+                indexes.add(Number(m[0]) + startIndex)
+            }
+        }
+        if (key && indexes.size) {
+            const cur = map.get(key) ?? new Set()
+            for (const v of indexes) cur.add(v)
+            map.set(key, cur)
+        }
+        idx = src.indexOf("drawResultRows(", idx + 1)
+    }
+    return map
+}
+
 export const applyChoiceRows = (payload, routePath, choiceRows) => {
     if (!choiceRows) return payload
-    const byKey = numericRowsByKey(routePath)
+    const byKey = skipContentRowsByKey(routePath)
     for (const [key, rowMap] of Object.entries(choiceRows)) {
         const rows = payload?.[key]
         if (!Array.isArray(rows)) throw new Error(`applyChoiceRows: ${routePath} の payload に ${key} が無い`)

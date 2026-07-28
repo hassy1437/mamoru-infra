@@ -12,6 +12,24 @@ import {
     systemFitFailures,
 } from "@/lib/pdf-fit-report"
 
+/**
+ * テストデータ生成が読む「数値しか入らない欄」の宣言。
+ *
+ * ★推論してはいけない。以前は contentOverrides / skipContentRows があれば数値欄と
+ *   見なしていたが、override の幅は実測で 12〜97pt に連続しており、数値欄と
+ *   「単に x をずらしただけの文字欄」を分離できない。その結果、現実値セットの
+ *   100セル/14様式に "0.45" が入り、その範囲では切り詰めもはみ出しも測れていなかった。
+ *   ＝ ここに書いてあるものだけが数値欄。書き忘れは検査データが甘くなるだけで
+ *   済まないので、宣言が無いとテストデータ生成が失敗する。
+ *
+ * 添字は payload 配列の添字（drawResultRows の startIndex を適用した後の値）。
+ * 分類は scripts/classify-numeric-rows.py が出す「内容セルの刷り込み」の実測による。
+ */
+export const NUMERIC_ROWS: Record<string, number[]> = {
+    page1_rows: [7, 17],
+    page2_rows: [18],
+}
+
 type BekkiRow = { content?: string; judgment?: string; bad_content?: string; action_content?: string; current_value?: string; flow_value?: string; hose_count?: string; nozzle_dia?: string }
 type DeviceRow = { name?: string; model?: string; calibrated_at?: string; maker?: string }
 

@@ -149,6 +149,15 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-numeric-rows-declaration.py", stage: "静的",
+        why: "テストデータのどのセルに数値を入れるかの宣言が、実装・テンプレートと合っているか。"
+            + "ここが嘘だと現実値セット（＝合否の基準）が偽の値で埋まり、その範囲の検査が空振りしたまま緑になる",
+        runs: [
+            { label: "自己診断", cmd: [PY, "scripts/check-numeric-rows-declaration.py", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: [PY, "scripts/check-numeric-rows-declaration.py"], sentinel: "NUMERIC_ROWS_DECLARATION_OK" },
+        ],
+    },
+    {
         file: "check-printed-overlap.py", stage: "生成PDF", needsPdfs: true,
         why: "アプリの文字が刷り込み（選択肢欄・単位・ラベル）に重なっていないか。罫線基準の検査では出ない次元",
         runs: [

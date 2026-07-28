@@ -98,31 +98,10 @@ KNOWN_LATENT = {
     ("fire-department-notification-bekki13", 1, "page1_rows", 3),   # Ｖ
     ("fire-department-notification-bekki13", 1, "page1_rows", 9),   # Ａ
     ("fire-water-bekki17", 1, "page1_rows", 2),   # ｍP3
-    ("foam-bekki5", 1, "page1_rows", 2),   # ｍ3
-    ("foam-bekki5", 1, "page1_rows", 13),   # Ａ
-    ("foam-bekki5", 1, "page1_rows", 17),   # 種接地
-    ("foam-bekki5", 2, "page2_rows", 5),   # MPa
-    ("foam-bekki5", 2, "page2_rows", 20),   # L
-    ("foam-bekki5", 2, "page2_rows", 26),   # MPa
-    ("foam-bekki5", 2, "page2_rows", 27),   # MPa
-    ("foam-bekki5", 3, "page3_rows", 2),   # MPa
-    ("foam-bekki5", 3, "page3_rows", 10),   # MPa
-    ("foam-bekki5", 4, "page4_rows", 3),   # Ａ
-    ("foam-bekki5", 4, "page4_rows", 16),   # Ａ
     ("gas-leak-fire-alarm-bekki11-2", 1, "page1_rows", 3),   # Ｖ
     ("gas-leak-fire-alarm-bekki11-2", 1, "page1_rows", 11),   # Ｖ
     ("gas-leak-fire-alarm-bekki11-2", 1, "page1_rows", 13),   # Ａ
     ("gas-leak-fire-alarm-bekki11-2", 2, "page2_rows", 17),   # db
-    ("halogen-bekki7", 1, "page1_rows", 3),   # 本
-    ("halogen-bekki7", 1, "page1_rows", 17),   # kg
-    ("halogen-bekki7", 1, "page1_rows", 26),   # 本
-    ("halogen-bekki7", 2, "page2_rows", 2),   # 本
-    ("halogen-bekki7", 2, "page2_rows", 35),   # Ｖ
-    ("halogen-bekki7", 2, "page2_rows", 37),   # Ａ
-    ("halogen-bekki7", 2, "page2_rows", 42),   # 秒
-    ("halogen-bekki7", 3, "page3_rows", 15),   # Ｖ
-    ("halogen-bekki7", 3, "page3_rows", 21),   # ｍ
-    ("halogen-bekki7", 4, "page4_rows", 1),   # 秒
     ("inert-gas-bekki6", 1, "page1_rows", 4),   # 本
     ("inert-gas-bekki6", 1, "page1_rows", 12),   # kg
     ("inert-gas-bekki6", 1, "page1_rows", 24),   # 本
@@ -137,29 +116,6 @@ KNOWN_LATENT = {
     ("leakage-fire-alarm-bekki12", 1, "page1_rows", 15),   # Ａ
     ("leakage-fire-alarm-bekki12", 1, "page1_rows", 21),   # Ａ
     ("leakage-fire-alarm-bekki12", 2, "page2_rows", 2),   # db
-    ("okugai-shokasen-bekki9", 1, "page1_rows", 1),   # ｍP3
-    ("okugai-shokasen-bekki9", 1, "page1_rows", 12),   # Ａ
-    ("okugai-shokasen-bekki9", 1, "page1_rows", 16),   # 種接地
-    ("okugai-shokasen-bekki9", 2, "page2_rows", 9),   # MPa
-    ("okugai-shokasen-bekki9", 2, "page2_rows", 22),   # L
-    ("okugai-shokasen-bekki9", 2, "page2_rows", 28),   # MPa
-    ("okugai-shokasen-bekki9", 2, "page2_rows", 29),   # MPa
-    ("okugai-shokasen-bekki9", 3, "page3_rows", 14),   # Ａ
-    ("okugai-shokasen-bekki9", 3, "page3_rows", 16),   # MPa
-    ("okugai-shokasen-bekki9", 3, "page3_rows", 17),   # L/min
-    ("okugai-shokasen-bekki9", 3, "page3_rows", 19),   # MPa
-    ("okugai-shokasen-bekki9", 3, "page3_rows", 20),   # L/min
-    ("powder-bekki8", 1, "page1_rows", 3),   # 本
-    ("powder-bekki8", 1, "page1_rows", 11),   # MPa
-    ("powder-bekki8", 1, "page1_rows", 18),   # kg
-    ("powder-bekki8", 1, "page1_rows", 27),   # 本
-    ("powder-bekki8", 2, "page2_rows", 2),   # 本
-    ("powder-bekki8", 2, "page2_rows", 35),   # Ｖ
-    ("powder-bekki8", 2, "page2_rows", 37),   # Ａ
-    ("powder-bekki8", 2, "page2_rows", 42),   # 秒
-    ("powder-bekki8", 3, "page3_rows", 13),   # Ｖ
-    ("powder-bekki8", 3, "page3_rows", 19),   # ｍ
-    ("powder-bekki8", 4, "page4_rows", 1),   # 秒
     ("smoke-control-bekki18", 2, "page2_rows", 16),   # Ａ
     ("standpipe-bekki20", 1, "page1_rows", 19),   # Ａ
     ("standpipe-bekki20", 1, "page1_rows", 23),   # 種接地

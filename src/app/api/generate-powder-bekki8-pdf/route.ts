@@ -482,6 +482,11 @@ export async function POST(req: NextRequest) {
             judgmentX: 331.33, judgmentW: 36.67,
             badX: 368.0, badW: 94.67,
             actionX: 462.67, actionW: 66.0,
+        }, {
+            3: { x: 231.67, w: 85.37 },   // 刷り込み「本」(317.04) の手前で止める
+            11: { x: 231.67, w: 80.81 },   // 刷り込み「MPa」(312.48) の手前で止める
+            18: { x: 231.67, w: 85.37 },   // 刷り込み「kg」(317.04) の手前で止める
+            27: { x: 231.67, w: 85.37 },   // 刷り込み「本」(317.04) の手前で止める
         })
 
         drawResultRows(page2, p2Height, body.page2_rows ?? [], P2_ROW_BOUNDS, {
@@ -489,7 +494,12 @@ export async function POST(req: NextRequest) {
             judgmentX: 327.0, judgmentW: 36.67,
             badX: 363.67, badW: 99.33,
             actionX: 463.0, actionW: 67.0,
-        }, {}, new Set([26]))
+        }, {
+            2: { x: 232.67, w: 78.97 },   // 刷り込み「本」(311.64) の手前で止める
+            35: { x: 232.67, w: 78.97 },   // 刷り込み「Ｖ」(311.64) の手前で止める
+            37: { x: 232.67, w: 78.97 },   // 刷り込み「Ａ」(311.64) の手前で止める
+            42: { x: 232.67, w: 78.97 },   // 刷り込み「秒」(311.64) の手前で止める
+        }, new Set([26]))
 
         // PAGE2 row 26「起動装置 / 自動式 / 火災感知装置（専用・兼用）」: 公式PDF刷り込みの選択を丸囲み
         drawChoiceCircle(page2, p2Height, fonts, body.page2_rows?.[26]?.content ?? "", [
@@ -502,6 +512,9 @@ export async function POST(req: NextRequest) {
             judgmentX: 314.33, judgmentW: 42.0,
             badX: 356.33, badW: 102.67,
             actionX: 459.0, actionW: 71.0,
+        }, {
+            13: { x: 233.0, w: 65.56 },   // 刷り込み「Ｖ」(298.56) の手前で止める
+            19: { x: 233.0, w: 65.56 },   // 刷り込み「ｍ」(298.56) の手前で止める
         })
 
         drawResultRows(page4, p4Height, body.page4_rows ?? [], P4_ROW_BOUNDS, {
@@ -509,6 +522,8 @@ export async function POST(req: NextRequest) {
             judgmentX: 317.0, judgmentW: 42.0,
             badX: 359.0, badW: 105.0,
             actionX: 464.0, actionW: 65.67,
+        }, {
+            1: { x: 222.33, w: 78.75 },   // 刷り込み「秒」(301.08) の手前で止める
         })
 
         drawWrappedInCell(page4, p4Height, body.notes, 96.33, 345.0, 433.34, 294.0, 7.2)

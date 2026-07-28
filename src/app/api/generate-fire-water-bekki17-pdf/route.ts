@@ -218,6 +218,8 @@ export async function POST(req: NextRequest) {
             badW: 68.28,
             actionX: 448.32,
             actionW: 81.72,
+        }, {
+            2: { x: 227.76, w: 96.0 },   // 刷り込み「ｍP3」(323.76) の手前で止める
         })
 
         drawWrappedInCell(page1, p1Height, body.notes, 86.04, 470.76, 444.0, 157.44, 6.8)

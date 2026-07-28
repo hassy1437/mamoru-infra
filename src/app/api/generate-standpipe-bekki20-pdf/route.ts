@@ -307,7 +307,10 @@ export async function POST(req: NextRequest) {
             actionW: 76.8,
         }
 
-        drawResultRows(page1, p1Height, body.page1_rows ?? [], P1_ROW_BOUNDS, commonCols, {}, new Set([
+        drawResultRows(page1, p1Height, body.page1_rows ?? [], P1_ROW_BOUNDS, commonCols, {
+            19: { x: 222.24, w: 100.68 },   // 刷り込み「Ａ」(322.92) の手前で止める
+            23: { x: 222.24, w: 79.68 },   // 刷り込み「種接地」(301.92) の手前で止める
+        }, new Set([
             7,  // ホース・ノズル: m×本 mm → 手動3分割描画
             17, // 電圧計・電流計: V A → 手動V/A分割描画
         ]))
@@ -315,7 +318,9 @@ export async function POST(req: NextRequest) {
             7,  // 機能: テンプレートに「専用 兼用」印刷済み → circle
             18, // 性能: MPa L/min → 手動2分割描画
         ]))
-        drawResultRows(page3, p3Height, body.page3_rows ?? [], P3_ROW_BOUNDS, commonCols)
+        drawResultRows(page3, p3Height, body.page3_rows ?? [], P3_ROW_BOUNDS, commonCols, {
+            1: { x: 222.24, w: 100.68 },   // 刷り込み「Ａ」(322.92) の手前で止める
+        })
 
         // === P1 Row 7: ホース・ノズル (長さｍ × 本数本 ／ ノズル径mm) ===
         // 公式PDF実測: ｍ@247.6 / ×(x1=268.6) / 本@289.6(x1=300.1) / mm@321。content列左=222.24。

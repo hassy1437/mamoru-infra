@@ -23,8 +23,23 @@ from classify_numeric_rows_lib import (  # noqa: E402
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-# ★contentOverrides は第6引数（0起点で5）。第1段で全様式この順に統一済み。
-OVERRIDE_ARG = 5
+def override_arg_index(src):
+    """シグネチャから contentOverrides の位置を求める。
+
+    ★位置を定数で決め打ちしてはいけない。bekki18 は cols と contentOverrides の間に
+      sizes 引数があり、第6引数だと決めつけて上書きしたら sizes を破壊した（tsc が検出）。
+      第1段で揃えたのは「skipContentRows の直前」という**相対**順序であって、
+      絶対位置ではない。
+    """
+    import re
+    m = re.search(r"const drawResultRows = \(([\s\S]*?)\) => \{", src)
+    if not m:
+        raise SystemExit("drawResultRows の定義が見つからない")
+    params = split_top(m.group(1))
+    for i, p in enumerate(params):
+        if p.strip().startswith("contentOverrides"):
+            return i
+    raise SystemExit("contentOverrides 引数が無い（第1段が未適用）")
 
 
 def compute(route, src):
@@ -53,6 +68,7 @@ def main():
     for route in sys.argv[1:]:
         src = io.open(route, encoding="utf-8").read()
         adds = compute(route, src)
+        OVERRIDE_ARG = override_arg_index(src)
         # 呼び出しを後ろから書き換える（前を書き換えると後ろの位置がずれる）
         starts = []
         idx = src.find("drawResultRows(")

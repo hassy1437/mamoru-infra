@@ -276,6 +276,9 @@ export async function POST(req: NextRequest) {
             badW: 78.24,
             actionX: 453.6,
             actionW: 75.84,
+        }, {
+            3: { x: 227.88, w: 88.92 },   // 刷り込み「Ｖ」(316.80) の手前で止める
+            9: { x: 227.88, w: 88.92 },   // 刷り込み「Ａ」(316.80) の手前で止める
         })
 
         drawResultRows(page2, p2Height, body.page2_rows ?? [], P2_ROW_BOUNDS, {

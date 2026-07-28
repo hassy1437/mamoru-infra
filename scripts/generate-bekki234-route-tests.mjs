@@ -2,6 +2,7 @@ import path from "path";
 import fs from "fs";
 import { runRoutePdf } from "./run-route-pdf.mjs";
 import { applyNumericRows } from "./lib-numeric-rows.mjs";
+import { applyBoundaryRows } from "./lib-boundary-rows.mjs";
 
 const makeRows = (count, prefix) =>
   Array.from({ length: count }, (_, i) => ({
@@ -128,6 +129,8 @@ const fitErrors = [];
 for (const job of jobs) {
   // 数値しか入らないセルには長文ではなく数値を入れる（共有部品で行番号を判定）
   applyNumericRows(job.payload, job.routePath);
+  // ★狭めたセルに「収まるはずの長さ」を入れて実際に踏む（測定誤りのあぶり出し）
+  applyBoundaryRows(job.payload, job.routePath);
   let result;
   try {
     result = await runRoutePdf(job);

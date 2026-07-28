@@ -281,8 +281,9 @@ export async function POST(req: NextRequest) {
                 actionX: 449.64,
                 actionW: 80.4,
             },
-            { content: 6.0, judgment: 7.0, bad: 6.0, action: 6.0 },
-        )
+            { content: 6.0, judgment: 7.0, bad: 6.0, action: 6.0 }, {
+            16: { x: 227.76, w: 89.16 },   // 刷り込み「Ａ」(316.92) の手前で止める
+        })
 
         drawWrappedInCell(page2, p2Height, body.notes, 86.04, 463.2, 444.0, 176.04, 6.8)
 

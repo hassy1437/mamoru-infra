@@ -370,6 +370,10 @@ export async function POST(req: NextRequest) {
             badW: 86.0,
             actionX: 444.5,
             actionW: 85.0,
+        }, {
+            3: { x: 222.5, w: 83.86 },   // 刷り込み「Ｖ」(306.36) の手前で止める
+            11: { x: 222.5, w: 83.86 },   // 刷り込み「Ｖ」(306.36) の手前で止める
+            13: { x: 222.5, w: 83.86 },   // 刷り込み「Ａ」(306.36) の手前で止める
         })
 
         // 刷り込みの見出し行には描かない: p2 行15 = 刷り込み「総合点検」（テンプレート実測）
@@ -382,6 +386,8 @@ export async function POST(req: NextRequest) {
             badW: 86.0,
             actionX: 444.5,
             actionW: 85.0,
+        }, {
+            17: { x: 217.0, w: 89.48 },   // 刷り込み「db」(306.48) の手前で止める
         })
 
         drawWrappedInCell(page2, p2Height, body.notes, 80.5, 491.5, 449.0, 94.5, 7.0)

@@ -481,6 +481,10 @@ export async function POST(req: NextRequest) {
             judgmentX: 321.33, judgmentW: 38.0,
             badX: 359.33, badW: 84.67,
             actionX: 444.0, actionW: 84.67,
+        }, {
+            4: { x: 225.33, w: 80.43 },   // 刷り込み「本」(305.76) の手前で止める
+            12: { x: 225.33, w: 80.43 },   // 刷り込み「kg」(305.76) の手前で止める
+            24: { x: 225.33, w: 80.43 },   // 刷り込み「本」(305.76) の手前で止める
         })
 
         drawResultRows(page2, p2Height, body.page2_rows ?? [], P2_ROW_BOUNDS, {
@@ -488,7 +492,11 @@ export async function POST(req: NextRequest) {
             judgmentX: 321.33, judgmentW: 38.0,
             badX: 359.33, badW: 85.34,
             actionX: 444.67, actionW: 84.66,
-        }, {}, new Set([17]))
+        }, {
+            28: { x: 225.33, w: 80.91 },   // 刷り込み「Ｖ」(306.24) の手前で止める
+            30: { x: 225.33, w: 80.91 },   // 刷り込み「Ａ」(306.24) の手前で止める
+            35: { x: 225.33, w: 80.91 },   // 刷り込み「秒」(306.24) の手前で止める
+        }, new Set([17]))
 
         // PAGE2 row 17「起動装置 / 自動式 / 火災感知装置（専用・兼用）」: 公式PDF刷り込みの選択を丸囲み
         drawChoiceCircle(page2, p2Height, fonts, body.page2_rows?.[17]?.content ?? "", [
@@ -501,6 +509,9 @@ export async function POST(req: NextRequest) {
             judgmentX: 321.33, judgmentW: 38.0,
             badX: 359.33, badW: 85.34,
             actionX: 444.67, actionW: 84.66,
+        }, {
+            24: { x: 225.33, w: 80.91 },   // 刷り込み「Ｖ」(306.24) の手前で止める
+            30: { x: 225.33, w: 80.91 },   // 刷り込み「ｍ」(306.24) の手前で止める
         })
 
         // 刷り込みの見出し行には描かない: p4 行0 = 刷り込み「総合点検」（テンプレート実測）
@@ -509,6 +520,8 @@ export async function POST(req: NextRequest) {
             judgmentX: 321.33, judgmentW: 38.0,
             badX: 359.33, badW: 85.34,
             actionX: 444.67, actionW: 84.66,
+        }, {
+            2: { x: 235.33, w: 70.67 },   // 刷り込み「秒」(306.00) の手前で止める
         })
 
         drawWrappedInCell(page4, p4Height, body.notes, 92.67, 343.33, 436.66, 274.67, 7.2)

@@ -1,5 +1,6 @@
 import { runRoutePdf } from "./run-route-pdf.mjs";
 import { applyNumericRows, applyChoiceRows } from "./lib-numeric-rows.mjs";
+import { applyBoundaryRows } from "./lib-boundary-rows.mjs";
 import fs from "fs";
 
 const makeRows = (count, prefix) =>
@@ -193,6 +194,8 @@ const fitErrors = [];
 for (const job of jobs) {
   // 数値しか入らないセルには長文ではなく数値を入れる（共有部品で行番号を判定）
   applyNumericRows(job.payload, job.routePath);
+  // ★狭めたセルに「収まるはずの長さ」を入れて実際に踏む（測定誤りのあぶり出し）
+  applyBoundaryRows(job.payload, job.routePath);
   // ★数値置換の**後**に入れる。選択肢の行も skipContentRows に載るため、
   //   先に入れると 0.45 で上書きされて○が消える（実際に消えた）。
   applyChoiceRows(job.payload, job.routePath, job.choiceRows);

@@ -17,7 +17,8 @@
 #   測れないまま「刷り込みなし」と誤報した轍）。
 #
 # ■ 既知の一覧（KNOWN_LATENT）について
-#   潜在77件はまだ直していない。★KNOWN_UNEXERCISED と同じ扱いにする:
+#   ★2026-07-28 に潜在77件はすべて解消し、いま一覧は空。
+#   空のまま維持することが目的で、扱いは KNOWN_UNEXERCISED と同じ:
 #     ・増えたら落ちる（新しい潜在が入るのを止める）
 #     ・直したのに一覧に残っていても落ちる（一覧が嘘にならない）
 #   ＝ いまは緑。退行が無いのは事実で、緑の意味も濁らない。
@@ -26,7 +27,9 @@
 #
 # 使い方: python scripts/check-row-cells.py [--all|--tsv|--self-test]
 import glob
+import io
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -86,42 +89,7 @@ def audit():
 
 
 # 直していない「潜在」の既知一覧。テンプレートの実測から生成した。
-KNOWN_LATENT = {
-    ("doryoku-pump-bekki10", 1, "page1_rows", 2),   # ｍ3
-    ("doryoku-pump-bekki10", 1, "page1_rows", 10),   # L
-    ("doryoku-pump-bekki10", 1, "page1_rows", 14),   # Ｖ
-    ("emergency-alarm-bekki14", 1, "page1_rows", 2),   # Ｖ
-    ("emergency-alarm-bekki14", 1, "page1_rows", 12),   # Ｖ
-    ("emergency-alarm-bekki14", 1, "page1_rows", 14),   # Ａ
-    ("emergency-alarm-bekki14", 2, "page2_rows", 8),   # Ｖ
-    ("emergency-alarm-bekki14", 2, "page2_rows", 11),   # Ａ
-    ("fire-department-notification-bekki13", 1, "page1_rows", 3),   # Ｖ
-    ("fire-department-notification-bekki13", 1, "page1_rows", 9),   # Ａ
-    ("fire-water-bekki17", 1, "page1_rows", 2),   # ｍP3
-    ("gas-leak-fire-alarm-bekki11-2", 1, "page1_rows", 3),   # Ｖ
-    ("gas-leak-fire-alarm-bekki11-2", 1, "page1_rows", 11),   # Ｖ
-    ("gas-leak-fire-alarm-bekki11-2", 1, "page1_rows", 13),   # Ａ
-    ("gas-leak-fire-alarm-bekki11-2", 2, "page2_rows", 17),   # db
-    ("inert-gas-bekki6", 1, "page1_rows", 4),   # 本
-    ("inert-gas-bekki6", 1, "page1_rows", 12),   # kg
-    ("inert-gas-bekki6", 1, "page1_rows", 24),   # 本
-    ("inert-gas-bekki6", 2, "page2_rows", 28),   # Ｖ
-    ("inert-gas-bekki6", 2, "page2_rows", 30),   # Ａ
-    ("inert-gas-bekki6", 2, "page2_rows", 35),   # 秒
-    ("inert-gas-bekki6", 3, "page3_rows", 24),   # Ｖ
-    ("inert-gas-bekki6", 3, "page3_rows", 30),   # ｍ
-    ("inert-gas-bekki6", 4, "page4_rows", 2),   # 秒
-    ("jidou-kasai-houchi-bekki11-1", 1, "page1_rows", 2),   # Ｖ
-    ("leakage-fire-alarm-bekki12", 1, "page1_rows", 5),   # Ａ
-    ("leakage-fire-alarm-bekki12", 1, "page1_rows", 15),   # Ａ
-    ("leakage-fire-alarm-bekki12", 1, "page1_rows", 21),   # Ａ
-    ("leakage-fire-alarm-bekki12", 2, "page2_rows", 2),   # db
-    ("smoke-control-bekki18", 2, "page2_rows", 16),   # Ａ
-    ("standpipe-bekki20", 1, "page1_rows", 19),   # Ａ
-    ("standpipe-bekki20", 1, "page1_rows", 23),   # 種接地
-    ("standpipe-bekki20", 3, "page3_rows", 1),   # Ａ
-}
-
+KNOWN_LATENT = set()   # ★2026-07-28: 77件すべて解消。増えたらここが空でなくなる（＝検査が落ちる）
 
 def summarize(rows):
     return {k: sum(1 for r in rows if r[4] == k)
@@ -143,28 +111,44 @@ def check(rows):
 
 
 def self_test():
-    """★両方向。一覧を固定しただけで検出力が無い、を防ぐ"""
-    rows = audit()
-    if check(rows):
+    """★両方向。一覧が空になった後も検出力があることを確かめる。
+
+    ＝ 一覧から1件外す対照は、一覧が空だと成立しない。
+      「ルートの override を実際に外すと潜在として現れる」を対照にする。
+    """
+    if check(audit()):
         print("自己診断: 現状が既にNG（陰性対照が成立しない）")
         return 1
+
+    # 陽性対照1: override を1つ外すと、その行が潜在として現れる
+    victim = "src/app/api/generate-halogen-bekki7-pdf/route.ts"
+    orig = io.open(victim, encoding="utf-8").read()
+    m = re.search(r"\n\s*3: \{ x: [\d.]+, w: [\d.]+ \},[^\n]*刷り込み[^\n]*", orig)
+    if not m:
+        print("自己診断: 変異を当てる override が見つからない（書式が変わった）")
+        return 1
+    try:
+        io.open(victim, "w", encoding="utf-8", newline="").write(orig[:m.start()] + orig[m.end():])
+        found = check(audit())
+        if not any("新しい潜在が増えた" in p and "halogen-bekki7" in p for p in found):
+            print("自己診断: override を外しても潜在として検出できない")
+            return 1
+    finally:
+        io.open(victim, "w", encoding="utf-8", newline="").write(orig)
+
+    # 陽性対照2: 実体の無い項目が一覧に残っていたら落ちる
     saved = set(KNOWN_LATENT)
     try:
-        KNOWN_LATENT.discard(next(iter(sorted(KNOWN_LATENT))))
-        if not any("新しい潜在が増えた" in p for p in check(rows)):
-            print("自己診断: 一覧から外しても検出できない")
-            return 1
-        KNOWN_LATENT.clear()
-        KNOWN_LATENT.update(saved)
         KNOWN_LATENT.add(("__存在しない様式__", 1, "page1_rows", 0))
-        if not any("解消済み" in p for p in check(rows)):
+        if not any("解消済み" in p for p in check(audit())):
             print("自己診断: 実体の無い項目が一覧に残っていても落ちない")
             return 1
     finally:
         KNOWN_LATENT.clear()
         KNOWN_LATENT.update(saved)
-    print(f"  陰性対照: 現状 潜在 {summarize(rows)['潜在']} 件 → 一覧と一致")
-    print("  陽性対照: 一覧から1件外す → 検出 / 実体の無い項目を足す → 検出")
+
+    print(f"  陰性対照: 現状 潜在 0 件 / 一覧 {len(KNOWN_LATENT)} 件 → 一致")
+    print("  陽性対照: bekki7 の override を1つ外す → 潜在として検出 / 実体の無い項目 → 検出")
     print("SELF_TEST_OK")
     return 0
 

@@ -390,6 +390,7 @@ export async function POST(req: NextRequest) {
             4:  { x: 230.0, w: 88 },  // 端子電圧 Ｖ
             10: { x: 230.0, w: 88 },  // 電圧計 Ｖ
             12: { x: 230.0, w: 88 },  // ヒューズ類 Ａ
+                    2: { x: 230.0, w: 89.8 },   // 刷り込み「Ｖ」(319.80) の手前で止める
         })
 
         drawResultRows(page2, p2Height, body.page2_rows ?? [], P2_ROW_BOUNDS, {

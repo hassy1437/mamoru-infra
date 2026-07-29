@@ -10,7 +10,19 @@ import {
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
-import { FIT_EPSILON, blankPrintedRows, drawTextRuns, drawWrappedTextInCell, formatJapaneseDateText, formatJudgment, measureRuns, pickFont, reportIfBelowMinSize, type ReportFonts } from "@/lib/pdf-form-helpers"
+import {
+    FIT_EPSILON,
+    blankPrintedRows,
+    drawPeriodDate,
+    drawTextRuns,
+    drawWrappedTextInCell,
+    formatJapaneseDateText,
+    formatJudgment,
+    measureRuns,
+    pickFont,
+    reportIfBelowMinSize,
+    type ReportFonts,
+} from "@/lib/pdf-form-helpers"
 
 /**
  * テストデータ生成が読む「数値しか入らない欄」の宣言。
@@ -306,16 +318,7 @@ export async function POST(req: NextRequest) {
             drawTextRuns(page, fonts, String(text ?? ""), anchorX - textWidth, y, size)
         }
 
-        const drawPeriodDate = (
-            dateValue: unknown,
-            anchors: { year: number; month: number; day: number },
-        ) => {
-            const parts = parseDateParts(dateValue)
-            if (!parts) return
-            drawRightAt(page1, p1Height, parts.year, anchors.year, PERIOD_ROW.top, PERIOD_ROW.h, 6.8)
-            drawRightAt(page1, p1Height, parts.month, anchors.month, PERIOD_ROW.top, PERIOD_ROW.h, 6.8)
-            drawRightAt(page1, p1Height, parts.day, anchors.day, PERIOD_ROW.top, PERIOD_ROW.h, 6.8)
-        }
+        
 
         // page1 header (layout aligns closely with 別記様弁E1の1)
         drawInCell(page1, p1Height, body.form_name, HEADER.valueX, HEADER.nameRow.top, HEADER.valueW, HEADER.nameRow.h, 8.6)
@@ -341,8 +344,8 @@ export async function POST(req: NextRequest) {
             return start && end ? `${start} - ${end}` : (start || end)
         })()
         if (parseDateParts(body.period_start) || parseDateParts(body.period_end)) {
-            drawPeriodDate(body.period_start, PERIOD_START_ANCHORS)
-            drawPeriodDate(body.period_end, PERIOD_END_ANCHORS)
+            drawPeriodDate({ page: page1, pageHeight: p1Height, fonts, dateValue: body.period_start, anchors: PERIOD_START_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 6.8 })
+            drawPeriodDate({ page: page1, pageHeight: p1Height, fonts, dateValue: body.period_end, anchors: PERIOD_END_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 6.8 })
         } else {
             drawInCell(page1, p1Height, periodText, PERIOD_CELL.x, PERIOD_ROW.top, PERIOD_CELL.w, PERIOD_ROW.h, 6.8)
         }

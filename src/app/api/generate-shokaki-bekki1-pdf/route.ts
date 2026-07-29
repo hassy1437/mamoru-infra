@@ -11,14 +11,15 @@ import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
 import {
+    FIT_EPSILON,
+    drawPeriodDate,
+    drawTextRuns,
     drawWrappedTextInCell,
     formatJapaneseDateText,
-    pickFont,
-    type ReportFonts,
     measureRuns,
-    drawTextRuns,
-    FIT_EPSILON,
+    pickFont,
     reportIfBelowMinSize,
+    type ReportFonts,
 } from "@/lib/pdf-form-helpers"
 
 type MarkKey = "A" | "B" | "C" | "D" | "E" | "F"
@@ -330,17 +331,7 @@ export async function POST(req: NextRequest) {
             drawTextRuns(page, fonts, String(text ?? ""), anchorX - textWidth, y, size)
         }
 
-        const drawPeriodDate = (
-            dateValue: unknown,
-            anchors: { year: number; month: number; day: number },
-        ) => {
-            const parts = parseDateParts(dateValue)
-            if (!parts) return
-
-            drawRightAt(page1, p1Height, parts.year, anchors.year, PERIOD_ROW.top, PERIOD_ROW.h, 8.1)
-            drawRightAt(page1, p1Height, parts.month, anchors.month, PERIOD_ROW.top, PERIOD_ROW.h, 8.1)
-            drawRightAt(page1, p1Height, parts.day, anchors.day, PERIOD_ROW.top, PERIOD_ROW.h, 8.1)
-        }
+        
 
         drawInCell(page1, p1Height, body.form_name, 118.8, 111.48, 251.52, 27.96, 9.2)
         drawInCell(page1, p1Height, body.fire_manager, 411.84, 111.48, 117.72, 27.96, 8.6)
@@ -350,8 +341,8 @@ export async function POST(req: NextRequest) {
         const periodStart = formatDateText(body.period_start)
         const periodEnd = formatDateText(body.period_end)
         if (parseDateParts(body.period_start) || parseDateParts(body.period_end)) {
-            drawPeriodDate(body.period_start, PERIOD_START_ANCHORS)
-            drawPeriodDate(body.period_end, PERIOD_END_ANCHORS)
+            drawPeriodDate({ page: page1, pageHeight: p1Height, fonts, dateValue: body.period_start, anchors: PERIOD_START_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 8.1 })
+            drawPeriodDate({ page: page1, pageHeight: p1Height, fonts, dateValue: body.period_end, anchors: PERIOD_END_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 8.1 })
         } else {
             const periodText = periodStart && periodEnd ? `${periodStart} - ${periodEnd}` : (periodStart || periodEnd)
             drawInCell(page1, p1Height, periodText, 208.92, PERIOD_ROW.top, 320.64, PERIOD_ROW.h, 8.8)

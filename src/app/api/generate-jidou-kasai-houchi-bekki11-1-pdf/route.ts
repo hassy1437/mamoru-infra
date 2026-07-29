@@ -10,7 +10,19 @@ import {
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
-import { FIT_EPSILON, drawChoiceCircle, drawTextRuns, drawWrappedTextInCell, formatJapaneseDateText, formatJudgment, measureRuns, pickFont, reportIfBelowMinSize, type ReportFonts } from "@/lib/pdf-form-helpers"
+import {
+    FIT_EPSILON,
+    drawChoiceCircle,
+    drawPeriodDate,
+    drawTextRuns,
+    drawWrappedTextInCell,
+    formatJapaneseDateText,
+    formatJudgment,
+    measureRuns,
+    pickFont,
+    reportIfBelowMinSize,
+    type ReportFonts,
+} from "@/lib/pdf-form-helpers"
 import { normalizeInspectorNameValue, normalizeWitnessValue } from "@/lib/bekki-header-normalization"
 
 /**
@@ -307,7 +319,6 @@ export async function POST(req: NextRequest) {
             drawTextRuns(page, fonts, String(norm ?? ""), cellX + padX, pageH - (textTop + th * 0.78), sz)
         }
 
-
         const drawResultRows = (page: PDFPage, pageHeight: number, rows: BekkiRow[], rowBounds: number[], cols: ResultColumns, contentOverrides: Record<number, { x: number; w: number }> = {}, skipContentRows?: Set<number>, skipAllRows?: Set<number>) => {
             for (let i = 0; i < rowBounds.length - 1; i += 1) {
                 const row = rows[i]
@@ -343,16 +354,7 @@ export async function POST(req: NextRequest) {
             drawTextRuns(page, fonts, String(text ?? ""), anchorX - textWidth, y, size)
         }
 
-        const drawPeriodDate = (
-            dateValue: unknown,
-            anchors: { year: number; month: number; day: number },
-        ) => {
-            const parts = parseDateParts(dateValue)
-            if (!parts) return
-            drawRightAt(page1, p1Height, parts.year, anchors.year, PERIOD_ROW.top, PERIOD_ROW.h, 7.0)
-            drawRightAt(page1, p1Height, parts.month, anchors.month, PERIOD_ROW.top, PERIOD_ROW.h, 7.0)
-            drawRightAt(page1, p1Height, parts.day, anchors.day, PERIOD_ROW.top, PERIOD_ROW.h, 7.0)
-        }
+        
 
         // page1 header
         drawInCell(page1, p1Height, body.form_name, 122.76, 114.0, 267.0, 24.0, 8.3)
@@ -365,8 +367,8 @@ export async function POST(req: NextRequest) {
             return start && end ? `${start} - ${end}` : (start || end)
         })()
         if (parseDateParts(body.period_start) || parseDateParts(body.period_end)) {
-            drawPeriodDate(body.period_start, PERIOD_START_ANCHORS)
-            drawPeriodDate(body.period_end, PERIOD_END_ANCHORS)
+            drawPeriodDate({ page: page1, pageHeight: p1Height, fonts, dateValue: body.period_start, anchors: PERIOD_START_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 7.0 })
+            drawPeriodDate({ page: page1, pageHeight: p1Height, fonts, dateValue: body.period_end, anchors: PERIOD_END_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 7.0 })
         } else {
             drawInCell(page1, p1Height, periodText, 230.0, PERIOD_ROW.top, 299.33, PERIOD_ROW.h, 7.0)
         }

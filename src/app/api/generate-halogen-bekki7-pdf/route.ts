@@ -10,7 +10,19 @@ import {
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
-import { FIT_EPSILON, drawChoiceCircle, drawTextRuns, drawWrappedTextInCell, formatJapaneseDateText, formatJudgment, measureRuns, pickFont, reportIfBelowMinSize, type ReportFonts } from "@/lib/pdf-form-helpers"
+import {
+    FIT_EPSILON,
+    drawChoiceCircle,
+    drawPeriodDate,
+    drawTextRuns,
+    drawWrappedTextInCell,
+    formatJapaneseDateText,
+    formatJudgment,
+    measureRuns,
+    pickFont,
+    reportIfBelowMinSize,
+    type ReportFonts,
+} from "@/lib/pdf-form-helpers"
 import { normalizeInspectorNameValue, normalizeWitnessValue } from "@/lib/bekki-header-normalization"
 
 /**
@@ -360,16 +372,7 @@ export async function POST(req: NextRequest) {
             drawTextRuns(page, fonts, String(text ?? ""), anchorX - textWidth, y, size)
         }
 
-        const drawPeriodDate = (
-            dateValue: unknown,
-            anchors: { year: number; month: number; day: number },
-        ) => {
-            const parts = parseDateParts(dateValue)
-            if (!parts) return
-            drawRightAt(page1, p1Height, parts.year, anchors.year, PERIOD_ROW.top, PERIOD_ROW.h, 7.8)
-            drawRightAt(page1, p1Height, parts.month, anchors.month, PERIOD_ROW.top, PERIOD_ROW.h, 7.8)
-            drawRightAt(page1, p1Height, parts.day, anchors.day, PERIOD_ROW.top, PERIOD_ROW.h, 7.8)
-        }
+        
 
         // 1セルを values.length 個の上下サブ領域に等分割し、各サブ領域に1値を描画する。
         // PR2: 測定セルで n=2 (date, value)
@@ -451,8 +454,8 @@ export async function POST(req: NextRequest) {
         const start = formatDateText(body.period_start)
         const end = formatDateText(body.period_end)
         if (parseDateParts(body.period_start) || parseDateParts(body.period_end)) {
-            drawPeriodDate(body.period_start, PERIOD_START_ANCHORS)
-            drawPeriodDate(body.period_end, PERIOD_END_ANCHORS)
+            drawPeriodDate({ page: page1, pageHeight: p1Height, fonts, dateValue: body.period_start, anchors: PERIOD_START_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 7.8 })
+            drawPeriodDate({ page: page1, pageHeight: p1Height, fonts, dateValue: body.period_end, anchors: PERIOD_END_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 7.8 })
         } else {
             const periodText = start && end ? `${start} - ${end}` : (start || end)
             drawInCell(page1, p1Height, periodText, 263.33, PERIOD_ROW.top, 265.34, PERIOD_ROW.h, 7.8)
@@ -570,5 +573,4 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "PDF generation failed" }, { status: 500 })
     }
 }
-
 

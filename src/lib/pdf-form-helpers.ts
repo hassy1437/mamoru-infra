@@ -138,6 +138,14 @@ export type DateAnchors = {
     year: number
     month: number
     day: number
+    /**
+     * 刷り込みの「年」「月」「日」のベースライン（上端からの絶対値・テンプレート実測）。
+     *
+     * ★これが無いとセル矩形の中央に置くことになり、刷り込みと高さが揃わない。
+     *   実測では23様式すべてでズレており、−0.4〜−5.19pt（bekki7 が最大）。
+     *   罫線も越えず切り詰めも起きないので、どの検査にも出なかった。
+     */
+    baseline?: number
 }
 
 type DrawTextInCellArgs = {
@@ -175,6 +183,8 @@ type DrawRightAtArgs = {
     cellTopFromTop: number
     cellH: number
     fontSize: number
+    /** 上端からの絶対ベースライン。指定するとセル中央合わせより優先する */
+    baselineY?: number
 }
 
 type DrawPeriodDateArgs = {
@@ -555,6 +565,7 @@ export const drawRightAt = ({
     cellTopFromTop,
     cellH,
     fontSize,
+    baselineY,
 }: DrawRightAtArgs) => {
     const normalized = normalizeText(text)
     if (!normalized) return
@@ -568,7 +579,8 @@ export const drawRightAt = ({
         fonts,
         normalized,
         rightX - textWidth,
-        getBaselineY(pageHeight, textHeight, cellTopFromTop, cellH),
+        // ★baselineY が来たらセル中央ではなくそこに合わせる（隣の刷り込みと高さを揃える）
+        baselineY !== undefined ? pageHeight - baselineY : getBaselineY(pageHeight, textHeight, cellTopFromTop, cellH),
         fontSize,
     )
 }
@@ -595,6 +607,7 @@ export const drawPeriodDate = ({
         cellTopFromTop: rowTop,
         cellH: rowHeight,
         fontSize,
+        baselineY: anchors.baseline,
     })
     drawRightAt({
         page,
@@ -605,6 +618,7 @@ export const drawPeriodDate = ({
         cellTopFromTop: rowTop,
         cellH: rowHeight,
         fontSize,
+        baselineY: anchors.baseline,
     })
     drawRightAt({
         page,
@@ -615,6 +629,7 @@ export const drawPeriodDate = ({
         cellTopFromTop: rowTop,
         cellH: rowHeight,
         fontSize,
+        baselineY: anchors.baseline,
     })
 
     return true

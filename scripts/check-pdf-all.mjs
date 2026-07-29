@@ -177,6 +177,15 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-choice-clearance.py", stage: "静的",
+        why: "○が隣の刷り込み語に触れていないか（全様式・定数すべて）。1つのセルに丸は1つしか付かないので"
+            + "生成PDFでは選択肢の一部しか踏めない。使われていない定数こそ黙って壊れる",
+        runs: [
+            { label: "自己診断", cmd: [PY, "scripts/check-choice-clearance.py", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: [PY, "scripts/check-choice-clearance.py"], sentinel: "CHOICE_CLEARANCE_OK" },
+        ],
+    },
+    {
         file: "check-bekki14-choice-clearance.py", stage: "生成PDF", needsPdfs: true,
         why: "選択肢を囲む○が隣の刷り込み語に触れていないか。触れると「一斉と区分の両方が選ばれている」ように見え、"
             + "法定書類として意味が壊れる。罫線越えでも刷り込みへの重なりでも出ない次元",

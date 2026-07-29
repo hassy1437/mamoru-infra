@@ -1,7 +1,7 @@
 import path from "path";
 import fs from "fs";
 import { runRoutePdf } from "./run-route-pdf.mjs";
-import { applyNumericRows } from "./lib-numeric-rows.mjs";
+import { applyNumericRows, applyChoiceRows } from "./lib-numeric-rows.mjs";
 import { applyBoundaryRows } from "./lib-boundary-rows.mjs";
 
 const makeRows = (count, prefix) =>
@@ -55,6 +55,7 @@ const jobs = [
   {
     key: "bekki2",
     routePath: "src/app/api/generate-shokasen-bekki2-pdf/route.ts",
+    choiceRows: { page2_rows: { 7: "専用" }, page3_rows: { 13: "専用" } },
     outPdfPath: "tmp/pdf-test-bekki234/bekki2_test.pdf",
     payload: {
       ...shared,
@@ -82,6 +83,7 @@ const jobs = [
   {
     key: "bekki3",
     routePath: "src/app/api/generate-sprinkler-bekki3-pdf/route.ts",
+    choiceRows: { page2_rows: { 7: "専用" } },
     outPdfPath: "tmp/pdf-test-bekki234/bekki3_test.pdf",
     payload: {
       ...shared,
@@ -107,6 +109,7 @@ const jobs = [
   {
     key: "bekki4",
     routePath: "src/app/api/generate-water-spray-bekki4-pdf/route.ts",
+    choiceRows: { page2_rows: { 7: "専用" } },
     outPdfPath: "tmp/pdf-test-bekki234/bekki4_test.pdf",
     payload: {
       ...shared,
@@ -131,6 +134,8 @@ for (const job of jobs) {
   applyNumericRows(job.payload, job.routePath);
   // ★狭めたセルに「収まるはずの長さ」を入れて実際に踏む（測定誤りのあぶり出し）
   applyBoundaryRows(job.payload, job.routePath);
+  // ★選択肢は最後。選択肢の行が override 行でもある場合、境界値で上書きされる
+  applyChoiceRows(job.payload, job.routePath, job.choiceRows);
   let result;
   try {
     result = await runRoutePdf(job);

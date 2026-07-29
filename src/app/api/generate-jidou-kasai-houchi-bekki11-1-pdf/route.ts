@@ -409,34 +409,34 @@ export async function POST(req: NextRequest) {
         const p2Rows = body.page2_rows ?? []
         if (p2Rows[5]) {
             drawChoiceCircle(page2, p2Height, fonts, p2Rows[5].content ?? "", [
-                { label: "差動", cx: 242.5, cy: 211.5, rx: 13, ry: 7 },
-                { label: "定温", cx: 274.0, cy: 211.5, rx: 22, ry: 7 },  // 定温（再）= 1印字単位(x254.4-293.8)を1○で囲む（旧 定温+再 の2○を統合）
-                { label: "熱アナログ", cx: 317.0, cy: 211.5, rx: 18, ry: 7 },
-            ], 0.8)
+            { label: "差動", cx: 242.52, cy: 209.57, rx: 10.42, ry: 6.57 },
+            { label: "定温", cx: 262.26, cy: 209.57, rx: 10.36, ry: 6.57 },
+            { label: "熱アナログ", cx: 317.40, cy: 209.57, rx: 22.18, ry: 6.57 },
+        ], 0.8)
         }
         // P2 Row 9: スポット型(煙) — イオン 光電 アナログ
         if (p2Rows[9]) {
             drawChoiceCircle(page2, p2Height, fonts, p2Rows[9].content ?? "", [
-                { label: "イオン", cx: 247.0, cy: 302.3, rx: 16, ry: 7 },
-                { label: "光電", cx: 278.0, cy: 302.3, rx: 14, ry: 7 },
-                { label: "アナログ", cx: 316.0, cy: 302.3, rx: 18, ry: 7 },
-            ], 0.8)
+            { label: "イオン", cx: 249.12, cy: 301.09, rx: 18.34, ry: 7.28 },
+            { label: "光電", cx: 280.63, cy: 301.09, rx: 13.00, ry: 7.28 },
+            { label: "アナログ", cx: 317.41, cy: 301.09, rx: 23.50, ry: 7.28 },
+        ], 0.8)
         }
         // P2 Row 11: 炎感知器 — 赤外線 紫外線
         if (p2Rows[11]) {
             drawChoiceCircle(page2, p2Height, fonts, p2Rows[11].content ?? "", [
-                { label: "赤外線", cx: 262.0, cy: 348.3, rx: 18, ry: 7 },
-                { label: "紫外線", cx: 304.0, cy: 348.3, rx: 18, ry: 7 },
-            ], 0.8)
+            { label: "赤外線", cx: 264.86, cy: 347.05, rx: 18.34, ry: 7.28 },
+            { label: "紫外線", cx: 306.93, cy: 347.05, rx: 18.28, ry: 7.28 },
+        ], 0.8)
         }
         // P2 Row 22: 鳴動方式 — 一斉 区分 相互 再鳴動
         if (p2Rows[22]) {
             drawChoiceCircle(page2, p2Height, fonts, p2Rows[22].content ?? "", [
-                { label: "一斉", cx: 243.0, cy: 601.8, rx: 13, ry: 7 },
-                { label: "区分", cx: 267.0, cy: 601.8, rx: 13, ry: 7 },
-                { label: "相互", cx: 290.0, cy: 601.8, rx: 13, ry: 7 },
-                { label: "再鳴動", cx: 320.0, cy: 601.8, rx: 16, ry: 7 },
-            ], 0.8)
+            { label: "一斉", cx: 245.40, cy: 600.33, rx: 11.98, ry: 7.00 },
+            { label: "区分", cx: 269.16, cy: 600.33, rx: 11.98, ry: 7.00 },
+            { label: "相互", cx: 292.91, cy: 600.33, rx: 11.98, ry: 7.00 },
+            { label: "再鳴動", cx: 321.59, cy: 600.33, rx: 16.78, ry: 7.00 },
+        ], 0.8)
         }
 
         drawResultRows(page3, p3Height, body.page3_rows ?? [], P3_ROW_BOUNDS, {

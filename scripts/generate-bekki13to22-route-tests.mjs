@@ -133,6 +133,9 @@ const jobs = [
     key: "bekki20",
     routePath: "src/app/api/generate-standpipe-bekki20-pdf/route.ts",
     outPdfPath: "tmp/pdf-test-bekki13to22/bekki20_test.pdf",
+    // row 7: 遠隔操作部 機能（専用・兼用）。★インラインで content に入れていたが、
+    //   宣言にしないと「ルートが内容列を止めているか」の検証が効かない
+    choiceRows: { page2_rows: { 7: "専用" } },
     payload: {
       ...shared,
       extra_fields: {
@@ -149,8 +152,6 @@ const jobs = [
         return row;
       }),
       page2_rows: makeRows(40, "B20-P2").map((row, i) => {
-        // row 7: 遠隔操作部 機能（専用・兼用）— 丸囲み確認用に「兼用」を投入
-        if (i === 7) return { ...row, content: "兼用" };
         // row 18: ポンプ性能 — 吐出圧力(MPa)=content, 吐出量(L/min)=flow_value
         if (i === 18) return { ...row, content: "0.85", flow_value: "1800" };
         return row;

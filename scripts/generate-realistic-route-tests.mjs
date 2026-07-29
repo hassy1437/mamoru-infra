@@ -97,6 +97,20 @@ const CHOICE_ROWS = {
         page1_rows: { 23: "区分" },
         page2_rows: { 30: "再鳴動" },
     },
+    // 「専用・兼用」は2択。長文セットに 専用 を割り当てているので、こちらは 兼用。
+    "generate-shokasen-bekki2-pdf": { page2_rows: { 7: "兼用" }, page3_rows: { 13: "兼用" } },
+    "generate-sprinkler-bekki3-pdf": { page2_rows: { 7: "兼用" } },
+    "generate-water-spray-bekki4-pdf": { page2_rows: { 7: "兼用" } },
+    "generate-foam-bekki5-pdf": { page2_rows: { 7: "兼用" } },
+    "generate-inert-gas-bekki6-pdf": { page2_rows: { 17: "兼用" } },
+    "generate-halogen-bekki7-pdf": { page2_rows: { 26: "兼用" } },
+    "generate-powder-bekki8-pdf": { page2_rows: { 26: "兼用" } },
+    "generate-okugai-shokasen-bekki9-pdf": { page2_rows: { 7: "兼用" } },
+    "generate-standpipe-bekki20-pdf": { page2_rows: { 7: "兼用" } },
+    // 3択・4択は2セットでも全語は踏めない。残りは定数の静的検算で担保する
+    "generate-jidou-kasai-houchi-bekki11-1-pdf": {
+        page2_rows: { 5: "熱アナログ", 9: "アナログ", 11: "紫外線", 22: "再鳴動" },
+    },
 }
 
 const transform = (node, numericByKey, key = "", rowIndex = null, rowsKey = "") => {

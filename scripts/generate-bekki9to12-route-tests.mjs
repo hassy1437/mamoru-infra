@@ -1,5 +1,5 @@
 import { runRoutePdf } from "./run-route-pdf.mjs";
-import { applyNumericRows } from "./lib-numeric-rows.mjs";
+import { applyNumericRows, applyChoiceRows } from "./lib-numeric-rows.mjs";
 import { applyBoundaryRows } from "./lib-boundary-rows.mjs";
 import fs from "fs";
 
@@ -49,6 +49,7 @@ const jobs = [
   {
     key: "bekki9",
     routePath: "src/app/api/generate-okugai-shokasen-bekki9-pdf/route.ts",
+    choiceRows: { page2_rows: { 7: "専用" } },
     outPdfPath: "tmp/pdf-test-bekki9to12/bekki9_test.pdf",
     payload: {
       ...shared,
@@ -95,6 +96,7 @@ const jobs = [
   {
     key: "bekki11_1",
     routePath: "src/app/api/generate-jidou-kasai-houchi-bekki11-1-pdf/route.ts",
+    choiceRows: { page2_rows: { 5: "差動", 9: "イオン", 11: "赤外線", 22: "一斉" } },
     outPdfPath: "tmp/pdf-test-bekki9to12/bekki11_1_test.pdf",
     payload: {
       ...shared,
@@ -144,6 +146,8 @@ for (const job of jobs) {
   applyNumericRows(job.payload, job.routePath);
   // ★狭めたセルに「収まるはずの長さ」を入れて実際に踏む（測定誤りのあぶり出し）
   applyBoundaryRows(job.payload, job.routePath);
+  // ★選択肢は最後。選択肢の行が override 行でもある場合、境界値で上書きされる
+  applyChoiceRows(job.payload, job.routePath, job.choiceRows);
   let result;
   try {
     result = await runRoutePdf(job);

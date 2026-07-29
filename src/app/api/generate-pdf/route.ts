@@ -100,12 +100,30 @@ export async function POST(req: NextRequest) {
             draw(String(d.getDate()), 480, 100)
         }
 
-        draw(toText(body.fire_department_name), 60, 95, 12)
+        // ★x=60 は左の縦罫線 64.9 の**外側**で、12ptの文字が罫線をまたいでいた。
+        //   刷り込み「消防長（消防署長）（市町村長） 殿」の左端 70.4 に揃えて枠内に入れる。
+        //
+        // ★y（どこに書くか）は触っていない。様式から決まらないため:
+        //     ・公式の記載例は宛名を刷り込みのままにして本部名を書いていない
+        //     ・実務では「東京消防庁 ○○消防署長 殿」と書く例がある
+        //     ・宛名の行に足そうにも、罫線 64.9 と刷り込み 70.4 の間は 5.5pt しかなく入らない
+        //   ＝「どこに書くか」は実務の記入方法の話で、推測で動かすと
+        //     「間違った場所に正しく描く」ことになる。共同創立者に確認する。
+        draw(toText(body.fire_department_name), 70.4, 95, 12)
 
+        // ★幅はテンプレート実測。旧値 200 は出所不明で、実物より 19pt(9.5%) 狭かった。
+        //   刷り込み「住 所」の右端 309.48 / 右の縦罫線 531.0 → 312 から 219.0pt 使える。
+        //   狭いままだと同じ住所が 27字で 7.61pt、実測幅なら 8.33pt（規定の下限 7pt を超える）。
+        // ★この3欄は折り返せない。ブロック内に罫線が無く、刷り込みラベルが
+        //   17pt 間隔（住所 151.7 / 氏名 168.7 / 電話 185.7）で行を定義しているため。
         const notifierX = 312
-        draw(toText(body.notifier_address), notifierX, 151, 10.5, 200)
-        draw(toText(body.notifier_name), notifierX, 168, 10.5, 200)
-        draw(toText(body.notifier_phone), notifierX, 185, 10.5, 200)
+        // ★罫線ぴったり(219.0)にすると、35字の住所でインクが縦罫線に5画素触れた。
+        //   他の欄は「セル右端＝刷り込みの左端」で余白を padding が担うが、
+        //   この draw は padding を持たないので幅から引く（他の欄の実践は 2.2〜2.9pt）。
+        const notifierW = 216.5
+        draw(toText(body.notifier_address), notifierX, 151, 10.5, notifierW)
+        draw(toText(body.notifier_name), notifierX, 168, 10.5, notifierW)
+        draw(toText(body.notifier_phone), notifierX, 185, 10.5, notifierW)
 
         const tableX = 150
         // 罫線 257.6/292.1/326.6/361.1 の実測。各 34.5pt ＝ 10.5pt で約2行

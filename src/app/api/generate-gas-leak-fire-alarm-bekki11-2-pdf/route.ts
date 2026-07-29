@@ -126,8 +126,12 @@ const INSPECTOR = {
     tel: { x: 430.0, top: 186.5, w: 97.6, h: 14.0 }, // TEL 411.7-427.6 の右、セル右端 529.6
     address: { x: 310.0, top: 212.8, w: 217.6, h: 14.0 }, // 住所 285.6-306.7 の右
 }
-const PERIOD_START_ANCHORS = { year: 316.5, month: 353.0, day: 388.5 }
-const PERIOD_END_ANCHORS = { year: 440.0, month: 476.5, day: 512.0 }
+// baseline は刷り込み「年」のベースライン（テンプレート p1 の実測値）。
+// ★これが無いとセル矩形の中央に置くことになり、刷り込みと高さが揃わない。
+//   実測では23様式すべてでズレていた（-0.4〜-5.19pt / bekki7 が最大）。
+//   罫線も越えず切り詰めも起きないので、どの検査にも出なかった。
+const PERIOD_START_ANCHORS = { year: 316.5, month: 353.0, day: 388.5, baseline: 181.2 }
+const PERIOD_END_ANCHORS = { year: 440.0, month: 476.5, day: 512.0, baseline: 181.2 }
 
 const normalizeText = (value: unknown) => String(value ?? "").replace(/\s+/g, " ").trim()
 const getExtra = (body: Bekki11_2Payload, key: string) => normalizeText(body.extra_fields?.[key])

@@ -66,8 +66,12 @@ const P1_ROW_BOUNDS = [
 ]
 
 const PERIOD_ROW = { top: 167.28, h: 21.0 }
-const PERIOD_START_ANCHORS: DateAnchors = { year: 299.4, month: 339.0, day: 378.6 }
-const PERIOD_END_ANCHORS: DateAnchors = { year: 428.16, month: 467.76, day: 507.36 }
+// baseline は刷り込み「年」のベースライン（テンプレート p1 の実測値）。
+// ★これが無いとセル矩形の中央に置くことになり、刷り込みと高さが揃わない。
+//   実測では23様式すべてでズレていた（-0.4〜-5.19pt / bekki7 が最大）。
+//   罫線も越えず切り詰めも起きないので、どの検査にも出なかった。
+const PERIOD_START_ANCHORS: DateAnchors = { year: 299.4, month: 339.0, day: 378.6, baseline: 181.44 }
+const PERIOD_END_ANCHORS: DateAnchors = { year: 428.16, month: 467.76, day: 507.36, baseline: 181.44 }
 
 export async function POST(req: NextRequest) {
     try {

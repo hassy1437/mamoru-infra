@@ -160,8 +160,12 @@ const P5_ROW_BOUNDS = [
 const P5_COLS = [64.67, 106.33, 164.33, 211.33, 258.67, 327.0, 359.0, 391.33, 423.67, 455.0, 497.0, 529.33]
 
 const PERIOD_ROW = { top: 158.0, h: 18.0 }
-const PERIOD_START_ANCHORS = { year: 318.67, month: 355.33, day: 392.0 }
-const PERIOD_END_ANCHORS = { year: 439.33, month: 476.0, day: 512.67 }
+// baseline は刷り込み「年」のベースライン（テンプレート p1 の実測値）。
+// ★これが無いとセル矩形の中央に置くことになり、刷り込みと高さが揃わない。
+//   実測では23様式すべてでズレていた（-0.4〜-5.19pt / bekki7 が最大）。
+//   罫線も越えず切り詰めも起きないので、どの検査にも出なかった。
+const PERIOD_START_ANCHORS = { year: 318.67, month: 355.33, day: 392.0, baseline: 170.88 }
+const PERIOD_END_ANCHORS = { year: 439.33, month: 476.0, day: 512.67, baseline: 170.88 }
 
 const normalizeText = (value: unknown) => String(value ?? "").replace(/\s+/g, " ").trim()
 

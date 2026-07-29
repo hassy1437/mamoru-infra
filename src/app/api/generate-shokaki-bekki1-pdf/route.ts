@@ -121,8 +121,12 @@ const P2_ROW_BOUNDS = [
 ]
 
 const PERIOD_ROW = { top: 167.52, h: 19.92 }
-const PERIOD_START_ANCHORS = { year: 299.2, month: 330.6, day: 362.2 }
-const PERIOD_END_ANCHORS = { year: 414.7, month: 446.4, day: 477.9 }
+// baseline は刷り込み「年」のベースライン（テンプレート p1 の実測値）。
+// ★これが無いとセル矩形の中央に置くことになり、刷り込みと高さが揃わない。
+//   実測では23様式すべてでズレていた（-0.4〜-5.19pt / bekki7 が最大）。
+//   罫線も越えず切り詰めも起きないので、どの検査にも出なかった。
+const PERIOD_START_ANCHORS = { year: 299.2, month: 330.6, day: 362.2, baseline: 180.36 }
+const PERIOD_END_ANCHORS = { year: 414.7, month: 446.4, day: 477.9, baseline: 180.36 }
 
 const normalizeText = (value: unknown) => String(value ?? "").replace(/\s+/g, " ").trim()
 

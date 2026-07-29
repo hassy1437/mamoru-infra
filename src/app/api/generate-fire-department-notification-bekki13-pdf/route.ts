@@ -115,8 +115,12 @@ const INSPECTOR = {
     address: { x: 299.0, top: 202.2, w: 228.4, h: 14.0 }, // 住所 274.9-296.0 の右
 }
 
-const PERIOD_START_ANCHORS: DateAnchors = { year: 306.48, month: 338.05, day: 369.5 }
-const PERIOD_END_ANCHORS: DateAnchors = { year: 422.06, month: 453.63, day: 485.07 }
+// baseline は刷り込み「年」のベースライン（テンプレート p1 の実測値）。
+// ★これが無いとセル矩形の中央に置くことになり、刷り込みと高さが揃わない。
+//   実測では23様式すべてでズレていた（-0.4〜-5.19pt / bekki7 が最大）。
+//   罫線も越えず切り詰めも起きないので、どの検査にも出なかった。
+const PERIOD_START_ANCHORS: DateAnchors = { year: 306.48, month: 338.05, day: 369.5, baseline: 169.8 }
+const PERIOD_END_ANCHORS: DateAnchors = { year: 422.06, month: 453.63, day: 485.07, baseline: 169.8 }
 
 export async function POST(req: NextRequest) {
     try {

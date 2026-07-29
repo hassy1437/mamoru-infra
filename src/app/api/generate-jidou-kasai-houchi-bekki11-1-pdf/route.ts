@@ -103,8 +103,12 @@ const P3_ROW_BOUNDS = [
 ]
 
 const PERIOD_ROW = { top: 162.0, h: 14.0 }
-const PERIOD_START_ANCHORS = { year: 312.0, month: 352.7, day: 388.7 }
-const PERIOD_END_ANCHORS = { year: 436.0, month: 472.0, day: 510.0 }
+// baseline は刷り込み「年」のベースライン（テンプレート p1 の実測値）。
+// ★これが無いとセル矩形の中央に置くことになり、刷り込みと高さが揃わない。
+//   実測では23様式すべてでズレていた（-0.4〜-5.19pt / bekki7 が最大）。
+//   罫線も越えず切り詰めも起きないので、どの検査にも出なかった。
+const PERIOD_START_ANCHORS = { year: 312.0, month: 352.7, day: 388.7, baseline: 172.92 }
+const PERIOD_END_ANCHORS = { year: 436.0, month: 472.0, day: 510.0, baseline: 172.92 }
 
 const normalizeText = (value: unknown) => String(value ?? "").replace(/\s+/g, " ").trim()
 const getExtra = (body: Bekki11Payload, key: string) => normalizeText(body.extra_fields?.[key])

@@ -223,6 +223,16 @@ const CHECKS = [
         runs: [{ cmd: ["node", "scripts/check-choice-mismatch-warning.mjs"], sentinel: "CHOICE_MISMATCH_WARNING_CHECK_OK" }],
     },
     {
+        file: "check-warning-consumers.mjs", stage: "静的",
+        why: "サーバが返した警告・エラーを UI が取りこぼしていないか。"
+            + "★同じ事故が3回起きている（マージ側の422／個別フォーム14件／納品ボタン）。"
+            + "型定義から読むので、BuildResult にフィールドを足せば自動で対象になる",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-warning-consumers.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-warning-consumers.mjs"], sentinel: "WARNING_CONSUMERS_OK" },
+        ],
+    },
+    {
         file: "check-pdf-failure-ux.mjs", stage: "挙動",
         why: "422/5xx/壊れた本文/通信断を区別してUIに出すか。納品はfitで止まるか",
         runs: [{ cmd: ["node", "scripts/check-pdf-failure-ux.mjs"], sentinel: "PDF_FAILURE_UX_CHECK_OK" }],

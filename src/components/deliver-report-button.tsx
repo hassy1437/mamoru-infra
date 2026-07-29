@@ -155,7 +155,7 @@ export default function DeliverReportButton({
 
         try {
             // 1) Blob を1回だけ生成（この blob を upload と download の両方に使う）
-            const { blob, failedLabels, fitFailures } = await buildMergedReport(input, (done, total) =>
+            const { blob, failedLabels, fitFailures, shrinkWarnings, choiceWarnings } = await buildMergedReport(input, (done, total) =>
                 setProgress({ done, total }),
             )
 
@@ -185,6 +185,44 @@ export default function DeliverReportButton({
                     `一部の様式PDF生成に失敗しました（${failedLabels.join(", ")}）。\nそれ以外を結合して納品しますか？`,
                 )
                 if (!ok) {
+                    setPhase("idle")
+                    return
+                }
+            }
+
+            // ★納品前の警告。PDFは有効なので**止めない**が、納品は
+            //   「オーナーに届き、版として report_deliveries に記録される」不可逆な操作なので
+            //   その瞬間に見せる。一括出力の側で見たかどうかに依存させない。
+            //   （サーバが返した警告を UI が捨てる、はこれで3例目。マージ側の422／
+            //     個別フォーム／今回。納品はオーナーに届く経路なので取りこぼしの影響が最大）
+            //
+            // ★不一致と縮小は視覚的に分ける。意味が違う:
+            //     不一致 … ○が1つも描かれず、その項目は**消えている**
+            //     縮小   … 小さく描かれているが**情報は残っている**
+            //   同じ一覧に混ぜると、消えている方が埋もれる。
+            if (choiceWarnings.length > 0 || shrinkWarnings.length > 0) {
+                const lines: string[] = []
+                if (choiceWarnings.length > 0) {
+                    lines.push("■ 選択肢と一致せず、様式に○が付いていません（この項目は出力されません）")
+                    for (const w of choiceWarnings) {
+                        lines.push(`【${w.label}】`)
+                        for (const it of w.items) lines.push(`  ${it.hint}`)
+                    }
+                }
+                if (shrinkWarnings.length > 0) {
+                    if (lines.length) lines.push("")
+                    lines.push("― 次の項目は枠に収めるため小さく表示されています（内容は残っています）")
+                    for (const w of shrinkWarnings) {
+                        lines.push(`【${w.label}】`)
+                        for (const it of w.items) {
+                            lines.push(`  ${it.label}: ${it.design}pt → ${it.actual}pt（${Math.round(it.deviation)}%縮小）`)
+                        }
+                        if (w.omitted > 0) lines.push(`   …他 ${w.omitted} 件`)
+                    }
+                }
+                lines.push("")
+                lines.push("このまま納品しますか？（納品するとオーナーに届き、版として記録されます）")
+                if (!window.confirm(lines.join("\n"))) {
                     setPhase("idle")
                     return
                 }

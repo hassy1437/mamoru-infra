@@ -223,6 +223,15 @@ const CHECKS = [
         runs: [{ cmd: ["node", "scripts/check-choice-mismatch-warning.mjs"], sentinel: "CHOICE_MISMATCH_WARNING_CHECK_OK" }],
     },
     {
+        file: "check-row-labels.mjs", stage: "静的",
+        why: "⑧のエラー・警告に出す行ラベルが入力画面と一致しているか。"
+            + "フォームの行を1つ増やすと以降が全部1つずれ、業者が**間違った行**を開く（何も出ないより悪い）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-row-labels.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-row-labels.mjs"], sentinel: "ROW_LABELS_OK" },
+        ],
+    },
+    {
         file: "check-warning-consumers.mjs", stage: "静的",
         why: "サーバが返した警告・エラーを UI が取りこぼしていないか。"
             + "★同じ事故が3回起きている（マージ側の422／個別フォーム14件／納品ボタン）。"

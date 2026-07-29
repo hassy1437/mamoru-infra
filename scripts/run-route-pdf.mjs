@@ -55,7 +55,7 @@ export async function runRouteOutput({ routePath, payload, outPath }) {
     fs.mkdirSync(path.dirname(tmpModulePath), { recursive: true });
 
     const rawSource = fs.readFileSync(normalizedInputPath, "utf8");
-    const sourceWithResolvedAliases = rawSource.replace(SRC_ALIAS_IMPORT_RE, (_, specifier) => {
+    let sourceWithResolvedAliases = rawSource.replace(SRC_ALIAS_IMPORT_RE, (_, specifier) => {
       const resolvedPath = path.join(
         process.cwd(),
         "src",
@@ -64,6 +64,22 @@ export async function runRouteOutput({ routePath, payload, outPath }) {
       const tmpDependencyPath = transpileLocalModule(resolvedPath, false);
       return `from "${pathToFileURL(tmpDependencyPath).href}"`;
     });
+    // ★相対importも解決する。以前は @/ エイリアスしか見ておらず、
+    //   src/lib どうしの相対import（値import）が ERR_MODULE_NOT_FOUND で落ちた。
+    //   型importは transpile で消えるので気づかず、値importを足した瞬間に露見する。
+    sourceWithResolvedAliases = sourceWithResolvedAliases.replace(
+      /from\s+"(\.[^"]*)"/g,
+      (whole, specifier) => {
+        const base = path.resolve(path.dirname(normalizedInputPath), specifier);
+        const resolvedPath = fs.existsSync(base) ? base
+          : fs.existsSync(`${base}.ts`) ? `${base}.ts`
+          : fs.existsSync(path.join(base, "index.ts")) ? path.join(base, "index.ts")
+          : null;
+        if (!resolvedPath) return whole;   // node_modules 等はそのまま
+        const tmpDependencyPath = transpileLocalModule(resolvedPath, false);
+        return `from "${pathToFileURL(tmpDependencyPath).href}"`;
+      },
+    );
 
     let patched = sourceWithResolvedAliases;
     if (injectNextStub) {

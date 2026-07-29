@@ -20,6 +20,28 @@
  *   このエラーを出す前段に入れること（エラーの置き換えではなく前段）。
  */
 
+import { BEKKI_ROW_LABELS } from "./bekki-row-labels"
+
+/**
+ * 「点検項目の内容」だけでは、40行あるうちのどれか分からない。
+ * 入力画面の行ラベル（＝業者が画面で見ている文字列）を添えて、該当行を開けるようにする。
+ *
+ * ★行ラベルが引けないときは行番号を出す。出典（フォームの PAGE{n}_ITEMS）と
+ *   payload の行数がズレることは原理的にありうるので、黙って何も出さない方が悪い。
+ */
+const withRow = (base: string, form: string, rowsKey?: string, row?: number): string => {
+    const r = rowLabelOf(form, rowsKey, row)
+    return r ? `${base}（${r}）` : base
+}
+
+export const rowLabelOf = (form: string, rowsKey?: string, row?: number): string | null => {
+    if (!rowsKey || row === undefined) return null
+    const label = BEKKI_ROW_LABELS[form]?.[rowsKey]?.[row]
+    const page = rowsKey.match(/page(\d+)_rows/)?.[1]
+    const where = page ? `その${page}・${row + 1}行目` : `${row + 1}行目`
+    return label ? `${where}「${label}」` : where
+}
+
 /** 業者が入力画面で辿れるように、payloadのキーを画面の表記に対応させる。 */
 export const FIELD_LABELS: Record<string, string> = {
     form_name: "名称",
@@ -41,6 +63,9 @@ export const FIELD_LABELS: Record<string, string> = {
 }
 
 export type FitFailure = {
+    /** どの rows配列の何行目か（業者に「どの行か」を伝えるため） */
+    rowsKey?: string
+    row?: number
     /** 描こうとした文字列（全文） */
     text: string
     /** 収まった文字数（"..." を除く） */
@@ -113,6 +138,9 @@ export type FitCollector = {
 }
 
 export type ChoiceMismatch = {
+    /** どの rows配列の何行目か（業者に「どの行か」を伝えるため） */
+    rowsKey?: string
+    row?: number
     /** 入力された値 */
     text: string
     /** その欄に刷り込まれている選択肢 */
@@ -122,6 +150,9 @@ export type ChoiceMismatch = {
 }
 
 export type FitShrink = {
+    /** どの rows配列の何行目か（業者に「どの行か」を伝えるため） */
+    rowsKey?: string
+    row?: number
     text: string
     design: number
     actual: number
@@ -190,44 +221,60 @@ export const createFitCollector = (): FitCollector => {
         resolve(body) {
             const entries = collectStrings(body)
             for (const c of choiceMismatches) {
-                const hit = entries.find(([, v]) => v === c.text)
-                if (hit) c.field = hit[0]
+                const hit = entries.find((e) => e.value === c.text)
+                if (hit) { c.field = hit.key; c.rowsKey = hit.rowsKey; c.row = hit.row }
             }
             for (const f of shrinks) {
                 const hit =
-                    entries.find(([, v]) => v === f.text) ?? entries.find(([, v]) => v.includes(f.text))
+                    entries.find((e) => e.value === f.text) ?? entries.find((e) => e.value.includes(f.text))
                 if (!hit) continue
                 f.fromInput = true
-                f.field = hit[0]
+                f.field = hit.key
+                f.rowsKey = hit.rowsKey
+                f.row = hit.row
             }
             for (const f of failures) {
                 // ★完全一致だけで判定してはいけない。折り返しの2行目以降を報告する経路が
                 //   あり、その断片は入力そのものとは一致しない。部分一致まで見ないと
                 //   業者由来の値を「システム由来＝実装の不具合」と誤ってログに流してしまう。
                 const hit =
-                    entries.find(([, v]) => v === f.text) ??
-                    entries.find(([, v]) => v.includes(f.text))
+                    entries.find((e) => e.value === f.text) ??
+                    entries.find((e) => e.value.includes(f.text))
                 if (!hit) continue
                 f.fromInput = true
-                f.field = hit[0]
+                f.field = hit.key
+                f.rowsKey = hit.rowsKey
+                f.row = hit.row
             }
         },
     }
 }
 
-/** payload から (キー, 文字列) を再帰的に集める。キーは最後の要素名だけ使う。 */
-const collectStrings = (node: unknown, key = "", out: [string, string][] = []): [string, string][] => {
+type Located = { key: string; value: string; rowsKey?: string; row?: number }
+
+/**
+ * payload から (キー, 文字列) を再帰的に集める。キーは最後の要素名だけ使う。
+ *
+ * ★どの rows配列の何行目かも持たせる。これが無いと業者に伝えられるのが
+ *   「点検項目の内容」だけになり、40行あるうちのどれか分からない。
+ */
+const collectStrings = (
+    node: unknown, key = "", out: Located[] = [], rowsKey?: string, row?: number,
+): Located[] => {
     if (Array.isArray(node)) {
-        for (const v of node) collectStrings(v, key, out)
+        const isRows = key.endsWith("_rows")
+        node.forEach((v, i) => collectStrings(v, key, out, isRows ? key : rowsKey, isRows ? i : row))
         return out
     }
     if (node && typeof node === "object") {
-        for (const [k, v] of Object.entries(node as Record<string, unknown>)) collectStrings(v, k, out)
+        for (const [k, v] of Object.entries(node as Record<string, unknown>)) {
+            collectStrings(v, k, out, rowsKey, row)
+        }
         return out
     }
     if (typeof node === "string") {
         const s = node.replace(/\s+/g, " ").trim()
-        if (s) out.push([key, s])
+        if (s) out.push({ key, value: s, rowsKey, row })
     }
     return out
 }
@@ -274,7 +321,7 @@ export const buildFitError = (form: string, collector: FitCollector): FitErrorBo
         .filter((f) => f.fromInput && f.field)
         .map<FitErrorItem>((f) => ({
             field: f.field!,
-            label: FIELD_LABELS[f.field!] ?? f.field!,
+            label: withRow(FIELD_LABELS[f.field!] ?? f.field!, form, f.rowsKey, f.row),
             input: f.text.length,
             fits: f.fits,
             over: f.text.length - f.fits,
@@ -381,7 +428,7 @@ export const buildChoiceWarning = (form: string, collector: FitCollector): Choic
     for (const c of collector.choiceMismatches) {
         // 入力(payload)に無い値＝システム由来。業者には直しようがないので出さない
         if (!c.field) continue
-        const label = FIELD_LABELS[c.field] ?? c.field
+        const label = withRow(FIELD_LABELS[c.field] ?? c.field, form, c.rowsKey, c.row)
         items.push({
             field: c.field,
             label,
@@ -411,7 +458,7 @@ export const buildShrinkWarning = (form: string, collector: FitCollector): FitWa
         seen.add(key)
         items.push({
             field: s.field,
-            label: FIELD_LABELS[s.field] ?? s.field,
+            label: withRow(FIELD_LABELS[s.field] ?? s.field, form, s.rowsKey, s.row),
             design: s.design,
             actual: s.actual,
             deviation: s.deviation,

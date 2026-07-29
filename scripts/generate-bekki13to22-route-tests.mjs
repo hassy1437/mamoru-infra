@@ -197,8 +197,10 @@ for (const job of jobs) {
   applyNumericRows(job.payload, job.routePath);
   // ★狭めたセルに「収まるはずの長さ」を入れて実際に踏む（測定誤りのあぶり出し）
   applyBoundaryRows(job.payload, job.routePath);
-  // ★数値置換の**後**に入れる。選択肢の行も skipContentRows に載るため、
-  //   先に入れると 0.45 で上書きされて○が消える（実際に消えた）。
+  // ★選択肢は必ず最後に入れる（applyNumericRows / applyBoundaryRows の後）。
+  //   選択肢の行は skipContentRows に載るので数値置換の対象になり、
+  //   override 行でもあれば境界値の対象にもなる。先に入れると上書きされ、
+  //   ○が1つも描かれない状態に戻る（＝PDFは正常に出たまま情報だけ落ちる）。
   applyChoiceRows(job.payload, job.routePath, job.choiceRows);
   let result;
   try {

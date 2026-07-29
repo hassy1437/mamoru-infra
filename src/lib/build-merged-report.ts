@@ -41,12 +41,18 @@ function buildTasks(input: ReportInputs): PdfTask[] {
         { label: "報告書", route: "/api/generate-pdf", body: houkokuBody },
         { label: "総括表", route: "/api/generate-soukatu-pdf", body: input.soukatsuData },
         { label: "点検者一覧", route: "/api/generate-itiran-pdf", body: input.itiranData },
+        // ★別記様式は綴じ順（様式番号）に並べる。
+        //   applicableStepIds は入力フローの並び（STEPS）なので 1→12→13…22→2→3…11の2 と
+        //   バラバラで、綴じたときに探せなかった（実機で指摘）。
+        //   入力の導線と綴じ順は別の関心事なので、STEPS は触らずここで並べ替える。
         ...input.applicableStepIds
             .filter((id) => input.bekkiPayloads[id])
             .map((id) => {
                 const config = PDF_MERGE_CONFIG[id as ItiranInputStepId]
-                return { label: id, route: config.apiRoute, body: input.bekkiPayloads[id] }
-            }),
+                return { label: id, route: config.apiRoute, body: input.bekkiPayloads[id], formNo: config.formNo }
+            })
+            .sort((a, b) => a.formNo - b.formNo)
+            .map(({ formNo: _formNo, ...task }) => task),
     ]
 }
 

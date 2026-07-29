@@ -223,6 +223,15 @@ const CHECKS = [
         runs: [{ cmd: ["node", "scripts/check-choice-mismatch-warning.mjs"], sentinel: "CHOICE_MISMATCH_WARNING_CHECK_OK" }],
     },
     {
+        file: "check-merge-order.mjs", stage: "静的",
+        why: "結合PDFの綴じ順が様式番号順か。★指標には出ない種類（罫線も越えず切り詰めも無いので"
+            + "全検査が緑のまま「綴じたときに目的の様式を探せない」だけが残る）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-merge-order.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-merge-order.mjs"], sentinel: "MERGE_ORDER_OK" },
+        ],
+    },
+    {
         file: "check-row-labels.mjs", stage: "静的",
         why: "⑧のエラー・警告に出す行ラベルが入力画面と一致しているか。"
             + "フォームの行を1つ増やすと以降が全部1つずれ、業者が**間違った行**を開く（何も出ないより悪い）",

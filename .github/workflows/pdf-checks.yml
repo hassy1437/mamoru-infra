@@ -1,0 +1,68 @@
+# 帳票PDFの検査を CI で走らせる。
+#
+# ■ フックとCIで別の失敗モードを塞ぐ
+#     フック（6.9秒） … 「壊れたまま push する」。速いので --no-verify の動機が出ない
+#     CI（このファイル）… 「その端末では通ったが他では通らない」
+#   ★同じ静的検査が両方で走るのは冗長ではない。フックは --no-verify でバイパスでき、
+#     npm install を踏まない経路もある。CI が**バイパス経路を塞ぐ**。
+#
+# ■ ベースライン照合だけ外す（--skip-baseline）
+#   登録済みPNGとの画素比較で、差分が出たら**人が目で見て承認する**検査。
+#   CI に載せると「赤いまま放置」か「無条件更新」になり、判断が消えて儀式だけが残る。
+#   ★技術的な制約ではない。Linux と Windows で描画は 132ページすべて1ピクセルも
+#     違わないことを実測済み（render-probe.yml）。載せないのは運用上の判断。
+#   やり忘れは pre-push フックの鮮度ゲートが止める。
+#
+# ■ 依存（実測）
+#   Node ＋ Python ＋ PyMuPDF だけ。LibreOffice も Docker も要らない。
+name: pdf-checks
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - run: pip install pymupdf
+      - run: npm ci
+
+      # ★型検査とビルドも見る。検査スクリプトが緑でも、
+      #   ルートがコンパイルできなければ本番で 500 になる。
+      - name: 型検査
+        run: npx tsc --noEmit
+
+      - name: ビルド
+        run: npm run build
+
+      # ★--regen 付き。CI にはリポジトリの内容しか無いので、生成物を必ず作り直す。
+      #   ローカルの tmp/ に依存していると「その端末でしか通らない」を見逃す。
+      - name: 帳票PDF検査（ベースライン照合を除く全件）
+        run: node scripts/check-pdf-all.mjs --regen --skip-baseline
+
+      # 落ちたときに現物を見られるようにする（画素差はローカルで確認する）
+      - name: 生成物
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-pdfs
+          path: |
+            tmp/pdf-realistic/*.pdf
+            tmp/pdf-test-extra/*.pdf
+          retention-days: 7

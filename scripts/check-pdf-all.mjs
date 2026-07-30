@@ -40,6 +40,19 @@ import path from "path"
 const ROOT = process.cwd()
 const REGEN = process.argv.includes("--regen")
 const LIST_ONLY = process.argv.includes("--list")
+/**
+ * ★ベースライン照合だけを外す口。CI 用。
+ *
+ *   ベースライン照合は登録済みPNGとの画素比較で、差分が出たら**人が目で見て承認する**。
+ *   CI に載せると「赤いまま放置」か「無条件更新」のどちらかになり、判断が消えて
+ *   儀式だけが残る。＝ 載せないのは技術的制約ではなく運用上の判断。
+ *   （Linux と Windows で描画は 132ページすべて1ピクセルも違わないことを実測済み。
+ *     つまり技術的には載る。載せないのは上の理由による）
+ *
+ * ★外したことは必ず大きく出す。黙って減らすと「緑＝全部見た」と誤読される。
+ *   ローカルでは付けないこと。付けると退行検出が丸ごと消える。
+ */
+const SKIP_BASELINE = process.argv.includes("--skip-baseline")
 
 const PY = process.platform === "win32" ? "python" : "python3"
 
@@ -172,6 +185,12 @@ const CHECKS = [
             { label: "自己診断", cmd: [PY, "scripts/check-row-cells.py", "--self-test"], sentinel: "SELF_TEST_OK" },
             { cmd: [PY, "scripts/check-row-cells.py"], sentinel: "ROW_CELLS_OK" },
         ],
+    },
+    {
+        file: "check-generation-health.py", stage: "生成PDF", needsPdfs: true,
+        why: "生成が成功し、ページ数がテンプレートと一致し、全ルートがテストセットに入っているか。"
+            + "★画素比較ではないので人の承認が要らず、CI に載せられる（ベースライン照合との違い）",
+        runs: [{ cmd: [PY, "scripts/check-generation-health.py"], sentinel: "GENERATION_HEALTH_OK" }],
     },
     {
         file: "check-printed-overlap.py", stage: "生成PDF", needsPdfs: true,
@@ -464,6 +483,13 @@ for (const c of ALL) {
     const name = c.file ?? c.name
     if (c.optional && !fs.existsSync(path.join(ROOT, c.optional))) {
         console.log(`  SKIP [${c.stage}] ${name} … ${c.optional} が無い（この端末では未登録）`)
+        results.push({ name, ms: 0, state: "SKIP" })
+        continue
+    }
+    if (SKIP_BASELINE && name === "ベースライン照合") {
+        console.log(`  ★除外 [${c.stage}] ${name} … --skip-baseline が指定されています`)
+        console.log("       画素比較は人が差分を見て承認する検査なので CI では走らせません。")
+        console.log("       ★ローカルで npm run check:pdf を通すこと。pre-push フックが鮮度を見張っています。")
         results.push({ name, ms: 0, state: "SKIP" })
         continue
     }

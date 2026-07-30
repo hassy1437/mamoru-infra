@@ -38,8 +38,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-          cache: pip
-
+          # ★cache: pip は requirements.txt / pyproject.toml を要求して落ちる。
+          #   この repo は Python の依存が PyMuPDF 1件だけなので、キャッシュより
+          #   依存ファイルを増やさない方を採る。
       - run: pip install pymupdf
       - run: npm ci
 

@@ -31,7 +31,8 @@
 //   node scripts/check-pdf-all.mjs            # 検査だけ（生成物が古ければ止まる）
 //   node scripts/check-pdf-all.mjs --regen    # PDFを作り直してから検査
 //   node scripts/check-pdf-all.mjs --list     # 実行内容を出すだけ（走らせない）
-import { spawnSync } from "child_process"
+import { spawn, spawnSync } from "child_process"
+import os from "os"
 import { createHash } from "crypto"
 import fs from "fs"
 import path from "path"
@@ -149,7 +150,10 @@ const CHECKS = [
         ],
     },
     {
-        file: "check-numeric-rows-declaration.py", stage: "静的",
+        file: "check-numeric-rows-declaration.py",
+        // ★排他。自己診断がソース（ルート/生成物）を一時的に書き換えるので、
+        //   他の検査と同時に走らせると壊れた途中状態を読ませてしまう（並列化で実際に踏んだ）。
+        exclusive: true, stage: "静的",
         why: "テストデータのどのセルに数値を入れるかの宣言が、実装・テンプレートと合っているか。"
             + "ここが嘘だと現実値セット（＝合否の基準）が偽の値で埋まり、その範囲の検査が空振りしたまま緑になる",
         runs: [
@@ -158,7 +162,10 @@ const CHECKS = [
         ],
     },
     {
-        file: "check-row-cells.py", stage: "静的",
+        file: "check-row-cells.py",
+        // ★排他。自己診断がソース（ルート/生成物）を一時的に書き換えるので、
+        //   他の検査と同時に走らせると壊れた途中状態を読ませてしまう（並列化で実際に踏んだ）。
+        exclusive: true, stage: "静的",
         why: "行ループ（drawResultRows）が描くセルの定義が刷り込みに掛かっていないか。"
             + "check-cell-definition-audit はリテラル座標の drawInCell しか見ず、この領域では一度も鳴っていなかった",
         runs: [
@@ -177,7 +184,10 @@ const CHECKS = [
         ],
     },
     {
-        file: "check-choice-clearance.py", stage: "静的",
+        file: "check-choice-clearance.py",
+        // ★排他。自己診断がソース（ルート/生成物）を一時的に書き換えるので、
+        //   他の検査と同時に走らせると壊れた途中状態を読ませてしまう（並列化で実際に踏んだ）。
+        exclusive: true, stage: "静的",
         why: "○が隣の刷り込み語に触れていないか（全様式・定数すべて）。1つのセルに丸は1つしか付かないので"
             + "生成PDFでは選択肢の一部しか踏めない。使われていない定数こそ黙って壊れる",
         runs: [
@@ -232,7 +242,10 @@ const CHECKS = [
         ],
     },
     {
-        file: "check-row-labels.mjs", stage: "静的",
+        file: "check-row-labels.mjs",
+        // ★排他。自己診断がソース（ルート/生成物）を一時的に書き換えるので、
+        //   他の検査と同時に走らせると壊れた途中状態を読ませてしまう（並列化で実際に踏んだ）。
+        exclusive: true, stage: "静的",
         why: "⑧のエラー・警告に出す行ラベルが入力画面と一致しているか。"
             + "フォームの行を1つ増やすと以降が全部1つずれ、業者が**間違った行**を開く（何も出ないより悪い）",
         runs: [
@@ -287,6 +300,42 @@ const run = (cmd) => {
     })
     // ★stderr を捨てない。生成が失敗したのに気づかず古い成果物を測る事故を踏んでいる
     return { code: r.status, out: `${r.stdout ?? ""}${r.stderr ?? ""}`, ms: Date.now() - t0 }
+}
+
+/**
+ * 非同期版。★並列実行のためだけに足したもので、**実行するコマンドは同一**。
+ * 速くする改修は「測るものを減らして速くなる」に転びやすいので、
+ * 引数も判定（終了コード＋センチネル）も一切変えていない。
+ */
+const runAsync = (cmd) => new Promise((resolve) => {
+    const t0 = Date.now()
+    const p = spawn(cmd[0], cmd.slice(1), {
+        cwd: ROOT, shell: false,
+        env: { ...process.env, PYTHONIOENCODING: "utf-8" },
+    })
+    let out = ""
+    p.stdout.on("data", (d) => { out += d.toString("utf8") })
+    p.stderr.on("data", (d) => { out += d.toString("utf8") })
+    p.on("close", (code) => resolve({ code, out, ms: Date.now() - t0 }))
+    p.on("error", (e) => resolve({ code: 1, out: String(e), ms: Date.now() - t0 }))
+})
+
+/** 同時実行数。CPU数-1（最低2）。★増やしすぎると各検査が遅くなり合計が伸びる */
+const CONCURRENCY = Math.max(2, (os.cpus()?.length ?? 4) - 1)
+
+/** thunk を上限つきで並行実行する（結果の順序は入力順を保つ） */
+const parallelMap = async (items, fn, limit) => {
+    const out = new Array(items.length)
+    let next = 0
+    const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+        for (;;) {
+            const i = next++
+            if (i >= items.length) return
+            out[i] = await fn(items[i], i)
+        }
+    })
+    await Promise.all(workers)
+    return out
 }
 
 /**
@@ -391,28 +440,56 @@ console.log(line("═"))
 console.log("STAGE 2  検査")
 const results = []
 let failed = 0
+
+/**
+ * ★実行単位を平らに並べて並行実行する。
+ *
+ *   同じスクリプトの「自己診断」と本番、長文セットと現実値セットは互いに独立で、
+ *   順番に走らせる理由が無かった（実測 245秒のうち最長の1件は31秒）。
+ *   ＝ 逐次であること自体が所要時間の主因。
+ *
+ * ★変えていないもの: 実行するコマンド・引数・判定（終了コード＋センチネル）・
+ *   出力の順序（結果は入力順に並べ直してから出す）。
+ *   速くする改修は「測るものを減らして速くなる」に転びやすい。圧縮の前後で
+ *   全件の結果が一致することを必ず確かめること。
+ *
+ * ★書き込みの競合が無いこと: 各検査は生成済みPDFを**読む**だけ。
+ *   一時PDFを書くもの（check-fit-error / check-shrink-warning /
+ *   check-choice-mismatch-warning / digit-mangling-regression）は
+ *   出力先が互いに違う。
+ */
+const units = []
+const exclusiveUnits = []
 for (const c of ALL) {
     const name = c.file ?? c.name
     if (c.optional && !fs.existsSync(path.join(ROOT, c.optional))) {
-        // ★黙って飛ばさない。飛ばしたことを必ず出す
         console.log(`  SKIP [${c.stage}] ${name} … ${c.optional} が無い（この端末では未登録）`)
         results.push({ name, ms: 0, state: "SKIP" })
         continue
     }
     for (const r of c.runs) {
-        const label = r.label ? `${name} (${r.label})` : name
-        const res = run(r.cmd)
-        const codeOk = res.code === 0
-        const sentOk = r.sentinel === null || res.out.includes(r.sentinel)
-        const ok = codeOk && sentOk
-        if (!ok) failed += 1
-        const why = !codeOk ? `exit=${res.code}` : !sentOk ? `センチネル ${r.sentinel} が出力に無い` : ""
-        console.log(`  ${ok ? "OK  " : "★NG "} [${c.stage}] ${label} (${secs(res.ms)}) ${why}`)
-        if (!ok) {
-            for (const l of res.out.split(/\r?\n/).filter(Boolean).slice(-20)) console.log(`        ${l}`)
-        }
-        results.push({ name: label, ms: res.ms, state: ok ? "OK" : "NG" })
+        const u = { stage: c.stage, label: r.label ? `${name} (${r.label})` : name, r }
+        ;(c.exclusive ? exclusiveUnits : units).push(u)
     }
+}
+console.log(`  同時実行 ${CONCURRENCY} 並列 / 並行 ${units.length} 件 + 排他 ${exclusiveUnits.length} 件`)
+// ★排他の相を先に直列で回す。ソースを書き換える自己診断が他の検査と重なると、
+//   書き換わった途中状態を読ませてしまう（並列化した直後に check-row-labels が
+//   「生成物が一致しない」で落ちて発覚した）。
+const doneEx = []
+for (const u of exclusiveUnits) doneEx.push({ u, res: await runAsync(u.r.cmd) })
+const done = [...doneEx, ...await parallelMap(units, async (u) => ({ u, res: await runAsync(u.r.cmd) }), CONCURRENCY)]
+for (const { u, res } of done) {
+    const codeOk = res.code === 0
+    const sentOk = u.r.sentinel === null || res.out.includes(u.r.sentinel)
+    const ok = codeOk && sentOk
+    if (!ok) failed += 1
+    const why = !codeOk ? `exit=${res.code}` : !sentOk ? `センチネル ${u.r.sentinel} が出力に無い` : ""
+    console.log(`  ${ok ? "OK  " : "★NG "} [${u.stage}] ${u.label} (${secs(res.ms)}) ${why}`)
+    if (!ok) {
+        for (const l of res.out.split(/\r?\n/).filter(Boolean).slice(-20)) console.log(`        ${l}`)
+    }
+    results.push({ name: u.label, ms: res.ms, state: ok ? "OK" : "NG" })
 }
 
 // ── まとめ ──────────────────────────────────────────────────────

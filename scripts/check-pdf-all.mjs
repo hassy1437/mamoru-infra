@@ -101,6 +101,9 @@ const CHECKS = [
     // ── 静的検査（PDFを作らなくても走る。速いので先に落とす）
     {
         file: "check-python-deps.py", stage: "静的",
+        // ★排他。自己診断が requirements.txt を書き換えるので、
+        //   本体と同時に走ると書き換わった途中状態を読む（クリーン環境で実際に踏んだ）。
+        exclusive: true,
         why: "検査スクリプトの外部依存が requirements.txt と一致しているか。"
             + "★CI に「依存は PyMuPDF だけ」と書いて 42件中15件が numpy 不足で落ちた。"
             + "依存の調査を grep でやって取りこぼした＝人が列挙する限り再発する",
@@ -138,21 +141,21 @@ const CHECKS = [
         file: "check-overflow.py", stage: "生成PDF", needsPdfs: true,
         why: "罫線をまたぐ文字（はみ出し）",
         runs: ["stress", "realistic"].map((s) => ({
-            label: s, cmd: [PY, "scripts/check-overflow.py", ...pdfsOf(s)], sentinel: "OVERFLOW_NONE",
+            label: s, cmd: () => [PY, "scripts/check-overflow.py", ...pdfsOf(s)], sentinel: "OVERFLOW_NONE",
         })),
     },
     {
         file: "check-truncation.py", stage: "生成PDF", needsPdfs: true,
         why: "「収まって見えるが情報が欠落」した切り詰め",
         runs: ["stress", "realistic"].map((s) => ({
-            label: s, cmd: [PY, "scripts/check-truncation.py", "--summary", ...pdfsOf(s)], sentinel: "NO_TRUNCATION",
+            label: s, cmd: () => [PY, "scripts/check-truncation.py", "--summary", ...pdfsOf(s)], sentinel: "NO_TRUNCATION",
         })),
     },
     {
         file: "check-mangled-glyphs.py", stage: "生成PDF", needsPdfs: true,
         why: "英数字が日本語フォント側に流れて別字形になる化け",
         runs: ["stress", "realistic"].map((s) => ({
-            label: s, cmd: [PY, "scripts/check-mangled-glyphs.py", ...pdfsOf(s)], sentinel: "NO_MANGLED_GLYPHS",
+            label: s, cmd: () => [PY, "scripts/check-mangled-glyphs.py", ...pdfsOf(s)], sentinel: "NO_MANGLED_GLYPHS",
         })),
     },
     {
@@ -208,7 +211,7 @@ const CHECKS = [
         runs: [
             { label: "自己診断", cmd: [PY, "scripts/check-printed-overlap.py", "--self-test"], sentinel: "SELF_TEST_OK" },
             ...["stress", "realistic"].map((s) => ({
-                label: s, cmd: [PY, "scripts/check-printed-overlap.py", ...pdfsOf(s)], sentinel: "NO_PRINTED_OVERLAP",
+                label: s, cmd: () => [PY, "scripts/check-printed-overlap.py", ...pdfsOf(s)], sentinel: "NO_PRINTED_OVERLAP",
             })),
         ],
     },
@@ -305,7 +308,11 @@ const EXTRA_STAGES = [
         name: "字形化け回帰", stage: "インク層",
         why: "型番の字形化けと幅乖離。check-ink-coverage.py が読むPDFもここで作る",
         runs: [
-            { label: "生成", cmd: ["node", "scripts/digit-mangling-regression.mjs"], sentinel: null },
+            // ★prep。これは検査ではなく前提（tmp/digit-regression.pdf を作る）。
+            //   並列化したら「判定」と check-ink-coverage が先に走って
+            //   「先に … を実行すること」で落ちた。ローカルでは前回の tmp/ が
+            //   残っていて通っていたので、クリーン環境で初めて出た。
+            { label: "生成", cmd: ["node", "scripts/digit-mangling-regression.mjs"], sentinel: null, prep: true },
             { label: "判定", cmd: [PY, "scripts/digit-mangling-regression.py"], sentinel: "DIGIT_MANGLING_REGRESSION_PASSED" },
         ],
     },
@@ -351,6 +358,17 @@ const runAsync = (cmd) => new Promise((resolve) => {
 
 /** 同時実行数。CPU数-1（最低2）。★増やしすぎると各検査が遅くなり合計が伸びる */
 const CONCURRENCY = Math.max(2, (os.cpus()?.length ?? 4) - 1)
+
+/**
+ * 実行直前にコマンドを確定する。
+ *
+ * ★cmd に pdfsOf(set) を直接書くと、CHECKS の定義時＝**モジュール読み込み時**に
+ *   PDF一覧が固まる。--regen で作るより前なので、tmp/ が空のクリーンな環境では
+ *   引数ゼロで起動し「使い方:」を出して exit 2 になる。
+ *   ローカルでは前回の tmp/ が残っているため通ってしまい、CI で初めて出た
+ *   （実測 2026-07-30: 44件中9件）。＝ まさに「その端末では通るが他では通らない」。
+ */
+const cmdOf = (r) => (typeof r.cmd === "function" ? r.cmd() : r.cmd)
 
 /** thunk を上限つきで並行実行する（結果の順序は入力順を保つ） */
 const parallelMap = async (items, fn, limit) => {
@@ -423,7 +441,7 @@ if (LIST_ONLY) {
     console.log(line())
     for (const c of ALL) {
         console.log(`  [${c.stage}] ${c.file ?? c.name} — ${c.why}`)
-        for (const r of c.runs) console.log(`      ${r.label ? r.label + ": " : ""}${r.cmd.join(" ")}`)
+        for (const r of c.runs) console.log(`      ${r.label ? r.label + ": " : ""}${cmdOf(r).join(" ")}`)
     }
     process.exit(0)
 }
@@ -489,6 +507,7 @@ let failed = 0
  */
 const units = []
 const exclusiveUnits = []
+const prepUnits = []
 for (const c of ALL) {
     const name = c.file ?? c.name
     if (c.optional && !fs.existsSync(path.join(ROOT, c.optional))) {
@@ -505,16 +524,18 @@ for (const c of ALL) {
     }
     for (const r of c.runs) {
         const u = { stage: c.stage, label: r.label ? `${name} (${r.label})` : name, r }
-        ;(c.exclusive ? exclusiveUnits : units).push(u)
+        ;(r.prep ? prepUnits : c.exclusive ? exclusiveUnits : units).push(u)
     }
 }
-console.log(`  同時実行 ${CONCURRENCY} 並列 / 並行 ${units.length} 件 + 排他 ${exclusiveUnits.length} 件`)
+console.log(`  同時実行 ${CONCURRENCY} 並列 / 前提 ${prepUnits.length} 件 → 排他 ${exclusiveUnits.length} 件 → 並行 ${units.length} 件`)
 // ★排他の相を先に直列で回す。ソースを書き換える自己診断が他の検査と重なると、
 //   書き換わった途中状態を読ませてしまう（並列化した直後に check-row-labels が
 //   「生成物が一致しない」で落ちて発覚した）。
 const doneEx = []
-for (const u of exclusiveUnits) doneEx.push({ u, res: await runAsync(u.r.cmd) })
-const done = [...doneEx, ...await parallelMap(units, async (u) => ({ u, res: await runAsync(u.r.cmd) }), CONCURRENCY)]
+// ★prep（他の検査の前提を作るもの）を最初に。並列化すると消費側が先に走る
+for (const u of prepUnits) doneEx.push({ u, res: await runAsync(cmdOf(u.r)) })
+for (const u of exclusiveUnits) doneEx.push({ u, res: await runAsync(cmdOf(u.r)) })
+const done = [...doneEx, ...await parallelMap(units, async (u) => ({ u, res: await runAsync(cmdOf(u.r)) }), CONCURRENCY)]
 for (const { u, res } of done) {
     const codeOk = res.code === 0
     const sentOk = u.r.sentinel === null || res.out.includes(u.r.sentinel)

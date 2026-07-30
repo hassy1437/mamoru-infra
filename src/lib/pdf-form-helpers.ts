@@ -159,6 +159,8 @@ type DrawTextInCellArgs = {
     cellH: number
     fontSize?: number
     options?: CellDrawOptions
+    /** 上端からの絶対ベースライン。指定するとセル中央合わせより優先する（隣の刷り込みと揃える） */
+    baselineY?: number
 }
 
 type DrawWrappedTextInCellArgs = {
@@ -386,6 +388,7 @@ export const drawTextInCell = ({
     cellH,
     fontSize = 9,
     options,
+    baselineY,
 }: DrawTextInCellArgs) => {
     const normalized = normalizeText(text)
     if (!normalized) return
@@ -431,7 +434,10 @@ export const drawTextInCell = ({
         fonts,
         textToDraw,
         textX,
-        getBaselineY(pageHeight, textHeight, cellTopFromTop, cellH),
+        // ★baselineY が来たらセル中央ではなくそこに合わせる（隣の刷り込みと高さを揃える）。
+        //   縮小すると中央合わせの位置はサイズに応じて動くので、刷り込みと並べる欄では
+        //   ベースラインを直接指定しないと値ごとに上下がばらつく。
+        baselineY !== undefined ? pageHeight - baselineY : getBaselineY(pageHeight, textHeight, cellTopFromTop, cellH),
         currentSize,
     )
 }

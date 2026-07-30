@@ -1,6 +1,7 @@
 ﻿import { NextRequest, NextResponse } from "next/server"
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib"
 import {
+    drawTextInCell,
     drawTextRuns,
     drawWrappedTextInCell,
     measureRuns,
@@ -121,9 +122,37 @@ export async function POST(req: NextRequest) {
         //   他の欄は「セル右端＝刷り込みの左端」で余白を padding が担うが、
         //   この draw は padding を持たないので幅から引く（他の欄の実践は 2.2〜2.9pt）。
         const notifierW = 216.5
-        draw(toText(body.notifier_address), notifierX, 151, 10.5, notifierW)
-        draw(toText(body.notifier_name), notifierX, 168, 10.5, notifierW)
-        draw(toText(body.notifier_phone), notifierX, 185, 10.5, notifierW)
+        /**
+         * ★共有ヘルパーに通す（折り返しはしない・できない）。
+         *
+         * ローカルの draw は下限も報告も持たず、入らないと**無制限に縮む**。
+         * 実測では 35字の住所で 5.99pt（幅を実測値に直した後でも 6.56pt）まで縮み、
+         * 規定の下限 7pt を割ったまま黙って出ていた。共有ヘルパーなら
+         * ⑧の切り詰め報告と⑨の縮小警告が効き、業者に「小さく印字される」と伝わる。
+         *
+         * ★これは根本解決ではない。この3欄は折り返せない（ブロック内に罫線が無く、
+         *   刷り込みラベルが 17pt 間隔で行を定義している）ので、縮小以外に手が無い。
+         *   下限を割るのは34字以上——都道府県から建物名・階数まで書いた住所が該当する。
+         *   欄そのものが足りないという話は略称・別紙といった実務の慣行に関わり、
+         *   我々には決められない。共同創立者に確認する材料として残す。
+         *
+         * cellH は刷り込みラベルの間隔（17pt）、cellTopFromTop はベースラインから1行分。
+         */
+        const drawNotifier = (text: string | undefined, printedBaseline: number) => {
+            if (!text) return
+            drawTextInCell({
+                page: firstPage, pageHeight: height, fonts, text,
+                cellX: notifierX, cellTopFromTop: printedBaseline - 13.0,
+                cellW: notifierW, cellH: 17.0, fontSize: 10.5,
+                // ★刷り込みラベルのベースラインに合わせる。共有ヘルパーはセル中央に置くので、
+                //   指定しないと縮小の度合いで上下がばらつく（実測 149.32 対 刷り込み 151.7）。
+                baselineY: printedBaseline,
+            })
+        }
+        // 刷り込み「住 所」「氏 名」「電話番号」のベースライン実測値
+        drawNotifier(toText(body.notifier_address), 151.7)
+        drawNotifier(toText(body.notifier_name), 168.7)
+        drawNotifier(toText(body.notifier_phone), 185.7)
 
         const tableX = 150
         // 罫線 257.6/292.1/326.6/361.1 の実測。各 34.5pt ＝ 10.5pt で約2行

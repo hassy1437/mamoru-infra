@@ -19,6 +19,8 @@ const PY = process.platform === "win32" ? "python" : "python3"
 
 /** 静的検査（PDFを作らずに走るもの）＋ベースラインの鮮度 */
 const CHECKS = [
+    { name: "Python依存の宣言", cmd: [PY, "scripts/check-python-deps.py"], sentinel: "PYTHON_DEPS_OK",
+      why: "requirements.txt とズレると CI だけが落ちる（手戻りになる）" },
     { name: "孤立検査の検出", cmd: ["node", "scripts/check-pdf-all.mjs", "--list"], sentinel: null,
       why: "検査を足して登録し忘れると、誰も走らせない検査が増える" },
     { name: "行ラベル表の同期", cmd: ["node", "scripts/check-row-labels.mjs"], sentinel: "ROW_LABELS_OK",

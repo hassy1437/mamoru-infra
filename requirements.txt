@@ -1,0 +1,11 @@
+# 検査スクリプト（scripts/*.py）が使う外部依存。
+#
+# ★このファイルは scripts/check-python-deps.py が実際の import と突き合わせる。
+#   手で足し引きするのではなく、import を足したらここも足す（ズレたら検査が落ちる）。
+#
+#   2026-07-30: CI に「依存は PyMuPDF だけ」と書いて 42件中15件が numpy 不足で
+#   落ちた。依存の調査を `import fitz` の grep でやり、numpy も pillow も
+#   見ていなかった。人が列挙する限り同じことが起きるので導出に切り替えた。
+numpy
+pillow
+pymupdf

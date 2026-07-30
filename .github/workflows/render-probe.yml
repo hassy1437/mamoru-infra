@@ -30,9 +30,10 @@ jobs:
         with:
           python-version: "3.13"
 
-      # ★依存は PyMuPDF だけ。LibreOffice も Docker も要らない
-      #   （正典の取得で一度使っただけで、検査は使っていない）
-      - run: pip install pymupdf
+      # 依存は requirements.txt を正とする（LibreOffice も Docker も要らない）。
+      # ★以前ここに「PyMuPDF だけ」と書いていたが誤りだった。numpy と pillow も要る。
+      #   このプローブは1本しか走らせないので、通っても他が通る根拠にはならない。
+      - run: pip install -r requirements.txt
 
       - run: npm ci
 

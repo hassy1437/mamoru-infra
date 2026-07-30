@@ -100,6 +100,16 @@ const SOURCE_GLOBS = [
 const CHECKS = [
     // ── 静的検査（PDFを作らなくても走る。速いので先に落とす）
     {
+        file: "check-python-deps.py", stage: "静的",
+        why: "検査スクリプトの外部依存が requirements.txt と一致しているか。"
+            + "★CI に「依存は PyMuPDF だけ」と書いて 42件中15件が numpy 不足で落ちた。"
+            + "依存の調査を grep でやって取りこぼした＝人が列挙する限り再発する",
+        runs: [
+            { label: "自己診断", cmd: [PY, "scripts/check-python-deps.py", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: [PY, "scripts/check-python-deps.py"], sentinel: "PYTHON_DEPS_OK" },
+        ],
+    },
+    {
         file: "check-field-labels.py", stage: "静的",
         why: "⑧のエラーに出す項目ラベルが入力画面の表記とズレていないか",
         runs: [{ cmd: [PY, "scripts/check-field-labels.py"], sentinel: "FIELD_LABELS_OK" }],

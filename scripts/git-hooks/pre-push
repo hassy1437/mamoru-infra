@@ -1,0 +1,5 @@
+#!/bin/sh
+# ★このフックはリポジトリにコミットされている（.git/hooks は共有されないため）。
+#   有効化: git config core.hooksPath scripts/git-hooks
+#   npm install 時に自動で有効になる（package.json の prepare）。
+exec node scripts/pre-push.mjs

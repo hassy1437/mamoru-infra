@@ -134,6 +134,11 @@ def main() -> int:
     rc = 0
     for name in names:
         rc |= (register(name) if mode == "register" else check(name))
+    if mode == "register" and rc == 0:
+        # ★由来の記録は register の一部にする。別コマンドにすると呼び忘れる
+        #   （「運用を明文化する」は検査12本が全部孤立したときに失敗した方法）。
+        import subprocess
+        subprocess.run(["node", "scripts/baseline-stamp.mjs", "--write"], check=False)
     if mode == "check" and rc == 0:
         print("BASELINE_MATCH")
     return rc

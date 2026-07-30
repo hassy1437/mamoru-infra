@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "check:pdf": "node scripts/check-pdf-all.mjs"
+    "check:pdf": "node scripts/check-pdf-all.mjs",
+    "prepare": "git config core.hooksPath scripts/git-hooks || true",
+    "check:pre-push": "node scripts/pre-push.mjs",
+    "baseline": "python scripts/baseline.py register all"
   },
   "dependencies": {
     "@pdf-lib/fontkit": "^1.1.1",

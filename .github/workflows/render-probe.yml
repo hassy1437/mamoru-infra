@@ -1,0 +1,58 @@
+# CI（Linux）とローカル（Windows）で、生成PDFの**描画結果**が一致するかを1回だけ測る。
+#
+# ■ なぜ要るか
+#   検査ランナーのうちベースライン照合だけは登録済みPNGとの画素比較なので、
+#   CI に載せられるかは「環境をまたいでフォント描画が同じピクセルになるか」で決まる。
+#   推測で決めず、実測してから workflow を設計する。
+#
+# ■ なぜ PDF のバイトを比べないか
+#   pdf-lib は保存のたびに文書IDを変えるため、同じ端末で2回生成してもバイトは一致しない
+#   （実測 4/4 件とも不一致）。描画結果なら同一端末では完全に一致する（実測）。
+#
+# 手動実行のみ（workflow_dispatch）。これは調査用で、常時走らせるものではない。
+name: render-probe
+
+on:
+  workflow_dispatch:
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      # ★依存は PyMuPDF だけ。LibreOffice も Docker も要らない
+      #   （正典の取得で一度使っただけで、検査は使っていない）
+      - run: pip install pymupdf
+
+      - run: npm ci
+
+      - name: 生成（長文セット・現実値セット）
+        run: |
+          node scripts/generate-bekki234-route-tests.mjs
+          node scripts/generate-bekki5678-route-tests.mjs
+          node scripts/generate-bekki9to12-route-tests.mjs
+          node scripts/generate-bekki13to22-route-tests.mjs
+          node scripts/generate-extra-route-tests.mjs
+          node scripts/generate-realistic-route-tests.mjs
+
+      # ★ローカルと**同じスクリプト**を走らせる。別々に書くと、差が環境差なのか
+      #   実装差なのか分からなくなる
+      - name: 描画ハッシュ
+        run: python scripts/print-render-hashes.py
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: render-hashes
+          path: |
+            tmp/pdf-realistic/*.pdf
+            tmp/pdf-test-extra/*.pdf

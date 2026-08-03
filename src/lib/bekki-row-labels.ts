@@ -601,7 +601,7 @@ export const BEKKI_ROW_LABELS: Record<string, Record<string, readonly string[]>>
     },
     "別記様式第6": {
         page1_rows: [
-            "消火剤貯蔵容器等 / 貯蔵容器（見出し行・通常入力不要）",
+            "機器点検（見出し行・通常入力不要）",
             "消火剤貯蔵容器等 / 貯蔵容器 / 周囲の状況",
             "消火剤貯蔵容器等 / 貯蔵容器 / 外形",
             "消火剤貯蔵容器等 / 貯蔵容器 / 表示・標識",

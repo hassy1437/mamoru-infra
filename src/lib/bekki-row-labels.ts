@@ -1455,7 +1455,6 @@ export const BEKKI_ROW_LABELS: Record<string, Record<string, readonly string[]>>
             "配管等 / 耐震措置",
         ],
         page3_rows: [
-            "総合点検（見出し行・通常入力不要）",
             "総合点検 / 加圧送水装置",
             "総合点検 / 電動機の運転電流（Ａ）",
             "総合点検 / 運転状況",

@@ -1,8 +1,14 @@
 "use client"
 
 import BekkiResultFormBase, { type BekkiBasePayload } from "@/components/bekki-result-form-base"
+import {
+    AUTO_TEST_ATTR,
+    AUTO_TEST_COLLAPSED_NOTICE,
+    isRowActive,
+    type AutoTestAttr,
+} from "@/lib/auto-test-rows"
 
-type JidouKasaiHouchiBekki11_1Payload = BekkiBasePayload
+type JidouKasaiHouchiBekki11_1Payload = BekkiBasePayload & AutoTestAttr
 
 interface Props {
     initial: {
@@ -123,6 +129,12 @@ const PAGE2_CHOICES: Record<number, readonly { value: string; label: string }[]>
 }
 
 export default function JidouKasaiHouchiBekki11_1Form(props: Props) {
+    // ★保存済み payload の extra_fields から読む（保存形は string の "1"）。
+    //   未回答・"" は false 扱い＝従来どおり全行を入力・出力する（安全側）。
+    const hasAutoTest =
+        (props.savedPayload?.extra_fields as Record<string, string> | undefined)?.[
+            AUTO_TEST_ATTR
+        ] === "1"
     return (
         <BekkiResultFormBase
             {...props}
@@ -132,14 +144,42 @@ export default function JidouKasaiHouchiBekki11_1Form(props: Props) {
             dbTable="inspection_jidou_kasai_houchi_bekki11_1"
             downloadFilenamePrefix="自動火災報知設備点検票"
             sections={[
-                { key: "page1_rows", title: "（その1）機器点検", labels: PAGE1_ITEMS },
-                { key: "page2_rows", title: "（その2）機器点検", labels: PAGE2_ITEMS, choiceRows: PAGE2_CHOICES },
-                { key: "page3_rows", title: "（その3）総合点検", labels: PAGE3_ITEMS },
+                {
+                    key: "page1_rows",
+                    title: "（その1）機器点検",
+                    labels: PAGE1_ITEMS,
+                    // ★labels は絞らない。描画だけを飛ばす（行数と idx は不変＝値が残る）。
+                    hiddenRow: (l) => !isRowActive(l, hasAutoTest),
+                    hiddenRowNotice: AUTO_TEST_COLLAPSED_NOTICE,
+                },
+                {
+                    key: "page2_rows",
+                    title: "（その2）機器点検",
+                    labels: PAGE2_ITEMS,
+                    choiceRows: PAGE2_CHOICES,
+                    hiddenRow: (l) => !isRowActive(l, hasAutoTest),
+                    hiddenRowNotice: AUTO_TEST_COLLAPSED_NOTICE,
+                },
+                {
+                    key: "page3_rows",
+                    title: "（その3）総合点検",
+                    labels: PAGE3_ITEMS,
+                    // ★その3にも※行が2件ある（合計23件の内訳: その1=11 / その2=10 / その3=2）。
+                    //   ここを漏らすと「23項目」と表示しながら21行しか畳まれない。
+                    hiddenRow: (l) => !isRowActive(l, hasAutoTest),
+                    hiddenRowNotice: AUTO_TEST_COLLAPSED_NOTICE,
+                },
             ]}
             extraFieldsTitle="設備情報"
             extraFields={[
                 { key: "receiver_maker", label: "受信機 製造者名" },
                 { key: "receiver_model", label: "受信機 型式等" },
+                {
+                    key: AUTO_TEST_ATTR,
+                    label: "受信機が自動試験機能を有する",
+                    type: "checkbox",
+                    placeholder: AUTO_TEST_COLLAPSED_NOTICE,
+                },
             ]}
             notesCardTitle="（その3）備考・測定機器"
             notesRows={8}

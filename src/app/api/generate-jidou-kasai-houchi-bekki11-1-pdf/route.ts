@@ -11,19 +11,27 @@ import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
 import {
-    FIT_EPSILON,
+    periodDateError,
+FIT_EPSILON,
+    blankPrintedRows,
     drawChoiceCircle,
     drawPeriodDate,
     drawTextRuns,
     drawWrappedTextInCell,
     formatJapaneseDateText,
     formatJudgment,
+    cellAt,
     measureRuns,
+    truncateRunsToFitWidth,
     pickFont,
     reportIfBelowMinSize,
     type ReportFonts,
+    type CellRef,
+    type CellAt,
 } from "@/lib/pdf-form-helpers"
 import { normalizeInspectorNameValue, normalizeWitnessValue } from "@/lib/bekki-header-normalization"
+import { AUTO_TEST_ATTR, isRowActive } from "@/lib/auto-test-rows"
+import { BEKKI_ROW_LABELS } from "@/lib/bekki-row-labels"
 
 /**
  * テストデータ生成が読む「数値しか入らない欄」の宣言。
@@ -39,7 +47,7 @@ import { normalizeInspectorNameValue, normalizeWitnessValue } from "@/lib/bekki-
  * 分類は scripts/classify-numeric-rows.py が出す「内容セルの刷り込み」の実測による。
  */
 export const NUMERIC_ROWS: Record<string, number[]> = {
-    page1_rows: [10, 12],
+    page1_rows: [2, 10, 12],
 }
 
 type BekkiRow = { content?: string; judgment?: string; bad_content?: string; action_content?: string }
@@ -72,9 +80,13 @@ type DrawOptions = {
     paddingY?: number
     minFontSize?: number
     maxFontSize?: number
+    /** どの欄の何行目のどの列か（行ループ・専用描画が渡す） */
+    at?: CellRef
 }
 
 type ResultColumns = {
+    /** どの payload 配列か。fit 報告の帰属に使う（値の文字列一致に頼らないため） */
+    rowsKey?: string
     contentX: number
     contentW: number
     judgmentX: number
@@ -146,6 +158,13 @@ const parseDateParts = (value: unknown) => {
 export async function POST(req: NextRequest) {
     try {
         const body = (await req.json()) as Bekki11Payload
+
+        // ★点検期間が年月日に分解できないときは描かずに止める。
+        //   以前は期間文字列を刷り込み「年月日～年月日」の上に生で描いていた
+        //   （22様式共通。セル定義監査が定義上の重なりとして検出）。
+        //   実測: 現実値0件 / 長文0件。入力画面は type="date" なので UI からは到達しない。
+        const periodErr = periodDateError("別記様式第11の1", body.period_start, body.period_end)
+        if (periodErr) return NextResponse.json(periodErr, { status: 422 })
         const normalizedWitness = normalizeWitnessValue(body.witness)
         const normalizedInspectorName = normalizeInspectorNameValue(body.inspector_name)
         const candidatePdfPaths = [
@@ -169,25 +188,11 @@ export async function POST(req: NextRequest) {
         const p2Height = page2.getSize().height
         const p3Height = page3.getSize().height
 
-        const truncateToFitWidth = (value: string, size: number, maxWidth: number) => {
-            if (!value) return ""
-            if (measureRuns(fonts, String(value ?? ""), size) <= maxWidth + FIT_EPSILON) return value
-
-            const suffix = "..."
-            if (measureRuns(fonts, String(suffix ?? ""), size) > maxWidth) return ""
-
-            let cut = value.length
-            while (cut > 0) {
-                const candidate = `${value.slice(0, cut).trimEnd()}${suffix}`
-                if (measureRuns(fonts, String(candidate ?? ""), size) <= maxWidth + FIT_EPSILON) {
-                    fonts.fit?.report(value, cut)
-                    return candidate
-                }
-                cut -= 1
-            }
-
-            return suffix
-        }
+        // ★共有の truncateRunsToFitWidth に寄せた。ローカル複製14本のうち13本が
+        //   「1文字も入らない（cut が 0 まで落ちる）」ケースの fonts.fit?.report(value, 0) を
+        //   落としており、情報が消えたまま 200 が返っていた。fonts を束ねるだけの包み。
+        const truncateToFitWidth = (value: string, size: number, maxWidth: number, at?: CellAt) =>
+            truncateRunsToFitWidth(fonts, value, size, maxWidth, at)
 
         const drawInCell = (
             page: PDFPage,
@@ -217,7 +222,8 @@ export async function POST(req: NextRequest) {
             currentSize = Math.max(currentSize, minFontSize)
             fonts.fit?.reportShrink(normalized, designSize, currentSize)
             reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth)
-            const textToDraw = truncateToFitWidth(normalized, currentSize, maxWidth)
+            const textToDraw = truncateToFitWidth(normalized, currentSize, maxWidth,
+                cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at))
             if (!textToDraw) return
 
             const textWidth = measureRuns(fonts, String(textToDraw ?? ""), currentSize)
@@ -238,6 +244,8 @@ export async function POST(req: NextRequest) {
             cellW: number,
             cellH: number,
             fontSize = 7.0,
+            /** どの欄の何行目のどの列か。fit 報告の帰属に使う */
+            at?: CellRef,
         ) => drawWrappedTextInCell({
             page,
             pageHeight,
@@ -253,8 +261,8 @@ export async function POST(req: NextRequest) {
                 paddingY: 1.0,
                 minFontSize: 4.5,
                 lineGap: 0.7,
-            },
-        })
+                at,
+            },        })
 
         const drawInCellWithFont = (
             page: PDFPage,
@@ -285,20 +293,11 @@ export async function POST(req: NextRequest) {
             currentSize = Math.max(currentSize, minFontSize)
             fonts.fit?.reportShrink(normalized, designSize, currentSize)
             reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth)
-            let textToDraw = normalized
-            if (measureRuns(font, String(normalized ?? ""), currentSize) > maxWidth + 0.1) {
-                const suffix = "..."
-                let cut = normalized.length
-                while (cut > 0) {
-                    const candidate = `${normalized.slice(0, cut).trimEnd()}${suffix}`
-                    if (measureRuns(font, String(candidate ?? ""), currentSize) <= maxWidth + FIT_EPSILON) {
-                        font.fit?.report(normalized, cut)
-                        textToDraw = candidate
-                        break
-                    }
-                    cut -= 1
-                }
-            }
+            // ★共有の truncateRunsToFitWidth に寄せた（8本目の複製だった）。
+            //   自前版は cut が 0 まで落ちた場合の report(value, 0) を持たず、
+            //   1文字も入らないときに情報が消えたまま 200 が返っていた。
+            const textToDraw = truncateRunsToFitWidth(font, normalized, currentSize, maxWidth,
+                cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at))
             const textWidth = measureRuns(font, String(textToDraw ?? ""), currentSize)
             const textHeight = font.jp.heightAtSize(currentSize, { descender: true })
             let textX = cellX + paddingX
@@ -323,21 +322,41 @@ export async function POST(req: NextRequest) {
             drawTextRuns(page, fonts, String(norm ?? ""), cellX + padX, pageH - (textTop + th * 0.78), sz)
         }
 
-        const drawResultRows = (page: PDFPage, pageHeight: number, rows: BekkiRow[], rowBounds: number[], cols: ResultColumns, contentOverrides: Record<number, { x: number; w: number }> = {}, skipContentRows?: Set<number>, skipAllRows?: Set<number>) => {
+        // ★入力画面と同じ読み方に揃える（extra_fields の "1"）。2箇所で違う読み方をしない。
+        const hasAutoTest = getExtra(body, AUTO_TEST_ATTR) === "1"
+        /** 自動試験機能ありのとき描かない行の添字。なしなら undefined＝従来どおり全行。 */
+        const autoTestSkip = (rowsKey: string): Set<number> | undefined => {
+            if (!hasAutoTest) return undefined
+            const labels = BEKKI_ROW_LABELS["別記様式第11の1"]?.[rowsKey] ?? []
+            const skip = new Set<number>()
+            labels.forEach((label, i) => {
+                if (!isRowActive(label, true)) skip.add(i)
+            })
+            return skip
+        }
+
+        const drawResultRows = (page: PDFPage, pageHeight: number, rows: BekkiRow[], rowBounds: number[], cols: ResultColumns, contentOverrides: Record<number, { x: number; w: number }> = {}, skipContentRows?: Set<number>, skipRows?: Set<number>) => {
             for (let i = 0; i < rowBounds.length - 1; i += 1) {
                 const row = rows[i]
                 if (!row) continue
-                if (skipAllRows?.has(i)) continue
+                // ★自動試験機能ありのときの※行。行を「飛ばす」だけで「詰めない」。
+                //   top は rowBounds[i] から取るので、飛ばしても他の行の座標は動かない
+                //   （入力画面で labels を絞ってはいけなかったのと同じ罠が、ここでは
+                //     幾何が配列と分離しているため構造的に起きない）。
+                if (skipRows?.has(i)) continue
                 const top = rowBounds[i]
                 const h = rowBounds[i + 1] - top
+                // ★どの欄の何行目のどの列かを渡す。渡さないと fit 報告のラベルが
+                //   「同じ値を持つ最初の入力欄」を指す（本番の bekki12 で実際に誤帰属していた）。
+                const ref = (column: string): CellRef => ({ rowsKey: cols.rowsKey, row: i, column })
                 if (!skipContentRows?.has(i)) {
                     const cx = contentOverrides[i]?.x ?? cols.contentX
                     const cw = contentOverrides[i]?.w ?? cols.contentW
-                    drawWrappedInCell(page, pageHeight, row.content, cx, top, cw, h, 6.3)
+                    drawWrappedInCell(page, pageHeight, row.content, cx, top, cw, h, 6.3, ref("content"))
                 }
-                drawInCell(page, pageHeight, formatJudgment(row.judgment), cols.judgmentX, top, cols.judgmentW, h, 7.8, { align: "center" })
-                drawWrappedInCell(page, pageHeight, row.bad_content, cols.badX, top, cols.badW, h, 6.1)
-                drawWrappedInCell(page, pageHeight, row.action_content, cols.actionX, top, cols.actionW, h, 6.1)
+                drawInCell(page, pageHeight, formatJudgment(row.judgment), cols.judgmentX, top, cols.judgmentW, h, 7.8, { align: "center", at: ref("judgment") })
+                drawWrappedInCell(page, pageHeight, row.bad_content, cols.badX, top, cols.badW, h, 6.1, ref("bad_content"))
+                drawWrappedInCell(page, pageHeight, row.action_content, cols.actionX, top, cols.actionW, h, 6.1, ref("action_content"))
             }
         }
 
@@ -373,8 +392,6 @@ export async function POST(req: NextRequest) {
         if (parseDateParts(body.period_start) || parseDateParts(body.period_end)) {
             drawPeriodDate({ page: page1, pageHeight: p1Height, fonts, dateValue: body.period_start, anchors: PERIOD_START_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 7.0 })
             drawPeriodDate({ page: page1, pageHeight: p1Height, fonts, dateValue: body.period_end, anchors: PERIOD_END_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 7.0 })
-        } else {
-            drawInCell(page1, p1Height, periodText, 230.0, PERIOD_ROW.top, 299.33, PERIOD_ROW.h, 7.0)
         }
         drawInCell(page1, p1Height, normalizedInspectorName, 148.0, 176.0, 74.0, 48.0, 7.0)
         drawWrappedInCell(page1, p1Height, body.inspector_company, 310.72, 176.0, 86.0, 24.0, 6.2)
@@ -387,6 +404,7 @@ export async function POST(req: NextRequest) {
         drawInCellWithFont(page1, p1Height, fonts, getExtra(body, "receiver_model"), 265, 238.6, 264.6, 13.9, 6.8, { paddingX: 2 })
 
         drawResultRows(page1, p1Height, body.page1_rows ?? [], P1_ROW_BOUNDS, {
+            rowsKey: "page1_rows",
             contentX: 230.0, contentW: 105.33,
             judgmentX: 335.33, judgmentW: 32.0,
             badX: 367.33, badW: 81.34,
@@ -397,9 +415,10 @@ export async function POST(req: NextRequest) {
             10: { x: 230.0, w: 88 },  // 電圧計 Ｖ
             12: { x: 230.0, w: 88 },  // ヒューズ類 Ａ
                     2: { x: 230.0, w: 89.8 },   // 刷り込み「Ｖ」(319.80) の手前で止める
-        })
+        }, undefined, autoTestSkip("page1_rows"))
 
         drawResultRows(page2, p2Height, body.page2_rows ?? [], P2_ROW_BOUNDS, {
+            rowsKey: "page2_rows",
             contentX: 230.0, contentW: 110.67,
             judgmentX: 340.67, judgmentW: 32.0,
             badX: 372.67, badW: 78.0,
@@ -409,7 +428,7 @@ export async function POST(req: NextRequest) {
             9,  // スポット型(煙): テンプレートに「イオン 光電 アナログ」印刷済み → circle
             11, // 炎感知器: テンプレートに「赤外線 紫外線」印刷済み → circle
             22, // 鳴動方式: テンプレートに「一斉 区分 相互 再鳴動」印刷済み → circle
-        ]))
+        ]), autoTestSkip("page2_rows"))
 
         // P2 Row 5: スポット型(熱) — 差動 定温 (再) 熱アナログ
         const p2Rows = body.page2_rows ?? []
@@ -445,14 +464,16 @@ export async function POST(req: NextRequest) {
         ], 0.8)
         }
 
-        drawResultRows(page3, p3Height, body.page3_rows ?? [], P3_ROW_BOUNDS, {
+        // 7行目「総合点検」は全幅の刷り込み見出し行。以前はこのルートだけ独自の
+        // skipAllRows 引数で止めていたが、同じ判断が3通りに割れる原因だったので
+        // 他11ルートと同じ共有 blankPrintedRows（行データごと空にする）に揃えた。
+        drawResultRows(page3, p3Height, blankPrintedRows(body.page3_rows, new Set([7])), P3_ROW_BOUNDS, {
+            rowsKey: "page3_rows",
             contentX: 222.0, contentW: 105.0,
             judgmentX: 327.0, judgmentW: 34.5,
             badX: 361.5, badW: 84.0,
             actionX: 445.5, actionW: 84.0,
-        }, {}, undefined, new Set([
-            7, // 「総合点検」ヘッダー行 → content/judgment含め全スキップ
-        ]))
+        }, undefined, undefined, autoTestSkip("page3_rows"))
 
         drawWrappedInCell(page3, p3Height, body.notes, 80.0, 359.33, 449.33, 180.0, 7.0)
 

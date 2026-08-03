@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { BEKKI_ROW_NOTES } from "@/lib/bekki-row-notes"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -21,18 +22,8 @@ import {
 } from "@/lib/bekki-form-normalization"
 import { pdfRequestError, pdfErrorText } from "@/lib/pdf-request-error"
 
-export type BekkiRowState = {
-    content: string
-    judgment: string
-    bad_content: string
-    action_content: string
-    current_value: string  // 電圧計・電流計行の電流値（A）
-    content_tsuro: string   // 種別容量の通路列（様式16 splitTypeCapacity 用）
-    content_kyaku: string   // 種別容量の客席列（様式16 splitTypeCapacity 用）
-    flow_value: string      // ポンプ性能の吐出量(L/min)（pumpPerfRowIndex 用）
-    hose_count: string      // ホース本数（hoseRowIndexes 用）
-    nozzle_dia: string      // ノズル径(mm)（hoseRowIndexes 用）
-}
+import { createEmptyRow, coerceRow, hydrateRows, type BekkiRowState } from "@/lib/bekki-row-state"
+export type { BekkiRowState } from "@/lib/bekki-row-state"
 
 export type BekkiDeviceState = {
     name: string
@@ -74,13 +65,36 @@ type SectionConfig = {
     pumpPerfRowIndex?: number      // ポンプ性能行: 吐出圧力(content)/吐出量(flow_value) の2欄入力
     hoseRowIndexes?: readonly number[]  // ホース行: 長さ(content)/本数(hose_count)/口径(nozzle_dia) の3列入力
     choiceRows?: Record<number, readonly { value: string; label: string }[]>  // 同一セル複数選択行: チェックボックス群（選択語を content にスペース区切りで保存）
+    /**
+     * その行を描画しない条件。★labels は絞らないこと。
+     *   labels の配列位置がそのまま payload の行インデックスなので、配列を絞ると
+     *   hydrateRows(labels.length) で末尾が切り捨てられ、idx がずれて
+     *   choiceRows / BEKKI_ROW_NOTES も別の行に付く（サイレントなデータ破壊）。
+     *   ＝ 行数と idx は従来どおりのまま、描画だけを飛ばす。
+     *   未指定なら全行を描く（既存16様式の挙動は変わらない）。
+     */
+    hiddenRow?: (label: string, idx: number) => boolean
+    /** hiddenRow で実際に行を隠したときだけ、セクション見出しの下に出す説明。 */
+    hiddenRowNotice?: string
 }
 
 type ExtraFieldConfig = {
     key: string
     label: string
     placeholder?: string
+    /**
+     * 入力の種類。未指定は "text"（既存の16様式はすべてこれ＝挙動不変）。
+     * ★"checkbox" でも保存形は string のまま（"1" = オン / "" = オフ）。
+     *   payload の extra_fields は Record<string, string> で、DB列も全様式が共有している。
+     *   ここを string | boolean にすると16様式ぶんの読み書きと保存済みデータに波及するため、
+     *   型は変えず値の表現だけで表す。空文字がオフ＝未入力と同じ falsy になり、
+     *   既存の coerceString による復元もそのまま通る。
+     */
+    type?: "text" | "checkbox"
 }
+
+/** チェックボックス型 extraField のオン判定（保存形が string なので1箇所に閉じる）。 */
+const isExtraChecked = (value: string | undefined): boolean => value === "1"
 
 interface Props {
     title: string
@@ -109,18 +123,6 @@ interface Props {
     notesRows?: number
 }
 
-const createEmptyRow = (): BekkiRowState => ({
-    content: "",
-    judgment: "",
-    bad_content: "",
-    action_content: "",
-    current_value: "",
-    content_tsuro: "",
-    content_kyaku: "",
-    flow_value: "",
-    hose_count: "",
-    nozzle_dia: "",
-})
 
 const createEmptyDevice = (): BekkiDeviceState => ({
     name: "",
@@ -131,21 +133,6 @@ const createEmptyDevice = (): BekkiDeviceState => ({
 
 const coerceString = (value: unknown, fallback = "") => (typeof value === "string" ? value : fallback)
 
-const coerceRow = (value: unknown): BekkiRowState => {
-    const source = (value ?? {}) as Partial<BekkiRowState>
-    return {
-        content: coerceString(source.content),
-        judgment: coerceString(source.judgment),
-        bad_content: coerceString(source.bad_content),
-        action_content: coerceString(source.action_content),
-        current_value: coerceString(source.current_value),
-        content_tsuro: coerceString(source.content_tsuro),
-        content_kyaku: coerceString(source.content_kyaku),
-        flow_value: coerceString(source.flow_value),
-        hose_count: coerceString(source.hose_count),
-        nozzle_dia: coerceString(source.nozzle_dia),
-    }
-}
 
 const coerceDevice = (value: unknown): BekkiDeviceState => {
     const source = (value ?? {}) as Partial<BekkiDeviceState>
@@ -156,9 +143,6 @@ const coerceDevice = (value: unknown): BekkiDeviceState => {
         maker: coerceString(source.maker),
     }
 }
-
-const hydrateRows = (count: number, source?: unknown[]): BekkiRowState[] =>
-    Array.from({ length: count }, (_, i) => coerceRow(source?.[i] ?? createEmptyRow()))
 
 const formatSavedAt = (value?: string | null) => {
     if (!value) return null
@@ -566,6 +550,12 @@ export default function BekkiResultFormBase({
             </CardHeader>
             <CardContent>
                 {/* Desktop: table layout */}
+                {section.hiddenRowNotice &&
+                    section.labels.some((l, i) => section.hiddenRow?.(l, i)) && (
+                        <p className="mb-2 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                            {section.hiddenRowNotice}
+                        </p>
+                    )}
                 <div className="hidden md:block overflow-x-auto border rounded-lg">
                     <table className="w-full text-sm">
                         <thead className="bg-slate-50">
@@ -578,9 +568,20 @@ export default function BekkiResultFormBase({
                             </tr>
                         </thead>
                         <tbody>
-                            {section.labels.map((label, idx) => (
+                            {section.labels.map((label, idx) =>
+                                section.hiddenRow?.(label, idx) ? null : (
                                 <tr key={`${section.key}-${idx}`}>
-                                    <td className="p-2 border">{label}</td>
+                                    <td className="p-2 border">
+                                        {label}
+                                        {/* ★※印の条件は様式の備考にしか書かれておらず、入力画面には
+                                            出ていなかった（行ラベルに※はあるのに条件が無い状態）。
+                                            文言は備考の原文のまま。言い換えると意味が変わる。 */}
+                                        {BEKKI_ROW_NOTES[apiPath]?.[section.key]?.[idx] && (
+                                            <div className="mt-1 text-xs text-amber-700 leading-snug">
+                                                ※ {BEKKI_ROW_NOTES[apiPath][section.key][idx]}
+                                            </div>
+                                        )}
+                                    </td>
                                     <td className="p-1 border">
                                         {section.choiceRows?.[idx] ? (
                                             renderChoiceCheckboxes(section, idx, section.choiceRows[idx])
@@ -696,9 +697,15 @@ export default function BekkiResultFormBase({
 
                 {/* Mobile: card layout */}
                 <div className="md:hidden space-y-3">
-                    {section.labels.map((label, idx) => (
+                    {section.labels.map((label, idx) =>
+                        section.hiddenRow?.(label, idx) ? null : (
                         <div key={`${section.key}-mobile-${idx}`} className="border rounded-lg p-3 space-y-2 bg-white">
                             <div className="font-medium text-sm text-slate-800">{label}</div>
+                            {BEKKI_ROW_NOTES[apiPath]?.[section.key]?.[idx] && (
+                                <div className="text-xs text-amber-700 leading-snug">
+                                    ※ {BEKKI_ROW_NOTES[apiPath][section.key][idx]}
+                                </div>
+                            )}
                             <div className="grid grid-cols-2 gap-2">
                                 <div className="space-y-1">
                                     <span className="text-xs text-slate-500">内容</span>
@@ -891,16 +898,39 @@ export default function BekkiResultFormBase({
                         <div className="space-y-2">
                             <p className="text-sm font-medium text-slate-700">{extraFieldsTitle}</p>
                             <div className={`grid gap-4 ${extraColumnsClass}`}>
-                                {extraFields.map((field) => (
-                                    <div key={field.key} className="space-y-1">
-                                        <Label>{field.label}</Label>
-                                        <Input
-                                            placeholder={field.placeholder}
-                                            value={extraFieldValues[field.key] ?? ""}
-                                            onChange={(e) => setExtraFieldValues((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                                        />
-                                    </div>
-                                ))}
+                                {extraFields.map((field) =>
+                                    field.type === "checkbox" ? (
+                                        <div key={field.key} className="space-y-1">
+                                            <label className="flex items-start gap-2 text-sm text-slate-800">
+                                                <input
+                                                    type="checkbox"
+                                                    className="mt-0.5"
+                                                    checked={isExtraChecked(extraFieldValues[field.key])}
+                                                    onChange={(e) =>
+                                                        setExtraFieldValues((prev) => ({
+                                                            ...prev,
+                                                            // ★保存形は string のまま（"1" = オン / "" = オフ）
+                                                            [field.key]: e.target.checked ? "1" : "",
+                                                        }))
+                                                    }
+                                                />
+                                                <span>{field.label}</span>
+                                            </label>
+                                            {field.placeholder && (
+                                                <p className="text-xs text-slate-500 pl-6">{field.placeholder}</p>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div key={field.key} className="space-y-1">
+                                            <Label>{field.label}</Label>
+                                            <Input
+                                                placeholder={field.placeholder}
+                                                value={extraFieldValues[field.key] ?? ""}
+                                                onChange={(e) => setExtraFieldValues((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                                            />
+                                        </div>
+                                    ),
+                                )}
                             </div>
                         </div>
                     )}

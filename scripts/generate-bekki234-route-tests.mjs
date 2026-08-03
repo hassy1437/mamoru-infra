@@ -99,6 +99,10 @@ const jobs = [
         return row;
       }),
       page3_rows: makeRows(36, "別記3-3").map((row, i) => {
+        // row 17: 圧力検知装置 圧力スイッチ — 設定圧力(content)/作動圧力(current_value)
+        //   ★2つ目を入れていなかったため、作動圧力側が一度も描かれず潜在していた。
+        //     旧形式（content だけ・「/」無し）は現実値セットが受け持つ。
+        if (i === 17) return { ...row, content: "0.85", current_value: "0.82" };
         // row 25: 補助散水栓箱等 ホース・ノズル外形 — 長さ/本数/口径を個別キーで投入
         if (i === 25) return { ...row, content: "20", hose_count: "2", nozzle_dia: "25" };
         return row;
@@ -124,7 +128,11 @@ const jobs = [
         if (i === 19) return { ...row, content: "0.75", flow_value: "950" };
         return row;
       }),
-      page3_rows: makeRows(24, "別記4-3"),
+      page3_rows: makeRows(24, "別記4-3").map((row, i) =>
+        // row 5: 圧力検知装置 圧力スイッチ — 設定圧力(content)/作動圧力(current_value)
+        //   ★bekki3 row17 と同じ形。旧形式は現実値セットが受け持つ。
+        i === 5 ? { ...row, content: "0.75", current_value: "0.72" } : row
+      ),
     },
   },
 ];

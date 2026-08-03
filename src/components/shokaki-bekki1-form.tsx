@@ -116,7 +116,8 @@ const PAGE1_ITEMS = [
 ] as const
 
 const PAGE2_ITEMS = [
-    "本体容器・内筒等",
+    "本体容器",
+    "内筒等",
     "液面表示",
     "性状",
     "消火薬剤量",

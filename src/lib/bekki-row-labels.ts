@@ -1090,7 +1090,8 @@ export const BEKKI_ROW_LABELS: Record<string, Record<string, readonly string[]>>
             "ガス導入管（車載式）",
         ],
         page2_rows: [
-            "本体容器・内筒等",
+            "本体容器",
+            "内筒等",
             "液面表示",
             "性状",
             "消火薬剤量",

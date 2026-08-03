@@ -11,15 +11,20 @@ import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
 import {
-    FIT_EPSILON,
+    periodDateError,
+FIT_EPSILON,
     drawPeriodDate,
     drawTextRuns,
     drawWrappedTextInCell,
     formatJapaneseDateText,
+    cellAt,
     measureRuns,
+    truncateRunsToFitWidth,
     pickFont,
     reportIfBelowMinSize,
     type ReportFonts,
+    type CellRef,
+    type CellAt,
 } from "@/lib/pdf-form-helpers"
 
 type MarkKey = "A" | "B" | "C" | "D" | "E" | "F"
@@ -84,6 +89,8 @@ type DrawOptions = {
     maxFontSize?: number
     xOffset?: number
     yOffset?: number
+    /** どの欄の何行目のどの列か（行ループ・専用描画が渡す） */
+    at?: CellRef
 }
 
 const MARK_KEYS: MarkKey[] = ["A", "B", "C", "D", "E", "F"]
@@ -116,7 +123,9 @@ const P1_ROW_BOUNDS = [
 const P2_ROW_BOUNDS = [
     84.0, 101.52, 119.04, 136.44, 153.96,
     171.48, 189.0, 206.52, 224.04, 241.44,
-    258.96, 276.48, 294.0, 337.44, 354.96,
+    // ★319.8 はテンプレートに実在する罫線。以前これが抜けており、294.0-337.44 が
+    //   1帯（43.4pt）に畳まれて 帯0〜11 のラベルが1行ずつ前倒しになっていた。
+    258.96, 276.48, 294.0, 319.8, 337.44, 354.96,
     372.48, 390.0, 407.52, 425.04, 442.44, 459.96,
 ]
 
@@ -166,6 +175,13 @@ export async function POST(req: NextRequest) {
     try {
         const body = (await req.json()) as BekkiPayload
 
+        // ★点検期間が年月日に分解できないときは描かずに止める。
+        //   以前は期間文字列を刷り込み「年月日～年月日」の上に生で描いていた
+        //   （22様式共通。セル定義監査が定義上の重なりとして検出）。
+        //   実測: 現実値0件 / 長文0件。入力画面は type="date" なので UI からは到達しない。
+        const periodErr = periodDateError("別記様式第1", body.period_start, body.period_end)
+        if (periodErr) return NextResponse.json(periodErr, { status: 422 })
+
         const candidatePdfPaths = [
             path.join(process.cwd(), "public", "PDF", "s50_kokuji14_bekki1.pdf"),
             path.join(process.cwd(), "public", "s50_kokuji14_bekki1.pdf"),
@@ -193,27 +209,11 @@ export async function POST(req: NextRequest) {
         const p1Height = page1.getSize().height
         const p2Height = page2.getSize().height
 
-        const truncateToFitWidth = (value: string, size: number, maxWidth: number) => {
-            if (!value) return ""
-            if (measureRuns(fonts, String(value ?? ""), size) <= maxWidth + FIT_EPSILON) {
-                return value
-            }
-
-            const suffix = "..."
-            const suffixWidth = measureRuns(fonts, String(suffix ?? ""), size)
-            if (suffixWidth > maxWidth) return ""
-
-            let cut = value.length
-            while (cut > 0) {
-                const candidate = `${value.slice(0, cut).trimEnd()}${suffix}`
-                if (measureRuns(fonts, String(candidate ?? ""), size) <= maxWidth + FIT_EPSILON) {
-                    return candidate
-                }
-                cut -= 1
-            }
-
-            return suffix
-        }
+        // ★共有の truncateRunsToFitWidth に寄せた。ローカル複製14本のうち13本が
+        //   「1文字も入らない（cut が 0 まで落ちる）」ケースの fonts.fit?.report(value, 0) を
+        //   落としており、情報が消えたまま 200 が返っていた。fonts を束ねるだけの包み。
+        const truncateToFitWidth = (value: string, size: number, maxWidth: number, at?: CellAt) =>
+            truncateRunsToFitWidth(fonts, value, size, maxWidth, at)
 
         const drawInCell = (
             page: PDFPage,
@@ -255,7 +255,8 @@ export async function POST(req: NextRequest) {
 
             reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth)
 
-            const textToDraw = truncateToFitWidth(normalized, currentSize, maxWidth)
+            const textToDraw = truncateToFitWidth(normalized, currentSize, maxWidth,
+                cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at))
             if (!textToDraw) return
 
             const textWidth = measureRuns(fonts, String(textToDraw ?? ""), currentSize)
@@ -347,9 +348,6 @@ export async function POST(req: NextRequest) {
         if (parseDateParts(body.period_start) || parseDateParts(body.period_end)) {
             drawPeriodDate({ page: page1, pageHeight: p1Height, fonts, dateValue: body.period_start, anchors: PERIOD_START_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 8.1 })
             drawPeriodDate({ page: page1, pageHeight: p1Height, fonts, dateValue: body.period_end, anchors: PERIOD_END_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 8.1 })
-        } else {
-            const periodText = periodStart && periodEnd ? `${periodStart} - ${periodEnd}` : (periodStart || periodEnd)
-            drawInCell(page1, p1Height, periodText, 208.92, PERIOD_ROW.top, 320.64, PERIOD_ROW.h, 8.8)
         }
 
         // 刷り込みに重ねない: 前置ラベル氏名(-143.9) の右から（テンプレート実測）

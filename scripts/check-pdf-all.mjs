@@ -98,6 +98,20 @@ const SOURCE_GLOBS = [
  *   sentinel … 標準出力にこれが出ていなければ失敗（終了コード0でも）
  */
 const CHECKS = [
+    {
+        file: "check-header-rows.py", stage: "静的",
+        why: "ラベル配列 ↔ blankPrintedRows ↔ テンプレートの罫線の三者整合。"
+            + "★ベースライン照合では原理的に検出できない種類の欠陥だから。"
+            + "刷り込みは payload.pageN_rows[i] を ROW_BOUNDS[i] の位置に描き、"
+            + "ラベル配列は入力画面と⑧の文言にしか使われない。"
+            + "ラベルが1つ多い/少ないと、画面で入れた値が紙では隣の行に出るのに、"
+            + "描かれるピクセルは1ドットも変わらない＝画像を突き合わせても永久に出ない。"
+            + "実際 bekki1 その2 と bekki20 その3 がこれで消防署提出物に載った",
+        runs: [
+            { label: "自己診断", cmd: [PY, "scripts/check-header-rows.py", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: [PY, "scripts/check-header-rows.py"], sentinel: "HEADER_ROWS_OK" },
+        ],
+    },
     // ── 静的検査（PDFを作らなくても走る。速いので先に落とす）
     {
         file: "check-python-deps.py", stage: "静的",

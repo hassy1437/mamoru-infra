@@ -579,15 +579,18 @@ export async function POST(req: NextRequest) {
             // 値は行の下半分（MPaラベルと同じ高さ y≈403-414）に配置
             const valTop = swTop + swH / 2 - 2
             const valH = swH / 2 + 2
-            if (swContent.includes("/")) {
-                const parts = swContent.split("/")
-                // 設定圧力値: 「設定圧力」(x=244-286)の下、「MPa」(x=273)の左
-                drawInCellWithFont(page3, p3Height, fonts, parts[0]?.trim(), 244, valTop, 28, valH, 6.5, { paddingX: 0.5 })
-                // 作動圧力値: 「作動圧力」(x=296-338)の下、「MPa」(x=326)の左
-                drawInCellWithFont(page3, p3Height, fonts, parts[1]?.trim(), 296, valTop, 28, valH, 6.5, { paddingX: 0.5 })
-            } else if (swContent) {
-                drawInCellWithFont(page3, p3Height, fonts, swContent, 244, valTop, 28, valH, 6.5, { paddingX: 0.5 })
-            }
+            // ★入力欄を2つ（content=設定圧力 / current_value=作動圧力）にしたので
+            //   通常は分岐せずそのまま描く。「/」区切りは、入力欄が1つだった頃に
+            //   点検者が「0.85/0.82」と書いた旧データのための後方互換に限る
+            //   （下の row 25 ホース行と同じ「新キー優先 →「/」分割」の順序）。
+            const swCurrent = normalizeText(switchRow.current_value)
+            const legacy = !swCurrent && swContent.includes("/")
+            const setPressure = legacy ? swContent.split("/")[0]?.trim() : swContent
+            const actPressure = legacy ? swContent.split("/")[1]?.trim() : swCurrent
+            // 設定圧力値: 「設定圧力」(x=244-286)の下、「MPa」(x=273)の左
+            drawInCellWithFont(page3, p3Height, fonts, setPressure, 244, valTop, 28, valH, 6.5, { paddingX: 0.5 })
+            // 作動圧力値: 「作動圧力」(x=296-338)の下、「MPa」(x=326)の左
+            drawInCellWithFont(page3, p3Height, fonts, actPressure, 296, valTop, 28, valH, 6.5, { paddingX: 0.5 })
         }
 
         // P3 row 25: ホース/ノズル径「ホース ___m× ___本 | ノズル径 ___mm」

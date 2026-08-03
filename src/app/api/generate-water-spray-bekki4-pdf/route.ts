@@ -571,13 +571,16 @@ export async function POST(req: NextRequest) {
             // Values go in the bottom half of the compound row
             const valTop = swTop + swH / 2 - 2
             const valH = swH / 2 + 2
-            if (swContent.includes("/")) {
-                const parts = swContent.split("/")
-                drawInCellWithFont(page3, p3Height, fonts, parts[0]?.trim(), 244, valTop, 28, valH, 6.5, { paddingX: 0.5 })
-                drawInCellWithFont(page3, p3Height, fonts, parts[1]?.trim(), 296, valTop, 28, valH, 6.5, { paddingX: 0.5 })
-            } else if (swContent) {
-                drawInCellWithFont(page3, p3Height, fonts, swContent, 244, valTop, 28, valH, 6.5, { paddingX: 0.5 })
-            }
+            // ★入力欄を2つ（content=設定圧力 / current_value=作動圧力）にしたので
+            //   通常は分岐せずそのまま描く。「/」区切りは、入力欄が1つだった頃に
+            //   点検者が「0.85/0.82」と書いた旧データのための後方互換に限る。
+            //   ＝ current_value が空で、content に「/」がある場合だけ分割する。
+            const swCurrent = normalizeText(switchRow4.current_value)
+            const legacy = !swCurrent && swContent.includes("/")
+            const setPressure = legacy ? swContent.split("/")[0]?.trim() : swContent
+            const actPressure = legacy ? swContent.split("/")[1]?.trim() : swCurrent
+            drawInCellWithFont(page3, p3Height, fonts, setPressure, 244, valTop, 28, valH, 6.5, { paddingX: 0.5 })
+            drawInCellWithFont(page3, p3Height, fonts, actPressure, 296, valTop, 28, valH, 6.5, { paddingX: 0.5 })
         }
 
         drawWrappedInCell(page3, p3Height, body.notes, 82, 525, 447, 115, 7.3)

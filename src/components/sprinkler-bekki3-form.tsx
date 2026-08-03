@@ -510,6 +510,12 @@ export default function SprinklerBekki3Form({
         currentValueRowIndex?: number,
         perfRowIndex?: number,
         hoseRowIndex?: number,
+        /**
+         * 圧力スイッチ行。刷り込みが「設定圧力 ___ MPa ／ 作動圧力 ___ MPa」で
+         * 空欄が2つある。★入力欄が1つしか無く、route が content の「/」区切りを
+         * 前提にしていたため、書式を知らない点検者が値を1つ書くと作動圧力が空になった。
+         */
+        pressureSwitchRowIndex?: number,
     ) => {
     const markAllGood = () => setter((prev) => prev.map((row) => (row.judgment === "" ? { ...row, judgment: "良" } : row)))
     return (
@@ -583,6 +589,23 @@ export default function SprinklerBekki3Form({
                                                     className="w-24"
                                                 />
                                                 <span className="text-xs text-muted-foreground">L/min</span>
+                                            </div>
+                                        ) : idx === pressureSwitchRowIndex ? (
+                                            <div className="flex gap-1 items-center">
+                                                <Input
+                                                    value={rows[idx].content}
+                                                    onChange={(e) => updateRowField(setter, idx, "content", e.target.value)}
+                                                    placeholder="設定圧力(MPa)"
+                                                    className="w-24"
+                                                />
+                                                <span className="text-xs text-muted-foreground">MPa</span>
+                                                <Input
+                                                    value={rows[idx].current_value}
+                                                    onChange={(e) => updateRowField(setter, idx, "current_value", e.target.value)}
+                                                    placeholder="作動圧力(MPa)"
+                                                    className="w-24"
+                                                />
+                                                <span className="text-xs text-muted-foreground">MPa</span>
                                             </div>
                                         ) : idx === currentValueRowIndex ? (
                                             <div className="flex gap-1 items-center">
@@ -688,6 +711,23 @@ export default function SprinklerBekki3Form({
                                                 className="h-9 w-24 text-sm"
                                             />
                                             <span className="text-xs text-muted-foreground">L/min</span>
+                                        </div>
+                                    ) : idx === pressureSwitchRowIndex ? (
+                                        <div className="flex gap-1 items-center flex-wrap">
+                                            <Input
+                                                value={rows[idx].content}
+                                                onChange={(e) => updateRowField(setter, idx, "content", e.target.value)}
+                                                placeholder="設定圧力(MPa)"
+                                                className="h-9 w-24 text-sm"
+                                            />
+                                            <span className="text-xs text-muted-foreground">MPa</span>
+                                            <Input
+                                                value={rows[idx].current_value}
+                                                onChange={(e) => updateRowField(setter, idx, "current_value", e.target.value)}
+                                                placeholder="作動圧力(MPa)"
+                                                className="h-9 w-24 text-sm"
+                                            />
+                                            <span className="text-xs text-muted-foreground">MPa</span>
                                         </div>
                                     ) : idx === currentValueRowIndex ? (
                                         <div className="flex gap-1 items-center flex-wrap">
@@ -848,7 +888,8 @@ export default function SprinklerBekki3Form({
 
             {renderItemTable("（その1）機器点検", PAGE1_ITEMS, page1Rows, setPage1Rows, 10)}
             {renderItemTable("（その2）機器点検", PAGE2_ITEMS, page2Rows, setPage2Rows, undefined, 20)}
-            {renderItemTable("（その3）機器点検", PAGE3_ITEMS, page3Rows, setPage3Rows, undefined, undefined, 25)}
+            {/* 17 = 圧力検知装置の圧力スイッチ。様式が「設定圧力 MPa / 作動圧力 MPa」の2値を求める行 */}
+            {renderItemTable("（その3）機器点検", PAGE3_ITEMS, page3Rows, setPage3Rows, undefined, undefined, 25, 17)}
             {renderItemTable("（その4）総合点検", PAGE4_ITEMS, page4Rows, setPage4Rows)}
             {renderItemTable("（その5）補助散水栓", PAGE5_ITEMS, page5Rows, setPage5Rows)}
 

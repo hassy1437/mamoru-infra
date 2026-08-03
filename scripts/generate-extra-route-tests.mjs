@@ -16,6 +16,8 @@ import fs from "fs"
 import path from "path"
 import { runRoutePdf } from "./run-route-pdf.mjs"
 
+import { applyLongText } from "./lib-long-text.mjs"
+
 const ROOT = process.cwd()
 const FIXTURES = path.join(ROOT, "scripts", "fixtures", "extra")
 const OUT_DIR = path.join(ROOT, "tmp", "pdf-test-extra")
@@ -35,9 +37,28 @@ if (names.length === 0) {
 
 for (const name of names) {
     const job = JSON.parse(fs.readFileSync(path.join(FIXTURES, `${name}.job.json`), "utf8"))
-    const payload = JSON.parse(fs.readFileSync(path.join(FIXTURES, `${name}.payload.json`), "utf8"))
+    // ★22本と同じ経路に乗せる。ここに別の仕組みを足すと、また系統が2つになる。
+    const payload = applyLongText(
+        JSON.parse(fs.readFileSync(path.join(FIXTURES, `${name}.payload.json`), "utf8"))).payload
     const outPdfPath = path.join(OUT_DIR, `${name}.pdf`)
-    await runRoutePdf({ routePath: job.routePath, payload, outPdfPath })
+    try {
+        await runRoutePdf({ routePath: job.routePath, payload, outPdfPath })
+    } catch (e) {
+        // ★他4本と同じ扱いにする。長文セットは「収まらない」ことを 422 で表明するので、
+        //   落とさず記録して次へ進む。ここだけ throw していたため、1様式が 422 になると
+        //   extra セット（bekki1 / 報告書 / 点検者一覧 / 総括表）が丸ごと生成されなかった。
+        if (e.status === 422) {
+            const b = JSON.parse(e.responseBody)
+            // ★前回のPDFを消す。残すと下流の検査が『古いPDFを測って緑』になる。
+            //   job.json は消さない（どのルートの生成物かを示すメタデータで、
+            //   現実値セットの生成がこれを読んでルート一覧を作っているため）。
+            if (fs.existsSync(outPdfPath)) fs.rmSync(outPdfPath)
+            console.log(name, "FIT_FAILED", b.items.length, "件",
+                b.items.map((i) => `${i.field}:${i.input}->${i.fits}`).join(" "))
+            continue
+        }
+        throw e
+    }
     // ベースライン系スクリプトが参照するので、生成物の隣にも payload を残す
     fs.writeFileSync(path.join(OUT_DIR, `${name}.payload.json`), JSON.stringify(payload, null, 2), "utf8")
     fs.writeFileSync(path.join(OUT_DIR, `${name}.job.json`), JSON.stringify(job, null, 2), "utf8")

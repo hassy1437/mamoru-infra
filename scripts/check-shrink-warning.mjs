@@ -89,6 +89,20 @@ function* findJobs(dir = path.join(process.cwd(), "tmp")) {
     }
 }
 
+/**
+ * ★現実値でも警告が出ることが確認済みの箇所。理由つきで明示的に許す。
+ *   この不変条件（現実値セットで警告0件）は、報告書ルートに fit コレクタが
+ *   無かったころに作られたもので、「1ルートが盲目だったから0件だった」だけだった。
+ *   コレクタを繋いだ瞬間に 33.7% の縮小が出た＝誤検出ではなく実在の縮小。
+ * ★暗黙に無視しない。載っているのに起きなくなったら落ちる（両方向）。
+ */
+// ★以前ここに houkoku_test|住所 を「既知」として登録していたが、長文基準を
+//   scripts/lib-long-text.mjs に一本化した際、現実値セットの届出者住所が
+//   REALISTIC の短い値に置き換わり、縮小が出なくなった。
+//   検査が「登録されているのに出ていない」と落として教えてくれたので消す。
+const KNOWN_REALISTIC_WARNINGS = new Map([])
+const seenKnown = new Set()
+
 let warned = 0
 for (const job of jobs) {
     const payload = JSON.parse(fs.readFileSync(path.join(REAL_DIR, `${job.name}.payload.json`), "utf8"))
@@ -98,11 +112,21 @@ for (const job of jobs) {
         continue
     }
     if (r.warning) {
-        warned += 1
-        check(false, `現実値 ${job.name} で警告: ${r.warning.items.map((i) => `${i.label} ${i.deviation}%`).join(", ")}`)
+        const unknown = r.warning.items.filter((i) => {
+            const key = `${job.name}|${i.label}`
+            if (KNOWN_REALISTIC_WARNINGS.has(key)) { seenKnown.add(key); return false }
+            return true
+        })
+        if (unknown.length) {
+            warned += 1
+            check(false, `現実値 ${job.name} で警告: ${unknown.map((i) => `${i.label} ${i.deviation}%`).join(", ")}`)
+        }
     }
 }
-check(warned === 0, `現実値セットで警告 ${warned} 様式（誤検出）`)
+check(warned === 0, `現実値セットで想定外の警告 ${warned} 様式（誤検出）`)
+for (const key of KNOWN_REALISTIC_WARNINGS.keys()) {
+    check(seenKnown.has(key), `${key} は既知の警告として登録されているが、もう出ていない（直ったなら一覧から消すこと）`)
+}
 
 // 2-4. 極端に長い値を入れる
 const ROUTE = "src/app/api/generate-shokasen-bekki2-pdf/route.ts"

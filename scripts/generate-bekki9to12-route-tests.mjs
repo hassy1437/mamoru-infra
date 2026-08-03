@@ -1,5 +1,6 @@
 import { runRoutePdf } from "./run-route-pdf.mjs";
-import { applyNumericRows, applyChoiceRows } from "./lib-numeric-rows.mjs";
+import { applyNumericRows, applyChoiceRows, numericStressValue } from "./lib-numeric-rows.mjs";
+import { applyLongText } from "./lib-long-text.mjs";
 import { applyBoundaryRows } from "./lib-boundary-rows.mjs";
 import fs from "fs";
 
@@ -143,7 +144,12 @@ const jobs = [
 const fitErrors = [];
 for (const job of jobs) {
   // 数値しか入らないセルには長文ではなく数値を入れる（共有部品で行番号を判定）
-  applyNumericRows(job.payload, job.routePath);
+  // ★長文の基準は scripts/lib-long-text.mjs に1本化。ここで種別ごとの長文に置き換える。
+  //   （以前は各生成スクリプトに直書きで、fixture 系4本には仕組み自体が無かった）
+  job.payload = applyLongText(job.payload).payload;
+  // ★文字種の軸: 数値欄には和文を入れる（長さは他の欄で振っている）。
+  //   値と根拠は lib-numeric-rows.mjs の NUMERIC_JP_STANDARD に1本化。
+  applyNumericRows(job.payload, job.routePath, numericStressValue(), { ignoreNarrow: true });
   // ★狭めたセルに「収まるはずの長さ」を入れて実際に踏む（測定誤りのあぶり出し）
   applyBoundaryRows(job.payload, job.routePath);
   // ★選択肢は必ず最後に入れる（applyNumericRows / applyBoundaryRows の後）。

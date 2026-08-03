@@ -30,6 +30,7 @@ import argparse
 import json
 import re
 import unicodedata
+import sys
 from pathlib import Path
 
 import fitz
@@ -111,9 +112,28 @@ def drawn_lines(page) -> list[tuple[float, str]]:
     return out
 
 
+# ★幾何的に解けないと確認済みの切り詰め。(様式, 項目) で照合し、理由を必ず書く。
+#   ★暗黙に無視しない。新しい切り詰めが増えたら落ちるし、
+#     直った（もう起きない）のに載ったままでも落ちる（両方向）。
+# ★2026-08-01: soukatu_test/building_address をここから外した。
+#   総括表の drawInCell は自前の切り詰めを持ち、切り詰めても fonts.fit?.report を
+#   一度も呼ばなかった（9本目の複製）。そのため PNG を読むこの検査だけが欠落を見ており、
+#   ルートは 200 を返して業者には何も伝わっていなかった。
+#   共有 truncateRunsToFitWidth に寄せた結果、同じ入力は 422 になる。
+#   422 になると総括表が長文セットから丸ごと落ち、その様式の版面を一切測れなくなるため、
+#   lib-long-text.mjs の住所の stressLimit を実測の容量 45字 に直した（旧値60は
+#   「61字で切り詰め」という測れていなかった頃の見積もりに基づく）。
+#   → 長文セットでは切り詰めが起きなくなったので既知一覧から外す。
+#   ★「実務でありうる49〜65字の住所が総括表に入らない」ことは本番の所見として残る。
+#     総括表は折り返しを1箇所も持たないので、422で止めるか略称かの二択（タスク17-2の調査対象）。
+KNOWN_TRUNCATION = {}
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("pdfs", nargs="+")
+    ap.add_argument("--expect-known", action="store_true",
+                    help="既知の切り詰めが起きていなければ失敗する（長文セット用）")
     ap.add_argument("--summary", action="store_true")
     args = ap.parse_args()
 
@@ -150,8 +170,28 @@ def main() -> int:
                 rows.append((p.stem, pno, key, len(shown), len(full) - len(shown), full[len(shown):]))
         doc.close()
 
+    known_seen = set()
+    unknown = []
+    for r in rows:
+        if (r[0], r[2]) in KNOWN_TRUNCATION:
+            known_seen.add((r[0], r[2]))
+        else:
+            unknown.append(r)
+    for k in KNOWN_TRUNCATION:
+        # ★この検査は呼び出しごとに対象PDFが違う（stress/realistic）ので、
+        #   そのPDFが対象に含まれているときだけ「出ていない」を問題にする。
+        # ★--expect-known は長文セットの呼び出しにだけ付ける。現実値セットでは
+        #   既知の切り詰めは起きない（値が短い）ので、そこで「出ていない」を問題にすると誤検出になる。
+        if args.expect_known and k[0] in {p.stem for p in map(Path, args.pdfs)} and k not in known_seen:
+            print(f"★NG: 既知の切り詰め {k} が起きていない（直ったなら KNOWN_TRUNCATION から消すこと）")
+            return 1
+    for k in sorted(known_seen):
+        print(f"  既知の切り詰め {k[0]} / {k[1]}")
+        print(f"      {KNOWN_TRUNCATION[k]}")
+    rows = unknown
+
     if not rows:
-        print(f"NO_TRUNCATION ({len(args.pdfs)} PDFs)")
+        print(f"NO_TRUNCATION ({len(args.pdfs)} PDFs / 既知 {len(known_seen)} 件を除く)")
         return 0
 
     if not args.summary:

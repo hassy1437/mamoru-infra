@@ -47,10 +47,34 @@ ROOT = Path(__file__).resolve().parents[1]
 API = ROOT / "src" / "app" / "api"
 TPL = ROOT / "public" / "PDF"
 
-PAGE_INDEX = {"page1": 0, "page": 0, "page2": 1, "page3": 2, "page4": 3}
+# ★page5 を落としていた。bekki3 の 5箇所が監査対象外だった（実測）。
+PAGE_INDEX = {"page1": 0, "page": 0, "page2": 1, "page3": 2, "page4": 3, "page5": 4}
 CALL = re.compile(r"drawInCell\(")
 NUM = r"\s*([\d.]+)\s*"
 HEAD = re.compile(r"drawInCell\(\s*(\w+)\s*,\s*(\w+)\s*,\s*(.+?),{n},{n},{n},{n}".replace("{n}", NUM), re.S)
+# ★リテラルだけでなく、const と オブジェクトのメンバも解決する。
+#   実測: リテラルのみだと 469箇所中 231箇所(49%)しか監査できていなかった。
+TOK = r"\s*([A-Za-z0-9_.]+)\s*"
+HEAD_TOK = re.compile(r"drawInCell\(\s*(\w+)\s*,\s*(\w+)\s*,\s*(.+?),{t},{t},{t},{t}".replace("{t}", TOK), re.S)
+
+
+def resolvable_consts(src: str) -> dict:
+    """const X = 12.3 と const X = { a: 1, b: 2 } の両方を数値表に入れる"""
+    out = {}
+    for m in re.finditer(r"const\s+(\w+)\s*=\s*(-?[\d.]+)\s*\n", src):
+        out[m.group(1)] = float(m.group(2))
+    for m in re.finditer(r"const\s+(\w+)\s*=\s*\{([^{}]*)\}", src):
+        for mm in re.finditer(r"(\w+)\s*:\s*(-?[\d.]+)", m.group(2)):
+            out[f"{m.group(1)}.{mm.group(1)}"] = float(mm.group(2))
+    return out
+
+
+# ★既に判明している定義上の重なり。理由つきで宣言し、両方向で守る。
+#   （新しく増えたら落ちる／直したのに残っていても落ちる）
+# ★periodText のフォールバックは削除済み（点検期間が年月日に分解できないときは 422 で止める）。
+#   ここを空にしておくと、同種の「刷り込みの上に生の文字列を描く」枝が新たに入ったとき
+#   即座に落ちる。既知として登録し直す前に、まず消せないかを検討すること。
+KNOWN_OVERLAP: dict[str, str] = {}
 
 
 def route_default_padding(src: str) -> tuple[float, float]:
@@ -92,28 +116,56 @@ def audit(use_padding: bool = True):
     hits = []
     # ★対象外にした呼び出しを数える。「0件＝安全」と読めてしまうのを防ぐ。
     #   実際 B-2 で直した9箇所は全部この外側にあり、この監査は一度も鳴っていない。
-    skipped = {"非リテラル座標": 0, "行ループ(drawWrappedInCell)": 0}
+    skipped = {"座標を解決できない(式・関数)": 0, "ページ変数を解決できない": 0,
+               "行ループ(drawWrappedInCell)": 0}
+    # ★様式名で除外したルートの呼び出しも分母に入れる。
+    #   除外分を分母から落とすと被覆率が実際より良く見える（453 と 469 で 80% と 77%）。
+    excluded_routes = {}
+    audited = 0
+    known = []
     for route in sorted(API.glob("generate-*/route.ts")):
         key = route.parent.name.replace("generate-", "").replace("-pdf", "")
-        m = re.search(r"bekki(\d+_?\d*)$", key)
+        # ★ハイフン付き（bekki11-1 / bekki11-2）を拾えていなかった。テンプレート名は
+        #   s50_kokuji14_bekki11_1.pdf なのでアンダースコアに直して引く。
+        #   実測: この2様式の drawInCell 33箇所が、この監査に**一度も掛かっていなかった**。
+        m = re.search(r"bekki([\d_-]+)$", key)
         if not m:
+            n = len(CALL.findall(route.read_text(encoding="utf-8")))
+            if n:
+                excluded_routes[key] = n
             continue
-        form = f"bekki{m.group(1)}"
+        form = "bekki" + m.group(1).replace("-", "_")
         glyphs = template_glyphs(form)
         if glyphs is None:
             continue
         src = route.read_text(encoding="utf-8")
         dpx, dpy = route_default_padding(src)
+        consts_tbl = resolvable_consts(src)
         for c in CALL.finditer(src):
             seg = call_span(src, c.start())
             h = HEAD.match(seg)
-            if not h:
-                skipped["非リテラル座標"] += 1
+            vals = None
+            if h:
+                vals = list(map(float, h.group(4, 5, 6, 7)))
+            else:
+                h = HEAD_TOK.match(seg)
+                if h:
+                    got = []
+                    for t in h.group(4, 5, 6, 7):
+                        try:
+                            got.append(float(t))
+                        except ValueError:
+                            got.append(consts_tbl.get(t))
+                    if None not in got:
+                        vals = got
+            if vals is None:
+                skipped["座標を解決できない(式・関数)"] += 1
                 continue
             pno = PAGE_INDEX.get(h.group(1))
             if pno is None or pno not in glyphs:
+                skipped["ページ変数を解決できない"] += 1
                 continue
-            x, y, w, hh = map(float, h.group(4, 5, 6, 7))
+            x, y, w, hh = vals
             # ★padding は呼び出しごと。明示が無ければルート既定
             po = re.search(r"paddingX:\s*([\d.]+)", seg)
             px = float(po.group(1)) if po else dpx
@@ -121,11 +173,15 @@ def audit(use_padding: bool = True):
             py = float(po.group(1)) if po else dpy
             if not use_padding:
                 px = py = 0.0
+            audited += 1
             area = fitz.Rect(x + px, y + py, x + w - px, y + hh - py)
             if area.is_empty or area.width <= 0 or area.height <= 0:
                 continue
             bad = [(ch, r) for ch, r in glyphs[pno] if area.intersects(r)]
             if bad:
+                if h.group(3).strip() in KNOWN_OVERLAP:
+                    known.append(h.group(3).strip())
+                    continue
                 hits.append({
                     "form": form, "value": h.group(3).strip().replace("body.", "")[:30],
                     "rect": (x, y, w, hh), "pad": (px, py),
@@ -133,7 +189,7 @@ def audit(use_padding: bool = True):
                     "page": pno + 1,
                 })
         skipped["行ループ(drawWrappedInCell)"] += len(re.findall(r"drawWrappedInCell\(", src))
-    return hits, skipped
+    return hits, skipped, audited, known, excluded_routes
 
 
 def self_test() -> int:
@@ -179,9 +235,9 @@ def self_test() -> int:
 def main() -> int:
     if "--self-test" in sys.argv:
         return self_test()
-    hits, skipped = audit(use_padding=True)
+    hits, skipped, audited, known, excluded = audit(use_padding=True)
     if "--raw" in sys.argv:
-        raw, _ = audit(use_padding=False)
+        raw, _, _, _, _ = audit(use_padding=False)
         print(f"padding 無視: {len(raw)} 箇所 / {len({h['form'] for h in raw})} 様式")
         print(f"padding 考慮: {len(hits)} 箇所 / {len({h['form'] for h in hits})} 様式")
         print(f"  → 差 {len(raw) - len(hits)} 箇所は「矩形は掛かるが文字は届かない」")
@@ -198,9 +254,25 @@ def main() -> int:
     print(f"\n監査 {len(hits)} 箇所 / {len(by)} 様式")
     # ★この監査が見ていない範囲を数値で出す。冒頭コメントにしか書いていないと
     #   「0件＝安全」と誤読される（B-2 で直した9箇所は全部この外側だった）。
-    print(f"  対象外: 座標が非リテラルの drawInCell {skipped['非リテラル座標']} 箇所 / "
-          f"drawWrappedInCell {skipped['行ループ(drawWrappedInCell)']} 箇所")
+    total = (audited + skipped["座標を解決できない(式・関数)"] + skipped["ページ変数を解決できない"]
+             + sum(excluded.values()))
+    print(f"  監査できた drawInCell: {audited} / {total} 箇所（{audited / max(1, total) * 100:.0f}%）")
+    print(f"  ★対象外 {total - audited} 箇所:")
+    print(f"      座標が式・関数呼び出しで解決できない … {skipped['座標を解決できない(式・関数)']} 箇所")
+    print(f"      ページ変数を解決できない            … {skipped['ページ変数を解決できない']} 箇所")
+    print(f"      様式名で除外したルート              … {sum(excluded.values())} 箇所"
+          f"（{', '.join(f'{k}:{v}' for k, v in sorted(excluded.items()))}）"
+          " ★テンプレート名が s50_kokuji14_* でないため引けない")
+    print(f"      drawWrappedInCell（別経路）          … {skipped['行ループ(drawWrappedInCell)']} 箇所（分母外・別経路）")
     print("  → 行ループ（drawResultRows）が描くセルは scripts/audit-row-cells.py が見る")
+    print("  ★対象外の箇所については、この監査は何も言っていない（0件＝安全ではない）")
+    for name, reason in KNOWN_OVERLAP.items():
+        n = known.count(name)
+        if n == 0:
+            print(f"\n★NG: 既知の重なり {name} が1件も出ていない（直したなら宣言を消すこと）")
+            return 1
+        print(f"\n  既知の重なり {name}: {n} 箇所（★定義上の重なり。フォールバック経路）")
+        print(f"      {reason}")
     if hits:
         print("  → 値が短いと検出器には出ないが、長い社名等が来れば必ず重なる。")
         return 1

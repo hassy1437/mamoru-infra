@@ -84,7 +84,11 @@ MARK_ONLY = re.compile(r"^[○◯〇△□▽◎×\s]+$")
 
 def template_for(pdf: Path) -> Path | None:
     """生成PDF → 元テンプレート。名前で対応させる"""
-    stem = pdf.stem.replace("_test", "")
+    # ★同じ様式の派生ケースは "<base>_test__<variant>" と命名する規約。
+    #   変種ごとにテンプレートの対応表を増やさないための一般則で、
+    #   "__" より後ろを落としてから "_test" を外す。
+    #   （bekki11_1_test__autotest = 自動試験機能ありのケース）
+    stem = pdf.stem.split("__")[0].replace("_test", "")
     cand = {
         "soukatu": "bekki_soukatu", "itiran": "bekki_itiran", "houkoku": "bekki_houkoku",
     }.get(stem, f"s50_kokuji14_{stem}")

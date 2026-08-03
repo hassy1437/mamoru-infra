@@ -26,11 +26,18 @@ ROOT = Path(__file__).resolve().parents[1]
 LABELS_TS = ROOT / "src" / "lib" / "pdf-fit-report.ts"
 # ★共通フォームだけを見ると、様式固有フォーム（foam-bekki5-form.tsx 等）にしか無い項目が
 #   検査から漏れる。実際 bekki5 の型式番号2欄は共通フォームに存在しない。
-FORM_TSX = sorted([ROOT / "src" / "components" / "bekki-result-form-base.tsx"]
+# ★"*bekki*-form.tsx" だけだと報告書（第1号様式）の入力画面が丸ごと外れる。
+#   報告書の項目は property-form.tsx にあり、FIELD_LABELS に足した瞬間に
+#   「画面に無い」と誤って落ちた（＝走査範囲の限定で取りこぼす形をここでも踏んだ）。
+FORM_TSX = sorted([ROOT / "src" / "components" / "bekki-result-form-base.tsx",
+                   ROOT / "src" / "components" / "property-form.tsx"]
                   + list((ROOT / "src" / "components").glob("*bekki*-form.tsx")))
 
 # 入力画面に固定ラベルが無い項目（理由は docstring 参照）
-EXEMPT = {"content", "bad_content", "action_content", "equipment_name", "notes"}
+EXEMPT = {"content", "bad_content", "action_content", "equipment_name", "notes",
+          # 報告書の欄で、入力画面に固定の <Label> が無いもの
+          "fire_department_name",   # 宛名。payload に無く、出力側で組み立てる
+          "equipment_types"}        # チェックボックス群で <Label> が動的
 
 
 def main() -> int:
@@ -45,7 +52,9 @@ def main() -> int:
     payload_keys: set[str] = set()
     for f in FORM_TSX:
         form = f.read_text(encoding="utf-8")
-        form_labels |= set(re.findall(r"<Label>([^<{]+)</Label>", form))
+        # ★属性つきの <Label htmlFor="..."> も拾う。属性なしだけを見ていたため
+        #   property-form.tsx のラベルが1つも拾えず「画面に無い」と誤判定した。
+        form_labels |= {t.strip() for t in re.findall(r"<Label[^>]*>([^<{]+)</Label>", form)}
         payload_keys |= set(re.findall(r"^\s*(\w+):\s*\w", form, re.M))
 
     problems: list[str] = []

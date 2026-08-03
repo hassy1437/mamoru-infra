@@ -113,6 +113,20 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-row-notes.py",
+        // ★排他。自己診断が注記の参照を一時的に消すので、同時に走る検査に壊れた途中状態を読ませない。
+        exclusive: true, stage: "静的",
+        why: "※印の条件文が、正典どおりの行にだけ出ているか。"
+            + "★行ラベルには※があるのに条件文がアプリのどこにも無く、業者は様式PDFを見ないと"
+            + "判断できなかった。両方向（※があるのに出ていない／※が無いのに出ている）で見る。"
+            + "さらに表示側も見る（データ側だけだと専用フォームの bekki6/7/8 が"
+            + "1文字も表示していない状態で 39/39 の緑になっていた）",
+        runs: [
+            { label: "自己診断", cmd: [PY, "scripts/check-row-notes.py", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: [PY, "scripts/check-row-notes.py"], sentinel: "ROW_NOTES_OK" },
+        ],
+    },
+    {
         file: "check-field-labels.py", stage: "静的",
         why: "⑧のエラーに出す項目ラベルが入力画面の表記とズレていないか",
         runs: [{ cmd: [PY, "scripts/check-field-labels.py"], sentinel: "FIELD_LABELS_OK" }],
@@ -148,7 +162,8 @@ const CHECKS = [
         file: "check-truncation.py", stage: "生成PDF", needsPdfs: true,
         why: "「収まって見えるが情報が欠落」した切り詰め",
         runs: ["stress", "realistic"].map((s) => ({
-            label: s, cmd: () => [PY, "scripts/check-truncation.py", "--summary", ...pdfsOf(s)], sentinel: "NO_TRUNCATION",
+            label: s, cmd: () => [PY, "scripts/check-truncation.py", "--summary",
+                ...(s === "stress" ? ["--expect-known"] : []), ...pdfsOf(s)], sentinel: "NO_TRUNCATION",
         })),
     },
     {
@@ -200,10 +215,42 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-banner-rows.py", stage: "生成PDF", needsPdfs: true,
+        why: "全幅の刷り込み見出し行（機器点検/総合点検）に値が描かれていないか。"
+            + "止め方が3通りに割れ、bekki4 p3 だけ skipContentRows（内容列しか止まらない）で"
+            + "「総合点検」の上に ×／不良内容／措置内容 が出ていた",
+        runs: [
+            { label: "自己診断", cmd: [PY, "scripts/check-banner-rows.py", "--self-test"], sentinel: "BANNER_ROWS_SELFTEST_OK" },
+            { cmd: [PY, "scripts/check-banner-rows.py"], sentinel: "BANNER_ROWS_OK" },
+        ],
+    },
+    {
         file: "check-generation-health.py", stage: "生成PDF", needsPdfs: true,
         why: "生成が成功し、ページ数がテンプレートと一致し、全ルートがテストセットに入っているか。"
             + "★画素比較ではないので人の承認が要らず、CI に載せられる（ベースライン照合との違い）",
         runs: [{ cmd: [PY, "scripts/check-generation-health.py"], sentinel: "GENERATION_HEALTH_OK" }],
+    },
+    {
+        file: "check-route-mechanisms.py", stage: "静的",
+        why: "各ルートが持つべき配管（コレクタ・警告・422）の欠けを検出する。"
+            + "★報告書ルートだけコレクタが無く、『警告0件』が『測っていない』の意味だったのに緑が出ていた。"
+            + "optional chaining なので欠けても型検査も実行時エラーも出ない",
+        runs: [
+            { label: "自己診断", cmd: [PY, "scripts/check-route-mechanisms.py", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: [PY, "scripts/check-route-mechanisms.py"], sentinel: "ROUTE_MECHANISMS_OK" },
+        ],
+    },
+    {
+        file: "check-below-min.py", stage: "生成PDF", needsPdfs: true,
+        why: "⑧⑨の第3条件。絶対下限(5.0pt)を割った描画が現実値セットに無いか。"
+            + "★⑧(切り詰め)と⑨(逸脱30%・純数値除外)の隙間に落ちるものがあり、"
+            + "判読困難なサイズのまま黙って法定書類に出ていた。長文セットは長さ由来が501件出るので"
+            + "全体は条件にしないが、『NUMERIC_ROWS で宣言された欄の中』だけは2件なので"
+            + "座標で切り出してゲートに載せている（文字種の軸が生む穴。文字列一致では分けない）",
+        runs: [
+            { label: "自己診断", cmd: [PY, "scripts/check-below-min.py", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: [PY, "scripts/check-below-min.py"], sentinel: "BELOW_MIN_OK" },
+        ],
     },
     {
         file: "check-printed-overlap.py", stage: "生成PDF", needsPdfs: true,

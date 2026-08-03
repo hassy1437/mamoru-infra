@@ -80,10 +80,13 @@ def self_test():
     orig = io.open(route, encoding="utf-8").read()
     try:
         # page1_rows[4] は「刷り込みなし」と分類した行（＝数値欄ではない）
-        mutated = orig.replace("    page1_rows: [10, 12],", "    page1_rows: [4, 10, 12],")
-        if mutated == orig:
+        # ★宣言の中身を直書きしない。宣言は増減するので、リテラルで当てると
+        #   「宣言を1件足しただけで自己診断が落ちる」になる（実際に踏んだ）。
+        m = re.search(r"\n(\s*)page1_rows:\s*\[([^\]]*)\]", orig)
+        if not m:
             print("自己診断: 変異を当てる宣言が見つからない（書式が変わった）")
             return 1
+        mutated = orig[:m.start(2)] + "4, " + orig[m.start(2):]
         io.open(route, "w", encoding="utf-8", newline="").write(mutated)
         after, _ = run()
         if not any("page1_rows[4]" in p for p in after):

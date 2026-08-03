@@ -161,13 +161,95 @@ export const applyChoiceRows = (payload, routePath, choiceRows) => {
  * レイアウトの検証にはならない（入るはずがない）。長文で試したいのは
  * 折り返し・縮小が働く"文字を入れる欄"のほう。
  */
-export const applyNumericRows = (payload, routePath, value = "0.45") => {
+/**
+ * 刷り込みが両端を規定していて「桁数そのものが決まっている」空欄。
+ *
+ * ★既定の埋め値 "0.45" は4文字ある。刷り込みが「－ __ ％」のように2桁ぶんしか
+ *   空けていない欄に4文字を入れると、レイアウトの検証ではなく**入るはずのない値**の
+ *   検証になり、絶対下限割れが恒常的に出て検出器が死ぬ。
+ * ★これは列挙であって導出ではない。増えたら足す必要があるが、足し忘れても
+ *   「下限割れが出る」側に転ぶ（黙って通らない）。
+ *   値は様式が想定する桁数に合わせる。幅は実測値。
+ */
+export const NARROW_NUMERIC_ROWS = {
+    // 別記様式第12 感度範囲「－ __ ％ ～ ＋ __ ％」: 空欄は 10.56pt / 10.44pt ＝ 2桁
+    "generate-leakage-fire-alarm-bekki12-pdf": { page2_rows: { 0: "10" } },
+}
+
+export const numericValueFor = (routePath, key, row, fallback = "0.45") => {
+    const dir = routePath.replace(/\\/g, "/").split("/").at(-2)
+    return NARROW_NUMERIC_ROWS[dir]?.[key]?.[row] ?? fallback
+}
+
+/**
+ * 数値欄に入れる「文字種」の基準。
+ *
+ * ■ なぜ要るか（2026-08-01 に踏んだ）
+ *   長文セットは**長さ**を振っていたが**文字種**を振っていなかった。数値欄は
+ *   現実値セットも長文セットも "0.45" のような短い数字を入れるので、
+ *   「数値欄に和文が入る」経路がテストデータで一度も踏まれていなかった。
+ *   業者は実際に「不明」「確認できず」「該当なし」と書く（未計測・未設置・故障中など、
+ *   数値を書けない状況が点検では普通に起きる）。bekki9 ホース本数の情報欠落は
+ *   この経路で、長さをいくら振っても出てこなかった。
+ *
+ * ■ なぜ3本目のセットを作らないか
+ *   系統を増やすと片方に処理を足し忘れる（fixture 系4本が長文化されていなかったのが実例）。
+ *   ＝ 長文セットに「文字種」という軸を足す。現実値セットは数字のまま残すので、
+ *      2セットで 数字×現実長 / 和文×長文 の両方を踏む。
+ *
+ * ■ どれを長文セットに当てるか（実測。★推測で決めない）
+ *   全26様式に同じ値を入れて計測した結果:
+ *
+ *     値              字数  422   切り詰め(新規)  下限割れ(新規)
+ *     不明              2    0本      0             1
+ *     該当なし          4    4本      —             —
+ *     確認できず        5    5本      3             3
+ *
+ *   ★422 になると**その様式の PDF が出ない**ので、下流の検査（下限割れ・はみ出し・
+ *     ベースライン）がその様式を丸ごと失う。長文セットは「収まらないことを表明する」
+ *     ためではなく「その入力での版面を測る」ためにあるので、26本すべてが出る
+ *     「不明」を当てる。4字・5字で 4〜5本が 422 になることは**本番の所見**であって
+ *     テストの都合ではないので、消さずにここに残す（applyToStress: false）。
+ */
+export const NUMERIC_JP_STANDARD = [
+    {
+        value: "不明",
+        applyToStress: true,
+        why: "点検時に数値を確認できない場合の最短の記載。2字なら26様式すべてがPDFを出せるので、"
+            + "下流の検査を落とさずに『数値欄に和文が入る』経路を常時踏める",
+    },
+    {
+        value: "該当なし",
+        applyToStress: false,
+        why: "設備が無い・対象外のときの定型。実測で4様式が422になり、その様式のPDFが出ないため当てない",
+    },
+    {
+        value: "確認できず",
+        applyToStress: false,
+        why: "計測不能・立入不可のときの定型。実測で5様式が422（bekki3/4/5/9/12）。"
+            + "★これらの欄は和文5字が物理的に入らないという本番の所見",
+    },
+]
+
+/** 長文セットで数値欄に入れる値。★1か所で決める（生成スクリプトに直書きしない） */
+export const numericStressValue = () => NUMERIC_JP_STANDARD.find((x) => x.applyToStress).value
+
+/**
+ * @param {object} opts
+ *   ignoreNarrow … NARROW_NUMERIC_ROWS（桁数が決まった欄の専用値）を無視する。
+ *   ★文字種の軸を当てるときは無視する。あの一覧は「数字を入れる前提」で桁数を
+ *     合わせたものなので、尊重すると**いちばん狭い欄にだけ和文が入らない**という
+ *     逆の穴が空く（実測: bekki12 page2_rows[0] がそれに当たる）。
+ */
+export const applyNumericRows = (payload, routePath, value = "0.45", opts = {}) => {
     const byKey = numericRowsByKey(routePath)
     for (const [key, indexes] of byKey) {
         const rows = payload?.[key]
         if (!Array.isArray(rows)) continue
         for (const i of indexes) {
-            if (rows[i] && typeof rows[i] === "object" && "content" in rows[i]) rows[i].content = value
+            if (rows[i] && typeof rows[i] === "object" && "content" in rows[i]) {
+                rows[i].content = opts.ignoreNarrow ? value : numericValueFor(routePath, key, i, value)
+            }
         }
     }
     return payload

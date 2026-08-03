@@ -64,6 +64,8 @@ const REALISTIC = {
     phone: "03-1234-5678",
     equipment_names: "消火器,自動火災報知設備,誘導灯",
     license_number: "東京 第12345号",
+    // ★長文化の対象キーは必ずここに現実値が要る（assertRealisticCoverage が強制する）。
+    notifier_address: "東京都千代田区丸の内1-1-1",
 }
 
 // 点検項目の内容欄に入る典型的な文言
@@ -72,7 +74,8 @@ const BAD = "変形あり"
 const ACTION = "部品交換"
 const NUMERIC = "0.45"
 
-import { numericRowsByKey, applyChoiceRows } from "./lib-numeric-rows.mjs"
+import { numericRowsByKey, applyChoiceRows, numericValueFor } from "./lib-numeric-rows.mjs"
+import { assertRealisticCoverage } from "./lib-long-text.mjs"
 
 const realisticValue = (key, original) => {
     if (key in REALISTIC) return REALISTIC[key]
@@ -113,20 +116,21 @@ const CHOICE_ROWS = {
     },
 }
 
-const transform = (node, numericByKey, key = "", rowIndex = null, rowsKey = "") => {
+const transform = (node, numericByKey, key = "", rowIndex = null, rowsKey = "", routePath = "") => {
     if (Array.isArray(node)) {
         const isRows = key.endsWith("_rows")
-        return node.map((v, i) => transform(v, numericByKey, key, isRows ? i : rowIndex, isRows ? key : rowsKey))
+        return node.map((v, i) => transform(v, numericByKey, key, isRows ? i : rowIndex, isRows ? key : rowsKey, routePath))
     }
     if (node && typeof node === "object") {
         const out = {}
-        for (const [k, v] of Object.entries(node)) out[k] = transform(v, numericByKey, k, rowIndex, rowsKey)
+        for (const [k, v] of Object.entries(node)) out[k] = transform(v, numericByKey, k, rowIndex, rowsKey, routePath)
         return out
     }
     if (typeof node !== "string") return node
     if (key === "content") {
         // その rows配列 の、その行が数値欄なら数値を入れる（配列ごとに上書き対象が違う）
-        if (rowIndex !== null && numericByKey.get(rowsKey)?.has(rowIndex)) return NUMERIC
+        // ★刷り込みが桁数を規定している空欄は短い値にする（長文セットと同じ共有部品を通す）
+        if (rowIndex !== null && numericByKey.get(rowsKey)?.has(rowIndex)) return numericValueFor(routePath, rowsKey, rowIndex, NUMERIC)
         return CONTENTS[(rowIndex ?? 0) % CONTENTS.length]
     }
     if (key === "bad_content") return node ? BAD : node
@@ -152,7 +156,16 @@ for (const jobPath of jobs) {
     const name = path.basename(jobPath).replace(/\.job\.json$/, "")
     const numericByKey = numericRowsByKey(routePath)
     // routePath は "src/app/api/generate-xxx-pdf/route.ts" 形式。ディレクトリ名で引く
-    const payload = transform(JSON.parse(fs.readFileSync(payloadPath, "utf8")), numericByKey)
+    const raw = JSON.parse(fs.readFileSync(payloadPath, "utf8"))
+    // ★長文化したキーに現実値が無いと、長文のまま現実値セットに混ざる。ここで止める。
+    const seen = new Set()
+    ;(function collect(n, k = "") {
+        if (Array.isArray(n)) return n.forEach((v) => collect(v, k))
+        if (n && typeof n === "object") return Object.entries(n).forEach(([kk, v]) => collect(v, kk))
+        if (typeof n === "string" && n.trim()) seen.add(k)
+    })(raw)
+    assertRealisticCoverage(new Set(Object.keys(REALISTIC)), seen)
+    const payload = transform(raw, numericByKey, "", null, "", routePath)
     // ★選択肢欄は数値置換より後（選択肢の行も skipContentRows に載るため）。
     //   長文セットと同じ共有部品を通し、宣言と実装のズレはそこで落とす。
     applyChoiceRows(payload, routePath, CHOICE_ROWS[path.basename(path.dirname(routePath))])

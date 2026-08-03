@@ -171,21 +171,45 @@ def overlaps(gen_path, scale: float = SCALE):
         # アプリのスパン＝生成側にあってテンプレ側に無いもの
         appspans = [(r, t) for r, t, _ in gen_spans[i]
                     if (round(r.x0, 2), round(r.y0, 2), t) not in tset] if i < len(gen_spans) else []
+        # ★アプリのスパンの矩形の中で both を直接数える。
+        #   以前は「テンプレ側のテキストスパンとの交差」の中だけを数えていたので、
+        #   罫線・図形との重なりが原理的に検出できなかった（実測: 値を縦罫線に
+        #   跨がせてインクが22画素重なっても検出0件）。テンプレ側の候補を
+        #   列挙する方式は「列挙し忘れた種類」が穴になるので、列挙をやめて
+        #   インクマスクそのものを見る。both = アプリのインク ∧ 刷り込みのインク
+        #   なので、罫線でも図形でも網掛けでも同じ1本の判定で捕まる。
         for ar, at in appspans:
+            x0, y0 = int(ar.x0 * scale), int(ar.y0 * scale)
+            x1, y1 = int(np.ceil(ar.x1 * scale)), int(np.ceil(ar.y1 * scale))
+            px = int(both[max(0, y0):y1, max(0, x0):x1].sum())
+            if px == 0:
+                continue
+            # 何に当たったかの帰属。テキストスパンとの交差ぶんを引いて、
+            # 残りを「罫線・図形」とする（帰属は報告のためで、判定には使わない）。
+            printed, px_text = [], 0
             for tr, tt, _ in (tpl_spans[i] if i < len(tpl_spans) else []):
                 it = ar & tr
                 if not it.is_valid or it.is_empty or it.width <= 0 or it.height <= 0:
                     continue
-                x0, y0 = int(it.x0 * scale), int(it.y0 * scale)
-                x1, y1 = int(np.ceil(it.x1 * scale)), int(np.ceil(it.y1 * scale))
-                px = int(both[max(0, y0):y1, max(0, x0):x1].sum())
-                if px == 0:
-                    continue
-                hits.append({
-                    "page": i + 1, "app": at, "printed": tt, "px": px,
-                    "x": round(it.x0, 1), "y": round(it.y0, 1),
-                    "mark": bool(MARK_ONLY.match(at)),
-                })
+                ix0, iy0 = int(it.x0 * scale), int(it.y0 * scale)
+                ix1, iy1 = int(np.ceil(it.x1 * scale)), int(np.ceil(it.y1 * scale))
+                p = int(both[max(0, iy0):iy1, max(0, ix0):ix1].sum())
+                if p:
+                    printed.append(tt)
+                    px_text += p
+            px_other = max(px - px_text, 0)
+            if px_other and not printed:
+                label = "罫線・図形（テキスト以外の刷り込み）"
+            elif px_other:
+                label = "・".join(printed) + " ＋罫線・図形"
+            else:
+                label = "・".join(printed)
+            hits.append({
+                "page": i + 1, "app": at, "printed": label, "px": px,
+                "px_text": px_text, "px_other": px_other,
+                "x": round(ar.x0, 1), "y": round(ar.y0, 1),
+                "mark": bool(MARK_ONLY.match(at)),
+            })
     return hits
 
 
@@ -228,7 +252,47 @@ def self_test() -> int:
             if not judge(overlaps(bad)):
                 problems.append("刷り込みの真上に描いたのに検出しない")
 
-        # 上向き2: 刷り込みの「すぐ隣の空白」に描いたものは検出しない
+        # 上向き2: ★罫線の真上に描いたら必ず検出（穴1の対照）
+        #   これが無いと「テンプレ側のテキストスパンとしか交差を取らない」実装に
+        #   戻っても気づけない。実際その実装では、値を縦罫線に跨がせて
+        #   インクが22画素重なっても検出0件だった。
+        doc = fitz.open(str(tpl))
+        page = doc[0]
+        rule = None
+        for it in page.get_drawings():
+            for op in it["items"]:
+                r = None
+                if op[0] == "l" and abs(op[1].y - op[2].y) < 0.9:
+                    r = fitz.Rect(min(op[1].x, op[2].x), op[1].y - 0.3, max(op[1].x, op[2].x), op[1].y + 0.3)
+                elif op[0] == "re" and op[1].height < 1.5:
+                    r = fitz.Rect(op[1])
+                # 長い横罫線で、テキストから十分離れているものを選ぶ
+                if r is not None and r.width > 60:
+                    probe = fitz.Rect(r.x0 + 5, r.y0 - 4, r.x0 + 25, r.y1 + 4)
+                    if not any(probe.intersects(fitz.Rect(s["bbox"]))
+                               for b in page.get_text("dict")["blocks"]
+                               for l in b.get("lines", []) for s in l.get("spans", [])
+                               if s["text"].strip()):
+                        rule = r
+                        break
+            if rule is not None:
+                break
+        if rule is None:
+            problems.append("重ねる罫線が見つからない（対照として不適）")
+        else:
+            page.insert_font(fontname="notojp", fontfile=str(APP_FONT_FILE))
+            # 罫線の y にベースラインを置くので、文字のインクが必ず罫線に載る
+            page.insert_text((rule.x0 + 8, rule.y0 + 2.5), "罫線上", fontname="notojp", fontsize=7.0)
+            onrule = Path(td) / "bekki17_test.pdf"
+            doc.save(str(onrule), incremental=False)
+            doc.close()
+            hits_rule = judge(overlaps(onrule))
+            if not hits_rule:
+                problems.append("罫線の真上に描いたのに検出しない（★穴1が空いている）")
+            elif not any(h["px_other"] > 0 for h in hits_rule):
+                problems.append("罫線への重なりをテキスト由来として数えている（帰属が誤り）")
+
+        # 上向き3: 刷り込みの「すぐ隣の空白」に描いたものは検出しない
         #   ＝ ②で直した「ラベルの隣に値を置く」配置を巻き込まないことの確認。
         #   ★置き場所は実測で選ぶ。最初は適当に右隣へ置いたが、そこには別の刷り込み
         #     （別記様式第「17」）があり、検出されたのは正しかった＝対照の側が誤りだった。
@@ -236,6 +300,14 @@ def self_test() -> int:
         page = doc[0]
         allspans = [fitz.Rect(s["bbox"]) for b in page.get_text("dict")["blocks"]
                     for l in b.get("lines", []) for s in l.get("spans", []) if s["text"].strip()]
+        # ★空白の判定を「テキストが無い」から「インクが無い」に変える。
+        #   罫線を見るようにした以上、テキストだけ避けた場所は罫線に載りうる。
+        #   実際この対照は罫線を避けていなかった。
+        tpl_ink = _mask(page, SCALE)
+        def is_blank(r: fitz.Rect) -> bool:
+            x0, y0 = int(r.x0 * SCALE), int(r.y0 * SCALE)
+            x1, y1 = int(np.ceil(r.x1 * SCALE)), int(np.ceil(r.y1 * SCALE))
+            return not tpl_ink[max(0, y0):y1, max(0, x0):x1].any()
         size = 8.0
         spot = None
         for r in sorted(allspans, key=lambda x: (x.y0, x.x0)):
@@ -243,6 +315,8 @@ def self_test() -> int:
             if probe.x1 > page.rect.x1:
                 continue
             if any(probe.intersects(o) for o in allspans):
+                continue
+            if not is_blank(probe):
                 continue
             spot = probe
             break
@@ -263,7 +337,7 @@ def self_test() -> int:
         for p in problems:
             print(f"  - {p}")
         return 1
-    print("SELF_TEST_OK（描画ゼロ=0件 / 重ね書き=検出 / 隣接=検出しない）")
+    print("SELF_TEST_OK（描画ゼロ=0件 / 文字への重ね書き=検出 / 罫線への重ね書き=検出 / 隣接=検出しない）")
     return 0
 
 

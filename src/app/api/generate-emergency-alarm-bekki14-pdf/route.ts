@@ -10,7 +10,8 @@ import {
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
-import { drawChoiceCircle, drawPeriodDate, drawTextInCell, drawWrappedTextInCell, formatDateText, formatJapaneseDateText, formatJudgment, parseDateParts, pickFont, type CellDrawOptions, type DateAnchors, type ReportFonts } from "@/lib/pdf-form-helpers"
+import { periodDateError,
+drawChoiceCircle, drawPeriodDate, drawTextInCell, drawWrappedTextInCell, formatDateText, formatJapaneseDateText, formatJudgment, parseDateParts, pickFont, type CellDrawOptions, type DateAnchors, type ReportFonts, type CellRef } from "@/lib/pdf-form-helpers"
 import { normalizeInspectorNameValue, normalizeWitnessValue } from "@/lib/bekki-header-normalization"
 
 /**
@@ -26,7 +27,10 @@ import { normalizeInspectorNameValue, normalizeWitnessValue } from "@/lib/bekki-
  * 添字は payload 配列の添字（drawResultRows の startIndex を適用した後の値）。
  * 分類は scripts/classify-numeric-rows.py が出す「内容セルの刷り込み」の実測による。
  */
-export const NUMERIC_ROWS: Record<string, number[]> = {}
+export const NUMERIC_ROWS: Record<string, number[]> = {
+    page1_rows: [2, 12, 14],
+    page2_rows: [8, 11],
+}
 
 type BekkiRow = { content?: string; judgment?: string; bad_content?: string; action_content?: string }
 type DeviceRow = { name?: string; model?: string; calibrated_at?: string; maker?: string }
@@ -53,6 +57,8 @@ type Bekki14Payload = {
 }
 
 type ResultColumns = {
+    /** どの payload 配列か。fit 報告の帰属に使う（値の文字列一致に頼らないため） */
+    rowsKey?: string
     contentX: number
     contentW: number
     judgmentX: number
@@ -89,6 +95,13 @@ const PERIOD_END_ANCHORS: DateAnchors = { year: 427.46, month: 459.03, day: 490.
 export async function POST(req: NextRequest) {
     try {
         const body = (await req.json()) as Bekki14Payload
+
+        // ★点検期間が年月日に分解できないときは描かずに止める。
+        //   以前は期間文字列を刷り込み「年月日～年月日」の上に生で描いていた
+        //   （22様式共通。セル定義監査が定義上の重なりとして検出）。
+        //   実測: 現実値0件 / 長文0件。入力画面は type="date" なので UI からは到達しない。
+        const periodErr = periodDateError("別記様式第14", body.period_start, body.period_end)
+        if (periodErr) return NextResponse.json(periodErr, { status: 422 })
         const normalizedWitness = normalizeWitnessValue(body.witness)
         const normalizedInspectorName = normalizeInspectorNameValue(body.inspector_name)
 
@@ -145,6 +158,8 @@ export async function POST(req: NextRequest) {
             cellW: number,
             cellH: number,
             fontSize = 7.0,
+            /** どの欄の何行目のどの列か。fit 報告の帰属に使う（値の文字列一致に頼らないため） */
+            at?: CellRef,
         ) => drawWrappedTextInCell({
             page,
             pageHeight,
@@ -155,6 +170,7 @@ export async function POST(req: NextRequest) {
             cellW,
             cellH,
             fontSize,
+            options: { at },
         })
 
         // skipContentRows: 内容列だけ描かない行（他8ルートと同じ引数名・同じ意味）。
@@ -167,14 +183,17 @@ export async function POST(req: NextRequest) {
                 if (!row) continue
                 const top = rowBounds[i]
                 const h = rowBounds[i + 1] - top
+                // ★どの欄の何行目のどの列かを渡す。渡さないと fit 報告のラベルが
+                //   「同じ値を持つ最初の入力欄」を指す（本番の bekki12 で実際に誤帰属していた）。
+                const ref = (column: string): CellRef => ({ rowsKey: cols.rowsKey, row: i, column })
                 if (!skipContentRows.has(i)) {
                     const cx = contentOverrides[i]?.x ?? cols.contentX
                     const cw = contentOverrides[i]?.w ?? cols.contentW
-                    drawWrappedInCell(page, pageHeight, row.content, cx, top, cw, h, 6.2)
+                    drawWrappedInCell(page, pageHeight, row.content, cx, top, cw, h, 6.2, ref("content"))
                 }
-                drawInCell(page, pageHeight, formatJudgment(row.judgment), cols.judgmentX, top, cols.judgmentW, h, 7.2, { align: "center" })
-                drawWrappedInCell(page, pageHeight, row.bad_content, cols.badX, top, cols.badW, h, 6.0)
-                drawWrappedInCell(page, pageHeight, row.action_content, cols.actionX, top, cols.actionW, h, 6.0)
+                drawInCell(page, pageHeight, formatJudgment(row.judgment), cols.judgmentX, top, cols.judgmentW, h, 7.2, { align: "center", at: ref("judgment") })
+                drawWrappedInCell(page, pageHeight, row.bad_content, cols.badX, top, cols.badW, h, 6.0, ref("bad_content"))
+                drawWrappedInCell(page, pageHeight, row.action_content, cols.actionX, top, cols.actionW, h, 6.0, ref("action_content"))
             }
         }
 
@@ -219,9 +238,7 @@ export async function POST(req: NextRequest) {
                         fontSize: 6.8,
                     })
                 }
-            } else {
-                drawInCell(page1, p1Height, periodText, 230.0, y(PERIOD_ROW.top), 299.33, PERIOD_ROW.h, 6.8)
-            }
+        }
             drawInCell(page1, p1Height, normalizedInspectorName, 148.0, y(176.0), 68.5, 48.0, 7.0)
             drawInCell(page1, p1Height, body.inspector_company, 305.44, y(176.0), 97.0, 24.0, 6.2)
             drawInCell(page1, p1Height, body.inspector_tel, 426.28, y(176.0), 103.05, 24.0, 6.4)
@@ -231,6 +248,7 @@ export async function POST(req: NextRequest) {
         drawHeader()
 
         drawResultRows(page1, p1Height, body.page1_rows ?? [], P1_ROW_BOUNDS, {
+            rowsKey: "page1_rows",
             contentX: 221.16,
             contentW: 112.92,
             judgmentX: 334.56,
@@ -255,6 +273,7 @@ export async function POST(req: NextRequest) {
         ])
 
         drawResultRows(page2, p2Height, body.page2_rows ?? [], P2_ROW_BOUNDS, {
+            rowsKey: "page2_rows",
             contentX: 221.16,
             contentW: 105.84,
             judgmentX: 327.36,
@@ -276,6 +295,7 @@ export async function POST(req: NextRequest) {
         ])
 
         drawResultRows(page3, p3Height, body.page3_rows ?? [], P3_ROW_BOUNDS, {
+            rowsKey: "page3_rows",
             contentX: 222.72,
             contentW: 104.64,
             judgmentX: 327.72,
@@ -290,18 +310,21 @@ export async function POST(req: NextRequest) {
 
         const device1 = body.device1 ?? {}
         const device2 = body.device2 ?? {}
+        // ★8セルとも左罫線より 4.4pt 内側に定義されていた（実測）。
+        //   テンプレート p3 の縦罫線: 80.76 / 136.92 / 193.08 / 249.24 / 304.92(305.88) /
+        //                              361.56 / 417.72 / 473.88 / 530.04
         const deviceRowTop = 643.92
         const deviceRowH = 21.6
 
-        drawInCell(page3, p3Height, device1.name, 85.2, deviceRowTop, 51.48, deviceRowH, 6.0)
-        drawInCell(page3, p3Height, device1.model, 141.36, deviceRowTop, 51.48, deviceRowH, 6.0)
-        drawInCell(page3, p3Height, formatJapaneseDateText(device1.calibrated_at), 197.52, deviceRowTop, 51.48, deviceRowH, 5.6)
-        drawInCell(page3, p3Height, device1.maker, 253.68, deviceRowTop, 50.88, deviceRowH, 5.6)
+        drawInCell(page3, p3Height, device1.name, 80.76, deviceRowTop, 56.16, deviceRowH, 6.0)
+        drawInCell(page3, p3Height, device1.model, 136.92, deviceRowTop, 56.16, deviceRowH, 6.0)
+        drawInCell(page3, p3Height, formatJapaneseDateText(device1.calibrated_at), 193.08, deviceRowTop, 56.16, deviceRowH, 5.6)
+        drawInCell(page3, p3Height, device1.maker, 249.24, deviceRowTop, 55.68, deviceRowH, 5.6)
 
-        drawInCell(page3, p3Height, device2.name, 309.6, deviceRowTop, 50.88, deviceRowH, 6.0)
-        drawInCell(page3, p3Height, device2.model, 366.0, deviceRowTop, 51.36, deviceRowH, 6.0)
-        drawInCell(page3, p3Height, formatJapaneseDateText(device2.calibrated_at), 422.04, deviceRowTop, 51.48, deviceRowH, 5.6)
-        drawInCell(page3, p3Height, device2.maker, 478.2, deviceRowTop, 51.36, deviceRowH, 5.6)
+        drawInCell(page3, p3Height, device2.name, 305.88, deviceRowTop, 55.68, deviceRowH, 6.0)
+        drawInCell(page3, p3Height, device2.model, 361.56, deviceRowTop, 56.16, deviceRowH, 6.0)
+        drawInCell(page3, p3Height, formatJapaneseDateText(device2.calibrated_at), 417.72, deviceRowTop, 56.16, deviceRowH, 5.6)
+        drawInCell(page3, p3Height, device2.maker, 473.88, deviceRowTop, 56.16, deviceRowH, 5.6)
 
         // ⑧ 枠に収まらなかった項目があればPDFを返さずに一覧を返す。
         //   黙って "..." で切り詰めると、法定書類から情報が静かに欠落するため。

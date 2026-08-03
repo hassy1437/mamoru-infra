@@ -10,11 +10,15 @@ import {
 import {
     pickFont,
     type ReportFonts,
+    cellAt,
     measureRuns,
+    truncateRunsToFitWidth,
     drawTextRuns,
     drawWrappedTextInCell,
     FIT_EPSILON,
     reportIfBelowMinSize,
+    type CellRef,
+    type CellAt,
 } from "@/lib/pdf-form-helpers"
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
@@ -132,34 +136,28 @@ export async function POST(req: NextRequest) {
         const pages = pdfDoc.getPages()
         const page = pages[0]
 
-        const truncateToFitWidth = (value: string, size: number, maxWidth: number) => {
-            if (measureRuns(fonts, String(value ?? ""), size) <= maxWidth + FIT_EPSILON) return value
-
-            const suffix = "..."
-            const suffixWidth = measureRuns(fonts, String(suffix ?? ""), size)
-            if (suffixWidth > maxWidth) return ""
-
-            let cut = value.length
-            while (cut > 0) {
-                const candidate = `${value.slice(0, cut).trimEnd()}${suffix}`
-                if (measureRuns(fonts, String(candidate ?? ""), size) <= maxWidth + FIT_EPSILON) {
-                    return candidate
-                }
-                cut -= 1
-            }
-            return suffix
-        }
+        // ★共有の truncateRunsToFitWidth に寄せた。ローカル複製14本のうち13本が
+        //   「1文字も入らない（cut が 0 まで落ちる）」ケースの fonts.fit?.report(value, 0) を
+        //   落としており、情報が消えたまま 200 が返っていた。fonts を束ねるだけの包み。
+        const truncateToFitWidth = (value: string, size: number, maxWidth: number, at?: CellAt) =>
+            truncateRunsToFitWidth(fonts, value, size, maxWidth, at)
 
         // ------- helper: セル内にテキストを描画（縮小あり・省略なし）-------
+        // ★他25ルートと同じ並び (page, pageHeight, text, cellX, cellTopFromTop, cellW, cellH,
+        //   fontSize?, options?) に揃える。この1本だけ pageHeight を取らず align を
+        //   位置指定の第8引数にしていたため、drawInCell という同名の関数が2種類あった。
+        //   セル定義を静的に読む検査（check-cell-definition-audit 等）は多数派の並びを
+        //   前提にしているので、少数派は解析から静かに漏れる。
         const drawInCell = (
             pg: PDFPage,
+            pageHeight: number,
             text: unknown,
             cellX: number,
             cellTopFromTop: number,
             cellW: number,
             cellH: number,
             fontSize = 7,
-            align: "left" | "center" = "left",
+            options?: { align?: "left" | "center"; at?: CellRef },
         ) => {
             const normalized = String(text ?? "").replace(/\s+/g, " ").trim()
             if (!normalized) return
@@ -185,15 +183,16 @@ export async function POST(req: NextRequest) {
             fonts.fit?.reportShrink(normalized, designSize, currentSize)
             reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth)
 
-            const textToDraw = truncateToFitWidth(normalized, currentSize, maxWidth)
+            const textToDraw = truncateToFitWidth(normalized, currentSize, maxWidth,
+                cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at))
             if (!textToDraw) return
 
             const textWidth = measureRuns(fonts, String(textToDraw ?? ""), currentSize)
             const textHeight = fonts.jp.heightAtSize(currentSize, { descender: true })
             const textTopFromTop = cellTopFromTop + (cellH - textHeight) / 2
             const baselineOffset = textHeight * 0.78
-            const y = PAGE_HEIGHT - (textTopFromTop + baselineOffset)
-            const x = align === "center"
+            const y = pageHeight - (textTopFromTop + baselineOffset)
+            const x = options?.align === "center"
                 ? cellX + (cellW - textWidth) / 2
                 : cellX + paddingX
 
@@ -222,16 +221,16 @@ export async function POST(req: NextRequest) {
             if (!inspector) return
 
             // 基本情報
-            drawInCell(page, inspector.address,
+            drawInCell(page, PAGE_HEIGHT, inspector.address,
                 INSP1.address_x, INSP1.address_row_top + topOffset,
                 INSP1.address_w, INSP1.row_h, 7)
-            drawInCell(page, inspector.name,
+            drawInCell(page, PAGE_HEIGHT, inspector.name,
                 INSP1.name_x, INSP1.address_row_top + topOffset,
                 INSP1.name_w, INSP1.row_h, 7)
-            drawInCell(page, inspector.company,
+            drawInCell(page, PAGE_HEIGHT, inspector.company,
                 INSP1.company_x, INSP1.company_row_top + topOffset,
                 INSP1.company_w, INSP1.row_h, 7)
-            drawInCell(page, inspector.phone,
+            drawInCell(page, PAGE_HEIGHT, inspector.phone,
                 INSP1.phone_x, INSP1.company_row_top + topOffset,
                 INSP1.phone_w, INSP1.row_h, 7)
 
@@ -260,17 +259,17 @@ export async function POST(req: NextRequest) {
                 drawRightAt(page, lic.issue_month, SHB.issue_month, rowTop, SHB_ROW_H)
                 drawRightAt(page, lic.issue_day,   SHB.issue_day,   rowTop, SHB_ROW_H)
 
-                drawInCell(page, lic.license_number,
-                    SHB.license.x, rowTop, SHB.license.w, SHB_ROW_H, 6, "center")
-                drawInCell(page, lic.issuing_governor,
-                    SHB.governor.x, rowTop, SHB.governor.w, SHB_ROW_H, 6, "center")
+                drawInCell(page, PAGE_HEIGHT, lic.license_number,
+                    SHB.license.x, rowTop, SHB.license.w, SHB_ROW_H, 6, { align: "center" })
+                drawInCell(page, PAGE_HEIGHT, lic.issuing_governor,
+                    SHB.governor.x, rowTop, SHB.governor.w, SHB_ROW_H, 6, { align: "center" })
 
                 drawRightAt(page, lic.training_year,  SHB.tr_year,  rowTop, SHB_ROW_H)
                 drawRightAt(page, lic.training_month, SHB.tr_month, rowTop, SHB_ROW_H)
             })
 
             // 備考
-            drawInCell(page, inspector.shoubou_notes,
+            drawInCell(page, PAGE_HEIGHT, inspector.shoubou_notes,
                 BIKO1.x, BIKO1.top + topOffset, BIKO1.w, BIKO1.h, 6)
 
             // 消防設備点検資格者 ライセンス行
@@ -284,8 +283,8 @@ export async function POST(req: NextRequest) {
                 drawRightAt(page, lic.issue_month, KSA.issue_month, rowTop, KSA_ROW_H)
                 drawRightAt(page, lic.issue_day,   KSA.issue_day,   rowTop, KSA_ROW_H)
 
-                drawInCell(page, lic.license_number,
-                    KSA.license.x, rowTop, KSA.license.w, KSA_ROW_H, 6, "center")
+                drawInCell(page, PAGE_HEIGHT, lic.license_number,
+                    KSA.license.x, rowTop, KSA.license.w, KSA_ROW_H, 6, { align: "center" })
 
                 drawRightAt(page, lic.expiry_year,  KSA.exp_year,  rowTop, KSA_ROW_H)
                 drawRightAt(page, lic.expiry_month, KSA.exp_month, rowTop, KSA_ROW_H)

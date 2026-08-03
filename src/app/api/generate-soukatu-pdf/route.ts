@@ -4,10 +4,15 @@ import fontkit from "@pdf-lib/fontkit";
 import {
     pickFont,
     type ReportFonts,
+    cellAt,
     measureRuns,
+    truncateRunsToFitWidth,
     drawTextRuns,
+    drawWrappedTextInCell,
     FIT_EPSILON,
     reportIfBelowMinSize,
+    type CellRef,
+    type CellAt,
 } from "@/lib/pdf-form-helpers"
 import {
     buildFitError,
@@ -77,6 +82,8 @@ type DrawInCellOptions = {
     maxFontSize?: number;
     xOffset?: number;
     yOffset?: number;
+    /** どの欄の何行目のどの列か（行ループ・専用描画が渡す） */
+    at?: CellRef
 };
 
 type EquipmentItem = {
@@ -189,28 +196,13 @@ export async function POST(req: NextRequest) {
 
             reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth);
 
-            const truncateToFit = (value: string) => {
-                if (measureRuns(fonts, String(value ?? ""), currentSize) <= maxWidth + FIT_EPSILON) {
-                    return value;
-                }
-
-                const suffix = "...";
-                const suffixWidth = measureRuns(fonts, String(suffix ?? ""), currentSize);
-                if (suffixWidth > maxWidth) return "";
-
-                let cut = value.length;
-                while (cut > 0) {
-                    const candidate = `${value.slice(0, cut).trimEnd()}${suffix}`;
-                    if (measureRuns(fonts, String(candidate ?? ""), currentSize) <= maxWidth + FIT_EPSILON) {
-                        return candidate;
-                    }
-                    cut -= 1;
-                }
-
-                return suffix;
-            };
-
-            const textToDraw = truncateToFit(normalized);
+            // ★共有の truncateRunsToFitWidth に寄せた（9本目の複製だった）。
+            //   自前版は切り詰めても fonts.fit?.report を**一度も呼ばない**。
+            //   他の8本は cut が 0 まで落ちた場合だけ落としていたが、この1本は
+            //   通常の切り詰め（cut > 0）すら報告しておらず、消防署に出す総括表で
+            //   情報が欠落したまま 200 が返っていた。描画結果は共有版と同一。
+            const textToDraw = truncateRunsToFitWidth(fonts, normalized, currentSize, maxWidth,
+                cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at));
             if (!textToDraw) return;
 
             const textWidth = measureRuns(fonts, String(textToDraw ?? ""), currentSize);
@@ -254,56 +246,72 @@ export async function POST(req: NextRequest) {
         };
 
         const row1H = P1_ROW1.bottom - P1_ROW1.top;
-        drawInCell(
-            page1,
-            height,
-            body.building_name,
-            HDR_LEFT_VAL.x,
-            P1_ROW1.top,
-            HDR_LEFT_VAL.endX - HDR_LEFT_VAL.x,
-            row1H,
-            10.5,
-            { paddingX: 4, paddingY: 3, minFontSize: 4.2 },
-        );
+        // ★名称も折り返す（6欄目）。1行時の実測: 16字で縮小開始 / 33字で5.0pt割れ / 39字で切り詰め。
+        //   テンプレート実測: 内部の横罫線0本・高さ 78.1pt（余白後 72.1pt）。行数はセル高さから導出。
+        drawWrappedTextInCell({
+            page: page1,
+            pageHeight: height,
+            fonts,
+            text: body.building_name,
+            cellX: HDR_LEFT_VAL.x,
+            cellTopFromTop: P1_ROW1.top,
+            cellW: HDR_LEFT_VAL.endX - HDR_LEFT_VAL.x,
+            cellH: row1H,
+            fontSize: 10.5,
+            options: { paddingX: 4, paddingY: 3, minFontSize: 4.2 },
+        });
 
         // 防火管理者欄（別記様式第2の右上）: 物件の防火管理者名。届出者(notifier)ではない。
-        drawInCell(
-            page1,
-            height,
-            body.fire_manager,
-            HDR_RIGHT_VAL.x,
-            P1_ROW1.top,
-            HDR_RIGHT_VAL.endX - HDR_RIGHT_VAL.x,
-            row1H,
-            10.5,
-            { paddingX: 4, paddingY: 3, minFontSize: 4.2 },
-        );
+        // ★防火管理者も折り返す（7欄目）。1行時の実測: 17字で縮小開始 / 35字で5.0pt割れ / 42字で切り詰め。
+        drawWrappedTextInCell({
+            page: page1,
+            pageHeight: height,
+            fonts,
+            text: body.fire_manager,
+            cellX: HDR_RIGHT_VAL.x,
+            cellTopFromTop: P1_ROW1.top,
+            cellW: HDR_RIGHT_VAL.endX - HDR_RIGHT_VAL.x,
+            cellH: row1H,
+            fontSize: 10.5,
+            options: { paddingX: 4, paddingY: 3, minFontSize: 4.2 },
+        });
 
         const row2H = P1_ROW2.bottom - P1_ROW2.top;
-        drawInCell(
-            page1,
-            height,
-            body.building_address,
-            HDR_LEFT_VAL.x,
-            P1_ROW2.top,
-            HDR_LEFT_VAL.endX - HDR_LEFT_VAL.x,
-            row2H,
-            9.5,
-            { paddingX: 4, paddingY: 3, minFontSize: 3.8 },
-        );
+        // ★所在地は折り返す（2026-08-01）。
+        //   この様式は折り返しを1箇所も持たず、長い値は縮小のみで処理していた。
+        //   テンプレート実測: このセルは内部の横罫線が0本で高さ 78.3pt（余白後 72.3pt）あり、
+        //   設計 9.5pt + 行間 0.7pt で 7行入る。1行に押し込む理由が無い。
+        //   実測の限界（1行時）: 17字で縮小開始 / 33字で 5.0pt割れ / 43字で切り詰め。
+        //   本番の最長は 32字（35帳票）で、既に縮小して描かれていた。
+        //   ★行数は maxLines を直接置かず、共有ヘルパーがセル高さから導く（推測値を置かない）。
+        drawWrappedTextInCell({
+            page: page1,
+            pageHeight: height,
+            fonts,
+            text: body.building_address,
+            cellX: HDR_LEFT_VAL.x,
+            cellTopFromTop: P1_ROW2.top,
+            cellW: HDR_LEFT_VAL.endX - HDR_LEFT_VAL.x,
+            cellH: row2H,
+            fontSize: 9.5,
+            options: { paddingX: 4, paddingY: 3, minFontSize: 3.8 },
+        });
 
         // 点検実施責任者欄（別記様式第2の右中）: 点検者の氏名（点検者1）。届出者の住所ではない。
-        drawInCell(
-            page1,
-            height,
-            body.inspector_responsible,
-            HDR_RIGHT_VAL.x,
-            P1_ROW2.top,
-            HDR_RIGHT_VAL.endX - HDR_RIGHT_VAL.x,
-            row2H,
-            9.5,
-            { paddingX: 4, paddingY: 3, minFontSize: 3.8 },
-        );
+        // ★点検責任者も折り返す（8欄目・これで総括表の全8欄）。
+        //   1行時の実測: 19字で縮小開始 / 35字で5.0pt割れ / 46字で切り詰め。
+        drawWrappedTextInCell({
+            page: page1,
+            pageHeight: height,
+            fonts,
+            text: body.inspector_responsible,
+            cellX: HDR_RIGHT_VAL.x,
+            cellTopFromTop: P1_ROW2.top,
+            cellW: HDR_RIGHT_VAL.endX - HDR_RIGHT_VAL.x,
+            cellH: row2H,
+            fontSize: 9.5,
+            options: { paddingX: 4, paddingY: 3, minFontSize: 3.8 },
+        });
 
         const row3H = P1_ROW3.bottom - P1_ROW3.top;
         const typeTextY = height - (P1_ROW3.top + 14);
@@ -399,35 +407,54 @@ export async function POST(req: NextRequest) {
 
             const rowH = row.bottom - row.top;
 
-            drawInCell(page, pageHeight, item.name, col.name.x, row.top, col.name.w, rowH, 8.8, {
-                paddingX: 3.5,
-                paddingY: 3,
-                minFontSize: 3.4,
+            // ★設備方式も折り返す（3欄目）。1行時の実測: 10字で縮小開始 / 17字で5.0pt割れ / 24字で切り詰め。
+            //   テンプレート実測: 内部の横罫線0本・高さ 47.8pt（余白後 41.8pt）。行数はセル高さから導出。
+            drawWrappedTextInCell({
+                page, pageHeight, fonts, text: item.name,
+                cellX: col.name.x, cellTopFromTop: row.top, cellW: col.name.w, cellH: rowH,
+                fontSize: 8.8,
+                options: { paddingX: 3.5, paddingY: 3, minFontSize: 3.4 },
             });
 
             drawJudgeCircle(page, pageHeight, isGoodResult(item.result), row.top, row.bottom);
 
             if (item.bad_detail) {
-                drawInCell(page, pageHeight, item.bad_detail, col.bad.x, row.top, col.bad.w, rowH, 7.6, {
-                    paddingX: 3,
-                    paddingY: 3,
-                    minFontSize: 3.2,
+                // ★不良内容も折り返す（2026-08-01・所在地に続いて2欄目）。
+                //   1行時の実測: 9字で縮小開始 / 14字で 5.0pt割れ / 19字で切り詰め。
+                //   7欄の中で最も早く縮み始める欄で、「変形・損傷あり」程度でもう縮んでいた。
+                //   テンプレート実測: このセルは内部の横罫線が0本で高さ 47.8pt（余白後 41.8pt）。
+                //   ★行数は maxLines を置かず、共有ヘルパーがセル高さから導く。
+                drawWrappedTextInCell({
+                    page,
+                    pageHeight,
+                    fonts,
+                    text: item.bad_detail,
+                    cellX: col.bad.x,
+                    cellTopFromTop: row.top,
+                    cellW: col.bad.w,
+                    cellH: rowH,
+                    fontSize: 7.6,
+                    options: { paddingX: 3, paddingY: 3, minFontSize: 3.2 },
                 });
             }
 
             if (item.action) {
-                drawInCell(page, pageHeight, item.action, col.action.x, row.top, col.action.w, rowH, 7.6, {
-                    paddingX: 3,
-                    paddingY: 3,
-                    minFontSize: 3.2,
+                // ★措置内容も折り返す（5欄目）。1行時の実測: 15字で縮小開始 / 23字で5.0pt割れ / 33字で切り詰め。
+                drawWrappedTextInCell({
+                    page, pageHeight, fonts, text: item.action,
+                    cellX: col.action.x, cellTopFromTop: row.top, cellW: col.action.w, cellH: rowH,
+                    fontSize: 7.6,
+                    options: { paddingX: 3, paddingY: 3, minFontSize: 3.2 },
                 });
             }
 
             if (item.witness) {
-                drawInCell(page, pageHeight, item.witness, col.witness.x, row.top, col.witness.w, rowH, 7.6, {
-                    paddingX: 3,
-                    paddingY: 3,
-                    minFontSize: 3.2,
+                // ★立会者も折り返す（4欄目）。1行時の実測: 14字で縮小開始 / 21字で5.0pt割れ / 29字で切り詰め。
+                drawWrappedTextInCell({
+                    page, pageHeight, fonts, text: item.witness,
+                    cellX: col.witness.x, cellTopFromTop: row.top, cellW: col.witness.w, cellH: rowH,
+                    fontSize: 7.6,
+                    options: { paddingX: 3, paddingY: 3, minFontSize: 3.2 },
                 });
             }
 

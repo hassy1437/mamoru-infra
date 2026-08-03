@@ -497,10 +497,19 @@ export default function FoamBekki5Form({
         labels: readonly string[],
         rows: RowState[],
         setter: Dispatch<SetStateAction<RowState[]>>,
-        currentValueRowIndex?: number,
-        perfRowIndex?: number,
-        hoseRowIndex?: number,
+        // ★位置指定にしない。同型の optional number を並べると、渡し忘れ・順序ずれを
+        //   型検査が拾えない（過去に `undefined, new Set([7])` の順序ずれを踏んでいる）。
+        special?: {
+            currentValueRow?: number
+            perfRow?: number
+            hoseRow?: number
+            pressureSwitchRow?: number
+        },
     ) => {
+    const currentValueRowIndex = special?.currentValueRow
+    const perfRowIndex = special?.perfRow
+    const hoseRowIndex = special?.hoseRow
+    const pressureSwitchRowIndex = special?.pressureSwitchRow
     const markAllGood = () => setter((prev) => prev.map((row) => (row.judgment === "" ? { ...row, judgment: "良" } : row)))
     return (
         <Card>
@@ -573,6 +582,23 @@ export default function FoamBekki5Form({
                                                     className="w-24"
                                                 />
                                                 <span className="text-xs text-muted-foreground">L/min</span>
+                                            </div>
+                                        ) : idx === pressureSwitchRowIndex ? (
+                                            <div className="flex gap-1 items-center">
+                                                <Input
+                                                    value={rows[idx].content}
+                                                    onChange={(e) => updateRowField(setter, idx, "content", e.target.value)}
+                                                    placeholder="設定圧力(MPa)"
+                                                    className="w-24"
+                                                />
+                                                <span className="text-xs text-muted-foreground">MPa</span>
+                                                <Input
+                                                    value={rows[idx].current_value}
+                                                    onChange={(e) => updateRowField(setter, idx, "current_value", e.target.value)}
+                                                    placeholder="作動圧力(MPa)"
+                                                    className="w-24"
+                                                />
+                                                <span className="text-xs text-muted-foreground">MPa</span>
                                             </div>
                                         ) : idx === currentValueRowIndex ? (
                                             <div className="flex gap-1 items-center">
@@ -678,6 +704,23 @@ export default function FoamBekki5Form({
                                                 className="h-9 w-24 text-sm"
                                             />
                                             <span className="text-xs text-muted-foreground">L/min</span>
+                                        </div>
+                                    ) : idx === pressureSwitchRowIndex ? (
+                                        <div className="flex gap-1 items-center flex-wrap">
+                                            <Input
+                                                value={rows[idx].content}
+                                                onChange={(e) => updateRowField(setter, idx, "content", e.target.value)}
+                                                placeholder="設定圧力(MPa)"
+                                                className="h-9 w-24 text-sm"
+                                            />
+                                            <span className="text-xs text-muted-foreground">MPa</span>
+                                            <Input
+                                                value={rows[idx].current_value}
+                                                onChange={(e) => updateRowField(setter, idx, "current_value", e.target.value)}
+                                                placeholder="作動圧力(MPa)"
+                                                className="h-9 w-24 text-sm"
+                                            />
+                                            <span className="text-xs text-muted-foreground">MPa</span>
                                         </div>
                                     ) : idx === currentValueRowIndex ? (
                                         <div className="flex gap-1 items-center flex-wrap">
@@ -853,9 +896,10 @@ export default function FoamBekki5Form({
                 </CardContent>
             </Card>
 
-            {renderItemTable("（その1）点検結果", PAGE1_ITEMS, page1Rows, setPage1Rows, 11)}
-            {renderItemTable("（その2）点検結果", PAGE2_ITEMS, page2Rows, setPage2Rows, undefined, 19)}
-            {renderItemTable("（その3）点検結果", PAGE3_ITEMS, page3Rows, setPage3Rows, undefined, undefined, 21)}
+            {renderItemTable("（その1）点検結果", PAGE1_ITEMS, page1Rows, setPage1Rows, { currentValueRow: 11 })}
+            {renderItemTable("（その2）点検結果", PAGE2_ITEMS, page2Rows, setPage2Rows, { perfRow: 19 })}
+            {/* 12 = 圧力スイッチ。様式が「設定圧力 MPa / 作動圧力 MPa」の2値を求める行 */}
+            {renderItemTable("（その3）点検結果", PAGE3_ITEMS, page3Rows, setPage3Rows, { hoseRow: 21, pressureSwitchRow: 12 })}
             {renderItemTable("（その4）総合点検", PAGE4_ITEMS, page4Rows, setPage4Rows)}
 
             <Card>

@@ -54,6 +54,19 @@ export const FIELD_LABELS: Record<string, string> = {
     inspector_tel: "TEL",
     equipment_name: "点検設備名",
     notes: "備考",
+    // 報告書（第1号様式）の欄。★この様式は長らく fit コレクタ自体が無く、
+    //   ラベルも登録されていなかった（英語のキーがそのまま業者に出る状態だった）。
+    fire_department_name: "消防本部名",
+    notifier_address: "住所",
+    notifier_name: "氏名（法人名及び役職等）",
+    notifier_phone: "電話番号",
+    building_address: "所在地",
+    building_name: "名称",
+    building_usage: "用途",
+    floor_above: "地上階数",
+    floor_below: "地下階数",
+    total_floor_area: "延べ面積 (㎡)",
+    equipment_types: "消防用設備等の種類",
     content: "点検項目の内容",
     bad_content: "不良内容",
     action_content: "措置内容",
@@ -62,10 +75,37 @@ export const FIELD_LABELS: Record<string, string> = {
     foam_type_no_to: "消火薬剤 型式番号（〜 ○ 号）",
 }
 
+/**
+ * 描画位置。★どのセルで起きたかを、値の文字列ではなくここで識別する。
+ *
+ * ■ なぜ要るか（2026-08-01 実測）
+ *   resolve() は値の文字列一致で入力欄を特定していた。本番DBの72帳票を測ると
+ *   文字列欄 6006 のうち 5134（85.5%）が同一様式内に同じ値を持つ他の欄と衝突しており、
+ *   72帳票すべてで重複が起きている（「良」1395・「部品交換」306・「変形あり」306 等）。
+ *   ＝ ラベルが別の欄を指すのは例外ではなく常態。実際 15F で bekki3/4 の
+ *      「設定圧力・作動圧力」が「貯水槽 水量」と誤帰属した。
+ */
+/** 「どの欄の何行目のどの列か」。呼び出し側（行ループ・専用描画）が渡す。 */
+export type CellRef = {
+    rowsKey?: string
+    row?: number
+    column?: string
+}
+
+export type CellAt = CellRef & {
+    page: number
+    cellX: number
+    cellTopFromTop: number
+    cellW: number
+    cellH: number
+}
+
 export type FitFailure = {
     /** どの rows配列の何行目か（業者に「どの行か」を伝えるため） */
     rowsKey?: string
     row?: number
+    /** 描画位置（分かった場合）。重複の畳み込みと帰属はこれを優先する */
+    at?: CellAt
     /** 描こうとした文字列（全文） */
     text: string
     /** 収まった文字数（"..." を除く） */
@@ -78,7 +118,7 @@ export type FitFailure = {
 
 export type FitCollector = {
     /** 描画側から「収まらなかった」ことを報告する（＝業者向けエラーになりうる） */
-    report: (text: string, fits: number) => void
+    report: (text: string, fits: number, at?: CellAt) => void
     /**
      * 判読しづらいほど小さく描かれたことの報告。★エラーにはしない。
      * 絶対下限を業者向けエラーにすると正常な出力まで止まる: 現実データでも
@@ -129,7 +169,7 @@ export type FitCollector = {
     /** 行数超過で落ちた項目（業者向けエラーに載せる） */
     overflowRows: { text: string; capacity: number }[]
     failures: FitFailure[]
-    smalls: { text: string; size: number }[]
+    smalls: FitSmall[]
     shrinks: FitShrink[]
     /** 縮小の有無に関わらず描画した回数（分布の母数） */
     drawCount: number
@@ -162,9 +202,26 @@ export type FitShrink = {
     field?: string
 }
 
+/**
+ * ⑧⑨の第3条件: 絶対下限(5.0pt)を割って描かれた項目。
+ * ★縮小(⑨)とは別に持つ。⑨の主指標は「設計値からの逸脱」で閾値30%なので、
+ *   設計値そのものが小さいセルや、逸脱率が低いまま床を割るものが網から漏れる
+ *   （実測: bekki5 の圧力スイッチは逸脱21.9%で 4.53pt。⑨には出なかった）。
+ * ★さらに buildShrinkWarning は純数値を除外するので、数値欄の下限割れは
+ *   ⑨経由では原理的に出ない（実測: 報告書の延べ面積 4.19pt が出なかった）。
+ */
+export type FitSmall = {
+    text: string
+    size: number
+    fromInput: boolean
+    field?: string
+    rowsKey?: string
+    row?: number
+}
+
 export const createFitCollector = (): FitCollector => {
     const failures: FitFailure[] = []
-    const smalls: { text: string; size: number }[] = []
+    const smalls: FitSmall[] = []
     const shrinks: FitShrink[] = []
     const overflowRows: { text: string; capacity: number }[] = []
     const choiceMismatches: ChoiceMismatch[] = []
@@ -206,17 +263,26 @@ export const createFitCollector = (): FitCollector => {
         reportSmall(text, size) {
             const t = String(text ?? "").trim()
             if (!t || smalls.some((s) => s.text === t)) return
-            smalls.push({ text: t, size: Math.round(size * 10) / 10 })
+            smalls.push({ text: t, size: Math.round(size * 10) / 10, fromInput: false })
         },
-        report(text, fits) {
+        report(text, fits, at) {
             // ★既に切り詰め済みの文字列を渡してくる経路があるので、末尾の "..." を外してから
             //   記録する。付いたままだと入力と部分一致すらせず、業者由来の値を
             //   「システム由来＝実装の不具合」と誤判定してログに流してしまう。
             const t = String(text ?? "").trim().replace(/\.{3}$/, "").trim()
             if (!t) return
-            // 同じ値が複数セルに出ることがあるので重複は畳む
-            if (failures.some((f) => f.text === t)) return
-            failures.push({ text: t, fits, fromInput: false })
+            // ★重複の畳み込みは「同じセル」だけにする。
+            //   以前は同じ**値**で畳んでいたため、同じ定型値（「部品交換」等）が
+            //   複数の欄で切り詰められても1件しか残らず、2件目以降は報告ごと消えていた。
+            //   位置が分からない経路（旧シグネチャ）だけ従来どおり値で畳む。
+            const key = at
+                ? `${at.page}|${at.cellX}|${at.cellTopFromTop}|${at.cellW}|${at.cellH}`
+                : null
+            if (key
+                ? failures.some((f) => f.at && `${f.at.page}|${f.at.cellX}|${f.at.cellTopFromTop}|${f.at.cellW}|${f.at.cellH}` === key)
+                : failures.some((f) => !f.at && f.text === t)) return
+            failures.push({ text: t, fits, fromInput: false, at,
+                rowsKey: at?.rowsKey, row: at?.row })
         },
         resolve(body) {
             const entries = collectStrings(body)
@@ -233,7 +299,32 @@ export const createFitCollector = (): FitCollector => {
                 f.rowsKey = hit.rowsKey
                 f.row = hit.row
             }
+            for (const f of smalls) {
+                const hit =
+                    entries.find((e) => e.value === f.text) ?? entries.find((e) => e.value.includes(f.text))
+                if (!hit) continue
+                f.fromInput = true
+                f.field = hit.key
+                f.rowsKey = hit.rowsKey
+                f.row = hit.row
+            }
             for (const f of failures) {
+                // ★描画位置から欄が分かっているなら、そちらを優先する。
+                //   値の文字列一致は「同じ値を持つ最初の欄」を拾うので、
+                //   定型値（「部品交換」等）が複数欄にあると別の欄を指してしまう。
+                if (f.at?.rowsKey !== undefined && f.at?.row !== undefined) {
+                    f.rowsKey = f.at.rowsKey
+                    f.row = f.at.row
+                    if (f.at.column) f.field = f.at.column
+                    // 由来（業者入力か実装由来か）だけは値で判定する。位置では決まらない。
+                    const own = entries.find(
+                        (e) => e.rowsKey === f.at!.rowsKey && e.row === f.at!.row
+                            && (f.at!.column ? e.key === f.at!.column : true)
+                            && (e.value === f.text || e.value.includes(f.text)))
+                    f.fromInput = Boolean(own)
+                    continue
+                }
+                // 位置が無い経路（専用描画の未対応分）は従来どおり値で当てる。
                 // ★完全一致だけで判定してはいけない。折り返しの2行目以降を報告する経路が
                 //   あり、その断片は入力そのものとは一致しない。部分一致まで見ないと
                 //   業者由来の値を「システム由来＝実装の不具合」と誤ってログに流してしまう。
@@ -313,9 +404,14 @@ export type FitErrorBody = {
  */
 export const buildFitError = (form: string, collector: FitCollector): FitErrorBody | null => {
     // 同じ値の断片（折り返しの行）が別項目として並ばないよう、
-    // 他の失敗の一部でしかないものは落とす
+    // 他の失敗の一部でしかないものは落とす。
+    // ★「真に短い断片」だけを落とすこと。以前は length を見ずに includes だけで判定しており、
+    //   **同じ文字列**の失敗が2件以上あると互いに互いを含むので全部消えていた
+    //   （実測: 総括表の3欄に同じ住所を入れると 1欄なら422・3欄なら200 になった）。
+    //   report の畳み込みがテキスト単位だった頃は失敗が常に1件だったので露見しなかった。
     const whole = collector.failures.filter(
-        (f) => !collector.failures.some((g) => g !== f && g.text.includes(f.text)),
+        (f) => !collector.failures.some(
+            (g) => g !== f && g.text.length > f.text.length && g.text.includes(f.text)),
     )
     const items = whole
         .filter((f) => f.fromInput && f.field)
@@ -411,6 +507,43 @@ export type FitWarnItem = {
 
 export type FitWarnBody = { form: string; items: FitWarnItem[] }
 
+export type BelowMinWarnItem = {
+    field: string
+    label: string
+    size: number
+    text: string
+}
+
+/**
+ * 絶対下限(ABSOLUTE_MIN_FONT_SIZE)を割って描かれた項目の警告一覧。
+ *
+ * ★⑨（縮小警告）と別経路にする理由:
+ *   - ⑨は「設計値からの逸脱 >= 30%」が条件。設計値が元から小さいセルは逸脱が出ない
+ *   - ⑨は純数値を除外する。数値欄の下限割れは原理的に⑨からは出ない
+ *   ＝ 相対の網と絶対の床が接続されておらず、その隙間に落ちたものが
+ *      判読困難なサイズのまま黙って出ていた。
+ * ★エラー(422)にはしない。情報は残っており、止めると入力の長い業者が出力できない。
+ *   出荷品質は「現実値セットで0件」を CI で守る（scripts/check-below-min.py）。
+ */
+export const buildBelowMinWarning = (form: string, collector: FitCollector): BelowMinWarnItem[] => {
+    const seen = new Set<string>()
+    const items: BelowMinWarnItem[] = []
+    for (const s of collector.smalls) {
+        if (!s.fromInput || !s.field) continue
+        const key = JSON.stringify([s.field, s.text])
+        if (seen.has(key)) continue
+        seen.add(key)
+        items.push({
+            field: s.field,
+            label: withRow(FIELD_LABELS[s.field] ?? s.field, form, s.rowsKey, s.row),
+            size: s.size,
+            text: s.text,
+        })
+    }
+    items.sort((a, b) => a.size - b.size)
+    return items
+}
+
 export type ChoiceWarnItem = {
     field: string
     label: string
@@ -488,14 +621,16 @@ const WARN_HEADER_MAX_ITEMS = 20
 export const fitWarningHeader = (form: string, collector: FitCollector): Record<string, string> => {
     const warn = buildShrinkWarning(form, collector)
     const choices = buildChoiceWarning(form, collector).slice(0, WARN_HEADER_MAX_ITEMS)
-    // ★縮小が無くても選択肢の不一致だけで警告を出す（片方だけで打ち切らない）
-    if (!warn && !choices.length) return {}
+    const belowMin = buildBelowMinWarning(form, collector).slice(0, WARN_HEADER_MAX_ITEMS)
+    // ★どれか1種類でもあれば出す（片方だけで打ち切らない）
+    if (!warn && !choices.length && !belowMin.length) return {}
     const shown = warn ? warn.items.slice(0, WARN_HEADER_MAX_ITEMS) : []
     const body = {
         form,
         items: shown,
         omitted: warn ? warn.items.length - shown.length : 0,
         choices,
+        belowMin,
     }
     return { "X-Fit-Warnings": Buffer.from(JSON.stringify(body), "utf8").toString("base64") }
 }

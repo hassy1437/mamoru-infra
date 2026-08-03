@@ -3,7 +3,8 @@ import { PDFDocument, type PDFPage, rgb, StandardFonts } from "pdf-lib"
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
-import { FIT_EPSILON, drawChoiceCircle, drawPeriodDate, drawTextInCell, drawTextRuns, drawWrappedTextInCell, formatDateText, formatJapaneseDateText, formatJudgment, measureRuns, parseDateParts, pickFont, reportIfBelowMinSize, type CellDrawOptions, type DateAnchors, type ReportFonts } from "@/lib/pdf-form-helpers"
+import { periodDateError,
+FIT_EPSILON, drawChoiceCircle, drawPeriodDate, drawTextInCell, drawTextRuns, drawWrappedTextInCell, formatDateText, formatJapaneseDateText, formatJudgment, cellAt, measureRuns, truncateRunsToFitWidth, parseDateParts, pickFont, reportIfBelowMinSize, type CellDrawOptions, type DateAnchors, type ReportFonts, type CellAt, type CellRef } from "@/lib/pdf-form-helpers"
 import {
     buildFitError,
     createFitCollector,
@@ -26,8 +27,9 @@ import {
  * 分類は scripts/classify-numeric-rows.py が出す「内容セルの刷り込み」の実測による。
  */
 export const NUMERIC_ROWS: Record<string, number[]> = {
-    page1_rows: [7, 17],
+    page1_rows: [7, 17, 19],
     page2_rows: [18],
+    page3_rows: [1],
 }
 
 type BekkiRow = { content?: string; judgment?: string; bad_content?: string; action_content?: string; current_value?: string; flow_value?: string; hose_count?: string; nozzle_dia?: string }
@@ -55,6 +57,8 @@ type Bekki20Payload = {
 }
 
 type ResultColumns = {
+    /** どの payload 配列か。fit 報告の帰属に使う（値の文字列一致に頼らないため） */
+    rowsKey?: string
     contentX: number
     contentW: number
     judgmentX: number
@@ -91,6 +95,13 @@ const PERIOD_END_ANCHORS: DateAnchors = { year: 452.18, month: 483.74, day: 515.
 export async function POST(req: NextRequest) {
     try {
         const body = (await req.json()) as Bekki20Payload
+
+        // ★点検期間が年月日に分解できないときは描かずに止める。
+        //   以前は期間文字列を刷り込み「年月日～年月日」の上に生で描いていた
+        //   （22様式共通。セル定義監査が定義上の重なりとして検出）。
+        //   実測: 現実値0件 / 長文0件。入力画面は type="date" なので UI からは到達しない。
+        const periodErr = periodDateError("別記様式第20", body.period_start, body.period_end)
+        if (periodErr) return NextResponse.json(periodErr, { status: 422 })
 
         const candidatePdfPaths = [
             path.join(process.cwd(), "public", "PDF", "s50_kokuji14_bekki20.pdf"),
@@ -147,6 +158,8 @@ export async function POST(req: NextRequest) {
             cellW: number,
             cellH: number,
             fontSize = 7.0,
+            /** どの欄の何行目のどの列か。fit 報告の帰属に使う（値の文字列一致に頼らないため） */
+            at?: CellRef,
         ) => drawWrappedTextInCell({
             page,
             pageHeight,
@@ -157,9 +170,10 @@ export async function POST(req: NextRequest) {
             cellW,
             cellH,
             fontSize,
+            options: { at },
         })
 
-        type DrawOptions = CellDrawOptions & { minFontSize?: number; maxFontSize?: number }
+        type DrawOptions = CellDrawOptions & { minFontSize?: number; maxFontSize?: number; at?: CellRef }
         const drawInCellWithFont = (
             page: PDFPage, pageHeight: number, font: ReportFonts, text: unknown,
             cellX: number, cellTopFromTop: number, cellW: number, cellH: number, fontSize = 9, options?: DrawOptions,
@@ -180,20 +194,11 @@ export async function POST(req: NextRequest) {
             currentSize = Math.max(currentSize, options?.minFontSize ?? 3.5)
             fonts.fit?.reportShrink(normalized, designSize, currentSize)
             reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth)
-            let textToDraw = normalized
-            if (measureRuns(font, String(normalized ?? ""), currentSize) > maxWidth + 0.1) {
-                const suffix = "..."
-                let cut = normalized.length
-                while (cut > 0) {
-                    const candidate = `${normalized.slice(0, cut).trimEnd()}${suffix}`
-                    if (measureRuns(font, String(candidate ?? ""), currentSize) <= maxWidth + FIT_EPSILON) {
-                        font.fit?.report(normalized, cut)
-                        textToDraw = candidate
-                        break
-                    }
-                    cut -= 1
-                }
-            }
+            // ★共有の truncateRunsToFitWidth に寄せた（8本目の複製だった）。
+            //   自前版は cut が 0 まで落ちた場合の report(value, 0) を持たず、
+            //   1文字も入らないときに情報が消えたまま 200 が返っていた。
+            const textToDraw = truncateRunsToFitWidth(font, normalized, currentSize, maxWidth,
+                cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at))
             const textWidth = measureRuns(font, String(textToDraw ?? ""), currentSize)
             const textHeight = font.jp.heightAtSize(currentSize, { descender: true })
             let textX = cellX + paddingX
@@ -219,20 +224,26 @@ export async function POST(req: NextRequest) {
         }
 
 
-        const drawResultRows = (page: PDFPage, pageHeight: number, rows: BekkiRow[], rowBounds: number[], cols: ResultColumns, contentOverrides: Record<number, { x: number; w: number }> = {}, skipContentRows?: Set<number>) => {
+        const drawResultRows = (page: PDFPage, pageHeight: number, rows: BekkiRow[], rowBounds: number[], cols: ResultColumns, contentOverrides: Record<number, { x: number; w: number }> = {}, skipContentRows?: Set<number>,
+            /** どの payload 配列か。★commonCols を3ページで共有しているので引数で受ける。
+             *  columns リテラルにスプレッドを入れると静的解析が内容列を読めなくなる。 */
+            rowsKey?: string) => {
             for (let i = 0; i < rowBounds.length - 1; i += 1) {
                 const row = rows[i]
                 if (!row) continue
                 const top = rowBounds[i]
                 const h = rowBounds[i + 1] - top
+                // ★どの欄の何行目のどの列かを渡す。渡さないと fit 報告のラベルが
+                //   「同じ値を持つ最初の入力欄」を指す（本番の bekki12 で実際に誤帰属していた）。
+                const ref = (column: string): CellRef => ({ rowsKey, row: i, column })
                 if (!skipContentRows?.has(i)) {
                     const cx = contentOverrides[i]?.x ?? cols.contentX
                     const cw = contentOverrides[i]?.w ?? cols.contentW
-                    drawWrappedInCell(page, pageHeight, row.content, cx, top, cw, h, 6.0)
+                    drawWrappedInCell(page, pageHeight, row.content, cx, top, cw, h, 6.0, ref("content"))
                 }
-                drawInCell(page, pageHeight, formatJudgment(row.judgment), cols.judgmentX, top, cols.judgmentW, h, 7.0, { align: "center" })
-                drawWrappedInCell(page, pageHeight, row.bad_content, cols.badX, top, cols.badW, h, 5.9)
-                drawWrappedInCell(page, pageHeight, row.action_content, cols.actionX, top, cols.actionW, h, 5.9)
+                drawInCell(page, pageHeight, formatJudgment(row.judgment), cols.judgmentX, top, cols.judgmentW, h, 7.0, { align: "center", at: ref("judgment") })
+                drawWrappedInCell(page, pageHeight, row.bad_content, cols.badX, top, cols.badW, h, 5.9, ref("bad_content"))
+                drawWrappedInCell(page, pageHeight, row.action_content, cols.actionX, top, cols.actionW, h, 5.9, ref("action_content"))
             }
         }
 
@@ -278,9 +289,7 @@ export async function POST(req: NextRequest) {
                         fontSize: 6.2,
                     })
                 }
-            } else {
-                drawInCell(page1, p1Height, periodText, 316.8, PERIOD_ROW.top, 213.24, PERIOD_ROW.h, 6.2)
-            }
+        }
 
             // 刷り込みに重ねない: 前置ラベル氏名(-142.6) の右から（テンプレート実測）
             drawInCell(page1, p1Height, body.inspector_name, 143.06, 185.04, 110.26, 55.56, 6.4)
@@ -317,14 +326,14 @@ export async function POST(req: NextRequest) {
         }, new Set([
             7,  // ホース・ノズル: m×本 mm → 手動3分割描画
             17, // 電圧計・電流計: V A → 手動V/A分割描画
-        ]))
+        ]), "page1_rows")
         drawResultRows(page2, p2Height, body.page2_rows ?? [], P2_ROW_BOUNDS, commonCols, {}, new Set([
             7,  // 機能: テンプレートに「専用 兼用」印刷済み → circle
             18, // 性能: MPa L/min → 手動2分割描画
-        ]))
+        ]), "page2_rows")
         drawResultRows(page3, p3Height, body.page3_rows ?? [], P3_ROW_BOUNDS, commonCols, {
             1: { x: 222.24, w: 100.68 },   // 刷り込み「Ａ」(322.92) の手前で止める
-        })
+        }, new Set(), "page3_rows")
 
         // === P1 Row 7: ホース・ノズル (長さｍ × 本数本 ／ ノズル径mm) ===
         // 公式PDF実測: ｍ@247.6 / ×(x1=268.6) / 本@289.6(x1=300.1) / mm@321。content列左=222.24。

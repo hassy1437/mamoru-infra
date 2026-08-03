@@ -81,6 +81,11 @@ export type ChoiceWarningDetail = {
     items: { label: string; text: string; choices: string[]; hint: string }[]
 }
 
+export type BelowMinWarningDetail = {
+    label: string
+    items: { label: string; size: number; text: string }[]
+}
+
 export type BuildResult = {
     blob: Blob
     failedLabels: string[]
@@ -100,6 +105,12 @@ export type BuildResult = {
      *   「全検査が緑のまま情報だけ欠落」がそのまま業者に届く。
      */
     choiceWarnings: ChoiceWarningDetail[]
+    /**
+     * ★絶対下限(5.0pt)を割って描かれた項目。縮小警告(shrinkWarnings)とは別経路。
+     *   ⑨は「設計値からの逸脱30%以上」かつ「純数値を除外」なので、
+     *   設計値が元から小さいセルと数値欄の下限割れは原理的にそこから出ない。
+     */
+    belowMinWarnings: BelowMinWarningDetail[]
 }
 
 /** 全PDF生成に失敗したときに投げるエラーの識別子。 */
@@ -146,6 +157,7 @@ export async function buildMergedReport(
             const warnHeader = res.headers.get("X-Fit-Warnings")
             let warning: ShrinkWarningDetail | null = null
             let choiceWarning: ChoiceWarningDetail | null = null
+            let belowMinWarning: BelowMinWarningDetail | null = null
             if (warnHeader) {
                 try {
                     const json = new TextDecoder().decode(
@@ -154,6 +166,9 @@ export async function buildMergedReport(
                     const parsed = JSON.parse(json)
                     if (Array.isArray(parsed?.items) && parsed.items.length) {
                         warning = { label: task.label, items: parsed.items, omitted: parsed.omitted ?? 0 }
+                    }
+                    if (Array.isArray(parsed?.belowMin) && parsed.belowMin.length) {
+                        belowMinWarning = { label: task.label, items: parsed.belowMin }
                     }
                     if (Array.isArray(parsed?.choices) && parsed.choices.length) {
                         choiceWarning = { label: task.label, items: parsed.choices }
@@ -165,7 +180,7 @@ export async function buildMergedReport(
             const buf = await res.arrayBuffer()
             done += 1
             onProgress?.(done, tasks.length)
-            return { index, buf, warning, choiceWarning }
+            return { index, buf, warning, choiceWarning, belowMinWarning }
         }),
     )
 
@@ -174,11 +189,13 @@ export async function buildMergedReport(
     const fitFailures: FitFailureDetail[] = []
     const shrinkWarnings: ShrinkWarningDetail[] = []
     const choiceWarnings: ChoiceWarningDetail[] = []
+    const belowMinWarnings: BelowMinWarningDetail[] = []
     results.forEach((result, i) => {
         if (result.status === "fulfilled") {
             pdfBuffers[result.value.index] = result.value.buf
             if (result.value.warning) shrinkWarnings.push(result.value.warning)
             if (result.value.choiceWarning) choiceWarnings.push(result.value.choiceWarning)
+            if (result.value.belowMinWarning) belowMinWarnings.push(result.value.belowMinWarning)
         } else {
             failedLabels.push(tasks[i]?.label ?? "unknown")
             const detail = (result.reason as { detail?: FitFailureDetail | null } | undefined)?.detail
@@ -199,7 +216,7 @@ export async function buildMergedReport(
     }
     const mergedBytes = await merged.save()
     const blob = new Blob([new Uint8Array(mergedBytes)], { type: "application/pdf" })
-    return { blob, failedLabels, fitFailures, shrinkWarnings, choiceWarnings }
+    return { blob, failedLabels, fitFailures, shrinkWarnings, choiceWarnings, belowMinWarnings }
 }
 
 /** Blob を端末にダウンロードさせる。納品時は upload と同一の Blob をここに渡す。 */

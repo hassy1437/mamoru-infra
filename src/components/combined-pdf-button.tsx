@@ -45,7 +45,7 @@ export default function CombinedPdfButton({
         setProgress({ done: 0, total: 0 })
 
         try {
-            const { blob, failedLabels, fitFailures, shrinkWarnings, choiceWarnings } = await buildMergedReport(
+            const { blob, failedLabels, fitFailures, shrinkWarnings, choiceWarnings, belowMinWarnings } = await buildMergedReport(
                 input,
                 (done, total) => setProgress({ done, total }),
             )
@@ -61,6 +61,20 @@ export default function CombinedPdfButton({
                         ...choiceWarnings.flatMap((w) => [
                             `【${w.label}】`,
                             ...w.items.map((it) => `  ${it.hint}`),
+                        ]),
+                    ].join("\n"),
+                )
+            }
+            // ★絶対下限(5.0pt)を割って描かれた項目。縮小警告より深刻なので先に出す。
+            //   縮小警告は「設計より30%以上縮んだ」が条件で純数値を除外するため、
+            //   数値欄や元から小さいセルの下限割れはそちらには出ない（別経路が要る理由）。
+            if (belowMinWarnings.length > 0) {
+                alert(
+                    [
+                        "次の項目は判読が難しい大きさ（5pt未満）で印字されています。印刷して確認してください:",
+                        ...belowMinWarnings.flatMap((w) => [
+                            `【${w.label}】`,
+                            ...w.items.map((it) => `  ${it.label}: ${it.size}pt「${it.text.slice(0, 24)}」`),
                         ]),
                     ].join("\n"),
                 )

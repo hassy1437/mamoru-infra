@@ -10,7 +10,8 @@ import {
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
-import { drawChoiceCircle, drawPeriodDate, drawTextInCell, drawWrappedTextInCell, formatDateText, formatJapaneseDateText, formatJudgment, parseDateParts, pickFont, type CellDrawOptions, type DateAnchors, type ReportFonts } from "@/lib/pdf-form-helpers"
+import { periodDateError,
+drawChoiceCircle, drawPeriodDate, drawTextInCell, drawWrappedTextInCell, formatDateText, formatJapaneseDateText, formatJudgment, parseDateParts, pickFont, type CellDrawOptions, type DateAnchors, type ReportFonts, type CellRef } from "@/lib/pdf-form-helpers"
 
 /**
  * テストデータ生成が読む「数値しか入らない欄」の宣言。
@@ -50,6 +51,8 @@ type Bekki22Payload = {
 }
 
 type ResultColumns = {
+    /** どの payload 配列か。fit 報告の帰属に使う（値の文字列一致に頼らないため） */
+    rowsKey?: string
     contentX: number
     contentW: number
     judgmentX: number
@@ -73,6 +76,13 @@ const PERIOD_END_ANCHORS: DateAnchors = { year: 426.0, month: 464.64, day: 503.0
 export async function POST(req: NextRequest) {
     try {
         const body = (await req.json()) as Bekki22Payload
+
+        // ★点検期間が年月日に分解できないときは描かずに止める。
+        //   以前は期間文字列を刷り込み「年月日～年月日」の上に生で描いていた
+        //   （22様式共通。セル定義監査が定義上の重なりとして検出）。
+        //   実測: 現実値0件 / 長文0件。入力画面は type="date" なので UI からは到達しない。
+        const periodErr = periodDateError("別記様式第22", body.period_start, body.period_end)
+        if (periodErr) return NextResponse.json(periodErr, { status: 422 })
 
         const candidatePdfPaths = [
             path.join(process.cwd(), "public", "PDF", "s50_kokuji14_bekki22.pdf"),
@@ -125,6 +135,8 @@ export async function POST(req: NextRequest) {
             cellW: number,
             cellH: number,
             fontSize = 7.0,
+            /** どの欄の何行目のどの列か。fit 報告の帰属に使う（値の文字列一致に頼らないため） */
+            at?: CellRef,
         ) => drawWrappedTextInCell({
             page,
             pageHeight,
@@ -135,6 +147,7 @@ export async function POST(req: NextRequest) {
             cellW,
             cellH,
             fontSize,
+            options: { at },
         })
 
         const drawResultRows = (page: PDFPage, pageHeight: number, rows: BekkiRow[], rowBounds: number[], cols: ResultColumns) => {
@@ -143,10 +156,13 @@ export async function POST(req: NextRequest) {
                 if (!row) continue
                 const top = rowBounds[i]
                 const h = rowBounds[i + 1] - top
-                drawWrappedInCell(page, pageHeight, row.content, cols.contentX, top, cols.contentW, h, 6.0)
-                drawInCell(page, pageHeight, formatJudgment(row.judgment), cols.judgmentX, top, cols.judgmentW, h, 7.0, { align: "center" })
-                drawWrappedInCell(page, pageHeight, row.bad_content, cols.badX, top, cols.badW, h, 5.9)
-                drawWrappedInCell(page, pageHeight, row.action_content, cols.actionX, top, cols.actionW, h, 5.9)
+                // ★どの欄の何行目のどの列かを渡す。渡さないと fit 報告のラベルが
+                //   「同じ値を持つ最初の入力欄」を指す（本番の bekki12 で実際に誤帰属していた）。
+                const ref = (column: string): CellRef => ({ rowsKey: cols.rowsKey, row: i, column })
+                drawWrappedInCell(page, pageHeight, row.content, cols.contentX, top, cols.contentW, h, 6.0, ref("content"))
+                drawInCell(page, pageHeight, formatJudgment(row.judgment), cols.judgmentX, top, cols.judgmentW, h, 7.0, { align: "center", at: ref("judgment") })
+                drawWrappedInCell(page, pageHeight, row.bad_content, cols.badX, top, cols.badW, h, 5.9, ref("bad_content"))
+                drawWrappedInCell(page, pageHeight, row.action_content, cols.actionX, top, cols.actionW, h, 5.9, ref("action_content"))
             }
         }
 
@@ -190,9 +206,7 @@ export async function POST(req: NextRequest) {
                         fontSize: 6.2,
                     })
                 }
-            } else {
-                drawInCell(page, pageHeight, periodText, 266.4, PERIOD_ROW.top, 263.16, PERIOD_ROW.h, 6.2)
-            }
+        }
             // 刷り込みに重ねない: 前置ラベル氏名(-141.2) の右から（テンプレート実測）
             drawInCell(page, pageHeight, body.inspector_name, 141.74, 193.2, 71.38, 52.56, 6.4)
             // 刷り込みに重ねない: 後続のTEL(403.2-) の手前まで（テンプレート実測）
@@ -201,16 +215,22 @@ export async function POST(req: NextRequest) {
             drawInCell(page, pageHeight, body.inspector_address, 299.52, 219.48, 230.04, 26.28, 5.9)
 
             // These cells already contain printed labels (製造者名 / 型式等), so draw user values in the right-side free area.
-            drawInCell(page, pageHeight, body.extra_fields?.cable_maker, 213.12, 245.76, 40.68, 18.0, 5.0, { align: "center" })
-            drawInCell(page, pageHeight, body.extra_fields?.cable_model, 213.12, 263.76, 40.68, 18.0, 5.0, { align: "center" })
-            drawInCell(page, pageHeight, body.extra_fields?.antenna_maker, 353.88, 245.76, 36.48, 18.0, 4.8, { align: "center" })
-            drawInCell(page, pageHeight, body.extra_fields?.antenna_model, 353.88, 263.76, 36.48, 18.0, 4.8, { align: "center" })
-            drawInCell(page, pageHeight, body.extra_fields?.amplifier_maker, 490.44, 245.76, 39.12, 18.0, 4.8, { align: "center" })
-            drawInCell(page, pageHeight, body.extra_fields?.amplifier_model, 490.44, 263.76, 39.12, 18.0, 4.8, { align: "center" })
+            // ★設計値 5.6pt。もとは空中線/増幅器が 4.8pt でケーブルが 5.0pt だったが、
+            //   4.8pt は絶対下限 5.0pt を下回っており、縮小ではなく**定義**が下限割れしていた。
+            //   高さ由来の上限は 9.67pt（18.0pt のセル）なので余裕がある。5.6pt にすると
+            //   一番狭い 36.48pt のセルでも全角6文字まで 5.25pt 以上を保てる（実測）。
+            //   同じ表の6欄なので値を揃える（4欄だけ直すと同じ表に2つの基準が残る）。
+            drawInCell(page, pageHeight, body.extra_fields?.cable_maker, 213.12, 245.76, 40.68, 18.0, 5.6, { align: "center" })
+            drawInCell(page, pageHeight, body.extra_fields?.cable_model, 213.12, 263.76, 40.68, 18.0, 5.6, { align: "center" })
+            drawInCell(page, pageHeight, body.extra_fields?.antenna_maker, 353.88, 245.76, 36.48, 18.0, 5.6, { align: "center" })
+            drawInCell(page, pageHeight, body.extra_fields?.antenna_model, 353.88, 263.76, 36.48, 18.0, 5.6, { align: "center" })
+            drawInCell(page, pageHeight, body.extra_fields?.amplifier_maker, 490.44, 245.76, 39.12, 18.0, 5.6, { align: "center" })
+            drawInCell(page, pageHeight, body.extra_fields?.amplifier_model, 490.44, 263.76, 39.12, 18.0, 5.6, { align: "center" })
         }
 
         drawHeader(page1, p1Height)
         drawResultRows(page1, p1Height, body.page1_rows ?? [], P1_ROW_BOUNDS, {
+            rowsKey: "page1_rows",
             contentX: 227.52,
             contentW: 110.28,
             judgmentX: 337.8,

@@ -1,6 +1,7 @@
 ﻿"use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react"
+import { BEKKI_ROW_NOTES } from "@/lib/bekki-row-notes"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -338,6 +339,8 @@ const formatSavedAt = (value?: string | null) => {
     return date.toLocaleString("ja-JP")
 }
 
+const API_PATH = "/api/generate-powder-bekki8-pdf"
+
 export default function PowderBekki8Form({
     initial,
     soukatsuId,
@@ -461,7 +464,7 @@ export default function PowderBekki8Form({
     }, [persistDraft])
 
     const generatePdfBlob = useCallback(async () => {
-        const response = await fetch("/api/generate-powder-bekki8-pdf", {
+        const response = await fetch(API_PATH, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
@@ -567,6 +570,9 @@ export default function PowderBekki8Form({
         labels: readonly string[],
         rows: RowState[],
         setter: Dispatch<SetStateAction<RowState[]>>,
+        // ★どの様式のどの欄かが分からないと BEKKI_ROW_NOTES を引けない。
+        //   共有ベースは section.key を持っているが、この3様式は専用フォームなので明示的に渡す。
+        rowsKey: string,
     ) => {
     const markAllGood = () => setter((prev) => prev.map((row) => (row.judgment === "" ? { ...row, judgment: "良" } : row)))
     return (
@@ -598,7 +604,17 @@ export default function PowderBekki8Form({
                         <tbody>
                             {labels.map((label, idx) => (
                                 <tr key={`${title}-${idx}`}>
-                                    <td className="p-2 border">{label}</td>
+                                    <td className="p-2 border">
+                                        {label}
+                                        {/* ★※印の条件は様式の備考にしか書かれておらず、入力画面には
+                                            出ていなかった（行ラベルに※はあるのに条件が無い状態）。
+                                            文言は備考の原文のまま。言い換えると意味が変わる。 */}
+                                        {BEKKI_ROW_NOTES[API_PATH]?.[rowsKey]?.[idx] && (
+                                            <div className="mt-1 text-xs text-amber-700 leading-snug">
+                                                ※ {BEKKI_ROW_NOTES[API_PATH][rowsKey][idx]}
+                                            </div>
+                                        )}
+                                    </td>
                                     <td className="p-1 border">
                                         <Input
                                             value={rows[idx]?.content ?? ""}
@@ -642,6 +658,11 @@ export default function PowderBekki8Form({
                     {labels.map((label, idx) => (
                         <div key={`${title}-${idx}-mobile`} className="border rounded-lg p-3 space-y-2 bg-white">
                             <div className="font-medium text-sm text-slate-800">{label}</div>
+                            {BEKKI_ROW_NOTES[API_PATH]?.[rowsKey]?.[idx] && (
+                                <div className="text-xs text-amber-700 leading-snug">
+                                    ※ {BEKKI_ROW_NOTES[API_PATH][rowsKey][idx]}
+                                </div>
+                            )}
                             <div className="grid grid-cols-2 gap-2">
                                 <div className="space-y-1">
                                     <span className="text-xs text-slate-500">内容</span>
@@ -767,10 +788,10 @@ export default function PowderBekki8Form({
                 </CardContent>
             </Card>
 
-            {renderItemTable("（その1）機器点検", PAGE1_ITEMS, page1Rows, setPage1Rows)}
-            {renderItemTable("（その2）機器点検", PAGE2_ITEMS, page2Rows, setPage2Rows)}
-            {renderItemTable("（その3）機器点検", PAGE3_ITEMS, page3Rows, setPage3Rows)}
-            {renderItemTable("（その4）総合点検", PAGE4_ITEMS, page4Rows, setPage4Rows)}
+            {renderItemTable("（その1）機器点検", PAGE1_ITEMS, page1Rows, setPage1Rows, "page1_rows")}
+            {renderItemTable("（その2）機器点検", PAGE2_ITEMS, page2Rows, setPage2Rows, "page2_rows")}
+            {renderItemTable("（その3）機器点検", PAGE3_ITEMS, page3Rows, setPage3Rows, "page3_rows")}
+            {renderItemTable("（その4）総合点検", PAGE4_ITEMS, page4Rows, setPage4Rows, "page4_rows")}
 
             <Card>
                 <CardHeader>

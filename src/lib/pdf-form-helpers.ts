@@ -1,5 +1,8 @@
 import { PDFFont, PDFPage, rgb } from "pdf-lib"
-import type { FitCollector } from "./pdf-fit-report"
+import type { CellAt, CellRef, FitCollector } from "./pdf-fit-report"
+
+// ★描画位置の型はルート側でも使う（薄い包みの引数）。1か所から出す。
+export type { CellAt, CellRef }
 
 /**
  * 帳票描画に使うフォントの組。jp=NotoSansJP(日本語) / latin=Helvetica(英数字)。
@@ -113,6 +116,8 @@ export const drawTextRuns = (
 }
 
 export type CellDrawOptions = {
+    /** どの欄の何行目のどの列か（行ループ・専用描画が渡す） */
+    at?: CellRef
     align?: "left" | "center"
     paddingX?: number
     paddingY?: number
@@ -121,6 +126,8 @@ export type CellDrawOptions = {
 }
 
 export type WrappedCellDrawOptions = {
+    /** どの欄の何行目のどの列か（行ループ・専用描画が渡す） */
+    at?: CellRef
     paddingX?: number
     paddingY?: number
     minFontSize?: number
@@ -182,11 +189,19 @@ type DrawRightAtArgs = {
     fonts: ReportFonts
     text: unknown
     rightX: number
-    cellTopFromTop: number
-    cellH: number
+    /** baselineY を渡す場合は不要（縦中央合わせに使う値なので） */
+    cellTopFromTop?: number
+    cellH?: number
     fontSize: number
     /** 上端からの絶対ベースライン。指定するとセル中央合わせより優先する */
     baselineY?: number
+    /**
+     * 左へ伸ばせる限界の幅。超えたら比率で縮める。
+     * ★右寄せは「右端固定で左へ伸びる」ので、長い値は左隣の刷り込みへ突っ込む。
+     *   左寄せ＋maxWidth の経路にはあった縮小がここには無く、右寄せに変えると
+     *   失敗時の挙動だけ悪くなる。それを塞ぐ。
+     */
+    maxWidth?: number
 }
 
 type DrawPeriodDateArgs = {
@@ -209,6 +224,28 @@ export const normalizeText = (value: unknown) => String(value ?? "").replace(/\s
 // 判定の表示記号化（PDF描画専用）。UI・保存値・ロジック判定は "良"/"否" のまま不変。
 // 告示第14号の記号に準拠: 正常=○(U+25CB)、不良=×(U+00D7)。空は空のまま。
 // "不良" は fixture 不備の保険（実フォームは "否" を保存）。
+/**
+ * 点検期間が年月日に分解できないときの扱い。
+ *
+ * ★以前は「期間文字列をそのまま刷り込みの上に描く」フォールバックだった。
+ *   刷り込み「____年__月__日 ～ ____年__月__日」の上に生の文字列が重なり、
+ *   22様式すべてで同じ形（セル定義監査が定義上の重なりとして検出）。
+ * ★実測: 現実値セット0件 / 長文セット0件。入力画面は <Input type="date"> なので
+ *   UI からは到達しない。到達するのは旧データか API 直叩きだけ。
+ * ★情報を消さずに止める。読めない法定書類を出すより、業者に直してもらう方がよい。
+ */
+export const periodDateError = (form: string, start: unknown, end: unknown) => {
+    const bad = [["点検年月日（開始）", start], ["点検年月日（終了）", end]] as const
+    const items = bad
+        .filter(([, v]) => String(v ?? "").trim() && !parseDateParts(v))
+        .map(([label, v]) => ({
+            field: "period", label, input: String(v).length, fits: 0, over: 0,
+            hint: "年月日に分解できる形式（例 2026-04-01）で入力してください",
+            text: String(v),
+        }))
+    return items.length ? { error: "FIT_FAILED", form, items } : null
+}
+
 export const formatJudgment = (value: unknown): string => {
     const v = String(value ?? "").trim()
     if (v === "良") return "○" // ○
@@ -320,6 +357,31 @@ export const FIT_EPSILON = 1e-6
  *   実測では55文字の物件名が 3.5pt で描かれ、エラーにならず静かに判読不能になっていた。
  *   ＝ 切り詰めの検出だけでは、業者が長い建物名を入れた場合を捕まえられない。
  */
+/**
+ * ★新しく欄を設計するときの目安: 8pt
+ *
+ * これは「止める閾値」でも「警告の閾値」でもなく、**欄を新設・再設計するときに
+ * 狙う下限**。相棒（実務側）の「8ptを最小と一旦設定」に対応する。
+ *
+ * ■ なぜ検査に載せないか（2026-08-03 実測）
+ *   現実値セット26帳票で 5.0〜8.0pt の描画が **4,925 件**、26様式中 **25様式**で発生する。
+ *   （bekki6 929 / bekki8 605 / bekki7 598 / bekki3 217 / bekki20 199 …）
+ *   さらに同じ(様式, pt)が10件以上まとまるものが 4,412 件（89%）＝
+ *   **欄の設計値がそもそも 8pt 未満**で、入力の長さで縮んだ結果ではない。
+ *   内訳の最小側は bekki8 の ○/× が 5.11〜5.34pt、bekki11-1 の年月日が 5.20pt。
+ *   狭い升目に記号や日付を入れる設計そのもので、業者に打つ手が無い。
+ *
+ *   ＝ 警告にすると 4,925 件が常時鳴り、
+ *      現実値セットで **1 件**しか鳴らない ABSOLUTE_MIN_FONT_SIZE の警告が埋もれる。
+ *      「読みにくい」と「実質欠落」の区別が消えるので、検査には載せない。
+ *   再計測: `python scripts/measure-below-8pt.py`
+ *
+ * ■ どう使うか
+ *   既存の欄を判定するのではなく、**新しい欄・新しい様式を起こすときに
+ *   「値がこのサイズを割るなら欄の幅か行の高さを見直す」**という判断に使う。
+ */
+export const READABLE_DESIGN_TARGET_PT = 8.0
+
 export const ABSOLUTE_MIN_FONT_SIZE = 5.0
 
 /**
@@ -341,11 +403,42 @@ export const reportIfBelowMinSize = (
  * ラン分割した文字列を maxWidth に収まるまで末尾から切り詰める。
  * ★計測は measureRuns（描画と同じ分割・同じフォント）で行う。
  */
-const truncateRunsToFitWidth = (
+/**
+ * PDFPage オブジェクトに安定した番号を振る。
+ * ★セルの同一性には「どのページか」が要るが、描画ヘルパーが受け取るのは PDFPage の
+ *   オブジェクトでページ番号ではない。呼び出し側にページ番号を足すと 614 箇所に波及するので、
+ *   オブジェクトの同一性から番号を導く。
+ */
+const pageIds = new WeakMap<PDFPage, number>()
+let nextPageId = 0
+export const pageIdOf = (page: PDFPage): number => {
+    let id = pageIds.get(page)
+    if (id === undefined) {
+        id = nextPageId += 1
+        pageIds.set(page, id)
+    }
+    return id
+}
+
+/** 描画位置を組み立てる。行ループは extra で欄名・行番号・列名を足す。 */
+export const cellAt = (
+    page: PDFPage,
+    cellX: number,
+    cellTopFromTop: number,
+    cellW: number,
+    cellH: number,
+    extra?: CellRef,
+): CellAt => ({
+    page: pageIdOf(page), cellX, cellTopFromTop, cellW, cellH, ...extra,
+})
+
+export const truncateRunsToFitWidth = (
     fonts: ReportFonts,
     value: string,
     size: number,
     maxWidth: number,
+    /** 描画位置。★どのセルで起きたかを値の文字列ではなくこれで識別する（重複の畳み込みも） */
+    at?: CellAt,
 ) => {
     if (!value) return ""
     if (measureRuns(fonts, value, size) <= maxWidth + FIT_EPSILON) return value
@@ -357,12 +450,12 @@ const truncateRunsToFitWidth = (
     while (cut > 0) {
         const candidate = `${value.slice(0, cut).trimEnd()}${suffix}`
         if (measureRuns(fonts, candidate, size) <= maxWidth + FIT_EPSILON) {
-            fonts.fit?.report(value, cut)
+            fonts.fit?.report(value, cut, at)
             return candidate
         }
         cut -= 1
     }
-    fonts.fit?.report(value, 0)
+    fonts.fit?.report(value, 0, at)
     return suffix
 }
 
@@ -419,7 +512,8 @@ export const drawTextInCell = ({
     fonts.fit?.reportShrink(normalized, designSize, currentSize)
     reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth)
 
-    const textToDraw = truncateRunsToFitWidth(fonts, normalized, currentSize, maxWidth)
+    const textToDraw = truncateRunsToFitWidth(fonts, normalized, currentSize, maxWidth,
+        cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at))
     if (!textToDraw) return
 
     const textWidth = measureRuns(fonts, textToDraw, currentSize)
@@ -531,7 +625,8 @@ export const drawWrappedTextInCell = ({
 
     if (wrapped.lines.length > wrapped.maxLines) {
         // 折り返しても行数が入らず末尾を落とす＝情報欠落なので報告する
-        fonts.fit?.report(normalized, visibleLines.join("").length)
+        fonts.fit?.report(normalized, visibleLines.join("").length,
+            cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at))
         const lastIndex = visibleLines.length - 1
         visibleLines[lastIndex] = truncateRunsToFitWidth(
             fonts,
@@ -572,13 +667,21 @@ export const drawRightAt = ({
     cellH,
     fontSize,
     baselineY,
+    maxWidth,
 }: DrawRightAtArgs) => {
     const normalized = normalizeText(text)
     if (!normalized) return
 
     // ★右寄せは幅計測で位置が決まるので、計測と描画の一致が特に効く（ラン分割で合計幅を出す）
-    const textWidth = measureRuns(fonts, normalized, fontSize)
-    const textHeight = fonts.jp.heightAtSize(fontSize, { descender: true })
+    let size = fontSize
+    let textWidth = measureRuns(fonts, normalized, size)
+    if (maxWidth !== undefined && textWidth > maxWidth) {
+        size = size * (maxWidth / textWidth)
+        textWidth = measureRuns(fonts, normalized, size)
+        fonts.fit?.reportShrink(normalized, fontSize, size)
+        reportIfBelowMinSize(fonts, normalized, size, maxWidth)
+    }
+    const textHeight = fonts.jp.heightAtSize(size, { descender: true })
 
     drawTextRuns(
         page,
@@ -586,8 +689,10 @@ export const drawRightAt = ({
         normalized,
         rightX - textWidth,
         // ★baselineY が来たらセル中央ではなくそこに合わせる（隣の刷り込みと高さを揃える）
-        baselineY !== undefined ? pageHeight - baselineY : getBaselineY(pageHeight, textHeight, cellTopFromTop, cellH),
-        fontSize,
+        baselineY !== undefined
+            ? pageHeight - baselineY
+            : getBaselineY(pageHeight, textHeight, cellTopFromTop ?? 0, cellH ?? textHeight),
+        size,
     )
 }
 

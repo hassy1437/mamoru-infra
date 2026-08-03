@@ -155,7 +155,7 @@ export default function DeliverReportButton({
 
         try {
             // 1) Blob を1回だけ生成（この blob を upload と download の両方に使う）
-            const { blob, failedLabels, fitFailures, shrinkWarnings, choiceWarnings } = await buildMergedReport(input, (done, total) =>
+            const { blob, failedLabels, fitFailures, shrinkWarnings, choiceWarnings, belowMinWarnings } = await buildMergedReport(input, (done, total) =>
                 setProgress({ done, total }),
             )
 
@@ -200,13 +200,22 @@ export default function DeliverReportButton({
             //     不一致 … ○が1つも描かれず、その項目は**消えている**
             //     縮小   … 小さく描かれているが**情報は残っている**
             //   同じ一覧に混ぜると、消えている方が埋もれる。
-            if (choiceWarnings.length > 0 || shrinkWarnings.length > 0) {
+            if (choiceWarnings.length > 0 || shrinkWarnings.length > 0 || belowMinWarnings.length > 0) {
                 const lines: string[] = []
                 if (choiceWarnings.length > 0) {
                     lines.push("■ 選択肢と一致せず、様式に○が付いていません（この項目は出力されません）")
                     for (const w of choiceWarnings) {
                         lines.push(`【${w.label}】`)
                         for (const it of w.items) lines.push(`  ${it.hint}`)
+                    }
+                }
+                // ★下限割れは縮小より深刻（判読できない＝実質欠落に近い）ので、縮小の前に出す。
+                if (belowMinWarnings.length > 0) {
+                    if (lines.length) lines.push("")
+                    lines.push("■ 判読が難しい大きさ（5pt未満）で印字されている項目があります")
+                    for (const w of belowMinWarnings) {
+                        lines.push(`【${w.label}】`)
+                        for (const it of w.items) lines.push(`  ${it.label}: ${it.size}pt「${it.text.slice(0, 24)}」`)
                     }
                 }
                 if (shrinkWarnings.length > 0) {

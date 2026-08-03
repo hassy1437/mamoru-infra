@@ -1,6 +1,7 @@
 ﻿import { NextRequest, NextResponse } from "next/server"
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib"
 import {
+    drawRightAt,
     drawTextInCell,
     drawTextRuns,
     drawWrappedTextInCell,
@@ -8,6 +9,7 @@ import {
     pickFont,
     type ReportFonts,
 } from "@/lib/pdf-form-helpers"
+import { buildFitError, createFitCollector, fitWarningHeader, logFitDebug, systemFitFailures } from "@/lib/pdf-fit-report"
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
@@ -50,7 +52,12 @@ export async function POST(req: NextRequest) {
         // ASCII(型式・番号・日付等)は Helvetica で描く。NotoSansJP は「英字+ハイフン+数字」で
         // 数字がCJK拡張Aのグリフに化け、計測幅と実描画幅が最大+41.6%ズレて枠をはみ出すため。
         const latinFont = await pdfDoc.embedFont(StandardFonts.Helvetica)
-        const fonts: ReportFonts = { jp: customFont, latin: latinFont }
+        // ★この様式だけ fit コレクタが無く、縮小も絶対下限割れも**どこにも出なかった**。
+        //   実測: 延べ面積に40桁を入れると 4.19pt まで縮むのに X-Fit-Warnings が空。
+        //   右寄せ＋縮小を入れた経路が網の外に出るので、先に塞ぐ。
+        //   ★422（切り詰めエラー）は入れない。いま通っている報告書が落ちるようになるのは
+        //     別の判断が要るので、この変更では警告だけを載せる。
+        const fonts: ReportFonts = { jp: customFont, latin: latinFont, fit: createFitCollector() }
 
         const firstPage = pdfDoc.getPages()[0]
         const { height } = firstPage.getSize()
@@ -94,11 +101,42 @@ export async function POST(req: NextRequest) {
             })
         }
 
+        /**
+         * 単位が刷り込まれている欄は右寄せにする。
+         *
+         * ★消防庁の公式記入例（prevention001_18_tenken_pamphlet.pdf p11 の報告書記入例）を
+         *   実測すると、値は単位の直前 3.03 / 3.10 / 3.90pt に置かれている。
+         *   左詰めの固定 x だと桁数で間隔が変わり、実測で 2.13〜51.04pt とばらついていた
+         *   （延べ面積は5桁でも 51pt 空く）。
+         * ★間隔は 3.10pt（3件の中央値）。中点 3.5 ではなく中央値を採る理由:
+         *   3.03 と 3.10 は別の単位で独立に測って 0.07pt 一致しており、3.90 は同じ「階」で
+         *   数字が違うだけの外れ値（墨の右サイドベアリングが乗る）。
+         * ★対象は報告書だけ。別記様式の単位欄は公式記入例が空欄で基準が読めないため広げない。
+         */
+        const UNIT_GAP = 3.10
+        const drawBeforeUnit = (
+            text: string | undefined,
+            unitLeftX: number,
+            leftLimitX: number,
+            baselineY: number,
+            size = 10.5,
+        ) => {
+            if (!text) return
+            const rightX = unitLeftX - UNIT_GAP
+            drawRightAt({
+                page: firstPage, pageHeight: height, fonts, text,
+                rightX, baselineY, fontSize: size,
+                // 左の刷り込み／罫線まで。超えたら縮める（右寄せは左へ伸びるため）
+                maxWidth: rightX - leftLimitX,
+            })
+        }
+
         const d = new Date(body.report_date ?? "")
         if (!Number.isNaN(d.getTime())) {
-            draw(String(d.getFullYear()), 380, 100)
-            draw(String(d.getMonth() + 1), 430, 100)
-            draw(String(d.getDate()), 480, 100)
+            // 刷り込み実測: 年 x0=405.48 / 月 453.48 / 日 501.48、ベースライン 100.68
+            drawBeforeUnit(String(d.getFullYear()), 405.48, 64.92, 100.68)
+            drawBeforeUnit(String(d.getMonth() + 1), 453.48, 417.48, 100.68)
+            drawBeforeUnit(String(d.getDate()), 501.48, 465.48, 100.68)
         }
 
         // ★x=60 は左の縦罫線 64.9 の**外側**で、12ptの文字が罫線をまたいでいた。
@@ -160,14 +198,32 @@ export async function POST(req: NextRequest) {
         drawWrapped(toText(body.building_name), tableX, 292.1, 350, 34.5, 10.5)
         drawWrapped(formatUsageShort(body.building_usage), tableX, 326.6, 180, 34.5, 10.5)
 
-        draw(toText(body.floor_above), 190, 381)
-        draw(toText(body.floor_below) ?? "0", 300, 381)
-        draw(toText(body.total_floor_area), 430, 381)
+        // 刷り込み実測: 階 x0=225.36 / 階 332.16 / ｍ² 510.23、ベースライン 381.54
+        // 左の限界は刷り込み「上」x1=176.52 /「下」283.32 /「積」413.87
+        drawBeforeUnit(toText(body.floor_above), 225.36, 176.52, 381.54)
+        drawBeforeUnit(toText(body.floor_below) ?? "0", 332.16, 283.32, 381.54)
+        drawBeforeUnit(toText(body.total_floor_area), 510.23, 413.87, 381.54)
 
         const equipments = Array.isArray(body.equipment_types) ? body.equipment_types.join("、") : ""
         // 罫線 395.6–594.1 の実測。198.5pt ＝ 9pt で22行分。左のラベル列は縦中央寄せで、
         // 値の列はブロック全体を使う（他の欄と違い内部のラベル行分割が無い）
         drawWrapped(equipments || undefined, tableX, 395.6, 380, 198.5, 9)
+
+        // ⑧ 枠に収まらなかった項目があればPDFを返さずに一覧を返す（他25本と同じ扱いにする）。
+        // ★入れる前に測った: 現実値セット 0件 / 長文セット 0件。既存の出力は落ちない。
+        //   一方で届出者住所に80字を入れると **21文字が黙って消えて 200 が返って**いた
+        //   （実測。3.5pt まで縮んだ上で切り詰め）。落ちるのは実際に情報が欠落したときだけ。
+        fonts.fit?.resolve(body)
+        const systemOverflow = systemFitFailures(fonts.fit!)
+        if (systemOverflow.length) {
+            console.error("[pdf] 収容不能(システム由来)", { form: "報告書", items: systemOverflow })
+        }
+        logFitDebug("報告書", fonts.fit!)
+        if (fonts.fit?.smalls.length) {
+            console.warn("[pdf] 極小フォントで描画", { count: fonts.fit.smalls.length })
+        }
+        const fitError = buildFitError("報告書", fonts.fit!)
+        if (fitError) return NextResponse.json(fitError, { status: 422 })
 
         const pdfBytes = await pdfDoc.save()
 
@@ -176,6 +232,7 @@ export async function POST(req: NextRequest) {
             headers: {
                 "Content-Type": "application/pdf",
                 "Content-Disposition": 'attachment; filename="official_report.pdf"',
+                ...fitWarningHeader("報告書", fonts.fit!),
             },
         })
     } catch (error) {

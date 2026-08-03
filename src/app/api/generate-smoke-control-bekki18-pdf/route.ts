@@ -10,7 +10,7 @@ import {
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
-import { blankPrintedRows, drawChoiceCircle, drawPeriodDate, drawTextInCell, drawWrappedTextInCell, formatDateText, formatJapaneseDateText, formatJudgment, parseDateParts, pickFont, type CellDrawOptions, type DateAnchors, type ReportFonts } from "@/lib/pdf-form-helpers"
+import { blankPrintedRows, drawChoiceCircle, drawPeriodDate, drawTextInCell, drawWrappedTextInCell, formatDateText, formatJapaneseDateText, formatJudgment, parseDateParts, pickFont, type CellDrawOptions, type DateAnchors, type ReportFonts, type CellRef, periodDateError } from "@/lib/pdf-form-helpers"
 
 /**
  * テストデータ生成が読む「数値しか入らない欄」の宣言。
@@ -27,6 +27,7 @@ import { blankPrintedRows, drawChoiceCircle, drawPeriodDate, drawTextInCell, dra
  */
 export const NUMERIC_ROWS: Record<string, number[]> = {
     page1_rows: [15, 17],
+    page2_rows: [16],
 }
 
 type BekkiRow = { content?: string; judgment?: string; bad_content?: string; action_content?: string; current_value?: string }
@@ -53,6 +54,8 @@ type Bekki18Payload = {
 }
 
 type ResultColumns = {
+    /** どの payload 配列か。fit 報告の帰属に使う（値の文字列一致に頼らないため） */
+    rowsKey?: string
     contentX: number
     contentW: number
     judgmentX: number
@@ -84,6 +87,13 @@ const PERIOD_END_ANCHORS: DateAnchors = { year: 427.22, month: 465.27, day: 503.
 export async function POST(req: NextRequest) {
     try {
         const body = (await req.json()) as Bekki18Payload
+
+        // ★点検期間が年月日に分解できないときは描かずに止める。
+        //   以前は期間文字列を刷り込み「年月日～年月日」の上に生で描いていた
+        //   （22様式共通。セル定義監査が定義上の重なりとして検出）。
+        //   実測: 現実値0件 / 長文0件。入力画面は type="date" なので UI からは到達しない。
+        const periodErr = periodDateError("別記様式第18", body.period_start, body.period_end)
+        if (periodErr) return NextResponse.json(periodErr, { status: 422 })
 
         const candidatePdfPaths = [
             path.join(process.cwd(), "public", "PDF", "s50_kokuji14_bekki18.pdf"),
@@ -137,6 +147,8 @@ export async function POST(req: NextRequest) {
             cellW: number,
             cellH: number,
             fontSize = 7.0,
+            /** どの欄の何行目のどの列か。fit 報告の帰属に使う（値の文字列一致に頼らないため） */
+            at?: CellRef,
         ) => drawWrappedTextInCell({
             page,
             pageHeight,
@@ -147,6 +159,7 @@ export async function POST(req: NextRequest) {
             cellW,
             cellH,
             fontSize,
+            options: { at },
         })
 
         const drawResultRows = (
@@ -163,14 +176,17 @@ export async function POST(req: NextRequest) {
                 if (!row) continue
                 const top = rowBounds[i]
                 const h = rowBounds[i + 1] - top
+                // ★どの欄の何行目のどの列かを渡す。渡さないと fit 報告のラベルが
+                //   「同じ値を持つ最初の入力欄」を指す（本番の bekki12 で実際に誤帰属していた）。
+                const ref = (column: string): CellRef => ({ rowsKey: cols.rowsKey, row: i, column })
                 const cx = contentOverrides?.[i]?.x ?? cols.contentX
                 const cw = contentOverrides?.[i]?.w ?? cols.contentW
-                drawWrappedInCell(page, pageHeight, row.content, cx, top, cw, h, sizes?.content ?? 6.2)
+                drawWrappedInCell(page, pageHeight, row.content, cx, top, cw, h, sizes?.content ?? 6.2, ref("content"))
                 drawInCell(page, pageHeight, formatJudgment(row.judgment), cols.judgmentX, top, cols.judgmentW, h, sizes?.judgment ?? 7.2, {
                     align: "center",
                 })
-                drawWrappedInCell(page, pageHeight, row.bad_content, cols.badX, top, cols.badW, h, sizes?.bad ?? 6.0)
-                drawWrappedInCell(page, pageHeight, row.action_content, cols.actionX, top, cols.actionW, h, sizes?.action ?? 6.0)
+                drawWrappedInCell(page, pageHeight, row.bad_content, cols.badX, top, cols.badW, h, sizes?.bad ?? 6.0, ref("bad_content"))
+                drawWrappedInCell(page, pageHeight, row.action_content, cols.actionX, top, cols.actionW, h, sizes?.action ?? 6.0, ref("action_content"))
             }
         }
 
@@ -221,9 +237,7 @@ export async function POST(req: NextRequest) {
                         fontSize: 6.2,
                     })
                 }
-            } else {
-                drawInCell(page, pageHeight, periodText, 269.76, PERIOD_ROW.top, 260.28, PERIOD_ROW.h, 6.2)
-            }
+        }
 
             // 刷り込みに重ねない: 前置ラベル氏名(-143.9) の右から（テンプレート実測）
             drawInCell(page, pageHeight, body.inspector_name, 144.38, 181.8, 61.9, 49.92, 6.4)
@@ -244,6 +258,7 @@ export async function POST(req: NextRequest) {
             body.page1_rows ?? [],
             P1_ROW_BOUNDS,
             {
+                rowsKey: "page1_rows",
                 contentX: 222.6,
                 contentW: 115.44,
                 judgmentX: 338.04,
@@ -276,6 +291,7 @@ export async function POST(req: NextRequest) {
             blankPrintedRows(body.page2_rows, new Set([13])),
             P2_ROW_BOUNDS,
             {
+                rowsKey: "page2_rows",
                 contentX: 227.76,
                 contentW: 105.0,
                 judgmentX: 332.76,

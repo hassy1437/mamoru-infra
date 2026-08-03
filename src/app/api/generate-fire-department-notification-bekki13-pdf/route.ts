@@ -11,7 +11,8 @@ import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
 import {
-    drawPeriodDate,
+    periodDateError,
+drawPeriodDate,
     drawTextInCell,
     drawWrappedTextInCell,
     formatDateText,
@@ -22,6 +23,7 @@ import {
     formatJudgment,
     pickFont,
     type ReportFonts,
+    type CellRef,
 } from "@/lib/pdf-form-helpers"
 
 /**
@@ -37,7 +39,9 @@ import {
  * 添字は payload 配列の添字（drawResultRows の startIndex を適用した後の値）。
  * 分類は scripts/classify-numeric-rows.py が出す「内容セルの刷り込み」の実測による。
  */
-export const NUMERIC_ROWS: Record<string, number[]> = {}
+export const NUMERIC_ROWS: Record<string, number[]> = {
+    page1_rows: [3, 9],
+}
 
 type BekkiRow = { content?: string; judgment?: string; bad_content?: string; action_content?: string }
 type DeviceRow = { name?: string; model?: string; calibrated_at?: string; maker?: string }
@@ -63,6 +67,8 @@ type Bekki13Payload = {
 }
 
 type ResultColumns = {
+    /** どの payload 配列か。fit 報告の帰属に使う（値の文字列一致に頼らないため） */
+    rowsKey?: string
     contentX: number
     contentW: number
     judgmentX: number
@@ -126,6 +132,13 @@ export async function POST(req: NextRequest) {
     try {
         const body = (await req.json()) as Bekki13Payload
 
+        // ★点検期間が年月日に分解できないときは描かずに止める。
+        //   以前は期間文字列を刷り込み「年月日～年月日」の上に生で描いていた
+        //   （22様式共通。セル定義監査が定義上の重なりとして検出）。
+        //   実測: 現実値0件 / 長文0件。入力画面は type="date" なので UI からは到達しない。
+        const periodErr = periodDateError("別記様式第13", body.period_start, body.period_end)
+        if (periodErr) return NextResponse.json(periodErr, { status: 422 })
+
         const candidatePdfPaths = [
             path.join(process.cwd(), "public", "PDF", "s50_kokuji14_bekki13.pdf"),
             path.join(process.cwd(), "public", "s50_kokuji14_bekki13.pdf"),
@@ -178,6 +191,8 @@ export async function POST(req: NextRequest) {
             cellW: number,
             cellH: number,
             fontSize = 7.0,
+            /** どの欄の何行目のどの列か。fit 報告の帰属に使う */
+            at?: CellRef,
         ) => drawWrappedTextInCell({
             page,
             pageHeight,
@@ -188,6 +203,7 @@ export async function POST(req: NextRequest) {
             cellW,
             cellH,
             fontSize,
+            options: { at },
         })
 
         const drawResultRows = (page: PDFPage, pageHeight: number, rows: BekkiRow[], rowBounds: number[], cols: ResultColumns, contentOverrides: Record<number, { x: number; w: number }> = {}) => {
@@ -198,10 +214,13 @@ export async function POST(req: NextRequest) {
                 const h = rowBounds[i + 1] - top
                 const cx = contentOverrides[i]?.x ?? cols.contentX
                 const cw = contentOverrides[i]?.w ?? cols.contentW
-                drawWrappedInCell(page, pageHeight, row.content, cx, top, cw, h, 6.3)
-                drawInCell(page, pageHeight, formatJudgment(row.judgment), cols.judgmentX, top, cols.judgmentW, h, 7.4, { align: "center" })
-                drawWrappedInCell(page, pageHeight, row.bad_content, cols.badX, top, cols.badW, h, 6.1)
-                drawWrappedInCell(page, pageHeight, row.action_content, cols.actionX, top, cols.actionW, h, 6.1)
+                // ★どの欄の何行目のどの列かを渡す。渡さないと fit 報告のラベルが
+                //   「同じ値を持つ最初の入力欄」を指す（本番の bekki12 で実際に誤帰属していた）。
+                const ref = (column: string): CellRef => ({ rowsKey: cols.rowsKey, row: i, column })
+                drawWrappedInCell(page, pageHeight, row.content, cx, top, cw, h, 6.3, ref("content"))
+                drawInCell(page, pageHeight, formatJudgment(row.judgment), cols.judgmentX, top, cols.judgmentW, h, 7.4, { align: "center", at: ref("judgment") })
+                drawWrappedInCell(page, pageHeight, row.bad_content, cols.badX, top, cols.badW, h, 6.1, ref("bad_content"))
+                drawWrappedInCell(page, pageHeight, row.action_content, cols.actionX, top, cols.actionW, h, 6.1, ref("action_content"))
             }
         }
 
@@ -259,9 +278,7 @@ export async function POST(req: NextRequest) {
                         fontSize: 6.6,
                     })
                 }
-            } else {
-                drawInCell(page, pageHeight, periodText, PERIOD_CELL.x, PERIOD_ROW.top, PERIOD_CELL.w, PERIOD_ROW.h, 6.6)
-            }
+        }
 
             drawInCell(page, pageHeight, body.inspector_name, INSPECTOR.name.x, INSPECTOR.name.top, INSPECTOR.name.w, INSPECTOR.name.h, 7.0)
             drawInCell(page, pageHeight, body.inspector_company, INSPECTOR.company.x, INSPECTOR.company.top, INSPECTOR.company.w, INSPECTOR.company.h, 6.8)
@@ -272,6 +289,7 @@ export async function POST(req: NextRequest) {
         drawHeader(page1, p1Height)
 
         drawResultRows(page1, p1Height, body.page1_rows ?? [], P1_ROW_BOUNDS, {
+            rowsKey: "page1_rows",
             contentX: 227.88,
             contentW: 104.52,
             judgmentX: 332.88,
@@ -286,6 +304,7 @@ export async function POST(req: NextRequest) {
         })
 
         drawResultRows(page2, p2Height, body.page2_rows ?? [], P2_ROW_BOUNDS, {
+            rowsKey: "page2_rows",
             contentX: 228.0,
             contentW: 103.8,
             judgmentX: 332.28,

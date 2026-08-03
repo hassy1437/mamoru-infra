@@ -11,16 +11,21 @@ import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
 import {
-    FIT_EPSILON,
+    periodDateError,
+FIT_EPSILON,
     drawPeriodDate,
     drawTextRuns,
     drawWrappedTextInCell,
     formatJapaneseDateText,
     formatJudgment,
+    cellAt,
     measureRuns,
+    truncateRunsToFitWidth,
     pickFont,
     reportIfBelowMinSize,
     type ReportFonts,
+    type CellRef,
+    type CellAt,
 } from "@/lib/pdf-form-helpers"
 
 /**
@@ -37,8 +42,8 @@ import {
  * 分類は scripts/classify-numeric-rows.py が出す「内容セルの刷り込み」の実測による。
  */
 export const NUMERIC_ROWS: Record<string, number[]> = {
-    page1_rows: [10],
-    page2_rows: [0],
+    page1_rows: [5, 10, 15, 21],
+    page2_rows: [0, 2],
 }
 
 type BekkiRow = {
@@ -77,9 +82,13 @@ type DrawOptions = {
     paddingY?: number
     minFontSize?: number
     maxFontSize?: number
+    /** どの欄の何行目のどの列か（行ループ・専用描画が渡す） */
+    at?: CellRef
 }
 
 type ResultColumns = {
+    /** どの payload 配列か。fit 報告の帰属に使う（値の文字列一致に頼らないため） */
+    rowsKey?: string
     contentX: number
     contentW: number
     judgmentX: number
@@ -176,6 +185,13 @@ export async function POST(req: NextRequest) {
     try {
         const body = (await req.json()) as Bekki12Payload
 
+        // ★点検期間が年月日に分解できないときは描かずに止める。
+        //   以前は期間文字列を刷り込み「年月日～年月日」の上に生で描いていた
+        //   （22様式共通。セル定義監査が定義上の重なりとして検出）。
+        //   実測: 現実値0件 / 長文0件。入力画面は type="date" なので UI からは到達しない。
+        const periodErr = periodDateError("別記様式第12", body.period_start, body.period_end)
+        if (periodErr) return NextResponse.json(periodErr, { status: 422 })
+
         const candidatePdfPaths = [
             path.join(process.cwd(), "public", "PDF", "s50_kokuji14_bekki12.pdf"),
             path.join(process.cwd(), "public", "s50_kokuji14_bekki12.pdf"),
@@ -196,25 +212,11 @@ export async function POST(req: NextRequest) {
         const p1Height = page1.getSize().height
         const p2Height = page2.getSize().height
 
-        const truncateToFitWidth = (value: string, size: number, maxWidth: number) => {
-            if (!value) return ""
-            if (measureRuns(fonts, String(value ?? ""), size) <= maxWidth + FIT_EPSILON) return value
-
-            const suffix = "..."
-            if (measureRuns(fonts, String(suffix ?? ""), size) > maxWidth) return ""
-
-            let cut = value.length
-            while (cut > 0) {
-                const candidate = `${value.slice(0, cut).trimEnd()}${suffix}`
-                if (measureRuns(fonts, String(candidate ?? ""), size) <= maxWidth + FIT_EPSILON) {
-                    fonts.fit?.report(value, cut)
-                    return candidate
-                }
-                cut -= 1
-            }
-
-            return suffix
-        }
+        // ★共有の truncateRunsToFitWidth に寄せた。ローカル複製14本のうち13本が
+        //   「1文字も入らない（cut が 0 まで落ちる）」ケースの fonts.fit?.report(value, 0) を
+        //   落としており、情報が消えたまま 200 が返っていた。fonts を束ねるだけの包み。
+        const truncateToFitWidth = (value: string, size: number, maxWidth: number, at?: CellAt) =>
+            truncateRunsToFitWidth(fonts, value, size, maxWidth, at)
 
         const drawInCell = (
             page: PDFPage,
@@ -248,7 +250,8 @@ export async function POST(req: NextRequest) {
             fonts.fit?.reportShrink(normalized, designSize, currentSize)
             reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth)
 
-            const textToDraw = truncateToFitWidth(normalized, currentSize, maxWidth)
+            const textToDraw = truncateToFitWidth(normalized, currentSize, maxWidth,
+                cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at))
             if (!textToDraw) return
 
             const textWidth = measureRuns(fonts, String(textToDraw ?? ""), currentSize)
@@ -271,6 +274,8 @@ export async function POST(req: NextRequest) {
             cellW: number,
             cellH: number,
             fontSize = 7.0,
+            /** どの欄の何行目のどの列か。fit 報告の帰属に使う（値の文字列一致に頼らないため） */
+            at?: CellRef,
         ) => drawWrappedTextInCell({
             page,
             pageHeight,
@@ -286,8 +291,8 @@ export async function POST(req: NextRequest) {
                 paddingY: 1.0,
                 minFontSize: 4.5,
                 lineGap: 0.7,
-            },
-        })
+                at,
+            },        })
 
         const drawResultRows = (
             page: PDFPage,
@@ -307,10 +312,13 @@ export async function POST(req: NextRequest) {
                 const h = rowBounds[i + 1] - top
                 const cx = contentOverrides[i]?.x ?? cols.contentX
                 const cw = contentOverrides[i]?.w ?? cols.contentW
-                if (!skipContentRows.has(i)) drawWrappedInCell(page, pageHeight, row.content, cx, top, cw, h, 6.2)
-                drawInCell(page, pageHeight, formatJudgment(row.judgment), cols.judgmentX, top, cols.judgmentW, h, 7.4, { align: "center" })
-                drawWrappedInCell(page, pageHeight, row.bad_content, cols.badX, top, cols.badW, h, 6.0)
-                drawWrappedInCell(page, pageHeight, row.action_content, cols.actionX, top, cols.actionW, h, 6.0)
+                // ★どの欄の何行目のどの列かを渡す。渡さないと fit 報告のラベルが
+                //   「同じ値を持つ最初の入力欄」を指す（本番の bekki12 で実際に誤帰属していた）。
+                const ref = (column: string): CellRef => ({ rowsKey: cols.rowsKey, row: i, column })
+                if (!skipContentRows.has(i)) drawWrappedInCell(page, pageHeight, row.content, cx, top, cw, h, 6.2, ref("content"))
+                drawInCell(page, pageHeight, formatJudgment(row.judgment), cols.judgmentX, top, cols.judgmentW, h, 7.4, { align: "center", at: ref("judgment") })
+                drawWrappedInCell(page, pageHeight, row.bad_content, cols.badX, top, cols.badW, h, 6.0, ref("bad_content"))
+                drawWrappedInCell(page, pageHeight, row.action_content, cols.actionX, top, cols.actionW, h, 6.0, ref("action_content"))
             }
         }
 
@@ -359,9 +367,7 @@ export async function POST(req: NextRequest) {
             if (parseDateParts(body.period_start) || parseDateParts(body.period_end)) {
                 drawPeriodDate({ page: page, pageHeight: pageHeight, fonts, dateValue: body.period_start, anchors: PERIOD_START_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 6.8 })
                 drawPeriodDate({ page: page, pageHeight: pageHeight, fonts, dateValue: body.period_end, anchors: PERIOD_END_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 6.8 })
-            } else {
-                drawInCell(page, pageHeight, periodText, PERIOD_CELL.x, PERIOD_ROW.top, PERIOD_CELL.w, PERIOD_ROW.h, 6.8)
-            }
+        }
 
             drawInCell(page, pageHeight, body.inspector_name, INSPECTOR.name.x, INSPECTOR.name.top, INSPECTOR.name.w, INSPECTOR.name.h, 7.2)
             drawInCell(page, pageHeight, body.inspector_company, INSPECTOR.company.x, INSPECTOR.company.top, INSPECTOR.company.w, INSPECTOR.company.h, 7.0)
@@ -372,6 +378,7 @@ export async function POST(req: NextRequest) {
         drawHeader(page1, p1Height)
 
         drawResultRows(page1, p1Height, body.page1_rows ?? [], P1_ROW_BOUNDS, {
+            rowsKey: "page1_rows",
             contentX: 222.72,
             contentW: 99.24,
             judgmentX: 322.56,
@@ -400,11 +407,16 @@ export async function POST(req: NextRequest) {
         if (sensRow12) {
             const sTop = P2_ROW_BOUNDS[0]
             const sH = P2_ROW_BOUNDS[1] - P2_ROW_BOUNDS[0]
-            drawInCell(page2, p2Height, sensRow12.content, 243.60, sTop, 10.56, sH, 5.5, { paddingX: 1.0, align: "center" })
-            drawInCell(page2, p2Height, sensRow12.current_value, 285.72, sTop, 10.44, sH, 5.5, { paddingX: 1.0, align: "center" })
+            // ★本番データで誤帰属が確認された欄（感度範囲）。欄名を明示的に渡す。
+            //   実測: 「外形・設置状況」7字が1字しか入らず、ラベルは page1_rows[0] を指していた。
+            drawInCell(page2, p2Height, sensRow12.content, 243.60, sTop, 10.56, sH, 5.5,
+                { paddingX: 1.0, align: "center", at: { rowsKey: "page2_rows", row: 0, column: "content" } })
+            drawInCell(page2, p2Height, sensRow12.current_value, 285.72, sTop, 10.44, sH, 5.5,
+                { paddingX: 1.0, align: "center", at: { rowsKey: "page2_rows", row: 0, column: "current_value" } })
         }
 
         drawResultRows(page2, p2Height, body.page2_rows ?? [], P2_ROW_BOUNDS, {
+            rowsKey: "page2_rows",
             contentX: 217.56,
             contentW: 104.52,
             judgmentX: 322.56,

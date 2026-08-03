@@ -491,11 +491,19 @@ export async function POST(req: NextRequest) {
             const hCount = normalizeText(hoseRow9.hose_count)
             const nDia = normalizeText(hoseRow9.nozzle_dia)
             // 公式PDF実測: ｍ@233.3 / ×@243.8(x1=254.4) / 本@264.8(x1=275.4) / mm@291.1。content列左=216.67
-            // ★左へ拡張（2026-08-01）: この行には内部の縦罫線が無い（実測: 同じ y での縦罫線は
-            //   左 130.44 / 右 311.76 のみ）。左の制約は罫線ではなく刷り込み「…形」の右端 212.16 で、
-            //   そこから 1.0pt 空けて 213.16 から始める。右端 233.27 は刷り込み「ｍ」に 0.01pt まで
-            //   接しているので動かさない。使える幅 11.60 → 15.11pt。
-            const drawLen = (v: string) => { if (v) drawInCell(page3, p3Height, v, 213.16, hValTop, 20.11, hValH, 6.0, { align: "center" }) }
+            // ★2026-08-01 の拡張は前提が誤っていた。「この行には内部の縦罫線が無い
+            //   （縦罫線は左 130.44 / 右 311.76 のみ）」としてセルを 213.16 まで広げたが、
+            //   実測すると x 217.08〜217.56（太さ0.48pt）の縦罫線が y124.44〜171.60 に実在し、
+            //   帯3（y144.00〜171.33）を貫いている。213.16 だと描画域が罫線を内包し、
+            //   値が長いほど罫線を跨ぐ（実測: 値「0.45」のインクは罫線から 0.167pt ＝ 1画素）。
+            // ★左端は「セルの左端」ではなく「描画域の左端」で決める。drawInCell の
+            //   描画域は x+paddingX 〜 x+w-paddingX（paddingX 既定 2.5）なので、
+            //     左 215.16 + 2.5 = 217.66  … 罫線の右端 217.56 から 0.10pt 外
+            //     右 233.27 - 2.5 = 230.77  … 刷り込み「ｍ」233.28 から 2.51pt 手前
+            //   使える幅 13.11pt。和文2字は 12.00pt なので 6.0pt のまま縮まない
+            //   （2026-08-01 以前の 11.60pt では 5.80pt に縮んでいた）。
+            //   ★paddingX を変えるとこの安全余裕が消える。変えるなら x も見直すこと。
+            const drawLen = (v: string) => { if (v) drawInCell(page3, p3Height, v, 215.16, hValTop, 18.11, hValH, 6.0, { align: "center" }) }
             const drawCnt = (v: string) => { if (v) drawInCell(page3, p3Height, v, 254.4, hValTop, 10.4, hValH, 6.0, { align: "center" }) }
             const drawDia = (v: string) => { if (v) drawInCell(page3, p3Height, v, 275.4, hValTop, 15.7, hValH, 6.0, { align: "center" }) }
             if (hCount || nDia) {

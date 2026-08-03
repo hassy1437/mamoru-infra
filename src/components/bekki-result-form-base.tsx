@@ -60,7 +60,16 @@ type SectionConfig = {
     key: BekkiPageRowsKey
     title: string
     labels: readonly string[]
-    currentValueRowIndex?: number  // 電圧計・電流計行のインデックス
+    currentValueRowIndex?: number  // 1行に空欄が2つある行のインデックス（既定は電圧計・電流計）
+    /**
+     * currentValueRowIndex の行の入力欄の見出しと単位。
+     * ★既定は電圧計・電流計。様式12の感度範囲「－○％〜＋○％」のように
+     *   意味も単位も違う行があり、既定のままだと点検者に電圧を書かせてしまう。
+     */
+    currentValueFields?: {
+        first: string; firstUnit: string
+        second: string; secondUnit: string
+    }
     splitTypeCapacity?: boolean    // 種別容量を避難口/通路/客席の3列入力にする（様式16）
     pumpPerfRowIndex?: number      // ポンプ性能行: 吐出圧力(content)/吐出量(flow_value) の2欄入力
     hoseRowIndexes?: readonly number[]  // ホース行: 長さ(content)/本数(hose_count)/口径(nozzle_dia) の3列入力
@@ -647,17 +656,17 @@ export default function BekkiResultFormBase({
                                                 <Input
                                                     value={rowsByKey[section.key]?.[idx]?.content ?? ""}
                                                     onChange={(e) => updateRowField(section.key, idx, "content", e.target.value)}
-                                                    placeholder="電圧(V)"
+                                                    placeholder={section.currentValueFields?.first ?? "電圧(V)"}
                                                     className="w-20"
                                                 />
-                                                <span className="text-xs text-muted-foreground">V</span>
+                                                <span className="text-xs text-muted-foreground">{section.currentValueFields?.firstUnit ?? "V"}</span>
                                                 <Input
                                                     value={rowsByKey[section.key]?.[idx]?.current_value ?? ""}
                                                     onChange={(e) => updateRowField(section.key, idx, "current_value", e.target.value)}
-                                                    placeholder="電流(A)"
+                                                    placeholder={section.currentValueFields?.second ?? "電流(A)"}
                                                     className="w-20"
                                                 />
-                                                <span className="text-xs text-muted-foreground">A</span>
+                                                <span className="text-xs text-muted-foreground">{section.currentValueFields?.secondUnit ?? "A"}</span>
                                             </div>
                                         ) : (
                                             <Input
@@ -773,13 +782,13 @@ export default function BekkiResultFormBase({
                                             <Input
                                                 value={rowsByKey[section.key]?.[idx]?.content ?? ""}
                                                 onChange={(e) => updateRowField(section.key, idx, "content", e.target.value)}
-                                                placeholder="V"
+                                                placeholder={section.currentValueFields?.firstUnit ?? "V"}
                                                 className="h-9 text-sm"
                                             />
                                             <Input
                                                 value={rowsByKey[section.key]?.[idx]?.current_value ?? ""}
                                                 onChange={(e) => updateRowField(section.key, idx, "current_value", e.target.value)}
-                                                placeholder="A"
+                                                placeholder={section.currentValueFields?.secondUnit ?? "A"}
                                                 className="h-9 text-sm"
                                             />
                                         </div>

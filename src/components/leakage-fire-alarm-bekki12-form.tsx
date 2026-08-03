@@ -63,7 +63,14 @@ export default function LeakageFireAlarmBekki12Form(props: Props) {
             downloadFilenamePrefix="漏電火災警報器点検票"
             sections={[
                 { key: "page1_rows", title: "（その1）機器点検", labels: PAGE1_ITEMS },
-                { key: "page2_rows", title: "（その2）総合点検", labels: PAGE2_ITEMS },
+                {
+                    key: "page2_rows", title: "（その2）総合点検", labels: PAGE2_ITEMS,
+                    // ★行0「作動範囲」は刷り込みが「－ ___ ％ ～ ＋ ___ ％」で空欄が2つある。
+                    //   route は content を －側、current_value を ＋側に描いているのに
+                    //   入力欄が1つしか無く、＋側を入力する手段が存在しなかった。
+                    currentValueRowIndex: 0,
+                    currentValueFields: { first: "－側(％)", firstUnit: "％", second: "＋側(％)", secondUnit: "％" },
+                },
             ]}
             notesCardTitle="（その2）備考・測定機器"
             notesRows={10}

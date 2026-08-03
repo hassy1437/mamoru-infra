@@ -514,7 +514,9 @@ export async function POST(req: NextRequest) {
             24: { x: 225.33, w: 80.43 },   // 刷り込み「本」(305.76) の手前で止める
         })
 
-        drawResultRows(page2, p2Height, body.page2_rows ?? [], P2_ROW_BOUNDS, {
+        // 帯21 は見出し行（刷り込み「緊 急 停 止 装 置」が項目名列いっぱいに字間を広げて入っており、
+        // 直下の帯22「外形」以降がその下位項目）。入力があっても刷り込みに重ねない。
+        drawResultRows(page2, p2Height, blankPrintedRows(body.page2_rows ?? [], new Set([21])), P2_ROW_BOUNDS, {
             rowsKey: "page2_rows",
             contentX: 225.33, contentW: 96.0,
             judgmentX: 321.33, judgmentW: 38.0,

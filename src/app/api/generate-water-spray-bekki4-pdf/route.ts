@@ -588,9 +588,13 @@ export async function POST(req: NextRequest) {
         const device1 = body.device1 ?? {}
         const device2 = body.device2 ?? {}
         const devOpts: DrawOptions = { paddingX: 1 }
-        drawInCell(page3, p3Height, device1.name, 82, 658, 56, 18, 7.2, devOpts)
-        drawInCellWithFont(page3, p3Height, fonts, device1.model, 138, 658, 56, 18, 7.2, devOpts)
-        drawInCell(page3, p3Height, formatJapaneseDateText(device1.calibrated_at), 194, 658, 56, 18, 7.2, devOpts)
+        // ★セルの左端が縦罫線の上に乗っていた欄は x を罫線の右へ寄せ、右端は据え置く
+        //   （w を同じだけ減らす）。paddingX は他の欄と共通なので触らない。
+        //   実測の罫線: name 82.80〜83.28 / model 138.60〜139.08 / date 194.52〜195.00
+        //               device2.name 306.84〜307.32
+        drawInCell(page3, p3Height, device1.name, 82.39, 658, 55.61, 18, 7.2, devOpts)
+        drawInCellWithFont(page3, p3Height, fonts, device1.model, 138.19, 658, 55.81, 18, 7.2, devOpts)
+        drawInCell(page3, p3Height, formatJapaneseDateText(device1.calibrated_at), 194.11, 658, 55.89, 18, 7.2, devOpts)
 
         const drawDeviceMaker = (text: unknown, page: PDFPage, pageH: number, cellX: number, cellW: number, cellTop: number, cellH: number) => {
             const norm = normalizeText(text)
@@ -611,7 +615,7 @@ export async function POST(req: NextRequest) {
         }
         drawDeviceMaker(device1.maker, page3, p3Height, 250, 56, 658, 18)
 
-        drawInCell(page3, p3Height, device2.name, 306, 658, 56, 18, 7.2, devOpts)
+        drawInCell(page3, p3Height, device2.name, 306.43, 658, 55.57, 18, 7.2, devOpts)
         drawInCellWithFont(page3, p3Height, fonts, device2.model, 362, 658, 56, 18, 7.2, devOpts)
         drawInCell(page3, p3Height, formatJapaneseDateText(device2.calibrated_at), 418, 658, 56, 18, 7.2, devOpts)
         drawDeviceMaker(device2.maker, page3, p3Height, 474, 55, 658, 18)

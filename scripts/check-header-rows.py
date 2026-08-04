@@ -56,6 +56,12 @@ MEASURER_CONTROLS = {
 
 HEADER_MARK = "見出し行"
 
+# ★点検項目の行の型。これ以外の型で宣言された pageN_rows は「対象外」。
+#   例: bekki6/7/8 の page5_rows は CylinderRow（容器ごとの表）で、
+#   行は容器の通し番号であって点検項目ではない。ラベル配列が存在しないのが
+#   設計どおりなので、「ラベルが無い＝未判定」にしてはいけない。
+STANDARD_ROW_TYPE = re.compile(r"^Bekki[\w-]*Row$")
+
 
 # ─────────────────────────────────────────────────────────────
 # 測定器: テンプレートの「行区切りの横罫線」を数える
@@ -160,6 +166,13 @@ def parse_labels() -> dict[str, dict[str, list[str]]]:
     return out
 
 
+def payload_row_types(route: Path) -> dict[str, str]:
+    """payload の型宣言から pageN_rows の要素型を拾う（page1_rows?: Bekki6Row[] → Bekki6Row）"""
+    src = strip_comments(route.read_text(encoding="utf-8"))
+    return {m.group(1): m.group(2)
+            for m in re.finditer(r"(page\d+_rows)\s*\??\s*:\s*(\w+)\s*\[\]", src)}
+
+
 def form_name_for(route: Path) -> str | None:
     """generate-<slug>-bekki<N>-pdf → 別記様式第<N>（11-1 → 第11の1）。"""
     m = re.search(r"-bekki(\d+)(?:-(\d+))?-pdf$", route.parent.name)
@@ -219,14 +232,27 @@ def parse_route(route: Path):
 # 検査本体
 # ─────────────────────────────────────────────────────────────
 def collect(labels_by_form):
-    """(判定できたページ, 未判定ページ) を返す。"""
-    judged, unjudged = [], []
+    """(判定できたページ, 未判定ページ, 対象外ページ) を返す。
+
+    ★「未判定」と「対象外」を混ぜないこと。
+      未判定 = 測ろうとしたが測れなかった（直せば測れるようになりうる）
+      対象外 = この検査の不変条件が適用されない（永久に測らない）
+    混ぜると、対象外のものが「いつか測れるようになるもの」に見える。
+    """
+    judged, unjudged, skipped = [], [], []
     for route in ROUTES:
         form = form_name_for(route)
         template, calls = parse_route(route)
+        row_types = payload_row_types(route)
         rel = route.relative_to(ROOT).as_posix()
         for c in calls:
             tag = f"{form or route.parent.name} {c['rows_key'] or c['bounds_name']}"
+            # ★対象外の判定を先に置く。ラベルが無い理由が「そもそも点検項目の
+            #   行ではない」なら、未判定に落としてはいけない。
+            rtype = row_types.get(c["rows_key"] or "")
+            if rtype and not STANDARD_ROW_TYPE.match(rtype):
+                skipped.append((tag, rel, rtype))
+                continue
             reason = None
             if form is None:
                 reason = "route 名から様式番号を導けない"
@@ -245,7 +271,16 @@ def collect(labels_by_form):
                 continue
 
             b = c["bounds"]
-            rules, bands, ys = measure(template, c["page_index"], min(b) - 1.0, max(b) + 1.0)
+            # ★窓は ±3.0pt。±1.0 では表の一番下の罫線を取りこぼす。
+            #   実測: 宣言した最終境界より罫線が 1.00〜1.24pt 下にある様式があり
+            #   （bekki2 p1 1.20 / bekki2 p2 1.24 / bekki3 p2 1.04 / bekki7 p2 1.01）、
+            #   ±1.0 だと窓の外に落ちて「載らない境界1本」として未判定になっていた。
+            #   広げすぎると表の外の罫線を拾うので、±3.0 で既存の判定が
+            #   1件も変わらないことを確認して決めた値（±5.0 でも変わらない）。
+            # ★狭めないこと。この 1pt のずれは実測したうえで採用しなかったもので
+            #   （各 route の ROW_BOUNDS のコメント参照）、境界の側が動くことは無い。
+            #   ±1.0 に戻すと、この4ページが理由も分からず未判定に戻る。
+            rules, bands, ys = measure(template, c["page_index"], min(b) - 3.0, max(b) + 3.0)
             if bands <= 0:
                 unjudged.append((tag, rel, f"{template} p{c['page_index'] + 1} の罫線を測れない"))
                 continue
@@ -266,7 +301,7 @@ def collect(labels_by_form):
                 "labels": labels_by_form[form][c["rows_key"]],
                 "bands": bands, "rules": rules, "blanks": c["blanks"],
             })
-    return judged, unjudged
+    return judged, unjudged, skipped
 
 
 def check(judged) -> list[str]:
@@ -301,7 +336,7 @@ def check(judged) -> list[str]:
 def self_test() -> int:
     """★両方向。ラベルを足しても消しても、宣言を消しても落ちること。"""
     labels_by_form = parse_labels()
-    judged, _ = collect(labels_by_form)
+    judged, _, _ = collect(labels_by_form)
     if run_measurer_selfcheck(judged):
         print("SELF_TEST_FAILED: 測定器の検算が通らない")
         return 1
@@ -346,7 +381,7 @@ def main() -> int:
         return self_test()
 
     labels_by_form = parse_labels()
-    judged, unjudged = collect(labels_by_form)
+    judged, unjudged, skipped = collect(labels_by_form)
 
     # ★未判定は検算より先に出す。検算で止まったときにも全件見えるようにする。
     print(f"── 未判定 {len(unjudged)} ページ（★黙って飛ばさず全件出す）")
@@ -368,6 +403,16 @@ def main() -> int:
     print(f"\n── 未判定 {len(unjudged)} ページ（★黙って飛ばさず全件出す）")
     for tag, rel, reason in unjudged:
         print(f"  - {tag}: {reason}  ({rel})")
+
+    # ★対象外は未判定と分けて出す。未判定は「測ろうとして測れなかった」、
+    #   対象外は「この検査の不変条件が適用されない」。混ぜると、対象外のものが
+    #   「いつか測れるようになるもの」に見える。
+    #   件数を出すのは、黙って増えたときに気づけるようにするため。
+    print(f"\n── 対象外 {len(skipped)} ページ"
+          f"（点検項目の行ではなく、ラベル配列が存在しないのが設計どおり）")
+    for tag, rel, rtype in skipped:
+        print(f"  - {tag}: 行の型が {rtype}（容器ごとの表など。行は容器の通し番号で"
+              f"点検項目ではない）  ({rel})")
 
     ng = check(judged)
     print(f"\n── 判定 {len(judged)} ページ / 不一致 {len(ng)} 件")

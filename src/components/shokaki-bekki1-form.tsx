@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { loadDraftLocal, saveDraftLocal } from "@/lib/local-draft"
+import { WRAP_CLS, bindLabelBreaks } from "@/components/row-label"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -538,7 +539,7 @@ export default function ShokakiBekki1Form({
                         <tbody>
                             {labels.map((label, idx) => (
                                 <tr key={`${page}-${label}`}>
-                                    <td className="p-2 border">{label}</td>
+                                    <td className={`p-2 border ${WRAP_CLS}`}>{bindLabelBreaks(label)}</td>
                                     {(noMarkFromIndex !== undefined && idx >= noMarkFromIndex) ? (
                                         <td colSpan={MARKS.length} className="p-2 border" />
                                     ) : MARKS.map((k) => (
@@ -601,7 +602,7 @@ export default function ShokakiBekki1Form({
                         const showDefect = row.judgment === "否" || Boolean(row.bad_content) || Boolean(row.action_content)
                         return (
                             <div key={`${page}-mobile-${idx}`} className="border rounded-lg p-3 space-y-2 bg-white">
-                                <div className="font-medium text-sm text-slate-800">{label}</div>
+                                <div className={`font-medium text-sm text-slate-800 ${WRAP_CLS}`}>{bindLabelBreaks(label)}</div>
 
                                 {showMarks && (
                                     <div className="space-y-1">

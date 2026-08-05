@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react"
+import { WRAP_CLS, bindLabelBreaks } from "@/components/row-label"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -481,7 +482,7 @@ export default function WaterSprayBekki4Form({
                         <tbody>
                             {labels.map((label, idx) => (
                                 <tr key={`${title}-${label}`}>
-                                    <td className="p-2 border">{label}</td>
+                                    <td className={`p-2 border ${WRAP_CLS}`}>{bindLabelBreaks(label)}</td>
                                     <td className="p-1 border">
                                         {idx === perfRowIndex ? (
                                             <div className="flex gap-1 items-center">
@@ -577,7 +578,7 @@ export default function WaterSprayBekki4Form({
                 <div className="md:hidden space-y-3">
                     {labels.map((label, idx) => (
                         <div key={`${title}-${label}-mobile`} className="border rounded-lg p-3 space-y-2 bg-white">
-                            <div className="font-medium text-sm text-slate-800">{label}</div>
+                            <div className={`font-medium text-sm text-slate-800 ${WRAP_CLS}`}>{bindLabelBreaks(label)}</div>
                             <div className="grid grid-cols-2 gap-2">
                                 <div className="space-y-1">
                                     <span className="text-xs text-slate-500">内容</span>

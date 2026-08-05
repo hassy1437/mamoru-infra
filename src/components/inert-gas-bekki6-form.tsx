@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react"
 import { BEKKI_ROW_NOTES } from "@/lib/bekki-row-notes"
+import { WRAP_CLS, bindLabelBreaks } from "@/components/row-label"
+import { RowNote } from "@/components/row-note"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -604,15 +606,13 @@ export default function InertGasBekki6Form({
                         <tbody>
                             {labels.map((label, idx) => (
                                 <tr key={`${title}-${idx}`}>
-                                    <td className="p-2 border">
-                                        {label}
+                                    <td className={`p-2 border ${WRAP_CLS}`}>
+                                        {bindLabelBreaks(label)}
                                         {/* ★※印の条件は様式の備考にしか書かれておらず、入力画面には
                                             出ていなかった（行ラベルに※はあるのに条件が無い状態）。
                                             文言は備考の原文のまま。言い換えると意味が変わる。 */}
                                         {BEKKI_ROW_NOTES[API_PATH]?.[rowsKey]?.[idx] && (
-                                            <div className="mt-1 text-xs text-amber-700 leading-snug">
-                                                ※ {BEKKI_ROW_NOTES[API_PATH][rowsKey][idx]}
-                                            </div>
+                                            <RowNote text={BEKKI_ROW_NOTES[API_PATH][rowsKey][idx]} className="mt-1" />
                                         )}
                                     </td>
                                     <td className="p-1 border">
@@ -657,11 +657,9 @@ export default function InertGasBekki6Form({
                 <div className="md:hidden space-y-3">
                     {labels.map((label, idx) => (
                         <div key={`${title}-${idx}-mobile`} className="border rounded-lg p-3 space-y-2 bg-white">
-                            <div className="font-medium text-sm text-slate-800">{label}</div>
+                            <div className={`font-medium text-sm text-slate-800 ${WRAP_CLS}`}>{bindLabelBreaks(label)}</div>
                             {BEKKI_ROW_NOTES[API_PATH]?.[rowsKey]?.[idx] && (
-                                <div className="text-xs text-amber-700 leading-snug">
-                                    ※ {BEKKI_ROW_NOTES[API_PATH][rowsKey][idx]}
-                                </div>
+                                <RowNote text={BEKKI_ROW_NOTES[API_PATH][rowsKey][idx]} />
                             )}
                             <div className="grid grid-cols-2 gap-2">
                                 <div className="space-y-1">

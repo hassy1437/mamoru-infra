@@ -7,6 +7,8 @@ import SoukatsuPdfPreview from "@/components/soukatsu-pdf-preview"
 import StepIndicator from "@/components/step-indicator"
 import { INSPECTION_STEPS } from "@/lib/inspection-steps"
 import Breadcrumb from "@/components/breadcrumb"
+import FinalizeSoukatsuButton from "@/components/finalize-soukatsu-button"
+import { canDownloadPdf, loadFinalizationState } from "@/lib/finalization"
 
 export default async function InspectionDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { supabase, user } = await getAuthenticatedClient()
@@ -28,6 +30,10 @@ export default async function InspectionDetailPage({ params }: { params: Promise
         ? await supabase.from("properties").select("fire_manager_name").eq("id", report.property_id).single()
         : { data: null as { fire_manager_name: string | null } | null }
     const soukatsuData = { ...report, fire_manager: property?.fire_manager_name ?? "", inspector_responsible: "" }
+
+    // ★確定の状態。マイグレーション（20260811090000）が未適用なら available:false が返り、
+    //   確定の導線そのものを出さない（押せるのにエラーになるボタンを作らない）。
+    const finalization = await loadFinalizationState(supabase, id)
 
     // 「次へ」の遷移先を決める。1報告書＝点検者一覧表(itiran)1本が正で、押すたび新規作成すると
     // itiran が二重生成される（過去のデータ破損の原因）。既存 itiran があればそのハブへ寄せ、
@@ -76,7 +82,7 @@ export default async function InspectionDetailPage({ params }: { params: Promise
                         <Pencil className="w-4 h-4" />
                         編集
                     </Link>
-                    <SoukatsuPdfButton data={soukatsuData} />
+                    <SoukatsuPdfButton data={soukatsuData} canDownload={canDownloadPdf(finalization)} />
                     <Link
                         href={nextItiranHref}
                         className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors"
@@ -86,6 +92,18 @@ export default async function InspectionDetailPage({ params }: { params: Promise
                     </Link>
                 </div>
             </div>
+
+            {/* ★確定の導線。未適用（available:false）のときは何も出さない。 */}
+            {finalization.available && (
+                <div className="max-w-[210mm] mx-auto mb-6">
+                    <FinalizeSoukatsuButton
+                        soukatsuId={id}
+                        preview={finalization.preview}
+                        finalized={finalization.finalized}
+                        duplicates={finalization.duplicates}
+                    />
+                </div>
+            )}
 
             <div className="max-w-[210mm] mx-auto">
                 <SoukatsuPdfPreview data={soukatsuData} />

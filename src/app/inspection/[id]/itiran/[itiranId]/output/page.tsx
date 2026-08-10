@@ -3,6 +3,7 @@ import { notFound } from "next/navigation"
 import Link from "next/link"
 import { CheckCircle2, MinusCircle, Copy } from "lucide-react"
 import CombinedPdfButton from "@/components/combined-pdf-button"
+import { canDownloadPdf, loadFinalizationState } from "@/lib/finalization"
 import DeliverReportButton, { type DeliveryStatus } from "@/components/deliver-report-button"
 import StepIndicator from "@/components/step-indicator"
 import { INSPECTION_STEPS } from "@/lib/inspection-steps"
@@ -18,6 +19,10 @@ export default async function OutputPage({
 }) {
     const supabase = await createClient()
     const { id, itiranId } = await params
+
+    // ★PDFゲート。確定の仕組みが使えないとき（未適用・判定失敗）は素通りさせる
+    //   ＝ canDownloadPdf が fail-open。ここで止めると本番のPDF出力が止まる。
+    const finalization = await loadFinalizationState(supabase, id)
 
     const { data: soukatsu } = await supabase
         .from("inspection_soukatsu")
@@ -174,6 +179,7 @@ export default async function OutputPage({
 
                     <div className="pt-2">
                         <CombinedPdfButton
+                            canDownload={canDownloadPdf(finalization)}
                             soukatsuData={sanitizedSoukatsu}
                             itiranData={sanitizedItiran}
                             bekkiPayloads={sanitizedBekkiPayloads}
@@ -185,6 +191,7 @@ export default async function OutputPage({
 
                     {sourceMatchId && (
                         <DeliverReportButton
+                            canDeliver={canDownloadPdf(finalization)}
                             soukatsuData={sanitizedSoukatsu}
                             itiranData={sanitizedItiran}
                             bekkiPayloads={sanitizedBekkiPayloads}

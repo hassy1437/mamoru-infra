@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import ItiranPdfButton from "@/components/itiran-pdf-button"
+import { canDownloadPdf, loadFinalizationState } from "@/lib/finalization"
 import ItiranPdfPreviewCollapsible from "@/components/itiran-pdf-preview-collapsible"
 import StepIndicator from "@/components/step-indicator"
 import { INSPECTION_STEPS } from "@/lib/inspection-steps"
@@ -16,6 +17,10 @@ export default async function ItiranDetailPage({
 }) {
     const supabase = await createClient()
     const { id, itiranId } = await params
+
+    // ★PDFゲート。確定の仕組みが使えないとき（未適用・判定失敗）は素通りさせる
+    //   ＝ canDownloadPdf が fail-open。ここで止めると本番のPDF出力が止まる。
+    const finalization = await loadFinalizationState(supabase, id)
 
     const { data: record } = await supabase.from("inspection_itiran").select("*").eq("id", itiranId).single()
     if (!record) return notFound()
@@ -79,7 +84,7 @@ export default async function ItiranDetailPage({
                         <Pencil className="w-4 h-4" />
                         点検者を編集
                     </Link>
-                    <ItiranPdfButton data={record} buildingName={soukatsu?.building_name} />
+                    <ItiranPdfButton data={record} buildingName={soukatsu?.building_name} canDownload={canDownloadPdf(finalization)} />
                 </div>
             </div>
 

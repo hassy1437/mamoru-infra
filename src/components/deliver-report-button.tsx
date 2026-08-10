@@ -46,6 +46,13 @@ interface DeliverReportButtonProps {
     equipmentTypes?: string[]
     // 納品コンテキスト
     matchId: string
+    /**
+     * ★確定済みか。既定は true（通す）＝呼び出し側を触り忘れても本番は止まらない。
+     * 納品も確定後のみにする理由: 納品は「利用者へ報告書が渡る」操作で、
+     * 確定を挟まずに納品できると★課金されずに報告書が渡り、ゲートの意味が消える。
+     * しかも納品は記録が残る唯一の操作なので、その事実が証跡として残ってしまう。
+     */
+    canDeliver?: boolean
     itiranId: string // p_source_itiran_id（複製ゲート用・常に渡す＝迂回しない）
     inspectionType: string // この soukatsu の種別（機器点検 / 総合点検）
     inspectionDate: string // p_inspection_date（YYYY-MM-DD）
@@ -79,6 +86,7 @@ export default function DeliverReportButton({
     buildingName,
     equipmentTypes,
     matchId,
+    canDeliver = true,
     itiranId,
     inspectionType,
     inspectionDate,
@@ -348,9 +356,16 @@ export default function DeliverReportButton({
                 </label>
             )}
 
+            {/* ★確定前は納品できない。ボタンは残し、何をすればいいかを添える。 */}
+            {!canDeliver && (
+                <p className="mb-2 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
+                    納品は、点検を確定してからになります。確定する前でも、内容はプレビューでご確認いただけます。
+                </p>
+            )}
+
             <Button
                 onClick={handleDeliver}
-                disabled={busy || cloneBlocked}
+                disabled={busy || cloneBlocked || !canDeliver}
                 className="bg-teal-700 hover:bg-teal-800 text-white"
             >
                 {busy ? (

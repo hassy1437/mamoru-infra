@@ -10,6 +10,7 @@ import {
     triggerDownload,
     type ReportInputs,
 } from "@/lib/build-merged-report"
+import { PDF_GATE_MESSAGE } from "@/lib/finalization"
 
 interface CombinedPdfButtonProps {
     soukatsuData: Record<string, unknown>
@@ -18,6 +19,8 @@ interface CombinedPdfButtonProps {
     applicableStepIds: string[]
     buildingName?: string
     equipmentTypes?: string[]
+    /** ★既定 true（通す）。呼び出し側を触り忘れても本番は止まらない＝fail-open。 */
+    canDownload?: boolean
 }
 
 export default function CombinedPdfButton({
@@ -27,9 +30,11 @@ export default function CombinedPdfButton({
     applicableStepIds,
     buildingName,
     equipmentTypes,
+    canDownload = true,
 }: CombinedPdfButtonProps) {
     const [loading, setLoading] = useState(false)
     const [progress, setProgress] = useState({ done: 0, total: 0 })
+    const [gateMsg, setGateMsg] = useState<string | null>(null)
 
     const input: ReportInputs = {
         soukatsuData,
@@ -41,6 +46,11 @@ export default function CombinedPdfButton({
     const taskCount = reportTaskCount(input)
 
     const handleDownload = async () => {
+        // ★確定前は出力しない（規約 第12条3項）。ボタンは消さずに案内を出す。
+        if (!canDownload) {
+            setGateMsg(PDF_GATE_MESSAGE)
+            return
+        }
         setLoading(true)
         setProgress({ done: 0, total: 0 })
 
@@ -128,6 +138,7 @@ export default function CombinedPdfButton({
     }
 
     return (
+        <div>
         <Button
             onClick={handleDownload}
             disabled={loading || taskCount === 0}
@@ -145,5 +156,12 @@ export default function CombinedPdfButton({
                 </>
             )}
         </Button>
+        {/* ★ボタンは消さずに案内を出す。消すと「なぜ無いのか」が分からない。 */}
+        {gateMsg && (
+            <p className="mt-2 max-w-md rounded border border-amber-300 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
+                {gateMsg}
+            </p>
+        )}
+        </div>
     )
 }

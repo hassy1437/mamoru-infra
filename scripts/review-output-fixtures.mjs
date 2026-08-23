@@ -685,15 +685,6 @@ export const createReviewJobs = () => {
       validatePayload: validateReportPayload,
     },
     {
-      key: "report_docx",
-      title: "報告書Word",
-      group: "report",
-      format: "docx",
-      routePath: "src/app/api/generate-docx/route.ts",
-      buildPayload: buildReportPayload,
-      validatePayload: validateReportPayload,
-    },
-    {
       key: "soukatsu",
       title: "総括表PDF",
       group: "overview",

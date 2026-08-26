@@ -118,14 +118,16 @@ def app_only_masks(gen_path: Path, tpl_path: Path, scale: float):
         pg = gen[i]
         keep = [x for x in pg.get_contents() if gen.xref_stream(x) not in tpl_streams]
         if not keep:
-            out.append((np.zeros_like(tpl_masks[min(i, len(tpl_masks) - 1)]), None))
+            out.append((np.zeros_like(tpl_masks[min(i, len(tpl_masks) - 1)]), []))
             continue
         merged = b"".join(gen.xref_stream(x) for x in keep)
         xr = gen.get_new_xref()
         gen.update_object(xr, "<<>>")
         gen.update_stream(xr, merged)
         pg.set_contents(xr)
-        out.append((_mask(pg, scale), None))
+        # ★2つ目にアプリ層の図形を返す。○は文字ではなく図形（drawEllipse）なので、
+        #   ★スパンだけを枠にしていると★数える枠がどこにも無く、原理的に0件になる。
+        out.append((_mask(pg, scale), [d["rect"] for d in pg.get_drawings()]))
     gen.close()
     return out, tpl_masks
 
@@ -158,7 +160,7 @@ def overlaps(gen_path, scale: float = SCALE):
     tpl_spans = spans_of(tpl_path)
 
     hits = []
-    for i, (am, _) in enumerate(app_masks):
+    for i, (am, app_shapes) in enumerate(app_masks):
         if i >= len(tpl_masks):
             break
         tm = tpl_masks[i]
@@ -178,7 +180,13 @@ def overlaps(gen_path, scale: float = SCALE):
         #   列挙する方式は「列挙し忘れた種類」が穴になるので、列挙をやめて
         #   インクマスクそのものを見る。both = アプリのインク ∧ 刷り込みのインク
         #   なので、罫線でも図形でも網掛けでも同じ1本の判定で捕まる。
-        for ar, at in appspans:
+        # ★アプリの図形（○）も枠にする。
+        #   ★穴2（2026-08-25）: ○は drawEllipse で描かれる図形なので、
+        #     ★テキストスパンだけを枠にしていた従来の形では★1件も数えられなかった。
+        #     ★正しく囲めている○は重なりが0なので、足しても誤検出は増えない
+        #     （実測: 448個の○のうち重なったのは44箇所だけ）。
+        frames = list(appspans) + [(r, "○（選択の印）") for r in (app_shapes or [])]
+        for ar, at in frames:
             x0, y0 = int(ar.x0 * scale), int(ar.y0 * scale)
             x1, y1 = int(np.ceil(ar.x1 * scale)), int(np.ceil(ar.y1 * scale))
             px = int(both[max(0, y0):y1, max(0, x0):x1].sum())
@@ -208,13 +216,25 @@ def overlaps(gen_path, scale: float = SCALE):
                 "page": i + 1, "app": at, "printed": label, "px": px,
                 "px_text": px_text, "px_other": px_other,
                 "x": round(ar.x0, 1), "y": round(ar.y0, 1),
+                # ★帰属のために残すが、★判定からは外さない（下の judge を参照）
                 "mark": bool(MARK_ONLY.match(at)),
             })
     return hits
 
 
-def judge(hits):
-    return [h for h in hits if h["px"] >= MIN_OVERLAP_PX and not h["mark"]]
+def judge(hits, min_px: int = MIN_OVERLAP_PX):
+    """★重なった画素が min_px 以上のものを該当とする。
+
+    ★2026-08-25 に MARK_ONLY の除外をやめた（★穴3）。
+      以前は「○ △ □ ▽ の記号だけのスパン」を★判定から外していた。
+      理由は「選択肢を○で囲むのは正しい描き方だから」だったが、
+      ★その○は文字ではなく★図形で描かれており、この除外に掛かっていなかった。
+      ＝ ★除外していたのは★別物 ―― 点検結果の欄に描く ○ / × の判定記号
+        （実測 2793件）で、★あれが刷り込みに重なるのは正しくない。
+      ★除外をやめても検出は増えない（実測: 判定記号の重なりは0件）。
+      ＝ ★いま0件でも、原理的に見ていない状態を残さない。
+    """
+    return [h for h in hits if h["px"] >= min_px]
 
 
 def self_test() -> int:

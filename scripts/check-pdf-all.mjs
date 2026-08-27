@@ -277,6 +277,17 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-circle-coverage.py", stage: "生成PDF", needsPdfs: true,
+        why: "★○を『描かれた結果』から全部拾い、静的検査が届いていない範囲を件数で固定する。"
+            + "★同じ穴が5回開いた（罫線／アプリの図形／記号の除外／定数を通さない○／"
+            + "読み落とした呼び出し）。★列挙をやめられるのは描画の結果を見る側だけで、"
+            + "静的側は値を実行時に計算するため原理的に届かない。"
+            + "★その差を数として見張り、増えたら落とす",
+        runs: [
+            { cmd: [PY, "scripts/check-circle-coverage.py"], sentinel: "CIRCLE_COVERAGE_OK" },
+        ],
+    },
+    {
         file: "check-choice-clearance.py",
         // ★排他。自己診断がソース（ルート/生成物）を一時的に書き換えるので、
         //   他の検査と同時に走らせると壊れた途中状態を読ませてしまう（並列化で実際に踏んだ）。

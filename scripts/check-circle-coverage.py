@@ -172,6 +172,26 @@ def main() -> int:
               "★減ったなら EXPECTED_UNCOVERED を直すこと。")
         ng = True
 
+    # ★既知の例外の登録が古びていないこと（★全セットまとめてでしか見られない）
+    #   ★check-printed-overlap はセットごとに走るので、あちらでは総数を固定できない。
+    #   ★直ったのに登録が残っていると「例外がある」という誤った記録になる。
+    stale = []
+    for f, pno, kx, ky in sorted(cpo.KNOWN_TIGHT_CIRCLES):
+        # ★登録は○の左上、drawn は○の中心。★半径ぶん（最大22pt）ずれるので広めに見る
+        if not any(form == f and page == pno and abs(cx - kx) <= 30 and abs(cy - ky) <= 30
+                   for (form, page, cx, cy) in drawn):
+            stale.append(f"{f} p{pno} ({kx},{ky})")
+    print(f"\n── ★既知の例外の登録 {len(cpo.KNOWN_TIGHT_CIRCLES)} 件 ──")
+    if stale:
+        print("★登録されているのに、生成PDFに1つも現れない:")
+        for t in stale:
+            print("   ", t)
+        print("   ★直ったなら KNOWN_TIGHT_CIRCLES から消すこと。"
+              "★消さずに置くと「例外がある」という誤った記録が残る。")
+        ng = True
+    else:
+        print("  ★すべて生成PDFに現れている（登録が古びていない）")
+
     if ng:
         return 1
     print("\nCIRCLE_COVERAGE_OK")

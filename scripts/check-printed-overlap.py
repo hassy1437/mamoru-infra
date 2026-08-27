@@ -222,6 +222,45 @@ def overlaps(gen_path, scale: float = SCALE):
     return hits
 
 
+# ★既知の例外（2026-08-25 確定）。★様式・頁・位置で名指しする。
+#
+# ■ ★なぜ例外にするか
+#   ★どれも「囲む語のすぐ外（0.6〜0.9pt）に罫線がある」欄。
+#   ★語を囲みながら罫線に触れないことが★物理的に成立しない
+#   （scripts/solve-choice-circle-geometry.py の探索でも解が出ない）。
+#
+# ■ ★「7件までなら何でもよい」にしない
+#   ★位置まで名指しする。★別の場所が新しく重なったら落ちる。
+#   ★件数も固定する。★増えたら落ちる。★減ったら登録を直すこと。
+#
+# ■ ★なぜ「赤のまま」にしないか
+#   ★常に赤いと、本物の失敗が埋もれる。
+#
+# ■ ★静的側にも同じ登録がある
+#   check-choice-clearance.py の KNOWN_TIGHT_CELLS。★語で名指ししている。
+#   ★あちらは定数を見る側、こちらは描かれた結果を見る側。★両方に要る。
+KNOWN_TIGHT_CIRCLES = {
+    # (様式, 頁, 左上x, 左上y)  ※位置は 0.5pt まで一致を見る
+    ("bekki8",   1, 424.6,  94.4),   # 「移動」   長文セット
+    ("bekki8",   1, 361.6,  94.4),   # 「全域/局所」現実値セット
+    ("bekki8",   2, 284.0, 431.9),   # 「兼用」
+    ("bekki2",   3, 298.1, 299.8),   # 「兼用」
+    ("bekki7",   2, 284.2, 431.9),   # 「兼用」
+    ("soukatu",  1, 115.0, 282.9),   # 「機器点検」★下の空きが 0.62pt（最も狭い）
+}
+KNOWN_TIGHT_REASON = (
+    "★囲む語のすぐ外（0.6〜0.9pt）に罫線があり、語を囲みながら罫線に触れないことが"
+    "物理的に成立しない欄（2026-08-25 に探索で確認）"
+)
+
+
+def is_known(form: str, page: int, x: float, y: float) -> bool:
+    """★名指しの登録に当たるか。位置は 0.5pt まで見る。"""
+    base = form.replace("_test", "").split("__")[0]
+    return any(f == base and p == page and abs(kx - x) <= 0.5 and abs(ky - y) <= 0.5
+               for f, p, kx, ky in KNOWN_TIGHT_CIRCLES)
+
+
 def judge(hits, min_px: int = MIN_OVERLAP_PX):
     """★重なった画素が min_px 以上のものを該当とする。
 
@@ -371,6 +410,7 @@ def main() -> int:
 
     report = "--report" in sys.argv
     total, files_ng, dist, skipped = 0, [], [], []
+    known_total = 0
     for p in argv:
         hits = overlaps(p)
         if hits is None:
@@ -379,7 +419,11 @@ def main() -> int:
         for h in hits:
             h["form"] = Path(p).stem
         dist += hits
-        judged = judge(hits)
+        # ★既知の例外（KNOWN_TIGHT_CIRCLES）は落とさない。★数えて出す。
+        all_judged = judge(hits)
+        judged = [h for h in all_judged
+                  if not is_known(Path(p).stem, h["page"], h["x"], h["y"])]
+        known_total += len(all_judged) - len(judged)
         if judged and not report:
             files_ng.append(Path(p).stem)
             total += len(judged)
@@ -399,6 +443,12 @@ def main() -> int:
     if skipped:
         # ★黙って飛ばさない
         print(f"\n対応テンプレートが見つからず判定できない: {', '.join(skipped)}")
+    if known_total:
+        # ★件数の固定は check-circle-coverage.py が全セットまとめて見る。
+        #   ★このスクリプトはセットごとに走るので、★ここで総数は固定できない。
+        print(f"\n既知の例外 {known_total} 件（★位置まで名指しして登録している）")
+        print(f"  {KNOWN_TIGHT_REASON}")
+
     print(f"\n走査 {len(argv) - len(skipped)} ファイル / 重なり {total} 件 / 該当 {len(files_ng)} 様式")
     if files_ng or skipped:
         if files_ng:

@@ -79,7 +79,11 @@ def call_constants(src):
       定数の一括置換がルートの引数列を破壊した。tsc が検出）。
     """
     out = []
-    for m in re.finditer(r"drawChoiceCircle\(\s*page(\d)", src):
+    # ★page に番号が付かない呼び方もある（drawChoiceCircle(page, ...) ＝ 1頁目）。
+    #   ★2026-08-25 まで番号付きしか読んでおらず、★bekki18 の定数を丸ごと
+    #     飛ばしていた（★5つ目の穴。生成PDFでは 2px 出ていたのに静的では無傷に見えた）。
+    #   ★読み落としは下の call_sites_ok() が件数で捕まえる。
+    for m in re.finditer(r"drawChoiceCircle\(\s*page(\d?)", src):
         i = src.find("[", m.end())
         while i != -1 and not re.match(r"\[\s*\{\s*label:", src[i:]):
             i = src.find("[", i + 1)
@@ -100,8 +104,28 @@ def call_constants(src):
         ):
             marks.append((mm.group(1), *(float(mm.group(k)) for k in (2, 3, 4, 5))))
         if marks:
-            out.append((int(m.group(1)), marks))
+            out.append((int(m.group(1)) if m.group(1) else 1, marks))
     return out
+
+
+def call_sites_ok() -> list[str]:
+    """★drawChoiceCircle の呼び出しを1つも読み落としていないこと。
+
+    ★正規表現で拾う形は「書き方が変わると黙って飛ばす」。
+      ★実際に踏んだ: page に番号が付かない呼び方を読めていなかった。
+    ＝ ★「ソース中の呼び出しの数」と「読めた数」を突き合わせる。
+    """
+    bad = []
+    for route in sorted(glob.glob("src/app/api/*-pdf/route.ts")):
+        src = io.open(route, encoding="utf-8").read()
+        calls = len(re.findall(r"drawChoiceCircle\s*\(", src))
+        if calls == 0:
+            continue
+        read = len(call_constants(src))
+        if read != calls:
+            name = os.path.basename(os.path.dirname(route))
+            bad.append(f"{name}: 呼び出し {calls} 件のうち★読めたのは {read} 件")
+    return bad
 
 
 def printed_span(page, word, cy):
@@ -317,6 +341,15 @@ def self_test():
 if __name__ == "__main__":
     if "--self-test" in sys.argv:
         sys.exit(self_test())
+    # ★呼び出しを1つも読み落としていないこと（★正規表現で拾う形の弱点を塞ぐ）
+    missed = call_sites_ok()
+    if missed:
+        print("★drawChoiceCircle の呼び出しを読み落としている:")
+        for m in missed:
+            print("   ", m)
+        print("   ★call_constants の読み方を直すこと。★読めていない定数は検査されない。")
+        sys.exit(1)
+
     problems, total, known = audit()
     if "--margins" in sys.argv:
         print(f"{'様式':<28}{'p':<3}{'語':<8}{'左隣まで':>10}{'右隣まで':>10}")

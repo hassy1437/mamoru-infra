@@ -199,9 +199,15 @@ export async function POST(req: NextRequest) {
             drawInCell(page, pageHeight, body.witness, 425.3, 139.8, 104.3, 24.96, 7.3)
             // 点検種別: テンプレートに「機器・総合」が刷り込まれているので文字を重ねず○で囲む。
             // ○の座標はテンプレートPDFの文字を実測（様式ごとに位置が違う）。
+            // ★2026-08-25: 下の2つはテンプレートの実測から解き直した（8px / 6px → 0px）。
+            //   ★この2つは、静的検査が★読み落としていた定数だった
+            //   （page に番号が付かない呼び方を正規表現が飛ばしていた＝5つ目の穴）。
+            //   ★コメントは配列の中に入れないこと ―― 定数を読む正規表現が
+            //     「[ の直後に { label:」を見るので、★間にコメントがあると読めなくなる
+            //     （★一度それを作り、call_sites_ok() が捕まえた）。
             drawChoiceCircle(page, pageHeight, fonts, body.inspection_type || "機器・総合", [
-                { label: "機器", cx: 136.50, cy: 172.57, rx: 16.24, ry: 7.28 },
-                { label: "総合", cx: 187.37, cy: 172.57, rx: 16.24, ry: 7.28 },
+                { label: "機器", cx: 136.50, cy: 172.57, rx: 17.24, ry: 7.03 },
+                { label: "総合", cx: 187.37, cy: 172.57, rx: 16.74, ry: 7.03 },
             ])
 
             const periodText = (() => {

@@ -71,8 +71,13 @@ const P2_EQ_ROWS = [
     { top: 660.0, bottom: 708.7 },
 ];
 
-const JUDGE_GOOD_CENTER_X = 169.5;
-const JUDGE_BAD_CENTER_X = 194.5;
+// ★2026-08-25: 語の中心に合わせ直した（テンプレートの実測）。
+//   ★以前は「良」で 214px、「不良」で 21px、刷り込みに重なっていた。
+//   ★半径は変えていない ―― ずれていたのは★中心だけだった。
+//   ★「良」は生成PDFのテストデータで描かれず（不良のみ）、★検査に出ていなかった。
+//     ＝ ★描かれた○を全部拾う検査（check-circle-coverage）が要る理由そのもの。
+const JUDGE_GOOD_CENTER_X = 170.04;   // 語「良」164.76〜175.32 の中心
+const JUDGE_BAD_CENTER_X = 196.38;    // 語「不良」185.88〜206.88 の中心
 
 type DrawInCellOptions = {
     align?: "left" | "center";

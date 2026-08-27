@@ -487,8 +487,8 @@ export async function POST(req: NextRequest) {
         // 点検種別: テンプレートに「機器・総合」が刷り込まれているので文字を重ねず○で囲む。
         // ○の座標はテンプレートPDFの文字を実測（様式ごとに位置が違う）。
         drawChoiceCircle(page1, p1Height, fonts, body.inspection_type || "機器・総合", [
-            { label: "機器", cx: 131.10, cy: 167.05, rx: 17.56, ry: 7.28 },
-            { label: "総合", cx: 189.77, cy: 167.05, rx: 17.56, ry: 7.28 },
+            { label: "機器", cx: 131.1, cy: 167.05, rx: 17.56, ry: 8.03 },
+            { label: "総合", cx: 189.77, cy: 167.05, rx: 17.56, ry: 7.78 },
         ])
         const start = formatDateText(body.period_start)
         const end = formatDateText(body.period_end)
@@ -536,7 +536,7 @@ export async function POST(req: NextRequest) {
 
         // PAGE2 row 26「起動装置 / 自動式 / 火災感知装置（専用・兼用）」: 公式PDF刷り込みの選択を丸囲み
         drawChoiceCircle(page2, p2Height, fonts, body.page2_rows?.[26]?.content ?? "", [
-            { label: "専用", cx: 258.0, cy: 438.9, rx: 14, ry: 7 },
+            { label: "専用", cx: 258, cy: 438.95, rx: 14.96, ry: 5.48 },
             { label: "兼用", cx: 297.95, cy: 438.9, rx: 14, ry: 7 },
         ])
 

@@ -470,9 +470,9 @@ export async function POST(req: NextRequest) {
         //   正典でも完全な刷り込みで記入欄が無く、bekki7/8 では実際に重なっていた。
         //   選択肢は右側にあるので、該当する語を○で囲む（座標はテンプレート実測）。
         drawChoiceCircle(page1, p1Height, fonts, body.equipment_system, [
-            { label: "全域", cx: 443.4, cy: 105.85, rx: 13.06, ry: 7.28 },
+            { label: "全域", cx: 443.4, cy: 105.85, rx: 13.06, ry: 7.53 },
             { label: "局所", cx: 474.9, cy: 105.85, rx: 13.0, ry: 7.28 },
-            { label: "移動", cx: 506.4, cy: 105.85, rx: 13.06, ry: 7.28 },
+            { label: "移動", cx: 506.4, cy: 105.85, rx: 12.31, ry: 7.03 },
         ])
         // ★セル境界の実測値（2026-07-24）: 63.6 | 106.0 …ラベル | 376.2 …名称/所在の値
         //   | 377.6 | 413.4 …ラベル | 528.7 …防火管理者/立会者
@@ -524,7 +524,7 @@ export async function POST(req: NextRequest) {
 
         // PAGE2 row 26「起動装置 / 自動式 / 火災感知装置（専用・兼用）」: 公式PDF刷り込みの選択を丸囲み
         drawChoiceCircle(page2, p2Height, fonts, body.page2_rows?.[26]?.content ?? "", [
-            { label: "専用", cx: 258.25, cy: 438.9, rx: 14, ry: 7 },
+            { label: "専用", cx: 258.25, cy: 438.95, rx: 14.72, ry: 5.48 },
             { label: "兼用", cx: 298.2, cy: 438.9, rx: 14, ry: 7 },
         ])
 

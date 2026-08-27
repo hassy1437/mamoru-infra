@@ -509,7 +509,7 @@ export async function POST(req: NextRequest) {
         // P2 row 7: 機能（専用/兼用）の選択を〇で表示
         drawChoiceCircle(page2, p2Height, fonts, p2Rows[7]?.content ?? "", [
             { label: "専用", cx: 266,   cy: 209, rx: 14, ry: 7 },
-            { label: "兼用", cx: 318.6, cy: 209, rx: 14, ry: 7 },
+            { label: "兼用", cx: 318.6, cy: 209.29, rx: 14.07, ry: 7.53 },
         ])
 
         const p3Rows = body.page3_rows ?? []
@@ -521,7 +521,7 @@ export async function POST(req: NextRequest) {
 
         // P3A row 13: 表示灯（専用/兼用）の選択を〇で表示
         drawChoiceCircle(page3, p3Height, fonts, p3Rows[13]?.content ?? "", [
-            { label: "専用", cx: 270,   cy: 306.75, rx: 14, ry: 7 },
+            { label: "専用", cx: 270, cy: 306.75, rx: 16.06, ry: 5.78 },
             { label: "兼用", cx: 312.1, cy: 306.75, rx: 14, ry: 7 },
         ])
 

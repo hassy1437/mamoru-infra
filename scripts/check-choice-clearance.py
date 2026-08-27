@@ -34,6 +34,38 @@ sys.stdout.reconfigure(encoding="utf-8")
 # 刷り込み語を探す縦の許容幅（cy はグリフの上下中央付近を指す）
 BAND = 9.0
 
+# ★既知の例外（2026-08-25 確定）。★名指しで登録する。
+#
+# ■ ★なぜ例外にするか
+#   この6つの欄は★罫線が語から 0.8pt 以内にある。
+#   ＝ ★語を囲みながら罫線に触れないことが★物理的に成立しない。
+#   ★探索でも「重なり0になる組み合わせが見つからない」と出た
+#   （scripts/solve-choice-circle-geometry.py）。
+#
+# ■ ★「6件までなら何でもよい」にしない
+#   ★様式・頁・語で名指しする。★別の場所が新しく重なったら落ちる。
+#   ★件数も固定する。★増えたら落ちる。
+#
+# ■ ★なぜ「赤のまま」にしないか
+#   ★常に赤いと、本物の失敗が埋もれる。
+#   ★今日「未適用なら落とさない」「MARK_ONLY を除外しない」でも同じ判断をした。
+#
+# ■ ★これを消してよいとき
+#   ★様式のテンプレートが変わって、罫線と語の間隔が広がったとき。
+#   ★そのときは solve-choice-circle-geometry.py が解を出せるようになる。
+KNOWN_TIGHT_CELLS = {
+    ("halogen-bekki7", 2, "兼用"),
+    ("powder-bekki8", 1, "全域"),
+    ("powder-bekki8", 1, "局所"),
+    ("powder-bekki8", 1, "移動"),
+    ("powder-bekki8", 2, "兼用"),
+    ("shokasen-bekki2", 3, "兼用"),
+}
+KNOWN_TIGHT_REASON = (
+    "★罫線が語から 0.8pt 以内にあり、語を囲みながら罫線に触れないことが"
+    "物理的に成立しない欄（2026-08-25 に探索で確認）"
+)
+
 # ★重なりの下限。check-printed-overlap と同じ考え方（ノイズ床が無いので 1px）。
 #   ★ここを緩めると「かすっている」を見逃す。緩めるなら理由を書くこと。
 INK_LIMIT = 1
@@ -134,8 +166,8 @@ def circle_overlap_px(tpl_page, cx, cy, rx, ry, border=0.7):
 
 
 def audit():
-    """(様式, ページ, 語, 問題) のリストと、検査した定数の数を返す"""
-    problems, total = [], 0
+    """(問題, 検査した定数の数, 既知の例外) を返す"""
+    problems, total, known = [], 0, []
     for route in sorted(glob.glob("src/app/api/*-pdf/route.ts")):
         src = io.open(route, encoding="utf-8").read()
         if "drawChoiceCircle(" not in src:
@@ -172,9 +204,12 @@ def audit():
                 #     ★意味が違う（触れていなくても近すぎれば紛れる）。
                 px = circle_overlap_px(page, cx, cy, rx, ry)
                 if px >= INK_LIMIT:
-                    problems.append(
-                        f"{name} p{pno}「{label}」: ★○が刷り込みに重なる（{px}px）。"
-                        f"縦（cy={cy} ry={ry}）か罫線を見直すこと")
+                    if (name, pno, label) in KNOWN_TIGHT_CELLS:
+                        known.append(f"{name} p{pno}「{label}」({px}px)")
+                    else:
+                        problems.append(
+                            f"{name} p{pno}「{label}」: ★○が刷り込みに重なる（{px}px）。"
+                            f"縦（cy={cy} ry={ry}）か罫線を見直すこと")
                 k = order.index(label)
                 if k > 0:
                     gap = ex0 - spans[order[k - 1]][1]
@@ -187,7 +222,7 @@ def audit():
                         problems.append(
                             f"{name} p{pno}「{label}」: 右隣「{order[k+1]}」に接触 ({gap:+.2f}pt)")
         doc.close()
-    return problems, total
+    return problems, total, known
 
 
 def margins():
@@ -228,7 +263,7 @@ def self_test():
       ★これなら、直している途中でも自己診断が回る。
     ★直し終えて0件になったら、★陰性対照（現状0件）も足し直してよい。
     """
-    before, total = audit()
+    before, total, _known = audit()
     print(f"  現状: 定数 {total} 個中 {len(before)} 件が NG（★直している途中は 0 でなくてよい）")
     # 陽性対照: どれか1つの rx を太らせたら接触を検出するか
     victim = "src/app/api/generate-foam-bekki5-pdf/route.ts"
@@ -240,7 +275,7 @@ def self_test():
     try:
         io.open(victim, "w", encoding="utf-8", newline="").write(
             orig[:m.start(2)] + str(float(m.group(2)) + 40.0) + orig[m.end(2):])
-        after, _ = audit()
+        after, _t, _k = audit()
         # ★横（接触・包含）で増えること
         if len(after) <= len(before):
             print(f"自己診断: rx を +40pt 太らせても NG が増えない（{len(before)} → {len(after)}）")
@@ -282,7 +317,7 @@ def self_test():
 if __name__ == "__main__":
     if "--self-test" in sys.argv:
         sys.exit(self_test())
-    problems, total = audit()
+    problems, total, known = audit()
     if "--margins" in sys.argv:
         print(f"{'様式':<28}{'p':<3}{'語':<8}{'左隣まで':>10}{'右隣まで':>10}")
         for name, pno, label, gl, gr in margins():
@@ -290,6 +325,24 @@ if __name__ == "__main__":
             print(f"{name:<28}{pno:<3}{label:<8}{f(gl):>10}{f(gr):>10}")
         print()
     print(f"drawChoiceCircle の定数 {total} 個を検査")
+
+    # ★既知の例外は、件数と顔ぶれの両方を固定する。
+    #   ★増えたら落ちる。★名指しの登録に無いものが来ても落ちる（上の分岐）。
+    #   ★減ったときも落とす ―― 直ったなら★登録から消すのが正しい。
+    #     消さずに置くと「例外がある」という誤った記録が残る。
+    if len(known) != len(KNOWN_TIGHT_CELLS):
+        print(f"★既知の例外の件数が合わない（登録 {len(KNOWN_TIGHT_CELLS)} / 実際 {len(known)}）")
+        for k in known:
+            print("   ", k)
+        print("   ", KNOWN_TIGHT_REASON)
+        print("   ★増えたなら、その欄を直すこと。★減ったなら KNOWN_TIGHT_CELLS から消すこと。")
+        sys.exit(1)
+    if known:
+        print(f"  既知の例外 {len(known)} 件（★件数と顔ぶれを固定している）:")
+        for k in known:
+            print("     ", k)
+        print("   ", KNOWN_TIGHT_REASON)
+
     if problems:
         print("★NG:")
         for p in problems:

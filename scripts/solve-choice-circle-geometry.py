@@ -209,12 +209,23 @@ def run():
 
 
 def apply_all(rows) -> int:
+    """★定数ごとに、その1つだけを書き換える。★一括置換はしない。
+
+    ★数字は「文字列」ではなく「値」で突き合わせる。
+      ★ソースは cx: 258.0 / rx: 14 のように書き方が揃っていない。
+      ★f"{258.0:g}" は "258" になるので、文字列で作った正規表現は当たらない
+      （実際に踏んだ: 40件のうち16件が「0 件に当たる」で書けなかった）。
+    """
+    OBJ = re.compile(
+        r'\{\s*label:\s*"([^"]+)"\s*,\s*cx:\s*(-?[\d.]+)\s*,\s*cy:\s*(-?[\d.]+)'
+        r'\s*,\s*rx:\s*(-?[\d.]+)\s*,\s*ry:\s*(-?[\d.]+)\s*\}')
     changed = 0
     by_route = {}
     for r in rows:
         by_route.setdefault(r[0], []).append(r)
     for route, items in by_route.items():
         src = io.open(route, encoding="utf-8").read()
+        want = {}
         for _, name, pno, label, _b, cx, cy, rx, ry, sol, _w, _n in items:
             if sol is None:
                 continue
@@ -222,19 +233,24 @@ def apply_all(rows) -> int:
             if (abs(ncx - cx) < 0.005 and abs(ncy - cy) < 0.005
                     and abs(nrx - rx) < 0.005 and abs(nry - ry) < 0.005):
                 continue
-            pat = (r'\{\s*label:\s*"' + re.escape(label) + r'"\s*,\s*cx:\s*'
-                   + re.escape(f"{cx:g}") + r'\s*,\s*cy:\s*' + re.escape(f"{cy:g}")
-                   + r'\s*,\s*rx:\s*' + re.escape(f"{rx:g}") + r'\s*,\s*ry:\s*'
-                   + re.escape(f"{ry:g}") + r'\s*\}')
-            hits = list(re.finditer(pat, src))
-            if len(hits) != 1:
-                print(f"★書き換えを見送った（{len(hits)} 件に当たる）: {name} p{pno}「{label}」")
-                continue
-            m = hits[0]
-            src = (src[:m.start()]
-                   + f'{{ label: "{label}", cx: {ncx:g}, cy: {ncy:g}, rx: {nrx:g}, ry: {nry:g} }}'
-                   + src[m.end():])
+            want.setdefault((label, round(cx, 2), round(cy, 2), round(rx, 2), round(ry, 2)),
+                            []).append(sol)
+
+        def sub(m):
+            nonlocal changed
+            key = (m.group(1), round(float(m.group(2)), 2), round(float(m.group(3)), 2),
+                   round(float(m.group(4)), 2), round(float(m.group(5)), 2))
+            if key not in want or not want[key]:
+                return m.group(0)
+            ncx, ncy, nrx, nry = want[key].pop(0)
             changed += 1
+            return (f'{{ label: "{m.group(1)}", cx: {ncx:g}, cy: {ncy:g}, '
+                    f'rx: {nrx:g}, ry: {nry:g} }}')
+
+        src = OBJ.sub(sub, src)
+        for key, left in want.items():
+            if left:
+                print(f"★書き換えられなかった: {os.path.basename(os.path.dirname(route))} {key}")
         io.open(route, "w", encoding="utf-8", newline="").write(src)
     return changed
 

@@ -266,10 +266,10 @@ export async function POST(req: NextRequest) {
         // 鳴動方式は「一斉・区分・相互・再鳴動」がテンプレートに刷り込まれた選択肢欄。
         // 文字を重ねず、該当する語を○で囲む（座標はテンプレートPDFの文字を実測）。
         drawChoiceCircle(page1, p1Height, fonts, body.page1_rows?.[23]?.content ?? "", [
-            { label: "一斉", cx: 237.48, cy: 676.05, rx: 11.98, ry: 7.00 },
-            { label: "区分", cx: 261.05, cy: 676.05, rx: 11.92, ry: 7.00 },
-            { label: "相互", cx: 284.69, cy: 676.05, rx: 11.92, ry: 7.00 },
-            { label: "再鳴動", cx: 313.01, cy: 676.05, rx: 16.72, ry: 7.00 },
+            { label: "一斉", cx: 237.48, cy: 676.05, rx: 11.98, ry: 6.25 },
+            { label: "区分", cx: 261.05, cy: 676.05, rx: 11.67, ry: 6.75 },
+            { label: "相互", cx: 284.69, cy: 676.05, rx: 11.67, ry: 6.75 },
+            { label: "再鳴動", cx: 313.01, cy: 676.05, rx: 17.72, ry: 6.75 },
         ])
 
         drawResultRows(page2, p2Height, body.page2_rows ?? [], P2_ROW_BOUNDS, {
@@ -291,7 +291,7 @@ export async function POST(req: NextRequest) {
             { label: "一斉", cx: 236.10, cy: 601.39, rx: 11.44, ry: 6.87 },
             { label: "区分", cx: 258.36, cy: 601.39, rx: 11.50, ry: 6.87 },
             { label: "相互", cx: 280.68, cy: 601.39, rx: 11.50, ry: 6.87 },
-            { label: "再鳴動", cx: 307.44, cy: 601.39, rx: 15.94, ry: 6.87 },
+            { label: "再鳴動", cx: 307.44, cy: 601.39, rx: 15.95, ry: 7.37 },
         ])
 
         drawResultRows(page3, p3Height, body.page3_rows ?? [], P3_ROW_BOUNDS, {

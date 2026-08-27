@@ -539,7 +539,7 @@ export async function POST(req: NextRequest) {
 
         drawChoiceCircle(page2, p2Height, fonts, p2Rows4[7]?.content ?? "", [
             { label: "専用", cx: 266.4, cy: 224.05, rx: 13, ry: 7 },
-            { label: "兼用", cx: 308.5, cy: 224.05, rx: 13, ry: 7 },
+            { label: "兼用", cx: 308.5, cy: 224.05, rx: 14.29, ry: 7.03 },
         ])
 
         // 12行目「総合点検」は全幅の刷り込み見出し行（内容列の左右に縦罫線が無い＝全列が1セル）。

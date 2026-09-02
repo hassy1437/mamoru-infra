@@ -201,7 +201,14 @@ export async function POST(req: NextRequest) {
         // 刷り込み実測: 階 x0=225.36 / 階 332.16 / ｍ² 510.23、ベースライン 381.54
         // 左の限界は刷り込み「上」x1=176.52 /「下」283.32 /「積」413.87
         drawBeforeUnit(toText(body.floor_above), 225.36, 176.52, 381.54)
-        drawBeforeUnit(toText(body.floor_below) ?? "0", 332.16, 283.32, 381.54)
+        // ★地下階数に既定値を当てない（2026-09-03）。
+        //   ★以前は ?? "0" で、未入力のとき紙に「地下 0 階」と出ていた。
+        //   ★これは「地下は無い」という★業者が書いていない主張になる（法定書類）。
+        //   ★地上階数・延べ面積には既定が無く空欄なので、地下だけ既定があるのも不整合だった。
+        //   ★本番の総括表 80 件中 6 件が floor_below 未入力（2026-09-03 実測）。
+        //   ★成約から自動生成した点検物件には地下階の値が入らない（マッチング側に地下階の欄が無い）
+        //     ＝ 自動生成の物件は★必ずここに来る。
+        drawBeforeUnit(toText(body.floor_below), 332.16, 283.32, 381.54)
         drawBeforeUnit(toText(body.total_floor_area), 510.23, 413.87, 381.54)
 
         const equipments = Array.isArray(body.equipment_types) ? body.equipment_types.join("、") : ""

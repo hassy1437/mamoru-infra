@@ -18,6 +18,7 @@ interface Props {
         fire_manager_name?: string | null
         inspector_name?: string | null
         inspection_date?: string | null
+        inspection_type?: string | null
     }
     soukatsuId: string
     itiranId: string

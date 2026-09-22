@@ -12,6 +12,7 @@ interface Props {
         fire_manager_name?: string | null
         inspector_name?: string | null
         inspection_date?: string | null
+        inspection_type?: string | null
     }
     soukatsuId: string
     itiranId: string
@@ -77,7 +78,6 @@ export default function GasLeakFireAlarmBekki11_2Form(props: Props) {
             apiPath="/api/generate-gas-leak-fire-alarm-bekki11-2-pdf"
             dbTable="inspection_gas_leak_fire_alarm_bekki11_2"
             downloadFilenamePrefix="ガス漏れ火災警報設備点検票"
-            defaultInspectionType="機器・総合"
             sections={[
                 { key: "page1_rows", title: "（その1）機器点検", labels: PAGE1_ITEMS },
                 { key: "page2_rows", title: "（その2）機器・総合点検", labels: PAGE2_ITEMS },

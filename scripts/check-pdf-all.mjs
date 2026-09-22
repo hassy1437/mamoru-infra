@@ -377,6 +377,17 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-bekki-inspection-type.mjs", stage: "静的",
+        why: "別記様式の点検種別の既定が総括表の値から来ているか。★別記の既定が「機器・総合」で固定だった間、"
+            + "総括表「機器点検」の提出物の中で別記だけ両方に○が付いた（2026-09-03 実測・総点検 A2）。"
+            + "総括表の値は 22 ページ → 22 フォーム → 既定 と流れるので、1 本でも切れると"
+            + "その様式だけ黙って元に戻る。配線を全本数ぶん見張り、既定を直書きしたら落とす",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-bekki-inspection-type.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-bekki-inspection-type.mjs"], sentinel: "BEKKI_INSPECTION_TYPE_OK" },
+        ],
+    },
+    {
         file: "check-merge-order.mjs", stage: "静的",
         why: "結合PDFの綴じ順が様式番号順か。★指標には出ない種類（罫線も越えず切り詰めも無いので"
             + "全検査が緑のまま「綴じたときに目的の様式を探せない」だけが残る）",

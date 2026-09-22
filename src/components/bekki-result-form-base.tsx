@@ -15,6 +15,7 @@ import { friendlyError } from "@/lib/error-messages"
 import { supabase } from "@/lib/supabase"
 import { loadDraftLocal, saveDraftLocal } from "@/lib/local-draft"
 import { toDateInputValue } from "@/lib/date-utils"
+import { bekkiInspectionTypeDefault } from "@/lib/bekki-inspection-type"
 import CameraInput from "@/components/camera-input"
 import {
     normalizeBekkiInspectorNameForPayload,
@@ -113,7 +114,6 @@ interface Props {
     apiPath: string
     dbTable: string
     downloadFilenamePrefix: string
-    defaultInspectionType?: string
     initial: {
         building_name?: string | null
         building_address?: string | null
@@ -121,6 +121,8 @@ interface Props {
         fire_manager_name?: string | null
         inspector_name?: string | null
         inspection_date?: string | null
+        /** 総括表の点検種別。別記の既定にする（無ければ「機器・総合」）。src/lib/bekki-inspection-type.ts */
+        inspection_type?: string | null
     }
     soukatsuId: string
     itiranId: string
@@ -167,7 +169,6 @@ export default function BekkiResultFormBase({
     apiPath,
     dbTable,
     downloadFilenamePrefix,
-    defaultInspectionType = "機器・総合",
     initial,
     soukatsuId,
     itiranId,
@@ -186,7 +187,7 @@ export default function BekkiResultFormBase({
     const [fireManager, setFireManager] = useState(coerceString(saved.fire_manager, initial.fire_manager_name || initial.notifier_name || ""))
     const [witness, setWitness] = useState(normalizeBekkiWitnessForState(coerceString(saved.witness)))
     const [location, setLocation] = useState(coerceString(saved.location, initial.building_address ?? ""))
-    const [inspectionType, setInspectionType] = useState(coerceString(saved.inspection_type, defaultInspectionType))
+    const [inspectionType, setInspectionType] = useState(coerceString(saved.inspection_type, bekkiInspectionTypeDefault(initial.inspection_type)))
     const [periodStart, setPeriodStart] = useState(coerceString(saved.period_start, initial.inspection_date ?? ""))
     const [periodEnd, setPeriodEnd] = useState(coerceString(saved.period_end, initial.inspection_date ?? ""))
     const [inspectorName, setInspectorName] = useState(normalizeBekkiInspectorNameForState(coerceString(saved.inspector_name, initial.inspector_name ?? "")))
@@ -446,7 +447,7 @@ export default function BekkiResultFormBase({
                 setFireManager(coerceString(p.fire_manager, initial.fire_manager_name || initial.notifier_name || ""))
                 setWitness(normalizeBekkiWitnessForState(coerceString(p.witness)))
                 setLocation(coerceString(p.location, initial.building_address ?? ""))
-                setInspectionType(coerceString(p.inspection_type, defaultInspectionType))
+                setInspectionType(coerceString(p.inspection_type, bekkiInspectionTypeDefault(initial.inspection_type)))
                 setPeriodStart(coerceString(p.period_start, initial.inspection_date ?? ""))
                 setPeriodEnd(coerceString(p.period_end, initial.inspection_date ?? ""))
                 setInspectorName(normalizeBekkiInspectorNameForState(coerceString(p.inspector_name, initial.inspector_name ?? "")))

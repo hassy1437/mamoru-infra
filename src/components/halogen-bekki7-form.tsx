@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { CheckCheck, Eye, FileDown, Loader2, Save } from "lucide-react"
 import { supabase } from "@/lib/supabase"
+import { bekkiInspectionTypeDefault } from "@/lib/bekki-inspection-type"
 import { toDateInputValue } from "@/lib/date-utils"
 import {
     normalizeBekkiInspectorNameForPayload,
@@ -95,6 +96,7 @@ interface Props {
         fire_manager_name?: string | null
         inspector_name?: string | null
         inspection_date?: string | null
+        inspection_type?: string | null
     }
     soukatsuId: string
     itiranId: string
@@ -361,7 +363,7 @@ export default function HalogenBekki7Form({
     const [fireManager, setFireManager] = useState(coerceString(saved.fire_manager, initial.fire_manager_name || initial.notifier_name || ""))
     const [witness, setWitness] = useState(normalizeBekkiWitnessForState(coerceString(saved.witness)))
     const [location, setLocation] = useState(coerceString(saved.location, initial.building_address ?? ""))
-    const [inspectionType, setInspectionType] = useState(coerceString(saved.inspection_type, "機器・総合"))
+    const [inspectionType, setInspectionType] = useState(coerceString(saved.inspection_type, bekkiInspectionTypeDefault(initial.inspection_type)))
     const [periodStart, setPeriodStart] = useState(coerceString(saved.period_start, initial.inspection_date ?? ""))
     const [periodEnd, setPeriodEnd] = useState(coerceString(saved.period_end, initial.inspection_date ?? ""))
     const [inspectorName, setInspectorName] = useState(normalizeBekkiInspectorNameForState(coerceString(saved.inspector_name, initial.inspector_name ?? "")))

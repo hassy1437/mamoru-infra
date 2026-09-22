@@ -15,6 +15,7 @@ import {
 } from "lucide-react"
 import type { Property } from "@/types/database"
 import Breadcrumb from "@/components/breadcrumb"
+import MapLink from "@/components/map-link"
 
 export default async function PropertyDetailPage({
     params,
@@ -64,6 +65,8 @@ export default async function PropertyDetailPage({
                                 <div className="flex items-center gap-1.5 min-w-0">
                                     <MapPin className="w-3.5 h-3.5 shrink-0" />
                                     <span className="truncate">{p.building_address}</span>
+                                    {/* ★Google マップ（2026-09-22）。住所は本人の物件のもの */}
+                                    <MapLink prefecture={null} municipality={null} address={p.building_address} className="shrink-0" />
                                 </div>
                                 <div className="flex items-center gap-1.5 min-w-0">
                                     <User className="w-3.5 h-3.5 shrink-0" />

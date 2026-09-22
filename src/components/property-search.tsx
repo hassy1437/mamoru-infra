@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import Link from "next/link"
 import type { Property } from "@/types/database"
 import PropertyActionButtons from "@/components/property-action-buttons"
+import MapLink from "@/components/map-link"
 
 interface PropertySearchProps {
     items: Property[]
@@ -96,6 +97,12 @@ export default function PropertySearch({ items, mode }: PropertySearchProps) {
                                 )}
                             </div>
                         </div>
+                        {/*
+                          ★Google マップ（2026-09-22・吉田さんの要望）。現場へ向かうときに開く入口なのでここに。
+                            ★カードの本体は Link なので、その外に置く（a の入れ子にしない）。
+                            住所は RLS で本人しか読めない＝画面に住所が出る相手にだけ出ている。
+                        */}
+                        <MapLink prefecture={null} municipality={null} address={property.building_address} className="mt-3" />
                     </div>
                 ))}
             </div>

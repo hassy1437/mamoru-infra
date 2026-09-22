@@ -355,6 +355,17 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-map-link.mjs", stage: "静的",
+        why: "Google マップのリンク（URL に住所が入る）が「住所を見せてよい画面」にだけあるか。"
+            + "使ってよい場所を理由つきの一覧で固定し、一覧に無いファイルで使ったら落とす"
+            + "（将来 別の相手に見せる画面が増えたとき、黙ってリンクが付かないように）。"
+            + "部品の target=_blank・rel=noopener・番地が無ければ描かない、URL の形・キー無しも見る",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-map-link.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-map-link.mjs"], sentinel: "MAP_LINK_OK" },
+        ],
+    },
+    {
         file: "check-merge-order.mjs", stage: "静的",
         why: "結合PDFの綴じ順が様式番号順か。★指標には出ない種類（罫線も越えず切り詰めも無いので"
             + "全検査が緑のまま「綴じたときに目的の様式を探せない」だけが残る）",

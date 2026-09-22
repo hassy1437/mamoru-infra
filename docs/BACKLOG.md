@@ -274,3 +274,33 @@ Next.js（Turbopack）は CSS を変更しても**同じチャンク名で古い
 気づけた（`line-break` が `strict` ではなく `auto` のままだった）。
 ＝ CSS を変えて測るときは `.next` を消してから測ること。
 ★**「数字が変わらない＝効かなかった」と読む前に、配信されている CSS を確認すること。**
+
+---
+
+## 「Unexpected end of JSON input」が dev のログに 1 回（2026-09-23 記録・★未判定）
+
+### 何が出たか
+ローカル dev（`next dev`）で、点検アプリの画面を Playwright で順に開いて閉じたとき、サーバのログに 1 回だけ:
+
+```
+SyntaxError: Unexpected end of JSON input
+    at JSON.parse (<anonymous>)
+    at POST (.next/dev/server/chunks/[root-of-the-server]__d58b9671._.js:2661:32)
+```
+
+### 手がかり（次に出たら route を特定するために）
+- ★チャンク名から route は引ける: `grep -oE "app/api/[a-z0-9-]+/route" ".next/dev/server/chunks/<チャンク名>"`。
+  今回のチャンク `[root-of-the-server]__d58b9671._.js` は **`app/api/generate-soukatu-pdf/route`** だけを持っていた
+  （2661 行目は `const body = await req.json()`＝★`req.json()` の内部の JSON.parse。ルートは JSON.parse を直接は書いていない）。
+- ★起きた状況: 総括表ページ `/inspection/[id]` は開くと `soukatsu-pdf-preview.tsx` が `/api/generate-soukatu-pdf` に POST する。
+  その直後にブラウザを閉じた（Playwright の `browser.close()`）ので、★body を送り切る前に接続が切れ、
+  サーバ側で body が空になった可能性が高い（★推測。再現はしていない）。
+- ★同じ形の route は 25 本すべて（`await req.json()` を try の中で呼び、catch で 500 を返す）。
+  空 body なら 500「PDF generation failed」になる＝★画面には出ないが、ログにはこの形で出る。
+- ★再現の手順（未実施）: `curl -s -X POST -H "content-type: application/json" --data "" http://localhost:3000/api/generate-soukatu-pdf`
+  で同じ SyntaxError がログに出るか。出れば「空 body」で確定。
+- ★実害の判断（未判定）: 業者の操作で起きるのは「プレビュー中にページを離れる」ときだけの見込み。
+  その場合プレビューは表示されないだけで、保存データには触らない。★本番で出ているかは Vercel のログでしか分からない。
+
+### 方針
+★いまは直さない。★次に出たら上の手順で route と body を確かめてから、「空 body は 400 で返す」に直すかを決める。

@@ -24,6 +24,7 @@ import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
 import type { InspectorData, ShoubouLicense, KensaLicense } from "@/types/database"
+import { normalizeInspectorData } from "@/lib/inspector-helpers"
 
 // ============================================================
 // 座標定義 (fromTop = ページ上端からの距離, pdf-lib y = 下端から)
@@ -293,8 +294,9 @@ export async function POST(req: NextRequest) {
         }
 
         // Inspector 1 & 2 を描画
-        drawInspector(body.inspector1 as InspectorData | null, 0)
-        drawInspector(body.inspector2 as InspectorData | null, OFFSET2)
+        // ★null は null のまま（描かない）。値があるときだけ形を整える。
+        drawInspector(body.inspector1 ? normalizeInspectorData(body.inspector1) : null, 0)
+        drawInspector(body.inspector2 ? normalizeInspectorData(body.inspector2) : null, OFFSET2)
 
         // ⑧ 枠に収まらなかった項目があればPDFを返さずに一覧を返す。
         //   黙って "..." で切り詰めると、法定書類から情報が静かに欠落するため。

@@ -13,7 +13,7 @@ import { friendlyError } from "@/lib/error-messages"
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes"
 import type { Inspector, InspectorData } from "@/types/database"
 import { LicenseEditor, type LicenseEditorValue } from "@/components/license-editor"
-import { emptyInspector } from "@/lib/inspector-helpers"
+import { normalizeInspectorData } from "@/lib/inspector-helpers"
 
 interface InspectorMasterFormProps {
     inspector?: Inspector
@@ -26,7 +26,8 @@ export default function InspectorMasterForm({ inspector }: InspectorMasterFormPr
     const [error, setError] = useState<string | null>(null)
 
     const [label, setLabel] = useState(inspector?.label ?? "")
-    const [data, setData] = useState<InspectorData>(inspector?.inspector_data ?? emptyInspector())
+    // ★既存の行が {"name":"…"} だけでも編集画面を出す（免状は空で埋まる）。
+    const [data, setData] = useState<InspectorData>(normalizeInspectorData(inspector?.inspector_data))
 
     // Mark form as dirty on any input change
     useEffect(() => {

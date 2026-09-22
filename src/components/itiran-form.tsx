@@ -15,7 +15,7 @@ import { useUnsavedChanges } from "@/hooks/use-unsaved-changes"
 import { useAuth } from "@/components/auth-provider"
 import type { Inspector, InspectorData } from "@/types/database"
 import { LicenseEditor, type LicenseEditorValue } from "@/components/license-editor"
-import { emptyInspector } from "@/lib/inspector-helpers"
+import { emptyInspector, normalizeInspectorData } from "@/lib/inspector-helpers"
 
 interface Props {
     soukatsuId: string
@@ -27,8 +27,9 @@ interface Props {
 }
 
 // 一覧表示と同じ規則: label → name → 「（無題）」（inspector-list.tsx と一致）
+// ★名前もマスタの生の値から読まない（2026-09-22）。name が文字列でない行だと .trim() で落ちる。
 function masterLabel(m: Inspector): string {
-    return m.label?.trim() || m.inspector_data?.name?.trim() || "（無題）"
+    return m.label?.trim() || normalizeInspectorData(m.inspector_data).name.trim() || "（無題）"
 }
 
 // その Card に「入力がある」か。基本情報・備考・各免状のいずれかが非空なら true。
@@ -58,9 +59,9 @@ export default function ItiranForm({ soukatsuId, masters, initial, itiranId }: P
     const isEditMode = !!initial
 
     // payload 互換のため state は常に [InspectorData, InspectorData] のタプルを維持する。
-    // 作成モードは空・編集モードは既存 inspector を初期値に（欠損フィールドは emptyInspector で補完）。
+    // 作成モードは空・編集モードは既存 inspector を初期値に（欠損フィールドは normalizeInspectorData で補完）。
     const initialInspectors: [InspectorData, InspectorData] = initial
-        ? [{ ...emptyInspector(), ...initial[0] }, { ...emptyInspector(), ...initial[1] }]
+        ? [normalizeInspectorData(initial[0]), normalizeInspectorData(initial[1])]
         : [emptyInspector(), emptyInspector()]
     const [inspectors, setInspectors] = useState<[InspectorData, InspectorData]>(initialInspectors)
     // 点検者2 の表示制御。初期値は inspector2 が非空かどうか（Q11 前方互換。
@@ -81,7 +82,9 @@ export default function ItiranForm({ soukatsuId, masters, initial, itiranId }: P
     useEffect(() => {
         // 作成モードのみ: マスタ最新を点検者1に自動プリフィル。編集モードでは既存を上書きしないため実行しない。
         if (!isEditMode && masters.length > 0) {
-            setInspectors(prev => [structuredClone(masters[0].inspector_data), prev[1]])
+            // ★マスタの形が欠けていても落ちない。normalizeInspectorData は各階層を作り直すので
+            //   structuredClone と同じくマスタと state を共有しない。
+            setInspectors(prev => [normalizeInspectorData(masters[0].inspector_data), prev[1]])
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
@@ -113,7 +116,7 @@ export default function ItiranForm({ soukatsuId, masters, initial, itiranId }: P
         }
         setInspectors(prev => {
             const next: [InspectorData, InspectorData] = [{ ...prev[0] }, { ...prev[1] }]
-            next[index] = structuredClone(master.inspector_data)
+            next[index] = normalizeInspectorData(master.inspector_data)
             return next
         })
         markDirty()

@@ -337,6 +337,24 @@ const CHECKS = [
         runs: [{ cmd: ["node", "scripts/check-choice-mismatch-warning.mjs"], sentinel: "CHOICE_MISMATCH_WARNING_CHECK_OK" }],
     },
     {
+        file: "check-inspector-shape.mjs", stage: "静的",
+        // ★排他。自己診断が itiran-form.tsx を一時的に書き換えるので、
+        //   同時に走る検査に壊れた途中状態を読ませない。
+        exclusive: true,
+        why: "形が欠けた inspector_data（DB 側に CHECK が無く API/SQL からは作れる）で"
+            + "画面が落ちないか。★{\"name\":\"…\"} だけの行で点検者一覧の作成ページが"
+            + "TypeError: reading 'toku' の白画面になった。免状エディタが"
+            + "value.shoubou_licenses[key] を無条件に読むため、キー1つで全体が落ちる。"
+            + "★本題は補完の中身より★読む箇所が全部そこを通っているか ―― 当時は"
+            + "同じ補完を1箇所にだけ書き、他2箇所に書き忘れて起きた。"
+            + "だから inspector_data を読むファイルを全部列挙し、分類されていなければ落とす"
+            + "（新しい読み手が増えたら、分類するまで緑にならない）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-inspector-shape.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-inspector-shape.mjs"], sentinel: "INSPECTOR_SHAPE_OK" },
+        ],
+    },
+    {
         file: "check-merge-order.mjs", stage: "静的",
         why: "結合PDFの綴じ順が様式番号順か。★指標には出ない種類（罫線も越えず切り詰めも無いので"
             + "全検査が緑のまま「綴じたときに目的の様式を探せない」だけが残る）",

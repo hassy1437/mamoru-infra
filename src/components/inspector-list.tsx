@@ -2,6 +2,7 @@
 
 import { User, Phone, Building } from "lucide-react"
 import type { Inspector } from "@/types/database"
+import { normalizeInspectorData } from "@/lib/inspector-helpers"
 import InspectorActionButtons from "@/components/inspector-action-buttons"
 
 interface InspectorListProps {
@@ -12,7 +13,8 @@ export default function InspectorList({ items }: InspectorListProps) {
     return (
         <div className="space-y-4">
             {items.map((inspector) => {
-                const data = inspector.inspector_data ?? {}
+                // ★形が欠けた行でも一覧を出す（補完は normalizeInspectorData 1 本）。
+                const data = normalizeInspectorData(inspector.inspector_data)
                 // 表示名: label → name → 「（無題）」
                 const displayName = inspector.label?.trim() || data.name?.trim() || "（無題）"
                 return (

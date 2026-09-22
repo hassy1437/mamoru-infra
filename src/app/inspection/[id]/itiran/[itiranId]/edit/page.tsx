@@ -3,6 +3,7 @@ import Breadcrumb from "@/components/breadcrumb"
 import { getAuthenticatedClient } from "@/lib/supabase/auth-server"
 import { notFound } from "next/navigation"
 import type { Inspector, InspectorData } from "@/types/database"
+import { normalizeInspectorData } from "@/lib/inspector-helpers"
 
 // 点検者一覧表(itiran)の編集ページ。作成側(/inspection/[id]/itiran)と同じ ItiranForm を
 // initial 付きで使う（＝作成/編集で制約もUIも1箇所に統一）。
@@ -33,9 +34,10 @@ export default async function EditItiranPage({
         .eq("user_id", user.id)
         .order("updated_at", { ascending: false })
 
+    // ★DB から入ってくる境目。ここで形を整えるので、以降は as で嘘をつかない。
     const initial: [InspectorData, InspectorData] = [
-        (itiran.inspector1 ?? {}) as InspectorData,
-        (itiran.inspector2 ?? {}) as InspectorData,
+        normalizeInspectorData(itiran.inspector1),
+        normalizeInspectorData(itiran.inspector2),
     ]
 
     return (

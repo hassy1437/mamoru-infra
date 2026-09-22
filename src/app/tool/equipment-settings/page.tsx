@@ -61,8 +61,8 @@ export default function EquipmentSettingsPage() {
                     <CardHeader>
                         <CardTitle className="text-xl">設備出力設定</CardTitle>
                         <CardDescription>
-                            物件登録・点検時に表示する消防用設備等を選択してください。
-                            未修正のフォームは無効にしておくことを推奨します。
+                            物件登録・点検時に表示する消防用設備等を絞り込めます。
+                            何もしなければ全種が表示されます（この設定はこの端末・このブラウザだけに効きます）。
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
@@ -82,7 +82,7 @@ export default function EquipmentSettingsPage() {
                                 className="gap-1"
                             >
                                 <RotateCcw className="w-3 h-3" />
-                                デフォルトに戻す
+                                絞り込みを解除（全種に戻す）
                             </Button>
                         </div>
 

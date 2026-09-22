@@ -394,9 +394,14 @@ export default function PropertyForm({ property }: PropertyFormProps) {
 
                     {/* カテゴリ別表示 */}
                     {EQUIPMENT_CATEGORIES.map((cat) => {
+                        // ★設定で絞っていても、この物件に既に付いている設備は必ず描く。
+                        //   成約から自動で作られた物件（crosswalk 由来）の設備が、端末の絞り込みに
+                        //   無いせいで見えなくなる／外せなくなるのを防ぐ（2026-09-23・総点検 A1）。
+                        //   保存は selectedEquipment をそのまま書くので「消える」ことは元々無いが、
+                        //   見えないものは業者が確かめられない。
                         const visibleItems = cat.items.filter(
                             (name) =>
-                                enabledTypes.includes(name) &&
+                                (enabledTypes.includes(name) || selectedEquipment.includes(name)) &&
                                 (!equipmentSearch || name.includes(equipmentSearch))
                         )
                         if (visibleItems.length === 0) return null

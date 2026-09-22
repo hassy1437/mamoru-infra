@@ -366,6 +366,17 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-equipment-default.mjs", stage: "静的",
+        why: "物件登録で選べる設備の既定が全種か。★既定が 7 種だった間、端末ごとの設定（localStorage）が"
+            + "無い新しい端末では残り 16 種のチェックボックスが描かれず、業者は「設備が無い」で止まる"
+            + "（2026-09-23・先行利用の前の総点検 A1）。設定画面の絞り込みは残し、"
+            + "絞り込み中でも「この物件に付いている設備」は描くことも見る",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-equipment-default.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-equipment-default.mjs"], sentinel: "EQUIPMENT_DEFAULT_OK" },
+        ],
+    },
+    {
         file: "check-merge-order.mjs", stage: "静的",
         why: "結合PDFの綴じ順が様式番号順か。★指標には出ない種類（罫線も越えず切り詰めも無いので"
             + "全検査が緑のまま「綴じたときに目的の様式を探せない」だけが残る）",

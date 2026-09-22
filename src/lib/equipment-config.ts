@@ -26,15 +26,15 @@ export const ALL_EQUIPMENT_TYPES = [
 
 export type EquipmentType = (typeof ALL_EQUIPMENT_TYPES)[number]
 
-const DEFAULT_ENABLED: readonly string[] = [
-    "消火器",
-    "避難器具",
-    "屋内消火栓設備",
-    "自動火災報知設備",
-    "誘導灯及び誘導標識",
-    "スプリンクラー設備",
-    "連結送水管",
-]
+/**
+ * ★既定は全種（2026-09-23）。
+ *   以前は 7 種だけを既定にしていた。端末ごとの設定（localStorage）が無い状態＝
+ *   新しい端末・別のブラウザでは残り 16 種のチェックボックスが物件登録に描かれず、
+ *   業者は「設備が無い」で止まる（先行利用の前の総点検 A1）。
+ *   /tool/equipment-settings は「絞り込む」ための画面として残す。絞っていない状態では全種が出る。
+ *   ★ここを一部に戻すと scripts/check-equipment-default.mjs が落ちる。
+ */
+const DEFAULT_ENABLED: readonly string[] = ALL_EQUIPMENT_TYPES
 
 const STORAGE_KEY = "enabled_equipment_types"
 

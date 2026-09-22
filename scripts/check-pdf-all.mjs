@@ -388,6 +388,18 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-photo-notice.mjs", stage: "静的",
+        // ★排他。自己診断が src/lib に一時ファイルを置くので、同時に走る検査に読ませない。
+        exclusive: true,
+        why: "「写真は端末内の控えで報告書には付きません」の一言が、実装と食い違わないか（総点検 A3）。"
+            + "写真は IndexedDB にしか入らず PDF にも他端末にも出ない。一言は『実装していないこと』を言っているので、"
+            + "将来 写真を報告書に付ける仕組みを作ると一言のほうが嘘になる。写真を読む口が撮影欄の外に増えたら落とす",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-photo-notice.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-photo-notice.mjs"], sentinel: "PHOTO_NOTICE_OK" },
+        ],
+    },
+    {
         file: "check-merge-order.mjs", stage: "静的",
         why: "結合PDFの綴じ順が様式番号順か。★指標には出ない種類（罫線も越えず切り詰めも無いので"
             + "全検査が緑のまま「綴じたときに目的の様式を探せない」だけが残る）",

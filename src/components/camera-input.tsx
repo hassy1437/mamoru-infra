@@ -77,6 +77,9 @@ export default function CameraInput({ itiranId }: CameraInputProps) {
                 <h3 className="text-sm font-medium text-slate-700 flex items-center gap-1.5">
                     <Camera className="w-4 h-4" />
                     点検写真
+                    {/* ★写真は IndexedDB（この端末）にしか入らない。報告書 PDF にも納品にも他端末にも出ない。
+                        ★文言は scripts/check-photo-notice.mjs が見張る（写真が報告書に付く仕組みを作ったら、そちらが先に落ちる） */}
+                    <span className="text-xs font-normal text-slate-500">— 端末内の控えです。報告書には付きません</span>
                 </h3>
                 <div className="flex gap-2">
                     <Button

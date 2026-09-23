@@ -19,8 +19,10 @@ export default function PropertyActionButtons({
     const [deleting, setDeleting] = useState(false)
 
     const handleDelete = async () => {
+        // ★消すと総括表の property_id が NULL になり（ON DELETE SET NULL）、別記の入力ページは 404、
+        //   一括 PDF からも別記が落ちる（総括表は残る）。★確認文で先に伝える（2026-09-23・総点検 B4）。
         const confirmed = window.confirm(
-            `「${propertyName || "この物件"}」を削除しますか？\nこの操作は取り消せません。`
+            `「${propertyName || "この物件"}」を削除しますか？\nこの物件の報告書（別記）も表示できなくなります。\nこの操作は取り消せません。`
         )
 
         if (!confirmed) return

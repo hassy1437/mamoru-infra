@@ -17,7 +17,11 @@
  *   ★納品はこの分類で挙動を変える（fit のときは納品させない。deliver-report-button 参照）。
  */
 
-export type PdfFailureKind = "fit" | "server" | "network"
+/**
+ * auth … ★ログインが切れている（401・2026-09-23 に生成の口を認証つきにした）。業者がログインし直せば直る。
+ *   ★「通信状況をご確認ください」に落とすと、原因と違う行動をさせる。
+ */
+export type PdfFailureKind = "fit" | "server" | "network" | "auth"
 
 export type PdfFitItem = {
     field: string
@@ -71,6 +75,16 @@ export const describePdfFailure = async (response: Response): Promise<PdfFailure
             message:
                 "入力が枠に収まらないためPDFを作成できませんでした。\n" +
                 "物件名・会社名・住所などの長い項目を短くしてお試しください。",
+            items: [],
+            status,
+        }
+    }
+    if (status === 401) {
+        return {
+            kind: "auth",
+            message:
+                "ログインの有効期限が切れたため、PDFを作成できませんでした。\n" +
+                "ログインし直してから、もう一度お試しください。",
             items: [],
             status,
         }

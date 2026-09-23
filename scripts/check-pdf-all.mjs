@@ -377,6 +377,17 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-pdf-api-auth.mjs", stage: "静的",
+        why: "PDF 生成の口（/api/generate-*）がログインしている人だけに開いているか（2026-09-23・C3）。"
+            + "★未ログインの空 POST に 200・3.4MB の PDF が返っていた。middleware で止め、この口だけ fail-closed。"
+            + "新しい口が接頭辞から外れる・matcher が拾わない・401 の分岐が消える・例外で通す、のどれでも落とす。"
+            + "★ルートの中で止めると検査（run-route-pdf が POST を直に呼ぶ）が全部落ちるので、中で止めていないことも見る",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-pdf-api-auth.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-pdf-api-auth.mjs"], sentinel: "PDF_API_AUTH_OK" },
+        ],
+    },
+    {
         file: "check-bekki-inspection-type.mjs", stage: "静的",
         why: "別記様式の点検種別の既定が総括表の値から来ているか。★別記の既定が「機器・総合」で固定だった間、"
             + "総括表「機器点検」の提出物の中で別記だけ両方に○が付いた（2026-09-03 実測・総点検 A2）。"

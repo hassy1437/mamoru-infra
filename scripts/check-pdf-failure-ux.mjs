@@ -72,6 +72,13 @@ check(srv.kind === "server", `5xx の分類が ${srv.kind}`)
 check(srv.message.includes("入力の修正では直りません"), "5xx で「直せない」ことが伝わらない")
 check(!srv.message.includes("短くして"), "5xx なのに入力を短くしろと言っている（分類の混線）")
 
+// 2b. 401（ログインが切れた・2026-09-23 に生成の口を認証つきにした）
+const auth = await describePdfFailure(resp(401, JSON.stringify({ error: "unauthorized" })))
+check(auth.kind === "auth", `401 の分類が ${auth.kind}`)
+check(auth.message.includes("ログインし直して"), "401 でログインし直すことが伝わらない")
+check(!auth.message.includes("通信状況"), "401 なのに通信状況を確かめろと言っている（原因と違う行動をさせる）")
+check(!isFitFailure(new PdfRequestError(auth)), "isFitFailure が auth を fit と誤判定")
+
 // 3. 本文が壊れた422（分類は保つ）
 const broken = await describePdfFailure(resp(422, "not-json"))
 check(broken.kind === "fit", `壊れた422 の分類が ${broken.kind}`)

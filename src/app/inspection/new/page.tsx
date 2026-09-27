@@ -4,6 +4,7 @@ import SoukatsuForm from "@/components/soukatsu-form"
 import StepIndicator from "@/components/step-indicator"
 import { INSPECTION_STEPS } from "@/lib/inspection-steps"
 import Breadcrumb from "@/components/breadcrumb"
+import WorkMinuteMarker from "@/components/work-minute-marker"
 import type { Property } from "@/types/database"
 
 export default async function NewInspectionPage({
@@ -73,6 +74,8 @@ export default async function NewInspectionPage({
                     sourceItiranId={sourceItiran ?? null}
                 />
             </div>
+            {/* ★作業中の 1 分ごとの印（総括表がまだ無いので物件で残す・画面には何も出ない） */}
+            <WorkMinuteMarker propertyId={property.id as string} />
         </main>
     )
 }

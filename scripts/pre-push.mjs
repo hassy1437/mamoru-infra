@@ -29,6 +29,8 @@ const CHECKS = [
       why: "サーバが返した警告を UI が捨てる。3回起きている" },
     { name: "様式の綴じ順", cmd: ["node", "scripts/check-merge-order.mjs"], sentinel: "MERGE_ORDER_OK",
       why: "一括PDFの並び順" },
+    { name: "作業中の印（入力を止めない）", cmd: ["node", "--experimental-strip-types", "scripts/check-work-minute.mjs"], sentinel: "WORK_MINUTE_OK",
+      why: "印の口が落ちても・遅くても、入力・保存・確定・PDF を止めてはいけない" },
     { name: "数値欄の宣言", cmd: [PY, "scripts/check-numeric-rows-declaration.py"], sentinel: "NUMERIC_ROWS_DECLARATION_OK",
       why: "宣言が嘘だと現実値セットが偽の値で埋まり、検査が空振りしたまま緑になる" },
     { name: "○の接触", cmd: [PY, "scripts/check-choice-clearance.py"], sentinel: "CHOICE_CLEARANCE_OK",

@@ -442,6 +442,15 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-work-minute.mjs", stage: "静的",
+        why: "作業中の 1 分ごとの印が、入力・保存・確定・PDF を止めないか（2026-09-27）。"
+            + "★送信を待たない・失敗を黙って捨てる・部品が落ちても画面へ伝えない・送るのは物件と総括表だけ。"
+            + "★PDF とは無関係だが、scripts/check-* はここに載せる決まり",
+        runs: [
+            { cmd: ["node", "--experimental-strip-types", "scripts/check-work-minute.mjs"], sentinel: "WORK_MINUTE_OK" },
+        ],
+    },
+    {
         file: "check-pdf-failure-ux.mjs", stage: "挙動",
         why: "422/5xx/壊れた本文/通信断を区別してUIに出すか。納品はfitで止まるか",
         runs: [{ cmd: ["node", "scripts/check-pdf-failure-ux.mjs"], sentinel: "PDF_FAILURE_UX_CHECK_OK" }],

@@ -21,6 +21,10 @@
   2. ラベルが「見出し行」と宣言している行は blankPrintedRows に入っている
      （入っていない＝入力欄が生きていて、見出しの刷り込みに重ねて印字される）
   3. blankPrintedRows の index はラベル配列の範囲内
+  4. ★逆向き: blankPrintedRows に入っている行は、ラベルが「見出し行」と宣言している
+     （宣言していない＝入力画面では普通の行に見え、入れた値が黙って捨てられる）
+     2026-10-06（#20）: 様式17 その1 の 0 行目「水源」と様式4 その3 の 12 行目「総合点検 ポンプ方式
+     起動性能等」がこれ。2 は片方向しか見ておらず、どちらも緑のまま通っていた。
 
 ■ 測定器の検算（★これが無いと「壊れた物差しで測って緑」になる）
   既知の正解 2 件を毎回測り、合わないなら不変条件の判定に入らず落ちる。
@@ -330,6 +334,13 @@ def check(judged) -> list[str]:
                     f"[範囲] {p['tag']}: blankPrintedRows の {i} が "
                     f"ラベル {len(labels)} 行の範囲外  {p['route']}"
                 )
+        # 不変条件4（逆向き）: blankPrintedRows の行 → ラベルが「見出し行」と宣言している
+        for i in sorted(p["blanks"]):
+            if i < len(labels) and HEADER_MARK not in labels[i]:
+                ng.append(
+                    f"[見出し(逆)] {p['tag']}[{i}] 「{labels[i]}」は blankPrintedRows で描かないのに "
+                    f"見出し行と宣言していない → 画面では普通の行に見え、入れた値が黙って捨てられる  {p['route']}"
+                )
     return ng
 
 
@@ -365,6 +376,11 @@ def self_test() -> int:
         labs[idx] = labs[idx] + f"（{HEADER_MARK}）"
     drop = dict(victim, labels=labs, blanks=set())
     cases.append(("見出し行を blankPrintedRows から外す", drop))
+    # (d) blankPrintedRows に入れたまま、ラベルから見出し行の宣言を消す → 落ちる（★逆向き・#20 の形）
+    if victim["blanks"]:
+        labs_d = list(victim["labels"])
+        labs_d[idx] = labs_d[idx].replace(HEADER_MARK, "").replace("（・通常入力不要）", "") or "★自己診断で消した宣言"
+        cases.append(("blankPrintedRows の行から見出し行の宣言を消す", dict(victim, labels=labs_d)))
 
     for name, mutated in cases:
         if not check([mutated]):

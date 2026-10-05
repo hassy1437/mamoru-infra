@@ -262,7 +262,7 @@ export const BEKKI_ROW_LABELS: Record<string, Record<string, readonly string[]>>
     },
     "別記様式第17": {
         page1_rows: [
-            "水源",
+            "機器点検（見出し行・通常入力不要）",
             "貯水槽",
             "水量",
             "水状",
@@ -1528,7 +1528,7 @@ export const BEKKI_ROW_LABELS: Record<string, Record<string, readonly string[]>>
             "排水設備 区画境界堤",
             "排水設備 消火ピット",
             "耐震措置",
-            "総合点検 ポンプ方式 起動性能等",
+            "総合点検（見出し行・通常入力不要）",
             "総合点検 ポンプ方式 加圧送水装置",
             "総合点検 ポンプ方式 表示・警報等",
             "総合点検 ポンプ方式 電動機の運転電流",

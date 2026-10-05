@@ -150,7 +150,9 @@ const PAGE3_ITEMS = [
     "排水設備 区画境界堤",
     "排水設備 消火ピット",
     "耐震措置",
-    "総合点検 ポンプ方式 起動性能等",
+    // ★12 行目は紙では全幅の見出し「総合点検」（ルートは blankPrintedRows で描かない）。
+    //   「起動性能等」は加圧送水装置〜運転状況をまとめる左のくくりで、行ではない（#20・入れても載らない欄だった）
+    "総合点検（見出し行・通常入力不要）",
     "総合点検 ポンプ方式 加圧送水装置",
     "総合点検 ポンプ方式 表示・警報等",
     "総合点検 ポンプ方式 電動機の運転電流",
@@ -238,7 +240,8 @@ export default function WaterSprayBekki4Form({
     const [inspectorCompany, setInspectorCompany] = useState(coerceString(saved.inspector_company))
     const [inspectorAddress, setInspectorAddress] = useState(coerceString(saved.inspector_address))
     const [inspectorTel, setInspectorTel] = useState(coerceString(saved.inspector_tel))
-    const [equipmentName, setEquipmentName] = useState(coerceString(saved.equipment_name))
+    // ★入力欄は出さない（印字先が無い・#20）。保存済みの値は捨てずに運ぶだけ
+    const [equipmentName] = useState(coerceString(saved.equipment_name))
     const [pumpMaker, setPumpMaker] = useState(coerceString(saved.pump_maker))
     const [pumpModel, setPumpModel] = useState(coerceString(saved.pump_model))
     const [motorMaker, setMotorMaker] = useState(coerceString(saved.motor_maker))
@@ -750,11 +753,9 @@ export default function WaterSprayBekki4Form({
                         </div>
                     </div>
 
-                    <div className="grid md:grid-cols-5 gap-4">
-                        <div className="space-y-1">
-                            <Label>設備名</Label>
-                            <Input value={equipmentName} onChange={(e) => setEquipmentName(e.target.value)} />
-                        </div>
+                    {/* ★「設備名」の入力欄は出さない（#20）。紙の「点検設備名」はポンプ・電動機の製造者名／型式の
+                        行見出しで、自由に設備名を書く欄が無い（ルートも描かない＝入れても載らなかった） */}
+                    <div className="grid md:grid-cols-4 gap-4">
                         <div className="space-y-1">
                             <Label>ポンプ 製造者名</Label>
                             <Input value={pumpMaker} onChange={(e) => setPumpMaker(e.target.value)} />

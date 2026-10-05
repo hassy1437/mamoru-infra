@@ -422,6 +422,15 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-merged-report-size.mjs", stage: "生成PDF", needsPdfs: true,
+        why: "結合PDFが納品の上限（Storage 50MB）に収まり、同じフォントの重複をまとめても描画が変わらないか。"
+            + "★画面では何も起きず納品のときだけ落ちる種類（26 様式で 88MB・本番で 17 種の物件が納品できなかった #27）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-merged-report-size.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-merged-report-size.mjs"], sentinel: "MERGED_REPORT_SIZE_OK" },
+        ],
+    },
+    {
         file: "check-row-labels.mjs",
         // ★排他。自己診断がソース（ルート/生成物）を一時的に書き換えるので、
         //   他の検査と同時に走らせると壊れた途中状態を読ませてしまう（並列化で実際に踏んだ）。

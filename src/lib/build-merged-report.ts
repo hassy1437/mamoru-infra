@@ -1,4 +1,4 @@
-import { PDFDocument } from "pdf-lib"
+import { mergePdfBuffers } from "@/lib/merge-pdf-buffers"
 import { PDF_MERGE_CONFIG } from "@/lib/pdf-merge-config"
 import type { ItiranInputStepId } from "@/lib/itiran-input-flow"
 
@@ -208,13 +208,8 @@ export async function buildMergedReport(
         throw new Error(ALL_PDF_FAILED)
     }
 
-    const merged = await PDFDocument.create()
-    for (const buf of successBuffers) {
-        const donor = await PDFDocument.load(buf)
-        const pages = await merged.copyPages(donor, donor.getPageIndices())
-        for (const page of pages) merged.addPage(page)
-    }
-    const mergedBytes = await merged.save()
+    // ★結合は merge-pdf-buffers.ts に寄せた（同じフォントが様式の数だけ入って 50MB を超えていた・#27）
+    const { bytes: mergedBytes } = await mergePdfBuffers(successBuffers)
     const blob = new Blob([new Uint8Array(mergedBytes)], { type: "application/pdf" })
     return { blob, failedLabels, fitFailures, shrinkWarnings, choiceWarnings, belowMinWarnings }
 }

@@ -143,10 +143,21 @@ function findJob(root, name) {
     const stack = [root]
     while (stack.length) {
         const dir = stack.pop()
-        for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+        // ★並行して走る検査が tmp/route-pdf-mods/route-pdf-* を作っては消す。たどっている最中に消えると
+        //   ENOENT で落ちていた（2026-10-06・check-pdf-all で実測）。job.json はそこには無いので入らない。
+        //   ★それでも消えたフォルダは飛ばす（ほかの一時フォルダでも同じことが起こりうる）
+        let entries
+        try {
+            entries = fs.readdirSync(dir, { withFileTypes: true })
+        } catch (e) {
+            if (e.code === "ENOENT") continue
+            throw e
+        }
+        for (const e of entries) {
             const p = path.join(dir, e.name)
-            if (e.isDirectory()) stack.push(p)
-            else if (e.name === `${name}.job.json`) return p
+            if (e.isDirectory()) {
+                if (e.name !== "route-pdf-mods") stack.push(p)
+            } else if (e.name === `${name}.job.json`) return p
         }
     }
     return null

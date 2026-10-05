@@ -21,6 +21,7 @@ drawPeriodDate,
     type CellDrawOptions,
     type DateAnchors,
     formatJudgment,
+    drawChoiceCircle,
     pickFont,
     type ReportFonts,
     cellAt,
@@ -270,7 +271,14 @@ export async function POST(req: NextRequest) {
             drawInCell(page, pageHeight, body.fire_manager, 432.6, 114.72, 97.44, 26.28, 7.4)
             drawInCell(page, pageHeight, body.location, 117.6, 141.0, 271.56, 26.28, 8.0)
             drawInCell(page, pageHeight, body.witness, 432.6, 141.0, 97.44, 26.28, 7.4)
-            // 点検種別はテンプレートに「機器・総合」が印刷済みのため描画不要
+            // 点検種別: 刷り込みの「機器・総合」のどちらかを○で囲む（#19）。以前は「印刷済みのため描画しない」として
+            //   ○を描いておらず、提出書類で点検種別が分からなかった（通し確認で実測）。○の座標は雛形の文字の実測
+            //   （初期値は様式10 と同じ決め方。★この欄は罫線が語に近く、触れずに囲む値が無い＝探索で重なりが最小の値。
+            //   check-choice-clearance.py の KNOWN_TIGHT_CELLS に名指しで登録）。★ヘッダーの位置の補正（headerShiftY など）は通さない。
+            drawChoiceCircle(page, pageHeight, fonts, body.inspection_type || "機器・総合", [
+                { label: "機器", cx: 136.50, cy: 173.99, rx: 18.24, ry: 6.00 },
+                { label: "総合", cx: 187.37, cy: 173.99, rx: 18.24, ry: 6.00 },
+            ])
 
             const periodText = (() => {
                 const start = formatDateText(body.period_start)

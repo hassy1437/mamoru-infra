@@ -431,6 +431,15 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-inspection-type-circle.py", stage: "静的",
+        why: "点検種別に「機器・総合」の選択肢がある様式（テンプレートから導く）で、ルートが点検種別の○を描いているか。"
+            + "★○が無いだけでピクセルは正常なので画像では出ない種類（8 様式が「印刷済みのため描画しない」で○が無かった #19）",
+        runs: [
+            { label: "自己診断", cmd: [PY, "scripts/check-inspection-type-circle.py", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: [PY, "scripts/check-inspection-type-circle.py"], sentinel: "INSPECTION_TYPE_CIRCLE_OK" },
+        ],
+    },
+    {
         file: "check-device-table.mjs", stage: "生成PDF", needsPdfs: true,
         why: "様式11の1・11の2 の測定機器が、紙の表の正しい行・列に載るか（セルは雛形の罫線から測る）。"
             + "★描かれるピクセルは正常なので画像では出ない種類（加煙試験器で測っても加熱試験器の行に載っていた #23）",

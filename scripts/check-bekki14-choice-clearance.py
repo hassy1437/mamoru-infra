@@ -86,8 +86,11 @@ def app_ellipses(pdf_path, page_no):
 def route_constants(src):
     """ルートから drawChoiceCircle の定数を読む（ページ番号 -> 語 -> (cx,cy,rx,ry)）"""
     blocks = re.findall(r"drawChoiceCircle\(page(\d)[^[]*\[(.*?)\]\)", src, re.S)
+    # ★鳴動方式の呼び出しだけを見る。2026-10-06（#19）から点検種別（機器・総合）の○も同じ様式に描くので、
+    #   呼び出しの総数で数えると落ちる。★選択肢の語で見分ける（位置や順番で見分けない）。
+    blocks = [(p, b) for p, b in blocks if any(f'"{w}"' in b for w in WORDS)]
     if len(blocks) != 2:
-        raise SystemExit(f"drawChoiceCircle の呼び出しが {len(blocks)} 箇所（期待2）")
+        raise SystemExit(f"鳴動方式の drawChoiceCircle の呼び出しが {len(blocks)} 箇所（期待2）")
     out = {}
     for pno_s, body in blocks:
         consts = {}
@@ -168,7 +171,10 @@ if __name__ == "__main__":
     ng = 0
     for setname, pdf_path, page_no, word in CASES:
         printed = printed_spans(page_no)
-        ells = app_ellipses(pdf_path, page_no)
+        # ★鳴動方式の行の高さにある楕円だけ（1 ページ目には点検種別の○も描かれる・#19）
+        row_y0 = min(v[2] for v in printed.values())
+        row_y1 = max(v[3] for v in printed.values())
+        ells = [e for e in app_ellipses(pdf_path, page_no) if e[2] < row_y1 and e[3] > row_y0]
         if len(ells) != 1:
             print(f"\n[{setname}] p{page_no+1}: ★楕円が {len(ells)} 個（期待1個）"
                   f" — 値が選択肢と一致せず○が描かれていない可能性")

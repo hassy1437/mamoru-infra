@@ -419,7 +419,14 @@ export async function POST(req: NextRequest) {
         drawInCell(page1, p1Height, body.location, 119, 134, 224, 27, 8.8)
         drawInCell(page1, p1Height, body.witness, 413, 134, 117, 27, 8.6)
 
-        // 点検種別はテンプレートに「機器・総合」が印刷済みのため描画しない
+        // 点検種別: 刷り込みの「機器・総合」のどちらかを○で囲む（#19）。以前は「印刷済みのため描画しない」として
+        //   ○を描いておらず、提出書類で点検種別が分からなかった（通し確認で実測）。○の座標は雛形の文字の実測
+        //   （初期値は様式10 と同じ決め方＝中心は 2 文字の幅と高さの中央・横半径＝幅の半分＋2.5・縦半径＝高さの半分＋2.75。
+        //   刷り込みに触れないよう solve-choice-circle-geometry.py で調整した値）。★ヘッダーの位置の補正（headerShiftY など）は通さない。
+        drawChoiceCircle(page1, p1Height, fonts, body.inspection_type || "機器・総合", [
+            { label: "機器", cx: 132.36, cy: 169.45, rx: 17.27, ry: 7.78 },
+            { label: "総合", cx: 187.74, cy: 169.45, rx: 16.96, ry: 7.78 },
+        ])
         const periodStart = formatDateText(body.period_start)
         const periodEnd = formatDateText(body.period_end)
         if (parseDateParts(body.period_start) || parseDateParts(body.period_end)) {

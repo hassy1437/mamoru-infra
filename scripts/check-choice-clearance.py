@@ -60,6 +60,16 @@ KNOWN_TIGHT_CELLS = {
     ("powder-bekki8", 1, "移動"),
     ("powder-bekki8", 2, "兼用"),
     ("shokasen-bekki2", 3, "兼用"),
+    # ★2026-10-06（#19）: 点検種別の○を描き始めた様式のうち、行の高さが 13.5〜15pt しかない 3 様式。
+    #   罫線と語の間は 11の1 が 0.85pt・15 が 0.73pt・14 が 1.57pt。solve-choice-circle-geometry.py は
+    #   「重なり0が見つからない」。縦の中心も ±1.5pt 動かして探しても最小 2〜51px 残った（その最小の値を採った）。
+    #   ★○を描かない（＝提出書類で点検種別が分からない）より、わずかに触れても○がある方を選んだ。
+    ("jidou-kasai-houchi-bekki11-1", 1, "機器"),
+    ("jidou-kasai-houchi-bekki11-1", 1, "総合"),
+    ("emergency-alarm-bekki14", 1, "機器"),
+    ("emergency-alarm-bekki14", 1, "総合"),
+    ("evacuation-equipment-bekki15", 1, "機器"),
+    ("evacuation-equipment-bekki15", 1, "総合"),
 }
 KNOWN_TIGHT_REASON = (
     "★罫線が語から 0.8pt 以内にあり、語を囲みながら罫線に触れないことが"

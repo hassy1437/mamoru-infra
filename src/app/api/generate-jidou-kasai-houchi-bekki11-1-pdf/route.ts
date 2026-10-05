@@ -387,6 +387,14 @@ export async function POST(req: NextRequest) {
         drawInCell(page1, p1Height, body.fire_manager, 448.67, 114.0, 80.66, 24.0, 7.8)
         drawInCell(page1, p1Height, body.location, 122.76, 138.0, 267.0, 24.0, 7.6)
         drawInCell(page1, p1Height, normalizedWitness, 448.67, 138.0, 80.66, 24.0, 7.8)
+        // 点検種別: 刷り込みの「機器・総合」のどちらかを○で囲む（#19）。以前は「印刷済みのため描画しない」として
+        //   ○を描いておらず、提出書類で点検種別が分からなかった（通し確認で実測）。○の座標は雛形の文字の実測
+        //   （初期値は様式10 と同じ決め方。★この欄は罫線が語に近く、触れずに囲む値が無い＝探索で重なりが最小の値。
+        //   check-choice-clearance.py の KNOWN_TIGHT_CELLS に名指しで登録）。★ヘッダーの位置の補正（headerShiftY など）は通さない。
+        drawChoiceCircle(page1, p1Height, fonts, body.inspection_type || "機器・総合", [
+            { label: "機器", cx: 137.88, cy: 169.74, rx: 19.62, ry: 6.25 },
+            { label: "総合", cx: 196.61, cy: 169.74, rx: 19.56, ry: 6.25 },
+        ])
         const periodText = (() => {
             const start = formatDateText(body.period_start)
             const end = formatDateText(body.period_end)

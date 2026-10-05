@@ -130,8 +130,10 @@ export default function FinalizeSoukatsuButton({
                     aria-modal="true"
                     onClick={() => !busy && setOpen(false)}
                 >
+                    {/* ★高さは画面まで・中身はスクロール（#24）。設備が多いと「確定する」が画面の外に出て、
+                         スクロールもできず押せなかった（2026-10-05・高さ 417px の画面で 23 項目・17 項目とも） */}
                     <div
-                        className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl"
+                        className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <h3 className="text-lg font-bold text-slate-900">点検を確定します</h3>
@@ -194,7 +196,8 @@ export default function FinalizeSoukatsuButton({
                             </p>
                         )}
 
-                        <div className="mt-5 flex justify-end gap-2">
+                        {/* ★ボタンは下端に貼り付けて常に見せる（スクロールしても押せる） */}
+                        <div className="sticky -bottom-6 -mx-6 -mb-6 mt-5 flex justify-end gap-2 border-t border-slate-100 bg-white px-6 py-4">
                             <Button variant="outline" disabled={busy} onClick={() => setOpen(false)}>
                                 キャンセル
                             </Button>
@@ -218,8 +221,10 @@ export default function FinalizeSoukatsuButton({
                     aria-modal="true"
                     onClick={() => !busy && setConfirmingDup(false)}
                 >
+                    {/* ★高さは画面まで・中身はスクロール（#24）。設備が多いと「確定する」が画面の外に出て、
+                         スクロールもできず押せなかった（2026-10-05・高さ 417px の画面で 23 項目・17 項目とも） */}
                     <div
-                        className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl"
+                        className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <h3 className="flex items-center gap-2 text-lg font-bold text-amber-800">
@@ -260,7 +265,8 @@ export default function FinalizeSoukatsuButton({
                             </p>
                         )}
 
-                        <div className="mt-5 flex justify-end gap-2">
+                        {/* ★ボタンは下端に貼り付けて常に見せる（スクロールしても押せる） */}
+                        <div className="sticky -bottom-6 -mx-6 -mb-6 mt-5 flex justify-end gap-2 border-t border-slate-100 bg-white px-6 py-4">
                             <Button
                                 variant="outline"
                                 disabled={busy}

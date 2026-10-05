@@ -380,6 +380,21 @@ export async function POST(req: NextRequest) {
             return normalizeText(item?.result) !== "該当なし";
         });
 
+        // ★18件目以降は（その2）の紙を足して書く（#15・2026-10-06）。
+        //   テンプレートの設備欄は 6+11=17行で、18種以上の物件は総括表が作れず、一括出力も納品も止まっていた。
+        //   足すのはテンプレートの（その2）そのもの（右上の「（その2）」も刷り込みのまま・文言は描き換えない）。
+        //   ★1枚ずつ別に写す（同じ写しを使い回すと、描き込みの受け皿を紙どうしで共有しうる）。
+        const contPages: { page: PDFPage; height: number }[] = page2 ? [{ page: page2, height: height2 }] : [];
+        const overflowCount = results.length - P1_EQ_ROWS.length - P2_EQ_ROWS.length;
+        if (page2 && overflowCount > 0) {
+            for (let n = 0; n < Math.ceil(overflowCount / P2_EQ_ROWS.length); n++) {
+                const template = await PDFDocument.load(existingPdfBytes);
+                const [extra] = await pdfDoc.copyPages(template, [1]);
+                pdfDoc.addPage(extra);
+                contPages.push({ page: extra, height: extra.getSize().height });
+            }
+        }
+
         let rowIndex = 0;
         for (const item of results) {
             let page: PDFPage;
@@ -387,24 +402,25 @@ export async function POST(req: NextRequest) {
             let row: { top: number; bottom: number };
             let col: typeof P1_COL;
 
+            const contIndex = rowIndex - P1_EQ_ROWS.length;
+            const cont = contIndex >= 0 ? contPages[Math.floor(contIndex / P2_EQ_ROWS.length)] : undefined;
             if (rowIndex < P1_EQ_ROWS.length) {
                 page = page1;
                 pageHeight = height;
                 row = P1_EQ_ROWS[rowIndex];
                 col = P1_COL;
-            } else if (page2 && rowIndex - P1_EQ_ROWS.length < P2_EQ_ROWS.length) {
-                page = page2;
-                pageHeight = height2;
-                row = P2_EQ_ROWS[rowIndex - P1_EQ_ROWS.length];
+            } else if (cont) {
+                page = cont.page;
+                pageHeight = cont.height;
+                row = P2_EQ_ROWS[contIndex % P2_EQ_ROWS.length];
                 col = P2_COL;
             } else {
-                // ★黙って捨てない。この様式の設備欄はテンプレート実測で 6+11=17行しかなく、
-                //   超えた分はPDFに出ない＝法定書類からのデータ欠落になる。
-                //   落ちるのは equipment_results の順序で決まるので、一般的な設備でも消えうる
-                //   （実測で「自動火災報知設備」が落ちた）。切り詰めと同じくエラーで止める。
+                // ★黙って捨てない。（その2）の紙を足すので、ここに来るのはテンプレートに
+                //   （その2）が無いときだけ（＝6行を超えた分を書く場所が無い）。
+                //   超えた分はPDFに出ない＝法定書類からのデータ欠落になるので、切り詰めと同じくエラーで止める。
                 fonts.fit?.reportOverflowRow(
                     normalizeText(item?.name) || `設備 ${rowIndex + 1} 件目`,
-                    P1_EQ_ROWS.length + P2_EQ_ROWS.length,
+                    P1_EQ_ROWS.length + contPages.length * P2_EQ_ROWS.length,
                 );
                 rowIndex += 1;
                 continue;

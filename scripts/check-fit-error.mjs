@@ -13,9 +13,11 @@
 //   3. その中身が業者の役に立つ形をしている
 //      （様式名 / 画面と同じ項目表記 / 入力字数・収まる字数・超過字数 / 対処）
 //   4. 超過しているのに漏れなく報告される（項目を増やすと件数も増える）
-//   6. ★様式の行数を超えた分を黙って捨てない（総括表の設備欄は17行）
+//   6. ★様式の行数を超えた分を黙って捨てない（総括表の設備欄は 6+11=17行）
 //      落ちるのは equipment_results の順序で決まるので、一般的な設備でも消えうる。
-//      縮小＝警告 / データが消える＝エラー、の線引きに従いエラーで止める。
+//      ★2026-10-06（#15）から 422 で止めず、（その2）の紙を足して書く（18種以上の物件で
+//        総括表が作れず、一括出力も納品も止まっていたため）。17件は 2枚のまま・18件で 3枚・
+//        29件で 4枚になり、全部の設備名が 1回ずつ載ることを見る。
 //
 //   5. ★既知の限界を固定する: 幅の広いセル（名称など）は縮小だけで「収まる」ため
 //      止まらない。判読しづらい大きさになっても現状はエラーにできない
@@ -23,9 +25,12 @@
 //      この振る舞いを検査に書いておき、将来「設計値からの逸脱」を実装したら見直す。
 //
 // 使い方: node scripts/check-fit-error.mjs
+import { spawnSync } from "child_process"
 import fs from "fs"
 import path from "path"
 import { runRoutePdf } from "./run-route-pdf.mjs"
+
+const PY = process.platform === "win32" ? "python" : "python3"
 
 const ROUTE = "src/app/api/generate-shokasen-bekki2-pdf/route.ts"
 const BASE = "tmp/pdf-realistic/bekki2_test.payload.json"
@@ -97,7 +102,7 @@ check(
     `点検者住所の長文が ${wideRes.status} になった。挙動が変わったなら check-fit-error.mjs の想定も見直すこと`,
 )
 
-// 6. 様式の行数を超えたらエラー（総括表）。両方向を確かめる
+// 6. 様式の行数を超えたら（その2）を足す（総括表）。枚数と、全部の設備名が 1回ずつ載ることを確かめる
 const SOUKATSU_ROUTE = "src/app/api/generate-soukatu-pdf/route.ts"
 const soukatsuBase = {
     building_name: "検証ビル",
@@ -110,27 +115,40 @@ const soukatsuBase = {
 }
 const runSoukatsu = async (n, outName) => {
     const p = structuredClone(soukatsuBase)
-    p.equipment_results = Array.from({ length: n }, (_, i) => ({ name: `設備${i + 1}`, result: "指摘なし" }))
+    // ★「設備1号」は「設備11号」の部分文字列にならない（「設備1」だと 10〜19 に紛れる）
+    p.equipment_results = Array.from({ length: n }, (_, i) => ({ name: `設備${i + 1}号`, result: "指摘なし" }))
+    const out = path.join("tmp", outName)
     try {
-        await runRoutePdf({ routePath: SOUKATSU_ROUTE, payload: p, outPdfPath: path.join("tmp", outName) })
-        return { status: 200, items: [] }
+        await runRoutePdf({ routePath: SOUKATSU_ROUTE, payload: p, outPdfPath: out })
     } catch (e) {
         if (!e.status) throw e
-        const body = JSON.parse(e.responseBody)
-        return { status: e.status, items: (body.items ?? []).filter((i) => i.field === "equipment_results") }
+        return { status: e.status, pages: 0, misplaced: [] }
     }
+    // 設備名がどの紙に何回載ったか（折り返しで改行が入るので空白を詰めて探す）
+    const code = [
+        "import json, sys, fitz",
+        "d = fitz.open(sys.argv[1]); n = int(sys.argv[2])",
+        "txt = [''.join(p.get_text().split()) for p in d]",
+        "hits = [[i + 1 for i, t in enumerate(txt) for _ in range(t.count(f'設備{k + 1}号'))] for k in range(n)]",
+        "print(json.dumps({'pages': d.page_count, 'hits': hits}))",
+    ].join("\n")
+    const r = spawnSync(PY, ["-c", code, out, String(n)], { encoding: "utf8" })
+    if (r.status !== 0) throw new Error(`総括表の文字を読めない: ${r.stderr}`)
+    const { pages, hits } = JSON.parse(r.stdout.trim().split("\n").pop())
+    // 1枚目に 6件・2枚目以降に 11件ずつ
+    const expectPage = (k) => (k < 6 ? 1 : 2 + Math.floor((k - 6) / 11))
+    const misplaced = hits.map((h, k) => ({ k, h })).filter(({ k, h }) => h.length !== 1 || h[0] !== expectPage(k))
+        .map(({ k, h }) => `設備${k + 1}号→${h.length ? h.join("・") + "枚目" : "載っていない"}`)
+    return { status: 200, pages, misplaced }
 }
-const rowsOk = await runSoukatsu(17, "_fit_rows17.pdf")
-check(rowsOk.status === 200, `設備17件（上限ちょうど）が ${rowsOk.status} で止まった`)
-const rowsNg = await runSoukatsu(20, "_fit_rows20.pdf")
-check(rowsNg.status === 422, `設備20件（上限超過）が ${rowsNg.status}。黙って捨てていないか`)
-check(rowsNg.items.length === 3, `落ちた件数の報告が ${rowsNg.items.length} 件（20-17=3のはず）`)
-check(
-    rowsNg.items.every((i) => /17/.test(i.hint)),
-    "エラー文言に上限件数(17)が入っていない＝業者が何件に減らせばよいか分からない",
-)
+for (const [n, pages] of [[17, 2], [18, 3], [29, 4]]) {
+    const r = await runSoukatsu(n, `_fit_rows${n}.pdf`)
+    check(r.status === 200, `総括表 設備${n}件が ${r.status} で止まった（（その2）を足して書くはず）`)
+    check(r.status !== 200 || r.pages === pages, `総括表 設備${n}件が ${r.pages} 枚（${pages} 枚のはず）`)
+    check(r.misplaced.length === 0, `総括表 設備${n}件で、決まった紙に 1回だけ載っていない: ${r.misplaced.slice(0, 5).join(" / ")}`)
+}
 
-for (const f of ["_fit_ok.pdf", "_fit_ng1.pdf", "_fit_ng2.pdf", "_fit_wide.pdf", "_fit_rows17.pdf", "_fit_rows20.pdf"]) {
+for (const f of ["_fit_ok.pdf", "_fit_ng1.pdf", "_fit_ng2.pdf", "_fit_wide.pdf", "_fit_rows17.pdf", "_fit_rows18.pdf", "_fit_rows29.pdf"]) {
     try { fs.unlinkSync(path.join("tmp", f)) } catch {}
 }
 

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { usePathname } from "next/navigation"
 import { X } from "lucide-react"
 
 const STORAGE_KEY = "chatbot-hint-seen"
@@ -9,6 +10,7 @@ const AUTO_SHOW_DELAY_MS = 20_000
 const AUTO_HIDE_DELAY_MS = 15_000
 
 export default function ChatbotHint() {
+    const pathname = usePathname()
     const [visible, setVisible] = useState(false)
     const [dismissed, setDismissed] = useState(() => {
         if (typeof window === "undefined") return false
@@ -80,6 +82,9 @@ export default function ChatbotHint() {
     }, [])
 
     if (dismissed) return null
+    // ★入力画面（/inspection/ 以下）では出さない（#16・2026-10-05 の通し確認）。スマホ幅で右下の保存ボタン
+    //   （点検者一覧の「保存してプレビューへ」など）に重なって文字を隠し、1 回目のタップが吹き出しに当たった。
+    if (pathname?.startsWith("/inspection/")) return null
 
     return (
         <div
@@ -91,12 +96,13 @@ export default function ChatbotHint() {
             }`}
             style={{ zIndex: visible ? 2147483646 : -1 }}
         >
-            <div className="relative rounded-2xl border border-slate-200 bg-white px-3 py-2.5 sm:px-4 sm:py-3 shadow-xl">
+            {/* ★本体はタップを素通りさせる（押して何かが起きる場所ではない）。×だけ押せる */}
+            <div className="pointer-events-none relative rounded-2xl border border-slate-200 bg-white px-3 py-2.5 sm:px-4 sm:py-3 shadow-xl">
                 <button
                     type="button"
                     onClick={handleDismiss}
                     aria-label="ヒントを閉じる"
-                    className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:bg-slate-50 hover:text-slate-700"
+                    className="pointer-events-auto absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:bg-slate-50 hover:text-slate-700"
                 >
                     <X className="h-3.5 w-3.5" />
                 </button>

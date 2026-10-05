@@ -431,6 +431,15 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-soukatsu-details.mjs", stage: "挙動",
+        why: "総括表の不良内容・措置内容・立会者が、入力の整理・編集の突き合わせ（設備名と判定を消さない）・PDF の行と欄まで届くか。"
+            + "★空欄は正常なピクセルなので画像では出ない種類（画面に入力欄が無く常に空欄だった #28）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-soukatsu-details.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-soukatsu-details.mjs"], sentinel: "SOUKATSU_DETAILS_OK" },
+        ],
+    },
+    {
         file: "check-inspection-type-circle.py", stage: "静的",
         why: "点検種別に「機器・総合」の選択肢がある様式（テンプレートから導く）で、ルートが点検種別の○を描いているか。"
             + "★○が無いだけでピクセルは正常なので画像では出ない種類（8 様式が「印刷済みのため描画しない」で○が無かった #19）",

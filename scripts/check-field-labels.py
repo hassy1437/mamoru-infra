@@ -29,8 +29,12 @@ LABELS_TS = ROOT / "src" / "lib" / "pdf-fit-report.ts"
 # ★"*bekki*-form.tsx" だけだと報告書（第1号様式）の入力画面が丸ごと外れる。
 #   報告書の項目は property-form.tsx にあり、FIELD_LABELS に足した瞬間に
 #   「画面に無い」と誤って落ちた（＝走査範囲の限定で取りこぼす形をここでも踏んだ）。
+# ★総括表（#28・2026-10-06）: 不良内容・措置内容・立会者の入力欄は共有の部品にあり、
+#   保存の形（bad_detail / action / witness）は lib/soukatsu-equipment.ts に定義している。
 FORM_TSX = sorted([ROOT / "src" / "components" / "bekki-result-form-base.tsx",
-                   ROOT / "src" / "components" / "property-form.tsx"]
+                   ROOT / "src" / "components" / "property-form.tsx",
+                   ROOT / "src" / "components" / "soukatsu-equipment-details.tsx",
+                   ROOT / "src" / "lib" / "soukatsu-equipment.ts"]
                   + list((ROOT / "src" / "components").glob("*bekki*-form.tsx")))
 
 # 入力画面に固定ラベルが無い項目（理由は docstring 参照）
@@ -55,7 +59,8 @@ def main() -> int:
         # ★属性つきの <Label htmlFor="..."> も拾う。属性なしだけを見ていたため
         #   property-form.tsx のラベルが1つも拾えず「画面に無い」と誤判定した。
         form_labels |= {t.strip() for t in re.findall(r"<Label[^>]*>([^<{]+)</Label>", form)}
-        payload_keys |= set(re.findall(r"^\s*(\w+):\s*\w", form, re.M))
+        # ★省略できるキー（bad_detail?: string）も拾う
+        payload_keys |= set(re.findall(r"^\s*(\w+)\??:\s*\w", form, re.M))
 
     problems: list[str] = []
     for key, label in labels.items():

@@ -16,6 +16,8 @@ import { toast } from "sonner"
 import { friendlyError } from "@/lib/error-messages"
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes"
 import { toDateInputValue } from "@/lib/date-utils"
+import { mergeEquipmentDetails, type DetailField, type SoukatsuEquipmentItem } from "@/lib/soukatsu-equipment"
+import { EquipmentDetailInputs, WitnessFillAll } from "@/components/soukatsu-equipment-details"
 
 // 編集対象の soukatsu 行（必要な列を緩く受ける）。プリフィル元＝この soukatsu 自身。
 type SoukatsuRow = Record<string, unknown> & { id: string }
@@ -29,7 +31,9 @@ const str = (v: unknown) => (v == null ? "" : String(v))
 
 // ★作成フォーム(soukatsu-form)と「同一の制約」で幹を編集する目的特化フォーム。
 //   - 制約(必須/選択肢/型)は作成フォームと揃える（片方だけ緩いと編集経由でしか作れない状態を生む）。
-//   - equipment_results は編集対象外＝state も持たず update にも含めない（既存の点検結果を絶対に消さない）。
+//   - equipment_results は「不良内容・措置内容・立会者」だけ直せる（#28）。設備名と判定は触らない。
+//     ★保存の直前に DB の最新を読み、設備名で突き合わせてこの3つだけを重ねる（mergeEquipmentDetails）
+//     ＝既存の点検結果（設備名・判定・行の数・順番）を絶対に消さない。
 //   - update は編集項目「だけ」の部分更新。updated_at は BEFORE UPDATE トリガが自動で立てる。
 export default function SoukatsuEditForm({ soukatsu, isDelivered }: SoukatsuEditFormProps) {
     const router = useRouter()
@@ -54,6 +58,18 @@ export default function SoukatsuEditForm({ soukatsu, isDelivered }: SoukatsuEdit
     const [totalFloorArea, setTotalFloorArea] = useState(soukatsu.total_floor_area != null ? String(soukatsu.total_floor_area) : "")
     const [overallJudgment, setOverallJudgment] = useState(str(soukatsu.overall_judgment))
     const [notes, setNotes] = useState(str(soukatsu.notes))
+    // ★点検結果の行（不良内容・措置内容・立会者だけを直す。設備名と判定は表示だけ）
+    const [details, setDetails] = useState<SoukatsuEquipmentItem[]>(() =>
+        Array.isArray(soukatsu.equipment_results) ? (soukatsu.equipment_results as SoukatsuEquipmentItem[]) : [],
+    )
+    const updateDetail = (index: number, field: DetailField, value: string) => {
+        markDirty()
+        setDetails((prev) => prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)))
+    }
+    const fillWitness = (name: string) => {
+        markDirty()
+        setDetails((prev) => prev.map((item) => (item.result === "該当なし" ? item : { ...item, witness: name })))
+    }
 
     useEffect(() => {
         const form = document.querySelector("form")
@@ -68,8 +84,20 @@ export default function SoukatsuEditForm({ soukatsu, isDelivered }: SoukatsuEdit
         setLoading(true)
         setError(null)
         try {
-            // ★部分更新: 編集項目「だけ」を送る。equipment_results / cloned_* / id / created_at / user_id は
-            //   update object に含めない＝既存の点検結果・複製由来を絶対に上書きしない。updated_at はトリガ任せ。
+            // ★点検結果は DB の最新に「不良内容・措置内容・立会者」だけを重ねる（設備名・判定は DB のまま）。
+            //   読めなければ点検結果は書かない（null）。
+            let mergedResults: SoukatsuEquipmentItem[] | null = null
+            if (details.length > 0) {
+                const { data: current, error: readError } = await supabase
+                    .from("inspection_soukatsu")
+                    .select("equipment_results")
+                    .eq("id", soukatsu.id)
+                    .single()
+                if (readError) throw readError
+                mergedResults = mergeEquipmentDetails(current?.equipment_results, details)
+            }
+            // ★部分更新: 編集項目「だけ」を送る。cloned_* / id / created_at / user_id は
+            //   update object に含めない＝複製由来を絶対に上書きしない。updated_at はトリガ任せ。
             const { error: updateError } = await supabase
                 .from("inspection_soukatsu")
                 .update({
@@ -89,6 +117,7 @@ export default function SoukatsuEditForm({ soukatsu, isDelivered }: SoukatsuEdit
                     total_floor_area: totalFloorArea ? parseFloat(totalFloorArea) : null,
                     overall_judgment: overallJudgment || null,
                     notes: notes || null,
+                    ...(mergedResults ? { equipment_results: mergedResults } : {}),
                 })
                 .eq("id", soukatsu.id)
                 .eq("user_id", user?.id ?? "") // RLS に加えた二重防御（properties/[id]/edit と同じ作法）
@@ -231,7 +260,31 @@ export default function SoukatsuEditForm({ soukatsu, isDelivered }: SoukatsuEdit
                 </CardContent>
             </Card>
 
-            {/* 総合判定・備考（equipment_results はここでは編集しない） */}
+            {/* 点検結果の不良内容・措置内容・立会者（#28）。設備名と判定は作成画面で決めたまま */}
+            {details.length > 0 && (
+                <Card>
+                    <CardHeader><CardTitle>消防用設備等の点検結果</CardTitle></CardHeader>
+                    <CardContent className="space-y-3">
+                        <p className="text-xs text-slate-500">
+                            設備名と点検結果（指摘なし／要改善）はここでは変えられません。不良内容・措置内容は「要改善」の設備だけ入れられます。
+                        </p>
+                        <WitnessFillAll onFill={fillWitness} />
+                        {details.map((item, index) => (
+                            <div key={`${item.name}-${index}`} className="space-y-2 border-b border-slate-100 py-2 last:border-0">
+                                <div className="flex items-center justify-between gap-4">
+                                    <span className="text-sm font-medium text-slate-700">{item.name}</span>
+                                    <span className={`rounded-full px-3 py-1 text-xs font-medium ${item.result === "要改善" ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}>
+                                        {item.result}
+                                    </span>
+                                </div>
+                                <EquipmentDetailInputs item={item} onChange={(field, value) => updateDetail(index, field, value)} />
+                            </div>
+                        ))}
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* 総合判定・備考 */}
             <Card>
                 <CardHeader><CardTitle>総合判定・備考</CardTitle></CardHeader>
                 <CardContent className="space-y-6">

@@ -19,6 +19,8 @@ import { ALL_EQUIPMENT_TYPES } from "@/lib/equipment-config"
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes"
 import FormProgress from "@/components/form-progress"
 import { toDateInputValue } from "@/lib/date-utils"
+import { cleanEquipmentItem, type DetailField, type SoukatsuEquipmentItem } from "@/lib/soukatsu-equipment"
+import { EquipmentDetailInputs, WitnessFillAll } from "@/components/soukatsu-equipment-details"
 
 const FORM_SECTIONS = [
     "点検基本情報",
@@ -28,10 +30,8 @@ const FORM_SECTIONS = [
     "総合判定・備考",
 ]
 
-type EquipmentResult = {
-    name: string
-    result: "指摘なし" | "要改善" | "該当なし"
-}
+// ★1行の形は lib/soukatsu-equipment.ts（不良内容・措置内容・立会者を含む・#28）
+type EquipmentResult = SoukatsuEquipmentItem
 
 interface SoukatsuFormProps {
     property?: Property
@@ -125,6 +125,20 @@ export default function SoukatsuForm({ property, previousData, copyFromId, sourc
         )
     }
 
+    const updateEquipmentDetail = (index: number, field: DetailField, value: string) => {
+        markDirty()
+        setEquipmentResults(prev =>
+            prev.map((item, i) => i === index ? { ...item, [field]: value } : item)
+        )
+    }
+
+    const fillWitness = (name: string) => {
+        markDirty()
+        setEquipmentResults(prev =>
+            prev.map(item => item.result === "該当なし" ? item : { ...item, witness: name })
+        )
+    }
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setLoading(true)
@@ -148,7 +162,7 @@ export default function SoukatsuForm({ property, previousData, copyFromId, sourc
                     floor_above: floorAbove ? parseInt(floorAbove) : null,
                     floor_below: floorBelow ? parseInt(floorBelow) : null,
                     total_floor_area: totalFloorArea ? parseFloat(totalFloorArea) : null,
-                    equipment_results: equipmentResults.filter(e => e.result !== "該当なし"),
+                    equipment_results: equipmentResults.filter(e => e.result !== "該当なし").map(cleanEquipmentItem),
                     overall_judgment: overallJudgment || null,
                     notes: notes || null,
                     property_id: property?.id ?? null,
@@ -461,8 +475,11 @@ export default function SoukatsuForm({ property, previousData, copyFromId, sourc
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-3">
+                        {/* ★不良内容・措置内容・立会者は総括表の欄（#28）。作ったあとも編集画面で直せる */}
+                        <WitnessFillAll onFill={fillWitness} />
                         {equipmentResults.map((item, index) => (
-                            <div key={item.name} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4 py-2 border-b border-slate-100 last:border-0">
+                            <div key={item.name} className="space-y-2 py-2 border-b border-slate-100 last:border-0">
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                                 <span className="text-sm font-medium text-slate-700 sm:min-w-[200px]">{item.name}</span>
                                 <div className="flex gap-2">
                                     {(property
@@ -490,6 +507,8 @@ export default function SoukatsuForm({ property, previousData, copyFromId, sourc
                                         </button>
                                     ))}
                                 </div>
+                            </div>
+                            <EquipmentDetailInputs item={item} onChange={(field, value) => updateEquipmentDetail(index, field, value)} />
                             </div>
                         ))}
                     </div>

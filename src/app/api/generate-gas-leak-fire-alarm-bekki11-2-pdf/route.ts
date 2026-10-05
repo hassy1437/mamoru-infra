@@ -10,6 +10,7 @@ import {
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
+import { DEVICE_TABLE_COLUMN_ROWS, DEVICE_TABLE_PRINTED, resolveDeviceTable } from "@/lib/bekki-device-table"
 import {
     periodDateError,
 FIT_EPSILON,
@@ -66,8 +67,10 @@ type Bekki11_2Payload = {
     page1_rows?: BekkiRow[]
     page2_rows?: BekkiRow[]
     notes?: string
+    /** ★古い保存の形。今は device_table（読み方は lib/bekki-device-table.ts） */
     device1?: DeviceRow
     device2?: DeviceRow
+    device_table?: unknown
 }
 
 type DrawOptions = {
@@ -412,20 +415,28 @@ export async function POST(req: NextRequest) {
 
         drawWrappedInCell(page2, p2Height, body.notes, 80.5, 491.5, 449.0, 94.5, 7.0)
 
-        // 測定機器表: 左側の機器名セルには「加ガス試験器」�E固定文字があるため device1.name は描画しなぁE��E
-        const device1 = body.device1 ?? {}
-        const device2 = body.device2 ?? {}
-        const deviceRowTop = 607.0
-        const deviceRowH = 20.8
-
-        drawInCell(page2, p2Height, device1.model, 154.0, deviceRowTop, 36.5, deviceRowH, 6.6)
-        drawInCell(page2, p2Height, formatJapaneseDateText(device1.calibrated_at), 190.5, deviceRowTop, 57.0, deviceRowH, 6.2)
-        drawInCell(page2, p2Height, device1.maker, 247.5, deviceRowTop, 57.0, deviceRowH, 6.2)
-
-        drawInCell(page2, p2Height, device2.name, 304.5, deviceRowTop, 74.0, deviceRowH, 6.4)
-        drawInCell(page2, p2Height, device2.model, 378.5, deviceRowTop, 36.5, deviceRowH, 6.4)
-        drawInCell(page2, p2Height, formatJapaneseDateText(device2.calibrated_at), 415.0, deviceRowTop, 57.5, deviceRowH, 6.0)
-        drawInCell(page2, p2Height, device2.maker, 472.5, deviceRowTop, 57.0, deviceRowH, 6.0)
+        // 測定機器の表（★紙の表どおり・#23）。左列 5 行・右列 5 行に、行ごとの機器を描く。
+        //   以前は device1 を左列の先頭（加ガス試験器）、device2 を右列の先頭に必ず描き、
+        //   左列の先頭以外の行には入力する手段が無かった。
+        //   ★刷り込みの機器名（加ガス試験器）は描かない。空欄の行だけ業者の機器名を描く。
+        //   行の上端は雛形の横罫線の実測（607.2 / 628.2 / 649.2 / 670.2 / 691.2・最下段の下端 712.6）。
+        //   列の位置は従来の値（drawInCell が内側に 2.5pt の余白を取る）。
+        const DEVICE_ROW_TOPS = [607.2, 628.2, 649.2, 670.2, 691.2]
+        const DEVICE_ROW_H = 21.0
+        const DEVICE_COLS = [
+            { name: { x: 80.5, w: 73.6, size: 6.4 }, model: { x: 154.0, w: 36.5, size: 6.6 }, date: { x: 190.5, w: 57.0, size: 6.2 }, maker: { x: 247.5, w: 57.0, size: 6.2 } },
+            { name: { x: 304.5, w: 74.0, size: 6.4 }, model: { x: 378.5, w: 36.5, size: 6.4 }, date: { x: 415.0, w: 57.5, size: 6.0 }, maker: { x: 472.5, w: 57.0, size: 6.0 } },
+        ]
+        resolveDeviceTable(body, "bekki11_2").forEach((d, i) => {
+            const col = DEVICE_COLS[Math.floor(i / DEVICE_TABLE_COLUMN_ROWS)]
+            const top = DEVICE_ROW_TOPS[i % DEVICE_TABLE_COLUMN_ROWS]
+            if (DEVICE_TABLE_PRINTED.bekki11_2[i] === null) {
+                drawInCell(page2, p2Height, d.name, col.name.x, top, col.name.w, DEVICE_ROW_H, col.name.size)
+            }
+            drawInCell(page2, p2Height, d.model, col.model.x, top, col.model.w, DEVICE_ROW_H, col.model.size)
+            drawInCell(page2, p2Height, formatJapaneseDateText(d.calibrated_at), col.date.x, top, col.date.w, DEVICE_ROW_H, col.date.size)
+            drawInCell(page2, p2Height, d.maker, col.maker.x, top, col.maker.w, DEVICE_ROW_H, col.maker.size)
+        })
 
         // ⑧ 枠に収まらなかった項目があればPDFを返さずに一覧を返す。
         //   黙って "..." で切り詰めると、法定書類から情報が静かに欠落するため。

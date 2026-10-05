@@ -16,6 +16,12 @@ import { supabase } from "@/lib/supabase"
 import { loadDraftLocal, saveDraftLocal } from "@/lib/local-draft"
 import { toDateInputValue } from "@/lib/date-utils"
 import { bekkiInspectionTypeDefault } from "@/lib/bekki-inspection-type"
+import {
+    DEVICE_TABLE_PRINTED,
+    resolveDeviceTable,
+    type DeviceTableKind,
+    type DeviceTableRow,
+} from "@/lib/bekki-device-table"
 import CameraInput from "@/components/camera-input"
 import {
     normalizeBekkiInspectorNameForPayload,
@@ -52,6 +58,8 @@ export type BekkiBasePayload = {
     notes: string
     device1: BekkiDeviceState
     device2: BekkiDeviceState
+    /** 紙の表どおりの測定機器（deviceTable を渡した様式だけ・lib/bekki-device-table.ts） */
+    device_table?: DeviceTableRow[]
     extra_fields: Record<string, string>
     page1_rows?: BekkiRowState[]
     page2_rows?: BekkiRowState[]
@@ -134,6 +142,11 @@ interface Props {
     extraFieldsTitle?: string
     notesCardTitle?: string
     notesRows?: number
+    /**
+     * 測定機器の表に機器名が刷り込んである様式（11の1・11の2）。渡すと「機器名つき2行」の代わりに
+     * 紙の表どおりの 10 行（刷り込みの行は機器名なし・空欄の行は機器名から）で入れる（#23）。
+     */
+    deviceTable?: DeviceTableKind
 }
 
 
@@ -180,6 +193,7 @@ export default function BekkiResultFormBase({
     extraFieldsTitle = "設備情報",
     notesCardTitle = "備考・測定機器",
     notesRows = 4,
+    deviceTable,
 }: Props) {
     const saved = savedPayload ?? {}
 
@@ -197,6 +211,12 @@ export default function BekkiResultFormBase({
     const [notes, setNotes] = useState(coerceString(saved.notes))
     const [device1, setDevice1] = useState<BekkiDeviceState>(coerceDevice(saved.device1 ?? createEmptyDevice()))
     const [device2, setDevice2] = useState<BekkiDeviceState>(coerceDevice(saved.device2 ?? createEmptyDevice()))
+    // ★古い保存（device1/device2）は機器名で表の行へ振り分けて読む（ルートと同じ関数）
+    const [deviceTableRows, setDeviceTableRows] = useState<DeviceTableRow[]>(() =>
+        deviceTable ? resolveDeviceTable(saved, deviceTable) : [],
+    )
+    const updateDeviceTableRow = (index: number, field: keyof DeviceTableRow, value: string) =>
+        setDeviceTableRows((rows) => rows.map((r, i) => (i === index ? { ...r, [field]: value } : r)))
 
     const [extraFieldValues, setExtraFieldValues] = useState<Record<string, string>>(() =>
         Object.fromEntries(extraFields.map((field) => [field.key, coerceString((saved.extra_fields ?? {})[field.key])])),
@@ -238,8 +258,10 @@ export default function BekkiResultFormBase({
         inspector_address: inspectorAddress,
         inspector_tel: inspectorTel,
         notes,
-        device1,
-        device2,
+        // ★表で入れる様式は古い2行を空にして保存する（同じ機器を二重に持たない・ルートは device_table を読む）
+        device1: deviceTable ? createEmptyDevice() : device1,
+        device2: deviceTable ? createEmptyDevice() : device2,
+        ...(deviceTable ? { device_table: deviceTableRows } : {}),
         extra_fields: extraFieldValues,
         page1_rows: rowsByKey.page1_rows,
         page2_rows: rowsByKey.page2_rows,
@@ -248,6 +270,8 @@ export default function BekkiResultFormBase({
     }), [
         device1,
         device2,
+        deviceTable,
+        deviceTableRows,
         extraFieldValues,
         fireManager,
         formName,
@@ -457,6 +481,7 @@ export default function BekkiResultFormBase({
                 setNotes(coerceString(p.notes))
                 setDevice1(coerceDevice(p.device1 ?? createEmptyDevice()))
                 setDevice2(coerceDevice(p.device2 ?? createEmptyDevice()))
+                if (deviceTable) setDeviceTableRows(resolveDeviceTable(p, deviceTable))
                 setExtraFieldValues(Object.fromEntries(extraFields.map((f) => [f.key, coerceString((p.extra_fields ?? {})[f.key])])))
                 setRowsByKey(() => {
                     const next: Record<BekkiPageRowsKey, BekkiRowState[]> = { page1_rows: [], page2_rows: [], page3_rows: [], page4_rows: [] }
@@ -957,6 +982,38 @@ export default function BekkiResultFormBase({
                         <Textarea rows={notesRows} value={notes} onChange={(e) => setNotes(e.target.value)} />
                     </div>
 
+                    {deviceTable ? (
+                        <div className="space-y-2">
+                            <p className="font-medium text-sm">測定機器</p>
+                            <p className="text-xs text-slate-500">
+                                様式の表と同じ並びです（左の列の上から → 右の列の上から）。使った機器の行だけ入れてください。
+                            </p>
+                            <div className="space-y-2">
+                                {deviceTableRows.map((row, i) => {
+                                    const printed = DEVICE_TABLE_PRINTED[deviceTable][i]
+                                    return (
+                                        <div key={i} className="grid gap-2 rounded-md border border-slate-200 p-2 md:grid-cols-4 md:items-end">
+                                            {printed ? (
+                                                <p className="text-sm md:self-center">{printed}</p>
+                                            ) : (
+                                                <Input
+                                                    placeholder="機器名（様式に無い機器）"
+                                                    value={row.name}
+                                                    onChange={(e) => updateDeviceTableRow(i, "name", e.target.value)}
+                                                />
+                                            )}
+                                            <Input placeholder="型式" value={row.model} onChange={(e) => updateDeviceTableRow(i, "model", e.target.value)} />
+                                            <div className="space-y-1">
+                                                <Label className="text-xs font-normal text-slate-500">校正年月日</Label>
+                                                <Input type="date" value={toDateInputValue(row.calibrated_at)} onChange={(e) => updateDeviceTableRow(i, "calibrated_at", e.target.value)} />
+                                            </div>
+                                            <Input placeholder="製造者名" value={row.maker} onChange={(e) => updateDeviceTableRow(i, "maker", e.target.value)} />
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        </div>
+                    ) : (
                     <div className="grid md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <p className="font-medium text-sm">測定機器 1</p>
@@ -979,6 +1036,7 @@ export default function BekkiResultFormBase({
                             <Input placeholder="製造者名" value={device2.maker} onChange={(e) => setDevice2((p) => ({ ...p, maker: e.target.value }))} />
                         </div>
                     </div>
+                    )}
                 </CardContent>
             </Card>
 

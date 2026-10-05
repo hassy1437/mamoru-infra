@@ -90,6 +90,7 @@ export default function GasLeakFireAlarmBekki11_2Form(props: Props) {
                 { key: "repeater_model", label: "中継器 型式等" },
             ]}
             notesCardTitle="（その2）備考・測定機器"
+            deviceTable="bekki11_2"
             notesRows={6}
         />
     )

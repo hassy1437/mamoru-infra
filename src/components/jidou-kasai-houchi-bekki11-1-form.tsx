@@ -183,6 +183,7 @@ export default function JidouKasaiHouchiBekki11_1Form(props: Props) {
                 },
             ]}
             notesCardTitle="（その3）備考・測定機器"
+            deviceTable="bekki11_1"
             notesRows={8}
         />
     )

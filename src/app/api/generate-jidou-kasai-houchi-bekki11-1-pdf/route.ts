@@ -10,6 +10,7 @@ import {
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
+import { DEVICE_TABLE_COLUMN_ROWS, DEVICE_TABLE_PRINTED, resolveDeviceTable } from "@/lib/bekki-device-table"
 import {
     periodDateError,
 FIT_EPSILON,
@@ -70,8 +71,10 @@ type Bekki11Payload = {
     page2_rows?: BekkiRow[]
     page3_rows?: BekkiRow[]
     notes?: string
+    /** ★古い保存の形。今は device_table（読み方は lib/bekki-device-table.ts） */
     device1?: DeviceRow
     device2?: DeviceRow
+    device_table?: unknown
 }
 
 type DrawOptions = {
@@ -477,19 +480,29 @@ export async function POST(req: NextRequest) {
 
         drawWrappedInCell(page3, p3Height, body.notes, 80.0, 359.33, 449.33, 180.0, 7.0)
 
-        const device1 = body.device1 ?? {}
-        const device2 = body.device2 ?? {}
-        // page3 bottom measurement table (approx.)
-        const deviceTableTop = 560.8
-        const deviceTableRowH = 20.8
+        // 測定機器の表（★紙の表どおり・#23）。左列 5 行・右列 5 行に、行ごとの機器を描く。
+        //   以前は device1 を左列の先頭（加熱試験器）、device2 を右列の先頭（メーターリレー試験器）に
+        //   必ず描き、機器名は描かなかった（加煙試験器で測っても加熱試験器の行に載った）。
+        //   ★刷り込みの機器名は描かない。空欄の行（右列の 3〜5 行目）だけ業者の機器名を描く。
+        //   行の上端は雛形の横罫線の実測（561.0 / 582.0 / 603.0 / 624.0 / 645.0・最下段の下端 666.4）。
+        //   列の位置は従来の値（縦罫線 154.1 / 190.8 / 247.9 / 304.7 ‖ 378.6 / 415.2 / 472.6 / 529.6 の内側）。
         const devOpts: DrawOptions = { paddingX: 1 }
-        // 機器名はテンプレートに印刷済み（加熱試験器/メーターリレー試験器/加煙試験器/炎感知器用作動試験器）
-        drawInCellWithFont(page3, p3Height, fonts, device1.model, 158.0, deviceTableTop, 32.8, deviceTableRowH, 6.4, devOpts)
-        drawInCell(page3, p3Height, formatJapaneseDateText(device1.calibrated_at), 194.8, deviceTableTop, 53.2, deviceTableRowH, 5.2)
-        drawDeviceMaker(device1.maker, page3, p3Height, 252.0, 52.4, deviceTableTop, deviceTableRowH)
-        drawInCellWithFont(page3, p3Height, fonts, device2.model, 382.4, deviceTableTop, 32.8, deviceTableRowH, 6.2, devOpts)
-        drawInCell(page3, p3Height, formatJapaneseDateText(device2.calibrated_at), 419.2, deviceTableTop, 53.2, deviceTableRowH, 5.2)
-        drawDeviceMaker(device2.maker, page3, p3Height, 476.4, 53.2, deviceTableTop, deviceTableRowH)
+        const DEVICE_ROW_TOPS = [561.0, 582.0, 603.0, 624.0, 645.0]
+        const DEVICE_ROW_H = 21.0
+        const DEVICE_COLS = [
+            { name: { x: 84.3, w: 69.8 }, model: { x: 158.0, w: 32.8, size: 6.4 }, date: { x: 194.8, w: 53.2 }, maker: { x: 252.0, w: 52.4 } },
+            { name: { x: 309.4, w: 69.2 }, model: { x: 382.4, w: 32.8, size: 6.2 }, date: { x: 419.2, w: 53.2 }, maker: { x: 476.4, w: 53.2 } },
+        ]
+        resolveDeviceTable(body, "bekki11_1").forEach((d, i) => {
+            const col = DEVICE_COLS[Math.floor(i / DEVICE_TABLE_COLUMN_ROWS)]
+            const top = DEVICE_ROW_TOPS[i % DEVICE_TABLE_COLUMN_ROWS]
+            if (DEVICE_TABLE_PRINTED.bekki11_1[i] === null) {
+                drawInCellWithFont(page3, p3Height, fonts, d.name, col.name.x, top, col.name.w, DEVICE_ROW_H, 6.4, devOpts)
+            }
+            drawInCellWithFont(page3, p3Height, fonts, d.model, col.model.x, top, col.model.w, DEVICE_ROW_H, col.model.size, devOpts)
+            drawInCell(page3, p3Height, formatJapaneseDateText(d.calibrated_at), col.date.x, top, col.date.w, DEVICE_ROW_H, 5.2)
+            drawDeviceMaker(d.maker, page3, p3Height, col.maker.x, col.maker.w, top, DEVICE_ROW_H)
+        })
 
         // ⑧ 枠に収まらなかった項目があればPDFを返さずに一覧を返す。
         //   黙って "..." で切り詰めると、法定書類から情報が静かに欠落するため。

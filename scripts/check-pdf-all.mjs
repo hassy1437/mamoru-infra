@@ -431,6 +431,15 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-device-table.mjs", stage: "生成PDF", needsPdfs: true,
+        why: "様式11の1・11の2 の測定機器が、紙の表の正しい行・列に載るか（セルは雛形の罫線から測る）。"
+            + "★描かれるピクセルは正常なので画像では出ない種類（加煙試験器で測っても加熱試験器の行に載っていた #23）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-device-table.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-device-table.mjs"], sentinel: "DEVICE_TABLE_OK" },
+        ],
+    },
+    {
         file: "check-merged-report-size.mjs", stage: "生成PDF", needsPdfs: true,
         why: "結合PDFが納品の上限（Storage 50MB）に収まり、同じフォントの重複をまとめても描画が変わらないか。"
             + "★画面では何も起きず納品のときだけ落ちる種類（26 様式で 88MB・本番で 17 種の物件が納品できなかった #27）",

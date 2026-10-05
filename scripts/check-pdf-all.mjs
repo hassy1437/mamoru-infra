@@ -422,6 +422,15 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-current-value-labels.mjs", stage: "静的",
+        why: "1行に値を2つ入れる行の入力欄の見出しが、行の意味と合っているか。★描かれるピクセルは正常なので"
+            + "画像では出ない種類（様式21 の端子電圧で、画面が「電流(A)」と案内した値が提出書類の「非常 V」に載っていた #21）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-current-value-labels.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-current-value-labels.mjs"], sentinel: "CURRENT_VALUE_LABELS_OK" },
+        ],
+    },
+    {
         file: "check-merged-report-size.mjs", stage: "生成PDF", needsPdfs: true,
         why: "結合PDFが納品の上限（Storage 50MB）に収まり、同じフォントの重複をまとめても描画が変わらないか。"
             + "★画面では何も起きず納品のときだけ落ちる種類（26 様式で 88MB・本番で 17 種の物件が納品できなかった #27）",

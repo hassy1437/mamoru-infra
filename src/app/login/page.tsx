@@ -4,6 +4,7 @@ import { Suspense, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
+import { markMyPasswordSet } from "@/lib/password-mark"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -36,6 +37,9 @@ function LoginForm() {
             setLoading(false)
             return
         }
+
+        // ★パスワードでログインできた＝本人がパスワードを知っている印（マッチング側の案内の出し分け・#1）
+        await markMyPasswordSet(supabase, "app-login")
 
         router.push(redirectTo)
         router.refresh()

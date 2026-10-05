@@ -431,6 +431,15 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-password-mark.mjs", stage: "静的",
+        why: "点検アプリでパスワードでログイン・再設定したときに「パスワードを決めた印」を付けているか。"
+            + "★消えても画面には何も起きず、マッチング側に案内が出続けるだけの種類（#1・20261027）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-password-mark.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-password-mark.mjs"], sentinel: "PASSWORD_MARK_OK" },
+        ],
+    },
+    {
         file: "check-soukatsu-details.mjs", stage: "挙動",
         why: "総括表の不良内容・措置内容・立会者が、入力の整理・編集の突き合わせ（設備名と判定を消さない）・PDF の行と欄まで届くか。"
             + "★空欄は正常なピクセルなので画像では出ない種類（画面に入力欄が無く常に空欄だった #28）",

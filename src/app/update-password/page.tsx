@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
+import { markMyPasswordSet } from "@/lib/password-mark"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -101,6 +102,9 @@ export default function UpdatePasswordPage() {
             setLoading(false)
             return
         }
+
+        // ★本人がパスワードを決めた印（マッチング側の案内の出し分け・#1）。★signOut の前に付ける（セッションが要る）
+        await markMyPasswordSet(supabase, "app-reset")
 
         // 更新成功。すぐ /login には飛ばさず完了画面を出す（ユーザーが「ログイン画面へ」を押す）。
         // リンク経由の一時ログイン状態（リカバリーセッション）をここで終わらせる。

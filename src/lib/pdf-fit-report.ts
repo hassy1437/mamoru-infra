@@ -76,6 +76,17 @@ export const FIELD_LABELS: Record<string, string> = {
     // 別記様式5（泡消火設備）の消火薬剤 型式番号。刷り込み「（泡第 __ ～ __ 号）」の2つの空欄
     foam_type_no_from: "消火薬剤 型式番号（泡第 ○ 〜）",
     foam_type_no_to: "消火薬剤 型式番号（〜 ○ 号）",
+    // 点検設備名の欄（別記2〜5）。★無いと英語のキー（pump_model 等）がそのまま業者に出ていた（2026-10-07）。
+    //   様式ごとに画面の表記が少し違う（別記5 は「ポンプ型式」）ので、多い方（別記2〜4）に合わせる
+    pump_maker: "ポンプ 製造者名",
+    pump_model: "ポンプ 型式等",
+    motor_maker: "電動機 製造者名",
+    motor_model: "電動機 型式等",
+    foam_maker: "泡消火薬剤製造者名",
+    foam_model: "泡合成器型式",
+    // 測定機器（全別記の共通欄）。入力欄は placeholder だけで <Label> が無い（check-field-labels.py で除外）
+    model: "測定機器 型式",
+    maker: "測定機器 製造者名",
 }
 
 /**
@@ -325,6 +336,17 @@ export const createFitCollector = (): FitCollector => {
                     const own = entries.find(
                         (e) => e.rowsKey === f.at!.rowsKey && e.row === f.at!.row
                             && (f.at!.column ? e.key === f.at!.column : true)
+                            && (e.value === f.text || e.value.includes(f.text)))
+                    f.fromInput = Boolean(own)
+                    continue
+                }
+                // ★行に属さない欄（型式・型式番号・測定機器など）は、列名だけを渡せば欄が決まる。
+                //   値で当てると同じ値を持つ別の欄に帰属する（2026-10-07: 別記5 の型式番号があふれたのに
+                //   422 が測定機器の「model」を 2 件返し、業者は直す欄を特定できなかった）。
+                if (f.at?.column && f.at.rowsKey === undefined) {
+                    f.field = f.at.column
+                    const own = entries.find(
+                        (e) => e.rowsKey === undefined && e.key === f.at!.column
                             && (e.value === f.text || e.value.includes(f.text)))
                     f.fromInput = Boolean(own)
                     continue

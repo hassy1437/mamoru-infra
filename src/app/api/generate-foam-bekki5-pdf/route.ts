@@ -366,6 +366,8 @@ export async function POST(req: NextRequest) {
             cellW: number,
             cellH: number,
             fontSize: number,
+            /** どの欄か。fit 報告の帰属に使う */
+            at?: CellRef,
         ) => {
             const normalized = normalizeText(text)
             if (!normalized) return
@@ -373,9 +375,9 @@ export async function POST(req: NextRequest) {
             const single = singleLineFitSize({ fonts, text: value, cellW, cellH, fontSize, ...BEKKI5_SINGLE_FIT })
             const wrapped = wrappedFit({ fonts, text: value, cellW, cellH, fontSize, ...BEKKI5_WRAPPED_FIT })
             if (wrapGivesLargerSize(single, wrapped.size)) {
-                drawWrappedInCell(page, pageHeight, text, cellX, cellTopFromTop, cellW, cellH, fontSize)
+                drawWrappedInCell(page, pageHeight, text, cellX, cellTopFromTop, cellW, cellH, fontSize, at)
             } else {
-                drawInCell(page, pageHeight, text, cellX, cellTopFromTop, cellW, cellH, fontSize)
+                drawInCell(page, pageHeight, text, cellX, cellTopFromTop, cellW, cellH, fontSize, { at })
             }
         }
 
@@ -463,12 +465,13 @@ export async function POST(req: NextRequest) {
         //   食い込んで越えていた。実測の値セルは 207.4→249.8（印字ラベル「製造者名」163.3-205.4 の右）。
         //   電動機・泡消火薬剤側（343/495）は元から実測値に一致していたので触らない。
         // ★製造者名は折り返せる（#22）。型式は英数字の型番なので 1 行のまま。
-        drawInCellOrWrap(page1, p1Height, body.pump_maker, 207.4, 237.5, 42.4, 19.5, 7.1)
-        drawInCell(page1, p1Height, body.pump_model, 207.4, 257.5, 42.4, 19.5, 7.1)
-        drawInCellOrWrap(page1, p1Height, body.motor_maker, 343, 237, 34, 20, 7.1)
-        drawInCell(page1, p1Height, body.motor_model, 343, 257, 34, 20, 7.1)
-        drawInCellOrWrap(page1, p1Height, body.foam_maker, 495, 237, 33, 20, 7.1)
-        drawInCell(page1, p1Height, body.foam_model, 495, 257, 33, 20, 7.1)
+        // ★行に属さない欄は列名（payload のキー）を渡す。渡さないと 422 が同じ値を持つ別の欄を指す（2026-10-07）
+        drawInCellOrWrap(page1, p1Height, body.pump_maker, 207.4, 237.5, 42.4, 19.5, 7.1, { column: "pump_maker" })
+        drawInCell(page1, p1Height, body.pump_model, 207.4, 257.5, 42.4, 19.5, 7.1, { at: { column: "pump_model" } })
+        drawInCellOrWrap(page1, p1Height, body.motor_maker, 343, 237, 34, 20, 7.1, { column: "motor_maker" })
+        drawInCell(page1, p1Height, body.motor_model, 343, 257, 34, 20, 7.1, { at: { column: "motor_model" } })
+        drawInCellOrWrap(page1, p1Height, body.foam_maker, 495, 237, 33, 20, 7.1, { column: "foam_maker" })
+        drawInCell(page1, p1Height, body.foam_model, 495, 257, 33, 20, 7.1, { at: { column: "foam_model" } })
 
         const p1Rows5 = body.page1_rows ?? []
         // 刷り込みの見出し行には描かない: p1 行0 = 刷り込み「機器点検」（テンプレート実測）
@@ -581,9 +584,9 @@ export async function POST(req: NextRequest) {
             drawWrappedInCell(page3, p3Height, foamRow.content, 214, P3_FOAM_QTY.top, 99, P3_FOAM_QTY.h, 6.7)
         }
         drawInCell(page3, p3Height, body.foam_type_no_from, P3_TYPE_NO_FROM.x, P3_TYPE_NO_ROW.top,
-            P3_TYPE_NO_FROM.w, P3_TYPE_NO_ROW.h, 7.0, { align: "center", paddingX: 0.5 })
+            P3_TYPE_NO_FROM.w, P3_TYPE_NO_ROW.h, 7.0, { align: "center", paddingX: 0.5, at: { column: "foam_type_no_from" } })
         drawInCell(page3, p3Height, body.foam_type_no_to, P3_TYPE_NO_TO.x, P3_TYPE_NO_ROW.top,
-            P3_TYPE_NO_TO.w, P3_TYPE_NO_ROW.h, 7.0, { align: "center", paddingX: 0.5 })
+            P3_TYPE_NO_TO.w, P3_TYPE_NO_ROW.h, 7.0, { align: "center", paddingX: 0.5, at: { column: "foam_type_no_to" } })
 
         // PAGE3 row 21「ホース・ノズル / 外形」: 公式PDF刷り込みの ｍ×(x≈235.2) / 本(x≈277.3) / mm(x≈298.3) の間に分割描画
         // 新キー優先（content=長さm, hose_count=本数, nozzle_dia=口径mm）→ "/" 分割 → 単一content
@@ -630,9 +633,9 @@ export async function POST(req: NextRequest) {
         const device1 = body.device1 ?? {}
         const device2 = body.device2 ?? {}
         drawInCell(page4, p4Height, device1.name, 85, 650, 56, 21, 7.2)
-        drawInCell(page4, p4Height, device1.model, 141, 650, 55, 21, 7.2)
+        drawInCell(page4, p4Height, device1.model, 141, 650, 55, 21, 7.2, { at: { column: "model" } })
         drawInCell(page4, p4Height, formatJapaneseDateText(device1.calibrated_at), 196, 650, 56, 21, 7.2)
-        drawInCell(page4, p4Height, device1.maker, 252, 650, 55, 21, 7.2)
+        drawInCell(page4, p4Height, device1.maker, 252, 650, 55, 21, 7.2, { at: { column: "maker" } })
 
         // ★2台目の機器名だけセル定義が左罫線から離れていた（定義313 / 左罫線308.52）。
         //   実描画は罫線から 7.48pt で、他7セルの 1.96〜2.40pt に対し3倍以上内側だった
@@ -640,9 +643,9 @@ export async function POST(req: NextRequest) {
         //   テンプレート実測: この欄の左罫線 308.52（307.56 との二重線は表の区切り）。
         //   他セルと同じ「罫線 −1.0」に合わせる → 描画は罫線から 2.00pt。右端は 363 のまま。
         drawInCell(page4, p4Height, device2.name, 307.52, 650, 55.48, 21, 7.2)
-        drawInCell(page4, p4Height, device2.model, 363, 650, 55, 21, 7.2)
+        drawInCell(page4, p4Height, device2.model, 363, 650, 55, 21, 7.2, { at: { column: "model" } })
         drawInCell(page4, p4Height, formatJapaneseDateText(device2.calibrated_at), 418, 650, 56, 21, 7.2)
-        drawInCell(page4, p4Height, device2.maker, 474, 650, 55, 21, 7.2)
+        drawInCell(page4, p4Height, device2.maker, 474, 650, 55, 21, 7.2, { at: { column: "maker" } })
 
         // ⑧ 枠に収まらなかった項目があればPDFを返さずに一覧を返す。
         //   黙って "..." で切り詰めると、法定書類から情報が静かに欠落するため。

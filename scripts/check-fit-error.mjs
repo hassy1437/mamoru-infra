@@ -148,7 +148,38 @@ for (const [n, pages] of [[17, 2], [18, 3], [29, 4]]) {
     check(r.misplaced.length === 0, `総括表 設備${n}件で、決まった紙に 1回だけ載っていない: ${r.misplaced.slice(0, 5).join(" / ")}`)
 }
 
-for (const f of ["_fit_ok.pdf", "_fit_ng1.pdf", "_fit_ng2.pdf", "_fit_wide.pdf", "_fit_rows17.pdf", "_fit_rows18.pdf", "_fit_rows29.pdf"]) {
+// 7. 行に属さない欄の帰属（2026-10-07）。★別記5 の型式番号（幅 10.44pt）があふれたのに、422 が
+//    同じ値を持つ測定機器の「model」を返していた（値の文字列一致で先に見つかった欄に寄る）。
+//    ★わざと測定機器の型式に同じ値を入れ、payload でも型式番号より先に置く（帰属が値頼みなら必ず外れる形）。
+//    あわせて、欄名の表に無かった型式の欄が英語のキーのまま出ないことも見る。
+const FOAM_ROUTE = "src/app/api/generate-foam-bekki5-pdf/route.ts"
+const FOAM_BASE = "tmp/pdf-realistic/bekki5_test.payload.json"
+const TYPE_NO = "123456789012"
+const PUMP_MODEL = "PMP-ABCDEFGHIJKLMNOPQRSTUVWXYZ-0123456789"
+const foam = structuredClone(JSON.parse(fs.readFileSync(FOAM_BASE, "utf8")))
+delete foam.foam_type_no_from
+foam.device1 = { ...(foam.device1 ?? {}), model: TYPE_NO }
+foam.foam_type_no_from = TYPE_NO
+foam.pump_model = PUMP_MODEL
+let foamRes
+try {
+    await runRoutePdf({ routePath: FOAM_ROUTE, payload: foam, outPdfPath: path.join("tmp", "_fit_foam.pdf") })
+    foamRes = { status: 200, body: null }
+} catch (e) {
+    if (!e.status) throw e
+    foamRes = { status: e.status, body: JSON.parse(e.responseBody) }
+}
+check(foamRes.status === 422, `別記5 型式番号・ポンプ型式の超過で ${foamRes.status}`)
+const foamItems = foamRes.body?.items ?? []
+const typeNo = foamItems.find((i) => i.field === "foam_type_no_from")
+check(Boolean(typeNo), `別記5 型式番号のあふれが型式番号として報告されていない（報告: ${foamItems.map((i) => i.field).join("・") || "なし"}）`)
+check(!typeNo || typeNo.label === "消火薬剤 型式番号（泡第 ○ 〜）", `別記5 型式番号の表記が入力画面と違う: ${typeNo?.label}`)
+check(!foamItems.some((i) => i.field === "model"), "別記5 測定機器の型式（収まっている）が、同じ値の型式番号のあふれとして報告された")
+const pump = foamItems.find((i) => i.field === "pump_model")
+check(Boolean(pump), "別記5 ポンプ型式のあふれが報告されていない")
+check(!pump || pump.label === "ポンプ 型式等", `別記5 ポンプ型式の表記が英語のキーのまま・または画面と違う: ${pump?.label}`)
+
+for (const f of ["_fit_ok.pdf", "_fit_ng1.pdf", "_fit_ng2.pdf", "_fit_wide.pdf", "_fit_rows17.pdf", "_fit_rows18.pdf", "_fit_rows29.pdf", "_fit_foam.pdf"]) {
     try { fs.unlinkSync(path.join("tmp", f)) } catch {}
 }
 

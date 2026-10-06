@@ -620,7 +620,8 @@ export async function POST(req: NextRequest) {
             const textTop = cellTop + (cellH - th) / 2
             drawTextRuns(page, fonts, String(drawn ?? ""), cellX + padX, pageH - (textTop + th * 0.78), sz)
         }
-        drawDeviceMaker(device1.maker, page3, p3Height, 250, 56, 658, 18)
+        // ★製造者名1も罫線（250.44〜250.92）の右 0.10pt から描く（他の欄と同じ寄せ方・2026-10-07）
+        drawDeviceMaker(device1.maker, page3, p3Height, 250.02, 55.98, 658, 18)
 
         drawInCell(page3, p3Height, device2.name, 306.43, 658, 55.57, 18, 7.2, devOpts)
         drawInCellWithFont(page3, p3Height, fonts, device2.model, 362, 658, 56, 18, 7.2, devOpts)

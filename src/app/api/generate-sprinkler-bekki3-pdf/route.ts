@@ -697,7 +697,8 @@ export async function POST(req: NextRequest) {
             const textTop = cellTop + (cellH - th) / 2
             drawTextRuns(page, fonts, String(drawn ?? ""), cellX + padX, pageH - (textTop + th * 0.78), sz)
         }
-        drawDeviceMaker(device1.maker, page5, p5Height, 250, 56, 658, 19)
+        // ★製造者名1も罫線（250.68〜251.16）の右へ寄せる。250 のままだと描き始め 251.0 が罫線に乗り、画素で接していた（2026-10-07）
+        drawDeviceMaker(device1.maker, page5, p5Height, 250.26, 55.74, 658, 19)
 
         drawInCell(page5, p5Height, device2.name, 306.66, 658, 55.34, 19, 7.2, devOpts)
         drawInCellWithFont(page5, p5Height, fonts, device2.model, 362, 658, 56, 19, 7.2, devOpts)

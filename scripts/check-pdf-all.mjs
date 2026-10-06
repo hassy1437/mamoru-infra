@@ -277,6 +277,18 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-start-on-rule.py", stage: "生成PDF", needsPdfs: true,
+        why: "アプリが描いた字の描き始めが縦罫線の上に乗っていないか（1 字ずつ・雛形の罫線基準）。"
+            + "★字の左の余白でインクがほぼ載らず、重なりの検査は鳴らない。専用の描画関数はセル定義の監査の対象外"
+            + "（別記2/3 の測定機器の製造者名が罫線に乗っていた・2026-10-07）",
+        runs: [
+            { label: "自己診断", cmd: [PY, "scripts/check-start-on-rule.py", "--self-test"], sentinel: "SELF_TEST_OK" },
+            ...["stress", "realistic"].map((s) => ({
+                label: s, cmd: () => [PY, "scripts/check-start-on-rule.py", ...pdfsOf(s)], sentinel: "NO_START_ON_RULE",
+            })),
+        ],
+    },
+    {
         file: "check-circle-coverage.py", stage: "生成PDF", needsPdfs: true,
         why: "★○を『描かれた結果』から全部拾い、静的検査が届いていない範囲を件数で固定する。"
             + "★同じ穴が5回開いた（罫線／アプリの図形／記号の除外／定数を通さない○／"

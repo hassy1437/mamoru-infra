@@ -603,7 +603,8 @@ export async function POST(req: NextRequest) {
             const textTop = 649 + (14 - th) / 2
             drawTextRuns(page3, fonts, String(drawn ?? ""), cellX + padX, p3Height - (textTop + th * 0.78), sz)
         }
-        drawDeviceMaker(device1.maker, 250, 56)
+        // ★製造者名1も罫線（250.56〜251.04）の右へ寄せる。250 のままだと描き始め 251.0 が罫線に乗っていた（2026-10-07）
+        drawDeviceMaker(device1.maker, 250.14, 55.86)
 
         drawInCell(page3, p3Height, device2.name, 306.55, 649, 55.45, 14, 7.2, devOpts)
         drawInCellWithFont(page3, p3Height, fonts, device2.model, 362, 649, 56, 14, 7.2, devOpts)

@@ -367,7 +367,7 @@ export default function HalogenBekki7Form({
     const [zoneName, setZoneName] = useState(coerceString(saved.zone_name))
     const [equipmentSystem, setEquipmentSystem] = useState(coerceString(saved.equipment_system, "全域"))
     const [formName, setFormName] = useState(coerceString(saved.form_name, initial.building_name ?? ""))
-    const [fireManager, setFireManager] = useState(coerceString(saved.fire_manager, initial.fire_manager_name || initial.notifier_name || ""))
+    const [fireManager, setFireManager] = useState(coerceString(saved.fire_manager, initial.fire_manager_name ?? ""))
     const [witness, setWitness] = useState(normalizeBekkiWitnessForState(coerceString(saved.witness)))
     const [location, setLocation] = useState(coerceString(saved.location, initial.building_address ?? ""))
     const [inspectionType, setInspectionType] = useState(coerceString(saved.inspection_type, bekkiInspectionTypeDefault(initial.inspection_type)))

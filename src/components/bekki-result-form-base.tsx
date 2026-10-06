@@ -206,7 +206,7 @@ export default function BekkiResultFormBase({
     const saved = savedPayload ?? {}
 
     const [formName, setFormName] = useState(coerceString(saved.form_name, initial.building_name ?? ""))
-    const [fireManager, setFireManager] = useState(coerceString(saved.fire_manager, initial.fire_manager_name || initial.notifier_name || ""))
+    const [fireManager, setFireManager] = useState(coerceString(saved.fire_manager, initial.fire_manager_name ?? ""))
     const [witness, setWitness] = useState(normalizeBekkiWitnessForState(coerceString(saved.witness)))
     const [location, setLocation] = useState(coerceString(saved.location, initial.building_address ?? ""))
     const [inspectionType, setInspectionType] = useState(coerceString(saved.inspection_type, bekkiInspectionTypeDefault(initial.inspection_type)))
@@ -476,7 +476,7 @@ export default function BekkiResultFormBase({
                 const p = (draft.payload as { payload?: Partial<BekkiBasePayload> } | null)?.payload
                 if (!p || typeof p !== "object") return
                 setFormName(coerceString(p.form_name, initial.building_name ?? ""))
-                setFireManager(coerceString(p.fire_manager, initial.fire_manager_name || initial.notifier_name || ""))
+                setFireManager(coerceString(p.fire_manager, initial.fire_manager_name ?? ""))
                 setWitness(normalizeBekkiWitnessForState(coerceString(p.witness)))
                 setLocation(coerceString(p.location, initial.building_address ?? ""))
                 setInspectionType(coerceString(p.inspection_type, bekkiInspectionTypeDefault(initial.inspection_type)))

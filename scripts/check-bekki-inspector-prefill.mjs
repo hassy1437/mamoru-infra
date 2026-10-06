@@ -105,6 +105,22 @@ function judgePeriod(name, src) {
     return problems
 }
 
+/**
+ * 6. 防火管理者の初期値は物件の防火管理者だけ（2026-10-07）。
+ *   以前は未登録のとき届出者（所有者）の名前で埋めていた＝別記に事実と違う防火管理者が載り、
+ *   総括表（物件の防火管理者だけ・未登録なら空欄）とも食い違っていた。
+ */
+function judgeFireManager(name, src) {
+    const problems = []
+    if (!/useState\(coerceString\(saved\.fire_manager,\s*initial\.fire_manager_name \?\? ""\)\)/.test(src)) {
+        problems.push(`${name}: 防火管理者の初期状態が物件の防火管理者（initial.fire_manager_name ?? ""）になっていない`)
+    }
+    if (/fire_manager[^\n]*notifier_name/.test(src)) {
+        problems.push(`${name}: 防火管理者を届出者の名前で埋めている（未登録なら空欄のはず）`)
+    }
+    return problems
+}
+
 const isStateful = (src) => /const \[inspectorCompany, setInspectorCompany\] = useState\(/.test(src)
 const isWrapper = (src) => /<BekkiResultFormBase\s+\{\.\.\.props\}/.test(src)
 
@@ -153,6 +169,7 @@ function judge({ files, pageToForm }) {
             stateful++
             problems.push(...judgeStateful(form, src))
             problems.push(...judgePeriod(form, src))
+            problems.push(...judgeFireManager(form, src))
         } else if (isWrapper(src)) {
             wrappers++
         } else {
@@ -209,6 +226,12 @@ if (process.argv.includes("--self-test")) {
         ["包む先の下書きの復元で期間の始まりを点検年月日に戻す", BASE,
             "coerceString(p.period_start, bekkiPeriodDefault(initial).start)", 'coerceString(p.period_start, initial.inspection_date ?? "")',
             (p) => p.includes(`${BASE}: 下書きの復元で period_start`)],
+        ["包む先の防火管理者を届出者で埋める形に戻す（2026-10-07 以前）", BASE,
+            'useState(coerceString(saved.fire_manager, initial.fire_manager_name ?? ""))', 'useState(coerceString(saved.fire_manager, initial.fire_manager_name || initial.notifier_name || ""))',
+            (p) => p.includes(`${BASE}: 防火管理者`)],
+        ["別記1 の下書きの復元で防火管理者を届出者で埋める", "src/components/shokaki-bekki1-form.tsx",
+            'setFireManager(coerceString(p.fire_manager, initial.fire_manager_name ?? ""))', 'setFireManager(coerceString(p.fire_manager, initial.fire_manager_name || initial.notifier_name || ""))',
+            (p) => p.includes("shokaki-bekki1-form.tsx: 防火管理者を届出者の名前で埋めている")],
         ["ページで期間を select しない", shokakiPage,
             ", inspection_period_start, inspection_period_end", "",
             (p) => p.startsWith(shokakiPage) && p.includes("inspection_period_start を select していない")],

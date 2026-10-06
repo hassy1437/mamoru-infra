@@ -226,7 +226,7 @@ export default function ShokakiBekki1Form({
     const saved = savedPayload ?? {}
 
     const [formName, setFormName] = useState(coerceString(saved.form_name, initial.building_name ?? ""))
-    const [fireManager, setFireManager] = useState(coerceString(saved.fire_manager, initial.fire_manager_name || initial.notifier_name || ""))
+    const [fireManager, setFireManager] = useState(coerceString(saved.fire_manager, initial.fire_manager_name ?? ""))
     const [witness, setWitness] = useState(normalizeBekkiWitnessForState(coerceString(saved.witness)))
     const [location, setLocation] = useState(coerceString(saved.location, initial.building_address ?? ""))
     const [periodStart, setPeriodStart] = useState(coerceString(saved.period_start, bekkiPeriodDefault(initial).start))
@@ -461,7 +461,7 @@ export default function ShokakiBekki1Form({
                 const p = (draft.payload as { payload?: Partial<ShokakiBekki1Payload> } | null)?.payload
                 if (!p || typeof p !== "object") return
                 setFormName(coerceString(p.form_name, initial.building_name ?? ""))
-                setFireManager(coerceString(p.fire_manager, initial.fire_manager_name || initial.notifier_name || ""))
+                setFireManager(coerceString(p.fire_manager, initial.fire_manager_name ?? ""))
                 setWitness(normalizeBekkiWitnessForState(coerceString(p.witness)))
                 setLocation(coerceString(p.location, initial.building_address ?? ""))
                 setPeriodStart(coerceString(p.period_start, bekkiPeriodDefault(initial).start))

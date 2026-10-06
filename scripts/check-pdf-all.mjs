@@ -520,6 +520,16 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-row-label-placement.mjs", stage: "生成PDF", needsPdfs: true,
+        why: "入力画面の行（行ラベル表）が、紙の同じ名前の行に印字されるか（別記 23 様式の全行・位置は実際に描かれた所で見る）。"
+            + "★行数が偶然そろうと route は黙って描くので、ピクセルでも行ラベル表の検査でも出ない種類"
+            + "（別記13 で画面の見出しセルを 1 行と数え、8 行が 1 行下に印字されていた・2026-10-07）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-row-label-placement.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-row-label-placement.mjs"], sentinel: "ROW_LABEL_PLACEMENT_OK" },
+        ],
+    },
+    {
         file: "check-merged-report-size.mjs", stage: "生成PDF", needsPdfs: true,
         why: "結合PDFが納品の上限（Storage 50MB）に収まり、同じフォントの重複をまとめても描画が変わらないか。"
             + "★画面では何も起きず納品のときだけ落ちる種類（26 様式で 88MB・本番で 17 種の物件が納品できなかった #27）",

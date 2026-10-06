@@ -245,7 +245,10 @@ export async function POST(req: NextRequest) {
                 cellTopFromTop: INSP1.equipment_top + topOffset,
                 cellW: INSP1.equipment_w,
                 cellH: INSP1.equipment_h,
-                fontSize: 6,
+                // ★8pt（2026-10-07）。6pt は 1 行で描いていた頃（drawInCell・高さ 135）の値をそのまま持ち越したもので、
+                //   折り返す今は根拠が無かった（規定の下限 7pt も割る）。欄は 95.3×267pt あり、
+                //   設備を全種類（約 200 字）並べても 8pt で 18 行・157pt に収まる。
+                fontSize: 8,
                 options: { verticalAlign: "top" },
             })
 

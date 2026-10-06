@@ -793,7 +793,8 @@ export default function ShokakiBekki1Form({
                                     <th className="p-2 border">点検数</th>
                                     <th className="p-2 border">合格数</th>
                                     <th className="p-2 border">要修理数</th>
-                                    <th className="p-2 border">撤去数</th>
+                                    {/* ★様式（別記様式第1）の刷り込みは「廃棄数」。画面だけ「撤去数」だった（#18） */}
+                                    <th className="p-2 border">廃棄数</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -830,7 +831,7 @@ export default function ShokakiBekki1Form({
                                         ["inspected", "点検数"],
                                         ["passed", "合格数"],
                                         ["repair_needed", "要修理数"],
-                                        ["removed", "撤去数"],
+                                        ["removed", "廃棄数"],
                                     ] as const).map(([field, fieldLabel]) => (
                                         <div key={field} className="space-y-1">
                                             <span className="text-xs text-slate-500">{fieldLabel}</span>

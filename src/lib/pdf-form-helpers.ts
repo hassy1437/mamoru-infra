@@ -533,7 +533,22 @@ export const drawJapaneseDateInCell = ({
     text: formatJapaneseDateText(dateValue),
 })
 
-const wrapTextByWidth = (fonts: ReportFonts, value: string, size: number, maxWidth: number) => {
+/**
+ * 行頭に置かない文字（行頭禁則）・行末に置かない文字（行末禁則）（#18・2026-10-06）。
+ *   ★「）」だけ・「ー」だけが次の行に送られていた（2026-10-05 の通し確認・#22 の社名）。
+ *   ★小書きの仮名（ッ・ャ など）は行頭を許す（緩い禁則・CSS の line-break: normal と同じ）。
+ *     厳しくすると、狭い欄で追い出しが行を増やし、禁則そのものが使えない欄が増える（実測: 長文の措置内容）。
+ */
+export const NO_LINE_START = new Set(Array.from("、。，．,.・：；:;？！?!ー）」』】〕〉》〙〗)]}”’々ゝゞヽヾ"))
+export const NO_LINE_END = new Set(Array.from("（「『【〔〈《〘〖([{“‘"))
+
+const wrapTextByWidth = (
+    fonts: ReportFonts,
+    value: string,
+    size: number,
+    maxWidth: number,
+    opts?: { kinsoku?: boolean },
+) => {
     const lines: string[] = []
     let current = ""
 
@@ -546,6 +561,29 @@ const wrapTextByWidth = (fonts: ReportFonts, value: string, size: number, maxWid
         //   FIT_EPSILON(1e-6) に置き換えると bekki18 の措置内容が 2行→3行に増える（実測）。
         //   ＝挙動を変える値なので、折り返し方針を見直す時（⑧）に一緒に判断すること。
         if (current && measureRuns(fonts, candidate, size) > maxWidth + 0.1) {
+            /*
+              ★禁則（#18）: 次の行頭が禁則文字なら、直前の文字ごと次の行へ追い出す。
+                行末が開き括弧なら、それも次の行へ送る。
+                ★追い出した塊が 1 行に入らないとき・行に何も残らないときはやらない（従来どおり）。
+            */
+            if (opts?.kinsoku) {
+                const chars = Array.from(current)
+                let k = 0
+                if (NO_LINE_START.has(ch)) {
+                    k = 1
+                    while (k < chars.length && NO_LINE_START.has(chars[chars.length - k])) k++
+                }
+                while (k < chars.length && NO_LINE_END.has(chars[chars.length - 1 - k])) k++
+                if (k > 0 && k < chars.length) {
+                    const keep = chars.slice(0, chars.length - k).join("").trimEnd()
+                    const moved = chars.slice(chars.length - k).join("") + ch
+                    if (keep && measureRuns(fonts, moved, size) <= maxWidth + 0.1) {
+                        lines.push(keep)
+                        current = moved
+                        continue
+                    }
+                }
+            }
             const trimmed = current.trimEnd()
             if (trimmed) lines.push(trimmed)
             current = ch === " " ? "" : ch
@@ -700,6 +738,15 @@ export const wrappedFit = (a: FitSizeArgs & { lineGap: number }) => {
         size = Math.max(a.minFontSize, size - 0.3)
         wrapped = wrapAtSize(size)
         if (size <= a.minFontSize) break
+    }
+    /*
+      ★禁則（#18）は、決まったサイズのまま行が入りきるときだけ使う。
+        ★文字サイズは禁則の前と変えない（禁則のために縮めると、別の欄の見た目が動く）。
+        入りきらない（行が増えて溢れる）ときは従来の折り返しのまま。
+    */
+    if (wrapped.lines.length <= wrapped.maxLines) {
+        const kinsoku = wrapTextByWidth(a.fonts, a.text, size, maxWidth, { kinsoku: true })
+        if (kinsoku.length <= wrapped.maxLines) wrapped = { ...wrapped, lines: kinsoku }
     }
     return { size, ...wrapped }
 }

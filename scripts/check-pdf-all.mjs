@@ -466,6 +466,24 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-kinsoku.mjs", stage: "生成PDF",
+        why: "折り返しの続きの行頭に「）」「ー」「、」「・」、行末に「（」が残っていないか（禁則）。"
+            + "★字は全部出ていて欠けもしないので、はみ出し・切り詰めの検査では捉えられない種類（#18）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-kinsoku.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-kinsoku.mjs"], sentinel: "KINSOKU_OK" },
+        ],
+    },
+    {
+        file: "check-bekki1-summary-labels.mjs", stage: "静的",
+        why: "別記1 の集計の欄名（画面）が、様式の刷り込みと同じか。"
+            + "★PDF には正しく載るので PDF の検査では捉えられない種類（画面だけ「撤去数」・様式は「廃棄数」だった #18）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-bekki1-summary-labels.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-bekki1-summary-labels.mjs"], sentinel: "BEKKI1_SUMMARY_LABELS_OK" },
+        ],
+    },
+    {
         file: "check-soukatsu-details.mjs", stage: "挙動",
         why: "総括表の不良内容・措置内容・立会者が、入力の整理・編集の突き合わせ（設備名と判定を消さない）・PDF の行と欄まで届くか。"
             + "★空欄は正常なピクセルなので画像では出ない種類（画面に入力欄が無く常に空欄だった #28）",

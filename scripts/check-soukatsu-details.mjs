@@ -105,7 +105,9 @@ const libSrc = fs.readFileSync(path.join(ROOT, "src", "lib", "soukatsu-equipment
 if (process.argv.includes("--self-test")) {
     const lib = await loadLib(libSrc)
     const okLogic = judgeLogic(lib)
-    const okPdf = await judgePdf(items, "_soukatsu_details.pdf")
+    // ★自己診断は本番の検査と別の名前で作る（check-pdf-all は両方を並列に走らせる。
+    //   同じ名前だと片方が消した直後にもう片方が読み、「PDF を読めない」で落ちた・2026-10-06）
+    const okPdf = await judgePdf(items, "_soukatsu_details_selftest.pdf")
     if (okLogic.length || okPdf.length) {
         console.log("自己診断: 現状が既にNG（陰性対照が成立しない）")
         for (const p of [...okLogic, ...okPdf]) console.log("   ", p)
@@ -123,7 +125,7 @@ if (process.argv.includes("--self-test")) {
         console.log("自己診断: 不良内容などが空でも PDF の検査が通ってしまう")
         process.exit(1)
     }
-    for (const f of ["_soukatsu_details.pdf", "_soukatsu_details_bare.pdf"]) fs.rmSync(path.join("tmp", f), { force: true })
+    for (const f of ["_soukatsu_details_selftest.pdf", "_soukatsu_details_bare.pdf"]) fs.rmSync(path.join("tmp", f), { force: true })
     console.log("  陰性対照: 整理・突き合わせ・PDF（1枚目と2枚目）すべて約束どおり")
     console.log("  陽性対照1: 突き合わせで判定を画面の値で上書きする → 検出")
     console.log("  陽性対照2: 3つの欄が空の行（以前の画面の保存）→ PDF の検査が検出")

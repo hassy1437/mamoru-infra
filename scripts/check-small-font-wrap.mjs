@@ -17,7 +17,8 @@ import path from "path"
 import { spawnSync } from "child_process"
 import { runRouteOutput } from "./run-route-pdf.mjs"
 
-const OUT = path.join("tmp", "small-font-wrap")
+// ★自己診断と本番の検査で出力先を分ける（check-pdf-all は両方を並列に走らせる。同じ名前だと書きかけを読む）
+const OUT = path.join("tmp", "small-font-wrap", process.argv.includes("--self-test") ? "self-test" : "check")
 fs.mkdirSync(OUT, { recursive: true })
 const MIN_PT = 5.0
 

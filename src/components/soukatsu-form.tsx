@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
+import { SOUKATSU_NOT_PRINTED_NOTE } from "@/lib/soukatsu-not-printed"
 import { UsageSelect } from "@/components/usage-select"
 import { FloorSelect } from "@/components/floor-select"
 import { Textarea } from "@/components/ui/textarea"
@@ -519,6 +520,7 @@ export default function SoukatsuForm({ property, previousData, copyFromId, sourc
             <Card>
                 <CardHeader>
                     <CardTitle>総合判定・備考</CardTitle>
+                    <CardDescription>{SOUKATSU_NOT_PRINTED_NOTE}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                     <div className="space-y-2">

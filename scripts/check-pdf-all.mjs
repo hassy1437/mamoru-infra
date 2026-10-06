@@ -562,6 +562,15 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-soukatsu-not-printed.mjs", stage: "静的",
+        why: "総括表の入力画面の「総合判定・備考は印字されません」が実際と食い違っていないか（入力画面 2 つが知らせを出し、"
+            + "帳票の route・一括出力が総合判定・総括表の備考を読まない）。★入力欄があるのに紙に出ないことが画面に無かった（2026-10-07）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-soukatsu-not-printed.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-soukatsu-not-printed.mjs"], sentinel: "SOUKATSU_NOT_PRINTED_OK" },
+        ],
+    },
+    {
         file: "check-blank-judgment-sections.mjs", stage: "静的",
         why: "判定が 1 つも入っていない表（その1 だけ入れて続きが空など）を、出力画面と納品の確認で知らせるか。"
             + "総合点検の行・様式まるごと未入力は知らせない（空欄が正しいことがある）。"

@@ -1,5 +1,7 @@
 ﻿"use client"
 
+import { isBekkiHeadingLabel } from "@/lib/bekki-heading-row"
+import { BekkiHeadingCard, BekkiHeadingTableRow } from "@/components/bekki-heading-row"
 import { bekkiPeriodDefault } from "@/lib/bekki-period"
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react"
 import { BEKKI_ROW_NOTES } from "@/lib/bekki-row-notes"
@@ -585,7 +587,7 @@ export default function PowderBekki8Form({
         //   共有ベースは section.key を持っているが、この3様式は専用フォームなので明示的に渡す。
         rowsKey: string,
     ) => {
-    const markAllGood = () => setter((prev) => prev.map((row) => (row.judgment === "" ? { ...row, judgment: "良" } : row)))
+    const markAllGood = () => setter((prev) => prev.map((row, i) => (row.judgment === "" && !isBekkiHeadingLabel(labels[i] ?? "") ? { ...row, judgment: "良" } : row)))
     return (
         <Card>
             <CardHeader>
@@ -613,7 +615,9 @@ export default function PowderBekki8Form({
                             </tr>
                         </thead>
                         <tbody>
-                            {labels.map((label, idx) => (
+                            {labels.map((label, idx) => isBekkiHeadingLabel(label) ? (
+                                <BekkiHeadingTableRow key={`${title}-heading-${idx}`} label={label} />
+                            ) : (
                                 <tr key={`${title}-${idx}`}>
                                     <td className={`p-2 border ${WRAP_CLS}`}>
                                         {bindLabelBreaks(label)}
@@ -664,7 +668,9 @@ export default function PowderBekki8Form({
 
                 {/* Mobile: card layout */}
                 <div className="md:hidden space-y-3">
-                    {labels.map((label, idx) => (
+                    {labels.map((label, idx) => isBekkiHeadingLabel(label) ? (
+                        <BekkiHeadingCard key={`${title}-heading-${idx}-mobile`} label={label} />
+                    ) : (
                         <div key={`${title}-${idx}-mobile`} className="border rounded-lg p-3 space-y-2 bg-white">
                             <div className={`font-medium text-sm text-slate-800 ${WRAP_CLS}`}>{bindLabelBreaks(label)}</div>
                             {BEKKI_ROW_NOTES[API_PATH]?.[rowsKey]?.[idx] && (

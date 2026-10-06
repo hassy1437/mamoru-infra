@@ -1,5 +1,7 @@
 ﻿"use client"
 
+import { isBekkiHeadingLabel } from "@/lib/bekki-heading-row"
+import { BekkiHeadingCard, BekkiHeadingTableRow } from "@/components/bekki-heading-row"
 import { bekkiPeriodDefault } from "@/lib/bekki-period"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { loadDraftLocal, saveDraftLocal } from "@/lib/local-draft"
@@ -513,7 +515,7 @@ export default function ShokakiBekki1Form({
     // marks(A〜F)・集計表(summaryRows)・既存の良/否は触らない。
     const markAllGood = () => {
         const setter = page === "p1" ? setPage1Rows : setPage2Rows
-        setter((prev) => prev.map((row) => (row.judgment === "" ? { ...row, judgment: "良" } : row)))
+        setter((prev) => prev.map((row, i) => (row.judgment === "" && !isBekkiHeadingLabel(labels[i] ?? "") ? { ...row, judgment: "良" } : row)))
     }
     return (
         <Card>
@@ -544,7 +546,9 @@ export default function ShokakiBekki1Form({
                             </tr>
                         </thead>
                         <tbody>
-                            {labels.map((label, idx) => (
+                            {labels.map((label, idx) => isBekkiHeadingLabel(label) ? (
+                                <BekkiHeadingTableRow key={`${title}-heading-${idx}`} label={label} />
+                            ) : (
                                 <tr key={`${page}-${label}`}>
                                     <td className={`p-2 border ${WRAP_CLS}`}>{bindLabelBreaks(label)}</td>
                                     {(noMarkFromIndex !== undefined && idx >= noMarkFromIndex) ? (
@@ -604,6 +608,7 @@ export default function ShokakiBekki1Form({
                 {/* Mobile: card layout（md 未満） */}
                 <div className="md:hidden space-y-3">
                     {labels.map((label, idx) => {
+                        if (isBekkiHeadingLabel(label)) return <BekkiHeadingCard key={`${title}-heading-${idx}-mobile`} label={label} />
                         const row = rows[idx]
                         const showMarks = noMarkFromIndex === undefined || idx < noMarkFromIndex
                         const showDefect = row.judgment === "否" || Boolean(row.bad_content) || Boolean(row.action_content)

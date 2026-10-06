@@ -1,5 +1,7 @@
 "use client"
 
+import { isBekkiHeadingLabel } from "@/lib/bekki-heading-row"
+import { BekkiHeadingCard, BekkiHeadingTableRow } from "@/components/bekki-heading-row"
 import { bekkiPeriodDefault } from "@/lib/bekki-period"
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react"
 import { WRAP_CLS, bindLabelBreaks } from "@/components/row-label"
@@ -521,7 +523,7 @@ export default function FoamBekki5Form({
     const perfRowIndex = special?.perfRow
     const hoseRowIndex = special?.hoseRow
     const pressureSwitchRowIndex = special?.pressureSwitchRow
-    const markAllGood = () => setter((prev) => prev.map((row) => (row.judgment === "" ? { ...row, judgment: "良" } : row)))
+    const markAllGood = () => setter((prev) => prev.map((row, i) => (row.judgment === "" && !isBekkiHeadingLabel(labels[i] ?? "") ? { ...row, judgment: "良" } : row)))
     return (
         <Card>
             <CardHeader>
@@ -549,7 +551,9 @@ export default function FoamBekki5Form({
                             </tr>
                         </thead>
                         <tbody>
-                            {labels.map((label, idx) => (
+                            {labels.map((label, idx) => isBekkiHeadingLabel(label) ? (
+                                <BekkiHeadingTableRow key={`${title}-heading-${idx}`} label={label} />
+                            ) : (
                                 <tr key={`${title}-${label}`}>
                                     <td className={`p-2 border ${WRAP_CLS}`}>{bindLabelBreaks(label)}</td>
                                     <td className="p-1 border">
@@ -669,7 +673,9 @@ export default function FoamBekki5Form({
 
                 {/* Mobile: card layout */}
                 <div className="md:hidden space-y-3">
-                    {labels.map((label, idx) => (
+                    {labels.map((label, idx) => isBekkiHeadingLabel(label) ? (
+                        <BekkiHeadingCard key={`${title}-heading-${idx}-mobile`} label={label} />
+                    ) : (
                         <div key={`${title}-${label}-mobile`} className="border rounded-lg p-3 space-y-2 bg-white">
                             <div className={`font-medium text-sm text-slate-800 ${WRAP_CLS}`}>{bindLabelBreaks(label)}</div>
                             <div className="grid grid-cols-2 gap-2">

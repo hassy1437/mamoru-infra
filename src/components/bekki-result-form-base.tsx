@@ -1,5 +1,7 @@
 "use client"
 
+import { isBekkiHeadingLabel } from "@/lib/bekki-heading-row"
+import { BekkiHeadingCard, BekkiHeadingTableRow } from "@/components/bekki-heading-row"
 import { bekkiPeriodDefault } from "@/lib/bekki-period"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { BEKKI_ROW_NOTES } from "@/lib/bekki-row-notes"
@@ -565,10 +567,14 @@ export default function BekkiResultFormBase({
 
     // 「すべて良にする」: そのセクションの判定が空("")の行だけ "良" にする。
     // 既に "良"/"否" の行は触らない（不良の意図・既入力を上書きしない）。
+    // ★見出し行（紙では全幅の見出し・route は描かない）には入れない（src/lib/bekki-heading-row.ts）
     const markAllGoodInSection = (key: BekkiPageRowsKey) => {
+        const labels = sections.find((s) => s.key === key)?.labels ?? []
         setRowsByKey((prev) => ({
             ...prev,
-            [key]: prev[key].map((row) => (row.judgment === "" ? { ...row, judgment: "良" } : row)),
+            [key]: prev[key].map((row, i) =>
+                row.judgment === "" && !isBekkiHeadingLabel(labels[i] ?? "") ? { ...row, judgment: "良" } : row,
+            ),
         }))
     }
 
@@ -614,7 +620,9 @@ export default function BekkiResultFormBase({
                         </thead>
                         <tbody>
                             {section.labels.map((label, idx) =>
-                                section.hiddenRow?.(label, idx) ? null : (
+                                section.hiddenRow?.(label, idx) ? null : isBekkiHeadingLabel(label) ? (
+                                <BekkiHeadingTableRow key={`${section.key}-heading-${idx}`} label={label} />
+                            ) : (
                                 <tr key={`${section.key}-${idx}`}>
                                     <td className={`p-2 border ${WRAP_CLS}`}>
                                         {bindLabelBreaks(label)}
@@ -741,7 +749,9 @@ export default function BekkiResultFormBase({
                 {/* Mobile: card layout */}
                 <div className="md:hidden space-y-3">
                     {section.labels.map((label, idx) =>
-                        section.hiddenRow?.(label, idx) ? null : (
+                        section.hiddenRow?.(label, idx) ? null : isBekkiHeadingLabel(label) ? (
+                        <BekkiHeadingCard key={`${section.key}-heading-${idx}-mobile`} label={label} />
+                    ) : (
                         <div key={`${section.key}-mobile-${idx}`} className="border rounded-lg p-3 space-y-2 bg-white">
                             <div className={`font-medium text-sm text-slate-800 ${WRAP_CLS}`}>{bindLabelBreaks(label)}</div>
                             {BEKKI_ROW_NOTES[apiPath]?.[section.key]?.[idx] && (

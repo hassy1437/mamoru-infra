@@ -521,6 +521,15 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-heading-row-inputs.mjs", stage: "静的",
+        why: "別記の入力画面が「見出し行」（紙では全幅の見出し・route は描かない）に入力欄を出さず、「すべて良にする」も入れないか。"
+            + "★入れた値が黙って消えるだけで画面も PDF も正常に見える種類（2026-10-07）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-heading-row-inputs.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-heading-row-inputs.mjs"], sentinel: "HEADING_ROW_INPUTS_OK" },
+        ],
+    },
+    {
         file: "check-row-label-placement.mjs", stage: "生成PDF", needsPdfs: true,
         why: "入力画面の行（行ラベル表）が、紙の同じ名前の行に印字されるか（別記 23 様式の全行・位置は実際に描かれた所で見る）。"
             + "★行数が偶然そろうと route は黙って描くので、ピクセルでも行ラベル表の検査でも出ない種類"

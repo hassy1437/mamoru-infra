@@ -1,5 +1,6 @@
 "use client"
 
+import { bekkiPeriodDefault } from "@/lib/bekki-period"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { BEKKI_ROW_NOTES } from "@/lib/bekki-row-notes"
 import { WRAP_CLS, bindLabelBreaks } from "@/components/row-label"
@@ -133,6 +134,9 @@ interface Props {
         inspector_address?: string | null
         inspector_tel?: string | null
         inspection_date?: string | null
+        /** 総括表の点検期間。別記の期間の初期値にする（src/lib/bekki-period.ts） */
+        inspection_period_start?: string | null
+        inspection_period_end?: string | null
         /** 総括表の点検種別。別記の既定にする（無ければ「機器・総合」）。src/lib/bekki-inspection-type.ts */
         inspection_type?: string | null
     }
@@ -206,8 +210,8 @@ export default function BekkiResultFormBase({
     const [witness, setWitness] = useState(normalizeBekkiWitnessForState(coerceString(saved.witness)))
     const [location, setLocation] = useState(coerceString(saved.location, initial.building_address ?? ""))
     const [inspectionType, setInspectionType] = useState(coerceString(saved.inspection_type, bekkiInspectionTypeDefault(initial.inspection_type)))
-    const [periodStart, setPeriodStart] = useState(coerceString(saved.period_start, initial.inspection_date ?? ""))
-    const [periodEnd, setPeriodEnd] = useState(coerceString(saved.period_end, initial.inspection_date ?? ""))
+    const [periodStart, setPeriodStart] = useState(coerceString(saved.period_start, bekkiPeriodDefault(initial).start))
+    const [periodEnd, setPeriodEnd] = useState(coerceString(saved.period_end, bekkiPeriodDefault(initial).end))
     const [inspectorName, setInspectorName] = useState(normalizeBekkiInspectorNameForState(coerceString(saved.inspector_name, initial.inspector_name ?? "")))
     const [inspectorCompany, setInspectorCompany] = useState(coerceString(saved.inspector_company, initial.inspector_company ?? ""))
     const [inspectorAddress, setInspectorAddress] = useState(coerceString(saved.inspector_address, initial.inspector_address ?? ""))
@@ -476,8 +480,8 @@ export default function BekkiResultFormBase({
                 setWitness(normalizeBekkiWitnessForState(coerceString(p.witness)))
                 setLocation(coerceString(p.location, initial.building_address ?? ""))
                 setInspectionType(coerceString(p.inspection_type, bekkiInspectionTypeDefault(initial.inspection_type)))
-                setPeriodStart(coerceString(p.period_start, initial.inspection_date ?? ""))
-                setPeriodEnd(coerceString(p.period_end, initial.inspection_date ?? ""))
+                setPeriodStart(coerceString(p.period_start, bekkiPeriodDefault(initial).start))
+                setPeriodEnd(coerceString(p.period_end, bekkiPeriodDefault(initial).end))
                 setInspectorName(normalizeBekkiInspectorNameForState(coerceString(p.inspector_name, initial.inspector_name ?? "")))
                 setInspectorCompany(coerceString(p.inspector_company, initial.inspector_company ?? ""))
                 setInspectorAddress(coerceString(p.inspector_address, initial.inspector_address ?? ""))

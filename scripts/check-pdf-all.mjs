@@ -450,7 +450,8 @@ const CHECKS = [
     {
         file: "check-bekki-inspector-prefill.mjs", stage: "静的",
         why: "別記様式の頭の点検者欄（氏名・所属会社・住所・TEL）が、点検者一覧の点検者1から初期値で入る配線か（ページ→フォーム→下書きの復元）。"
-            + "★空欄は正常な見た目なので画面でも PDF でも出ない種類（氏名だけ渡していた #17）",
+            + "★空欄は正常な見た目なので画面でも PDF でも出ない種類（氏名だけ渡していた #17）。"
+            + "★点検期間も総括表から引き継ぐか（点検年月日〜点検年月日で始まり総括表と食い違っていた・2026-10-07）",
         runs: [
             { label: "自己診断", cmd: ["node", "scripts/check-bekki-inspector-prefill.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
             { cmd: ["node", "scripts/check-bekki-inspector-prefill.mjs"], sentinel: "BEKKI_INSPECTOR_PREFILL_OK" },

@@ -15,6 +15,9 @@ interface Props {
         inspector_address?: string | null
         inspector_tel?: string | null
         inspection_date?: string | null
+        /** 総括表の点検期間。別記の期間の初期値にする（src/lib/bekki-period.ts） */
+        inspection_period_start?: string | null
+        inspection_period_end?: string | null
         inspection_type?: string | null
     }
     soukatsuId: string

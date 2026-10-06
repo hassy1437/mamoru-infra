@@ -1,5 +1,6 @@
 "use client"
 
+import { bekkiPeriodDefault } from "@/lib/bekki-period"
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react"
 import { WRAP_CLS, bindLabelBreaks } from "@/components/row-label"
 import { Button } from "@/components/ui/button"
@@ -79,6 +80,9 @@ interface Props {
         inspector_address?: string | null
         inspector_tel?: string | null
         inspection_date?: string | null
+        /** 総括表の点検期間。別記の期間の初期値にする（src/lib/bekki-period.ts） */
+        inspection_period_start?: string | null
+        inspection_period_end?: string | null
         inspection_type?: string | null
     }
     soukatsuId: string
@@ -275,8 +279,8 @@ export default function FoamBekki5Form({
     const [witness, setWitness] = useState(normalizeBekkiWitnessForState(coerceString(saved.witness)))
     const [location, setLocation] = useState(coerceString(saved.location, initial.building_address ?? ""))
     const [inspectionType, setInspectionType] = useState(coerceString(saved.inspection_type, bekkiInspectionTypeDefault(initial.inspection_type)))
-    const [periodStart, setPeriodStart] = useState(coerceString(saved.period_start, initial.inspection_date ?? ""))
-    const [periodEnd, setPeriodEnd] = useState(coerceString(saved.period_end, initial.inspection_date ?? ""))
+    const [periodStart, setPeriodStart] = useState(coerceString(saved.period_start, bekkiPeriodDefault(initial).start))
+    const [periodEnd, setPeriodEnd] = useState(coerceString(saved.period_end, bekkiPeriodDefault(initial).end))
     const [inspectorName, setInspectorName] = useState(normalizeBekkiInspectorNameForState(coerceString(saved.inspector_name, initial.inspector_name ?? "")))
     const [inspectorCompany, setInspectorCompany] = useState(coerceString(saved.inspector_company, initial.inspector_company ?? ""))
     const [inspectorAddress, setInspectorAddress] = useState(coerceString(saved.inspector_address, initial.inspector_address ?? ""))

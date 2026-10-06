@@ -18,7 +18,7 @@ export default async function SmokeControlBekki18Page({
 
     const { data: soukatsu } = await supabase
         .from("inspection_soukatsu")
-        .select("id, property_id, building_name, building_address, notifier_name, inspection_date, inspection_type")
+        .select("id, property_id, building_name, building_address, notifier_name, inspection_date, inspection_period_start, inspection_period_end, inspection_type")
         .eq("id", id)
         .single()
 
@@ -69,6 +69,8 @@ export default async function SmokeControlBekki18Page({
                         fire_manager_name: property?.fire_manager_name ?? null,
                         ...inspector,
                         inspection_date: soukatsu.inspection_date,
+                        inspection_period_start: soukatsu.inspection_period_start,
+                        inspection_period_end: soukatsu.inspection_period_end,
                         inspection_type: soukatsu.inspection_type,
                     }}
                     soukatsuId={id}

@@ -15,6 +15,12 @@
 //   3. どのフォームも initial の型に inspector_company / inspector_address / inspector_tel がある
 //      （★spread で渡す欄は型の余分チェックに掛からないので、型が嘘でも tsc は通る）
 //
+// ■ 点検期間（2026-10-07 に足した）
+//   別記の期間が「点検年月日〜点検年月日」で始まり、総括表の期間（例 9/28〜10/6）と食い違っていた。
+//   4. ページ: 総括表の inspection_period_start / inspection_period_end を select して initial に渡す
+//   5. フォーム: initial の型に両方がある。状態を持つフォームは期間の useState と下書きの復元が
+//      bekkiPeriodDefault(initial)（src/lib/bekki-period.ts）を既定にしている
+//
 // 使い方: node scripts/check-bekki-inspector-prefill.mjs [--self-test]
 import fs from "fs"
 import path from "path"
@@ -79,6 +85,26 @@ function judgeStateful(name, src) {
     return problems
 }
 
+const PERIOD_KEYS = ["inspection_period_start", "inspection_period_end"]
+
+/** 5. 期間の初期状態と下書きの復元が bekkiPeriodDefault(initial) を既定にしている */
+function judgePeriod(name, src) {
+    const problems = []
+    for (const [field, part] of [["period_start", "start"], ["period_end", "end"]]) {
+        const init = new RegExp(`useState\\(coerceString\\(saved\\.${field}\\s*,\\s*bekkiPeriodDefault\\(initial\\)\\.${part}\\)\\)`)
+        if (!init.test(src)) problems.push(`${name}: ${field} の初期状態が総括表の期間（bekkiPeriodDefault）を既定にしていない`)
+        // ★正規表現で括弧の入れ子を追わない。呼び出しの直後の文字列がそのとおりかで見る
+        const head = `coerceString(p.${field}`
+        const want = `, bekkiPeriodDefault(initial).${part})`
+        for (let at = src.indexOf(head); at >= 0; at = src.indexOf(head, at + 1)) {
+            if (!src.startsWith(want, at + head.length)) {
+                problems.push(`${name}: 下書きの復元で ${field} が総括表の期間を既定にしていない`)
+            }
+        }
+    }
+    return problems
+}
+
 const isStateful = (src) => /const \[inspectorCompany, setInspectorCompany\] = useState\(/.test(src)
 const isWrapper = (src) => /<BekkiResultFormBase\s+\{\.\.\.props\}/.test(src)
 
@@ -101,6 +127,11 @@ function judge({ files, pageToForm }) {
         if (at < 0) problems.push(`${page}: initial に ...inspector を渡していない`)
         const override = block.match(/\binspector_(name|company|address|tel)\s*:/)
         if (override) problems.push(`${page}: initial で ${override[0].replace(/\s*:$/, "")} を個別に書いている（初期値を上書きする）`)
+        // 4. 点検期間
+        for (const key of PERIOD_KEYS) {
+            if (!new RegExp(`\\.select\\("[^"]*\\b${key}\\b`).test(src)) problems.push(`${page}: 総括表の ${key} を select していない`)
+            if (!new RegExp(`\\b${key}:\\s*soukatsu\\.${key}\\b`).test(block)) problems.push(`${page}: initial に ${key} を渡していない`)
+        }
     }
 
     const forms = [...new Set([...Object.values(pageToForm), BASE])]
@@ -112,7 +143,7 @@ function judge({ files, pageToForm }) {
         if (!type) {
             problems.push(`${form}: initial の型が見つからない`)
         } else {
-            for (const { key } of FIELDS) {
+            for (const key of [...FIELDS.map((f) => f.key), ...PERIOD_KEYS]) {
                 if (!new RegExp(`\\b${key}\\?:\\s*string\\s*\\|\\s*null`).test(type)) {
                     problems.push(`${form}: initial の型に ${key} が無い`)
                 }
@@ -121,6 +152,7 @@ function judge({ files, pageToForm }) {
         if (form === BASE || isStateful(src)) {
             stateful++
             problems.push(...judgeStateful(form, src))
+            problems.push(...judgePeriod(form, src))
         } else if (isWrapper(src)) {
             wrappers++
         } else {
@@ -168,6 +200,18 @@ if (process.argv.includes("--self-test")) {
         ["フォームの initial の型から所属会社を外す", "src/components/standpipe-bekki20-form.tsx",
             "inspector_company?: string | null", "",
             (p) => p.includes("standpipe-bekki20-form.tsx: initial の型に inspector_company が無い")],
+        ["包む先の期間の始まりを点検年月日に戻す（2026-10-07 以前の形）", BASE,
+            "coerceString(saved.period_start, bekkiPeriodDefault(initial).start)", 'coerceString(saved.period_start, initial.inspection_date ?? "")',
+            (p) => p.includes(`${BASE}: period_start の初期状態`)],
+        ["別記3 の期間の終わりを点検年月日に戻す", "src/components/sprinkler-bekki3-form.tsx",
+            "coerceString(saved.period_end, bekkiPeriodDefault(initial).end)", 'coerceString(saved.period_end, initial.inspection_date ?? "")',
+            (p) => p.includes("sprinkler-bekki3-form.tsx: period_end の初期状態")],
+        ["包む先の下書きの復元で期間の始まりを点検年月日に戻す", BASE,
+            "coerceString(p.period_start, bekkiPeriodDefault(initial).start)", 'coerceString(p.period_start, initial.inspection_date ?? "")',
+            (p) => p.includes(`${BASE}: 下書きの復元で period_start`)],
+        ["ページで期間を select しない", shokakiPage,
+            ", inspection_period_start, inspection_period_end", "",
+            (p) => p.startsWith(shokakiPage) && p.includes("inspection_period_start を select していない")],
     ]
     for (const [label, file, from, to, hit] of cases) {
         let mutated

@@ -25,6 +25,9 @@ FIT_EPSILON,
     truncateRunsToFitWidth,
     pickFont,
     reportIfBelowMinSize,
+    singleLineFitSize,
+    wrapGivesLargerSize,
+    wrappedFit,
     type ReportFonts,
     type CellRef,
     type CellAt,
@@ -185,6 +188,13 @@ const PERIOD_END_ANCHORS = { year: 441.0, month: 477.5, day: 515.0, baseline: 17
 
 const normalizeText = (value: unknown) => String(value ?? "").replace(/\s+/g, " ").trim()
 
+/**
+ * drawInCell（1 行）と drawWrappedInCell（折り返し）の余白・下限。
+ * ★#22 の「どちらが大きく描けるか」の判定も同じ値で計算する（ここ 1 か所から取る）。
+ */
+const BEKKI5_SINGLE_FIT = { paddingX: 3, paddingY: 2, minFontSize: 3.5 } as const
+const BEKKI5_WRAPPED_FIT = { paddingX: 2.5, paddingY: 1.5, minFontSize: 3.5, lineGap: 0.9 } as const
+
 const formatDateText = (value: unknown) => {
     const raw = normalizeText(value)
     if (!raw) return ""
@@ -274,9 +284,9 @@ export async function POST(req: NextRequest) {
             const normalized = normalizeText(text)
             if (!normalized) return
 
-            const paddingX = options?.paddingX ?? 3
-            const paddingY = options?.paddingY ?? 2
-            const minFontSize = options?.minFontSize ?? 3.5
+            const paddingX = options?.paddingX ?? BEKKI5_SINGLE_FIT.paddingX
+            const paddingY = options?.paddingY ?? BEKKI5_SINGLE_FIT.paddingY
+            const minFontSize = options?.minFontSize ?? BEKKI5_SINGLE_FIT.minFontSize
             let currentSize = Math.min(fontSize, options?.maxFontSize ?? fontSize)
             const designSize = currentSize
 
@@ -338,13 +348,36 @@ export async function POST(req: NextRequest) {
             cellW,
             cellH,
             fontSize,
-            options: {
-                paddingX: 2.5,
-                paddingY: 1.5,
-                minFontSize: 3.5,
-                lineGap: 0.9,
-                at,
-            },        })
+            options: { ...BEKKI5_WRAPPED_FIT, at },
+        })
+
+        /**
+         * 1 行で描く。ただし 1 行では 5pt を割り、折り返したほうが大きく描けるときだけ折り返す（#22）。
+         *   ★製造者名で 7 文字が 3.86pt まで縮んでいた（欄の高さには 2 行入る）。
+         *   ★判定の余白・下限は drawInCell / drawWrappedInCell と同じ定数（BEKKI5_*_FIT）から取る。
+         *   ★型式（英数字の型番）には使わない ―― 途中で折り返すと読み違える。
+         */
+        const drawInCellOrWrap = (
+            page: PDFPage,
+            pageHeight: number,
+            text: unknown,
+            cellX: number,
+            cellTopFromTop: number,
+            cellW: number,
+            cellH: number,
+            fontSize: number,
+        ) => {
+            const normalized = normalizeText(text)
+            if (!normalized) return
+            const value = String(normalized)
+            const single = singleLineFitSize({ fonts, text: value, cellW, cellH, fontSize, ...BEKKI5_SINGLE_FIT })
+            const wrapped = wrappedFit({ fonts, text: value, cellW, cellH, fontSize, ...BEKKI5_WRAPPED_FIT })
+            if (wrapGivesLargerSize(single, wrapped.size)) {
+                drawWrappedInCell(page, pageHeight, text, cellX, cellTopFromTop, cellW, cellH, fontSize)
+            } else {
+                drawInCell(page, pageHeight, text, cellX, cellTopFromTop, cellW, cellH, fontSize)
+            }
+        }
 
         const drawResultRows = (
             page: PDFPage,
@@ -429,11 +462,12 @@ export async function POST(req: NextRequest) {
         // ★ポンプ側だけ幅87で定義されており、右隣「電動機」のラベル欄（罫線 249.8）まで
         //   食い込んで越えていた。実測の値セルは 207.4→249.8（印字ラベル「製造者名」163.3-205.4 の右）。
         //   電動機・泡消火薬剤側（343/495）は元から実測値に一致していたので触らない。
-        drawInCell(page1, p1Height, body.pump_maker, 207.4, 237.5, 42.4, 19.5, 7.1)
+        // ★製造者名は折り返せる（#22）。型式は英数字の型番なので 1 行のまま。
+        drawInCellOrWrap(page1, p1Height, body.pump_maker, 207.4, 237.5, 42.4, 19.5, 7.1)
         drawInCell(page1, p1Height, body.pump_model, 207.4, 257.5, 42.4, 19.5, 7.1)
-        drawInCell(page1, p1Height, body.motor_maker, 343, 237, 34, 20, 7.1)
+        drawInCellOrWrap(page1, p1Height, body.motor_maker, 343, 237, 34, 20, 7.1)
         drawInCell(page1, p1Height, body.motor_model, 343, 257, 34, 20, 7.1)
-        drawInCell(page1, p1Height, body.foam_maker, 495, 237, 33, 20, 7.1)
+        drawInCellOrWrap(page1, p1Height, body.foam_maker, 495, 237, 33, 20, 7.1)
         drawInCell(page1, p1Height, body.foam_model, 495, 257, 33, 20, 7.1)
 
         const p1Rows5 = body.page1_rows ?? []

@@ -486,28 +486,17 @@ export const drawTextInCell = ({
     const normalized = normalizeText(text)
     if (!normalized) return
 
-    const paddingX = options?.paddingX ?? 2.5
-    const paddingY = options?.paddingY ?? 1.6
-    const minFontSize = options?.minFontSize ?? 3.5
-    let currentSize = Math.min(fontSize, options?.maxFontSize ?? fontSize)
-    const designSize = currentSize
+    const paddingX = options?.paddingX ?? SINGLE_LINE_FIT_DEFAULTS.paddingX
+    const paddingY = options?.paddingY ?? SINGLE_LINE_FIT_DEFAULTS.paddingY
+    const minFontSize = options?.minFontSize ?? SINGLE_LINE_FIT_DEFAULTS.minFontSize
+    const designSize = Math.min(fontSize, options?.maxFontSize ?? fontSize)
 
     const maxWidth = Math.max(1, cellW - paddingX * 2)
-    const maxHeight = Math.max(1, cellH - paddingY * 2)
 
-    // ★計測はラン分割（区間ごとに自フォントで測って合計）。描画も同じ分割で行う。
-    const widthAtCurrent = measureRuns(fonts, normalized, currentSize)
-    if (widthAtCurrent > maxWidth) {
-        currentSize *= maxWidth / widthAtCurrent
-    }
-
-    // 高さは jp 基準に固定する。テキストごとに変えると同じ行で縦位置がばらつくため。
-    const heightAtCurrent = fonts.jp.heightAtSize(currentSize, { descender: true })
-    if (heightAtCurrent > maxHeight) {
-        currentSize *= maxHeight / heightAtCurrent
-    }
-
-    currentSize = Math.max(currentSize, minFontSize)
+    const currentSize = singleLineFitSize({
+        fonts, text: normalized, cellW, cellH, fontSize,
+        paddingX, paddingY, minFontSize, maxFontSize: options?.maxFontSize,
+    })
 
     fonts.fit?.reportShrink(normalized, designSize, currentSize)
     reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth)
@@ -587,35 +576,19 @@ export const drawWrappedTextInCell = ({
     const normalized = normalizeText(text)
     if (!normalized) return
 
-    const paddingX = options?.paddingX ?? 2
-    const paddingY = options?.paddingY ?? 1
-    const minFontSize = options?.minFontSize ?? 4.5
-    const lineGap = options?.lineGap ?? 0.7
-    let currentSize = Math.min(fontSize, options?.maxFontSize ?? fontSize)
-    const designSize = currentSize
+    const paddingX = options?.paddingX ?? WRAPPED_FIT_DEFAULTS.paddingX
+    const paddingY = options?.paddingY ?? WRAPPED_FIT_DEFAULTS.paddingY
+    const minFontSize = options?.minFontSize ?? WRAPPED_FIT_DEFAULTS.minFontSize
+    const lineGap = options?.lineGap ?? WRAPPED_FIT_DEFAULTS.lineGap
+    const designSize = Math.min(fontSize, options?.maxFontSize ?? fontSize)
 
-    // ★安全係数（旧 0.90）は撤廃した。
-    //   旧コメントは「NotoSansJP のメトリクスが実描画幅を約10%過小評価するため」だったが、
-    //   その過小評価の実体は英数字がCJKグリフに化けていたことで、①b のラン分割で解消済み
-    //   （計測幅と実描画幅は回帰テストで一致を確認している）。
-    //   係数はその後、セル座標の定義ミスを隠す働きしかしておらず、②③④で座標を実測値に
-    //   直した上で撤廃した。再び足したくなったら、まず何がはみ出るのかを実測すること。
+    // ★安全係数（旧 0.90）は撤廃した（経緯は wrappedFit の上）。
     const maxWidth = Math.max(1, cellW - paddingX * 2)
-    const maxHeight = Math.max(1, cellH - paddingY * 2)
 
-    const wrapAtSize = (size: number) => {
-        const lineHeight = size + lineGap
-        const maxLines = Math.max(1, Math.floor(maxHeight / lineHeight))
-        const lines = wrapTextByWidth(fonts, normalized, size, maxWidth)
-        return { lines, lineHeight, maxLines }
-    }
-
-    let wrapped = wrapAtSize(currentSize)
-    while (wrapped.lines.length > wrapped.maxLines && currentSize > minFontSize) {
-        currentSize = Math.max(minFontSize, currentSize - 0.3)
-        wrapped = wrapAtSize(currentSize)
-        if (currentSize <= minFontSize) break
-    }
+    const { size: currentSize, ...wrapped } = wrappedFit({
+        fonts, text: normalized, cellW, cellH, fontSize,
+        paddingX, paddingY, minFontSize, maxFontSize: options?.maxFontSize, lineGap,
+    })
     // 折り返しは縮小ループが別なので、ここでも設計値からの逸脱を記録する
     fonts.fit?.reportShrink(normalized, designSize, currentSize)
     reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth)
@@ -655,6 +628,133 @@ export const drawWrappedTextInCell = ({
         )
         top += lineHeight
     }
+}
+
+/* ------------------------------------------------------------------ *
+ * 文字サイズの計算（描かない）。drawTextInCell / drawWrappedTextInCell はこれで決める。
+ *   ★ここを通さずに同じ計算を書き写さない（#22 の「どちらが大きく描けるか」の判定が描画とずれる）。
+ * ------------------------------------------------------------------ */
+
+/** drawTextInCell の既定（options で上書きできる） */
+export const SINGLE_LINE_FIT_DEFAULTS = { paddingX: 2.5, paddingY: 1.6, minFontSize: 3.5 } as const
+/** drawWrappedTextInCell の既定（options で上書きできる） */
+export const WRAPPED_FIT_DEFAULTS = { paddingX: 2, paddingY: 1, minFontSize: 4.5, lineGap: 0.7 } as const
+
+type FitSizeArgs = {
+    fonts: ReportFonts
+    text: string
+    cellW: number
+    cellH: number
+    fontSize: number
+    paddingX: number
+    paddingY: number
+    minFontSize: number
+    maxFontSize?: number
+}
+
+/** 1 行で描くときの文字サイズ。幅で縮め、次に高さで縮め、下限で止める。 */
+export const singleLineFitSize = (a: FitSizeArgs): number => {
+    let size = Math.min(a.fontSize, a.maxFontSize ?? a.fontSize)
+    const maxWidth = Math.max(1, a.cellW - a.paddingX * 2)
+    const maxHeight = Math.max(1, a.cellH - a.paddingY * 2)
+
+    // ★計測はラン分割（区間ごとに自フォントで測って合計）。描画も同じ分割で行う。
+    const widthAtCurrent = measureRuns(a.fonts, a.text, size)
+    if (widthAtCurrent > maxWidth) {
+        size *= maxWidth / widthAtCurrent
+    }
+
+    // 高さは jp 基準に固定する。テキストごとに変えると同じ行で縦位置がばらつくため。
+    const heightAtCurrent = a.fonts.jp.heightAtSize(size, { descender: true })
+    if (heightAtCurrent > maxHeight) {
+        size *= maxHeight / heightAtCurrent
+    }
+
+    return Math.max(size, a.minFontSize)
+}
+
+/**
+ * 折り返して描くときの文字サイズと行。行が入りきるまで 0.3pt ずつ縮め、下限で止める。
+ *
+ * ★安全係数（旧 0.90）は撤廃した。
+ *   旧コメントは「NotoSansJP のメトリクスが実描画幅を約10%過小評価するため」だったが、
+ *   その過小評価の実体は英数字がCJKグリフに化けていたことで、①b のラン分割で解消済み
+ *   （計測幅と実描画幅は回帰テストで一致を確認している）。
+ *   係数はその後、セル座標の定義ミスを隠す働きしかしておらず、②③④で座標を実測値に
+ *   直した上で撤廃した。再び足したくなったら、まず何がはみ出るのかを実測すること。
+ */
+export const wrappedFit = (a: FitSizeArgs & { lineGap: number }) => {
+    let size = Math.min(a.fontSize, a.maxFontSize ?? a.fontSize)
+    const maxWidth = Math.max(1, a.cellW - a.paddingX * 2)
+    const maxHeight = Math.max(1, a.cellH - a.paddingY * 2)
+
+    const wrapAtSize = (s: number) => {
+        const lineHeight = s + a.lineGap
+        const maxLines = Math.max(1, Math.floor(maxHeight / lineHeight))
+        const lines = wrapTextByWidth(a.fonts, a.text, s, maxWidth)
+        return { lines, lineHeight, maxLines }
+    }
+
+    let wrapped = wrapAtSize(size)
+    while (wrapped.lines.length > wrapped.maxLines && size > a.minFontSize) {
+        size = Math.max(a.minFontSize, size - 0.3)
+        wrapped = wrapAtSize(size)
+        if (size <= a.minFontSize) break
+    }
+    return { size, ...wrapped }
+}
+
+/**
+ * 1 行のまま縮めず、折り返すか（#22・2026-10-06）。
+ *   ★1 行で ABSOLUTE_MIN_FONT_SIZE（5pt）を割り、かつ折り返したほうが大きく描けるときだけ。
+ *   ★「大きく描けるなら常に折り返す」にしない ―― 実測で、1 行で 6.75pt 入っていた「サンプル」が
+ *     「サンプ／ル」に割れた（読みやすさが落ちる）。5pt 以上なら 1 行のまま（従来どおり）。
+ *   0.05pt は計算の端数で入れ替わらないための幅（見た目の差にならない大きさ）。
+ */
+export const WRAP_GAIN_MIN_PT = 0.05
+export const wrapGivesLargerSize = (singleSize: number, wrappedSize: number): boolean =>
+    singleSize < ABSOLUTE_MIN_FONT_SIZE && wrappedSize > singleSize + WRAP_GAIN_MIN_PT
+
+/**
+ * 1 行で描く。ただし 1 行では 5pt を割り、折り返したほうが大きく描けるときだけ折り返す（#22）。
+ *
+ * ■ なぜ要るか（2026-10-05 の通し確認）
+ *   狭い欄の社名・製造者名が 1 行のまま 5pt 未満（3.86〜4.67pt）まで縮んでいた。
+ *   欄の高さには 2 行入るのに、縮小だけで収めていた（枠内収容の優先順位は 折り返し → 縮小）。
+ * ■ 決めたこと
+ *   - ★数値・型番など折り返してはいけない欄には使わない（呼ぶ側で欄を選ぶ）。
+ *   - 1 行で 5pt 以上なら drawTextInCell と同じ描き方（収まっている値は変わらない）。判定は wrapGivesLargerSize。
+ */
+export const drawTextInCellOrWrap = (
+    args: DrawTextInCellArgs & { wrapOptions?: WrappedCellDrawOptions },
+) => {
+    const normalized = normalizeText(args.text)
+    if (!normalized) return
+    const fontSize = args.fontSize ?? 9
+    const single = singleLineFitSize({
+        fonts: args.fonts, text: normalized, cellW: args.cellW, cellH: args.cellH, fontSize,
+        paddingX: args.options?.paddingX ?? SINGLE_LINE_FIT_DEFAULTS.paddingX,
+        paddingY: args.options?.paddingY ?? SINGLE_LINE_FIT_DEFAULTS.paddingY,
+        minFontSize: args.options?.minFontSize ?? SINGLE_LINE_FIT_DEFAULTS.minFontSize,
+        maxFontSize: args.options?.maxFontSize,
+    })
+    const wrapped = wrappedFit({
+        fonts: args.fonts, text: normalized, cellW: args.cellW, cellH: args.cellH, fontSize,
+        paddingX: args.wrapOptions?.paddingX ?? WRAPPED_FIT_DEFAULTS.paddingX,
+        paddingY: args.wrapOptions?.paddingY ?? WRAPPED_FIT_DEFAULTS.paddingY,
+        minFontSize: args.wrapOptions?.minFontSize ?? WRAPPED_FIT_DEFAULTS.minFontSize,
+        maxFontSize: args.wrapOptions?.maxFontSize,
+        lineGap: args.wrapOptions?.lineGap ?? WRAPPED_FIT_DEFAULTS.lineGap,
+    })
+    if (wrapGivesLargerSize(single, wrapped.size)) {
+        drawWrappedTextInCell({
+            page: args.page, pageHeight: args.pageHeight, fonts: args.fonts, text: args.text,
+            cellX: args.cellX, cellTopFromTop: args.cellTopFromTop, cellW: args.cellW, cellH: args.cellH,
+            fontSize, options: { at: args.options?.at, ...args.wrapOptions },
+        })
+        return
+    }
+    drawTextInCell(args)
 }
 
 export const drawRightAt = ({

@@ -14,6 +14,7 @@ import {
     periodDateError,
 drawPeriodDate,
     drawTextInCell,
+    drawTextInCellOrWrap,
     drawWrappedTextInCell,
     formatDateText,
     formatJapaneseDateText,
@@ -281,7 +282,12 @@ export async function POST(req: NextRequest) {
         }
 
             drawInCell(page, pageHeight, body.inspector_name, INSPECTOR.name.x, INSPECTOR.name.top, INSPECTOR.name.w, INSPECTOR.name.h, 7.0)
-            drawInCell(page, pageHeight, body.inspector_company, INSPECTOR.company.x, INSPECTOR.company.top, INSPECTOR.company.w, INSPECTOR.company.h, 6.8)
+            // ★社名は、1 行では 5pt を割るときだけ 2 行にする（#22: 18 文字で 4.67pt だった）
+            drawTextInCellOrWrap({
+                page, pageHeight, fonts, text: body.inspector_company,
+                cellX: INSPECTOR.company.x, cellTopFromTop: INSPECTOR.company.top,
+                cellW: INSPECTOR.company.w, cellH: INSPECTOR.company.h, fontSize: 6.8,
+            })
             drawInCell(page, pageHeight, body.inspector_tel, INSPECTOR.tel.x, INSPECTOR.tel.top, INSPECTOR.tel.w, INSPECTOR.tel.h, 6.8)
             drawInCell(page, pageHeight, body.inspector_address, INSPECTOR.address.x, INSPECTOR.address.top, INSPECTOR.address.w, INSPECTOR.address.h, 6.6)
         }

@@ -11,7 +11,7 @@ import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
 import { periodDateError,
-drawChoiceCircle, drawPeriodDate, drawTextInCell, drawWrappedTextInCell, formatDateText, formatJapaneseDateText, formatJudgment, parseDateParts, pickFont, type CellDrawOptions, type DateAnchors, type ReportFonts, type CellRef } from "@/lib/pdf-form-helpers"
+drawChoiceCircle, drawPeriodDate, drawTextInCell, drawTextInCellOrWrap, drawWrappedTextInCell, formatDateText, formatJapaneseDateText, formatJudgment, parseDateParts, pickFont, type CellDrawOptions, type DateAnchors, type ReportFonts, type CellRef } from "@/lib/pdf-form-helpers"
 
 /**
  * テストデータ生成が読む「数値しか入らない欄」の宣言。
@@ -214,7 +214,11 @@ export async function POST(req: NextRequest) {
             // 刷り込みに重ねない: 前置ラベル氏名(-142.6) の右から（テンプレート実測）
             drawInCell(page, pageHeight, body.inspector_name, 143.06, 184.8, 110.02, 55.56, 6.4)
             // 刷り込みに重ねない: 後続のTEL(426.1-) の手前まで（テンプレート実測）
-            drawInCell(page, pageHeight, body.inspector_company, 347.16, 184.8, 78.44, 27.84, 6.0)
+            // ★社名は、1 行では 5pt を割るときだけ 2 行にする（#22: 18 文字で 4.08pt だった）
+            drawTextInCellOrWrap({
+                page, pageHeight, fonts, text: body.inspector_company,
+                cellX: 347.16, cellTopFromTop: 184.8, cellW: 78.44, cellH: 27.84, fontSize: 6.0,
+            })
             drawInCell(page, pageHeight, body.inspector_tel, 441.96, 184.8, 87.84, 27.84, 6.0)
             drawInCell(page, pageHeight, body.inspector_address, 347.16, 212.64, 182.64, 27.72, 5.9)
         }

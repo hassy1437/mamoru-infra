@@ -457,6 +457,15 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-small-font-wrap.mjs", stage: "生成PDF",
+        why: "狭い欄の社名・製造者名が 5pt 未満まで縮まず、2 行に折り返して描けるか（短い値は 1 行のまま）。"
+            + "★小さい文字は正常な見た目なので、目の照合では流れる種類（3.86〜4.67pt だった #22）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-small-font-wrap.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-small-font-wrap.mjs"], sentinel: "SMALL_FONT_WRAP_OK" },
+        ],
+    },
+    {
         file: "check-soukatsu-details.mjs", stage: "挙動",
         why: "総括表の不良内容・措置内容・立会者が、入力の整理・編集の突き合わせ（設備名と判定を消さない）・PDF の行と欄まで届くか。"
             + "★空欄は正常なピクセルなので画像では出ない種類（画面に入力欄が無く常に空欄だった #28）",

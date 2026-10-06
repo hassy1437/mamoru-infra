@@ -72,6 +72,9 @@ interface Props {
         notifier_name?: string | null
         fire_manager_name?: string | null
         inspector_name?: string | null
+        inspector_company?: string | null
+        inspector_address?: string | null
+        inspector_tel?: string | null
         inspection_date?: string | null
     }
     soukatsuId: string
@@ -225,9 +228,9 @@ export default function ShokakiBekki1Form({
     const [periodStart, setPeriodStart] = useState(coerceString(saved.period_start, initial.inspection_date ?? ""))
     const [periodEnd, setPeriodEnd] = useState(coerceString(saved.period_end, initial.inspection_date ?? ""))
     const [inspectorName, setInspectorName] = useState(normalizeBekkiInspectorNameForState(coerceString(saved.inspector_name, initial.inspector_name ?? "")))
-    const [inspectorCompany, setInspectorCompany] = useState(coerceString(saved.inspector_company))
-    const [inspectorAddress, setInspectorAddress] = useState(coerceString(saved.inspector_address))
-    const [inspectorTel, setInspectorTel] = useState(coerceString(saved.inspector_tel))
+    const [inspectorCompany, setInspectorCompany] = useState(coerceString(saved.inspector_company, initial.inspector_company ?? ""))
+    const [inspectorAddress, setInspectorAddress] = useState(coerceString(saved.inspector_address, initial.inspector_address ?? ""))
+    const [inspectorTel, setInspectorTel] = useState(coerceString(saved.inspector_tel, initial.inspector_tel ?? ""))
     const [notes, setNotes] = useState(coerceString(saved.notes))
 
     const [device1, setDevice1] = useState<DeviceState>(coerceDevice(saved.device1 ?? createEmptyDevice()))
@@ -460,9 +463,9 @@ export default function ShokakiBekki1Form({
                 setPeriodStart(coerceString(p.period_start, initial.inspection_date ?? ""))
                 setPeriodEnd(coerceString(p.period_end, initial.inspection_date ?? ""))
                 setInspectorName(normalizeBekkiInspectorNameForState(coerceString(p.inspector_name, initial.inspector_name ?? "")))
-                setInspectorCompany(coerceString(p.inspector_company))
-                setInspectorAddress(coerceString(p.inspector_address))
-                setInspectorTel(coerceString(p.inspector_tel))
+                setInspectorCompany(coerceString(p.inspector_company, initial.inspector_company ?? ""))
+                setInspectorAddress(coerceString(p.inspector_address, initial.inspector_address ?? ""))
+                setInspectorTel(coerceString(p.inspector_tel, initial.inspector_tel ?? ""))
                 setNotes(coerceString(p.notes))
                 setDevice1(coerceDevice(p.device1 ?? createEmptyDevice()))
                 setDevice2(coerceDevice(p.device2 ?? createEmptyDevice()))

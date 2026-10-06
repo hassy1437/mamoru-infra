@@ -17,6 +17,9 @@ interface Props {
         notifier_name?: string | null
         fire_manager_name?: string | null
         inspector_name?: string | null
+        inspector_company?: string | null
+        inspector_address?: string | null
+        inspector_tel?: string | null
         inspection_date?: string | null
         inspection_type?: string | null
     }

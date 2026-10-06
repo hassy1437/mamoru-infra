@@ -125,3 +125,34 @@ export function normalizeInspectorData(raw: unknown): InspectorData {
         kensa_licenses,
     }
 }
+
+/* ------------------------------------------------------------------ *
+ * bekkiInspectorInitial — 別記様式の頭の「点検者」欄の初期値（#17・2026-10-06）
+ *
+ * ■ なぜ要るか（2026-10-05 の通し確認）
+ *   別記様式のページは点検者一覧の点検者1から★氏名だけを渡していて、
+ *   所属会社・住所・TEL は空で始まっていた ＝ 様式ごとに 3 欄ずつ打ち直しになる。
+ *   点検者一覧で入れた値を、そのまま別記の初期値にする。
+ *
+ * ■ 決めたこと
+ *   - ★初期値だけ。保存済みの別記（空欄のまま保存したものを含む）は保存した値を優先する
+ *     （氏名と同じ扱い。フォーム側の coerceString(saved.x, initial.x)）。
+ *   - 読むのは normalizeInspectorData を通した値（文字列でない欄は空）。
+ *   - TEL は点検者一覧の phone。
+ * ------------------------------------------------------------------ */
+export type BekkiInspectorInitial = {
+    inspector_name: string
+    inspector_company: string
+    inspector_address: string
+    inspector_tel: string
+}
+
+export function bekkiInspectorInitial(raw: unknown): BekkiInspectorInitial {
+    const inspector = normalizeInspectorData(raw)
+    return {
+        inspector_name: inspector.name,
+        inspector_company: inspector.company,
+        inspector_address: inspector.address,
+        inspector_tel: inspector.phone,
+    }
+}

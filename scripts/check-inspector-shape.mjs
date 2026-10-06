@@ -61,6 +61,15 @@ const EXEMPT = new Map([
  */
 const NAME_ONLY_RE = /inspector1\s+as\s+\{\s*name\?\:\s*string\s*\}/
 
+/**
+ * ★別記様式のページ（23枚）は 2026-10-06（#17）から、inspector1 を bekkiInspectorInitial に通して
+ *   氏名・所属会社・住所・TEL を初期値にする（中で normalizeInspectorData を通す）。
+ *   ★上の「氏名だけ」の形は、いまは出力ページ（output/page.tsx）だけ。
+ *   ★生の inspector1 の中身を直接読み始めたら・免状を読み始めたら検出する。
+ */
+const BEKKI_INITIAL_RE = /bekkiInspectorInitial\s*\(\s*itiran\?\.inspector1\s*\)/
+const RAW_INSPECTOR1_READ_RE = /\binspector1\s*(\bas\b|\??\.\s*[A-Za-z_])/
+
 /* ---------------------------------------------------------------- *
  * ①挙動: normalizeInspectorData を実際に呼ぶ
  * ---------------------------------------------------------------- */
@@ -155,6 +164,46 @@ async function behaviour(normalize) {
     }
     problems.push(...aliasing(normalize))
     return { problems, keys }
+}
+
+/* ---------------------------------------------------------------- *
+ * ①' 別記の初期値（#17・2026-10-06）: bekkiInspectorInitial
+ *   - どの欠けた形でも 4 欄とも文字列で返す（null だと React の input が uncontrolled に落ちる）
+ *   - ★欄を取り違えない（TEL は点検者一覧の phone から）
+ *   - 余計な欄を足さない（ページで initial に spread するので、別記の props に混ざる）
+ * ---------------------------------------------------------------- */
+const BEKKI_INITIAL_KEYS = ["inspector_name", "inspector_company", "inspector_address", "inspector_tel"]
+
+function bekkiInitialBehaviour(fn) {
+    const problems = []
+    for (const [label, raw] of CASES) {
+        let value
+        try {
+            value = fn(raw)
+        } catch (e) {
+            problems.push(`別記の初期値 ${label}: 例外 ―― ${e.message}`)
+            continue
+        }
+        const bad = BEKKI_INITIAL_KEYS.filter((k) => typeof value?.[k] !== "string")
+        if (bad.length) problems.push(`別記の初期値 ${label}: 文字列でない欄 ―― ${bad.join(", ")}`)
+    }
+    // ★欄ごとに違う値を入れて、取り違えを見る
+    const full = { name: "氏名A", company: "会社B", address: "住所C", phone: "電話D" }
+    const want = { inspector_name: "氏名A", inspector_company: "会社B", inspector_address: "住所C", inspector_tel: "電話D" }
+    let got
+    try {
+        got = fn(full)
+    } catch (e) {
+        return [...problems, `別記の初期値: 例外 ―― ${e.message}`]
+    }
+    for (const k of BEKKI_INITIAL_KEYS) {
+        if (got?.[k] !== want[k]) {
+            problems.push(`別記の初期値: ${k} が ${JSON.stringify(got?.[k])}（期待 ${JSON.stringify(want[k])}）`)
+        }
+    }
+    const extra = Object.keys(got ?? {}).filter((k) => !BEKKI_INITIAL_KEYS.includes(k))
+    if (extra.length) problems.push(`別記の初期値: 余計な欄 ―― ${extra.join(", ")}`)
+    return problems
 }
 
 /* ---------------------------------------------------------------- *
@@ -268,7 +317,17 @@ function staticCheck() {
             })
             continue
         }
-        // ★別記様式のページ: 氏名だけ読む形か
+        // ★別記様式のページ: bekkiInspectorInitial を通す形か（#17）
+        if (BEKKI_INITIAL_RE.test(src)) {
+            if (/shoubou_licenses|kensa_licenses/.test(src)) {
+                problems.push(`${r}: 別記の初期値の形なのに免状を読んでいる（分類し直すこと）`)
+            }
+            if (RAW_INSPECTOR1_READ_RE.test(src)) {
+                problems.push(`${r}: 生の inspector1 から直接読んでいる（bekkiInspectorInitial を通すこと）`)
+            }
+            continue
+        }
+        // ★氏名だけ読む形か（いまは出力ページ）
         if (NAME_ONLY_RE.test(src)) {
             if (/shoubou_licenses|kensa_licenses/.test(src)) {
                 problems.push(`${r}: 氏名だけの形なのに免状を読んでいる（分類し直すこと）`)
@@ -300,14 +359,20 @@ if (typeof normalize !== "function") {
     console.log("★normalizeInspectorData が src/lib/inspector-helpers.ts から export されていない")
     process.exit(1)
 }
+const bekkiInitial = mod.bekkiInspectorInitial
+if (typeof bekkiInitial !== "function") {
+    console.log("★bekkiInspectorInitial が src/lib/inspector-helpers.ts から export されていない")
+    process.exit(1)
+}
 
 if (process.argv.includes("--self-test")) {
-    // ★陰性対照: いまの実装で①②とも問題なし
+    // ★陰性対照: いまの実装で①①'②とも問題なし
     const b = await behaviour(normalize)
+    const bi = bekkiInitialBehaviour(bekkiInitial)
     const s = staticCheck()
-    if (b.problems.length || s.problems.length) {
+    if (b.problems.length || bi.length || s.problems.length) {
         console.log("自己診断: 現状が既にNG（陰性対照が成立しない）")
-        for (const p of [...b.problems, ...s.problems]) console.log("   ", p)
+        for (const p of [...b.problems, ...bi, ...s.problems]) console.log("   ", p)
         process.exit(1)
     }
     // ★陽性対照①: 補完を素通りさせる（＝不具合当時の実装）と、挙動の検査が落ちる
@@ -393,8 +458,61 @@ if (process.argv.includes("--self-test")) {
         console.log("自己診断: 1 か所だけ生の値から読む形に戻しても静的の検査が落ちない")
         process.exit(1)
     }
+    /*
+      ★陽性対照⑥（#17）: 別記の初期値で TEL に所属会社を入れる（欄の取り違え）→ 検出。
+      ★陽性対照⑦（#17）: 補完を通さず生の値をそのまま渡す → 欠けた形で文字列でない欄を検出。
+    */
+    const swapped = bekkiInitialBehaviour((raw) => {
+        const v = bekkiInitial(raw)
+        return { ...v, inspector_tel: v.inspector_company }
+    })
+    if (!swapped.some((p) => p.includes("inspector_tel"))) {
+        console.log("自己診断: 別記の初期値で TEL を取り違えても検出できない")
+        process.exit(1)
+    }
+    const rawPass = bekkiInitialBehaviour((raw) => ({
+        inspector_name: raw?.name, inspector_company: raw?.company,
+        inspector_address: raw?.address, inspector_tel: raw?.phone,
+    }))
+    if (!rawPass.some((p) => p.includes("文字列でない欄"))) {
+        console.log("自己診断: 別記の初期値で補完を通さなくても検出できない")
+        process.exit(1)
+    }
+    /*
+      ★陽性対照⑧（#17）: 別記のページで、生の inspector1 から TEL を直接読む行を足す → 検出。
+        ★注入が入ったことを先に確かめる。
+    */
+    const bekkiPage = "src/app/inspection/[id]/itiran/[itiranId]/shokaki/page.tsx"
+    const bekkiOriginal = fs.readFileSync(path.join(ROOT, bekkiPage), "utf8")
+    const rawFrom = "                        ...inspector,"
+    const rawTo = rawFrom + "\n                        inspector_tel: (itiran?.inspector1 as { phone?: string } | null)?.phone ?? \"\","
+    let rawCaught = false
+    try {
+        if (!bekkiOriginal.includes(rawFrom)) {
+            console.log(`自己診断: 注入先（...inspector,）が ${bekkiPage} に無い。陽性対照⑧が成立しない`)
+            process.exit(1)
+        }
+        fs.writeFileSync(path.join(ROOT, bekkiPage), bekkiOriginal.replace(rawFrom, rawTo), "utf8")
+        if (!fs.readFileSync(path.join(ROOT, bekkiPage), "utf8").includes("inspector1 as { phone?: string }")) {
+            // ★process.exit は finally を通らないので、ここで戻してから落とす
+            fs.writeFileSync(path.join(ROOT, bekkiPage), bekkiOriginal, "utf8")
+            console.log("自己診断: 注入が書き込まれていない")
+            process.exit(1)
+        }
+        rawCaught = staticCheck().problems.some((p) => p.startsWith(bekkiPage) && p.includes("生の inspector1"))
+    } finally {
+        fs.writeFileSync(path.join(ROOT, bekkiPage), bekkiOriginal, "utf8")
+    }
+    if (!rawCaught) {
+        console.log("自己診断: 別記のページで生の inspector1 から読んでも静的の検査が落ちない")
+        process.exit(1)
+    }
     console.log(`  陰性対照: ${CASES.length} 通りの欠けた形すべてで、免状エディタの読み方が undefined に当たらない`)
     console.log(`            ＋ 点検側の編集がマスタ側に漏れない・同じマスタから作った2つが繋がらない`)
+    console.log(`            ＋ 別記の初期値（氏名・所属会社・住所・TEL）がどの形でも文字列・欄を取り違えない`)
+    console.log(`  陽性対照⑥: 別記の初期値で TEL に所属会社を入れる → 検出`)
+    console.log(`  陽性対照⑦: 別記の初期値で補完を通さない → ${rawPass.length} 件を検出`)
+    console.log(`  陽性対照⑧: ${bekkiPage} で生の inspector1 から TEL を読む行を足す → 検出`)
     console.log(`  陽性対照①: 補完を素通りにする → ${broken.problems.length} 件を検出`)
     console.log(`  陽性対照②: ${target} の normalizeInspectorData 呼び出しを消す → 検出`)
     console.log(`  陽性対照⑤: ${target} の 1 か所だけ生の値から読む形に戻す（他は normalize のまま）→ 行で検出`)
@@ -406,10 +524,11 @@ if (process.argv.includes("--self-test")) {
 }
 
 const b = await behaviour(normalize)
+const bi = bekkiInitialBehaviour(bekkiInitial)
 const s = staticCheck()
 console.log(`形の補完を検査: 欠けた形 ${CASES.length} 通り / inspector_data を読むファイル ${s.readers.length} 本`)
 console.log(`  免状の種類（license-editor.tsx から読んだ）: 消防設備士 ${b.keys.shoubou.length} / 点検資格者 ${b.keys.kensa.length}`)
-const problems = [...b.problems, ...s.problems]
+const problems = [...b.problems, ...bi, ...s.problems]
 if (problems.length > 0) {
     for (const p of problems) console.log(`  NG  ${p}`)
     console.log(`\n${problems.length} 件`)

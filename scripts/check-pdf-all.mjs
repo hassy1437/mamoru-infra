@@ -448,6 +448,15 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-bekki-inspector-prefill.mjs", stage: "静的",
+        why: "別記様式の頭の点検者欄（氏名・所属会社・住所・TEL）が、点検者一覧の点検者1から初期値で入る配線か（ページ→フォーム→下書きの復元）。"
+            + "★空欄は正常な見た目なので画面でも PDF でも出ない種類（氏名だけ渡していた #17）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-bekki-inspector-prefill.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-bekki-inspector-prefill.mjs"], sentinel: "BEKKI_INSPECTOR_PREFILL_OK" },
+        ],
+    },
+    {
         file: "check-soukatsu-details.mjs", stage: "挙動",
         why: "総括表の不良内容・措置内容・立会者が、入力の整理・編集の突き合わせ（設備名と判定を消さない）・PDF の行と欄まで届くか。"
             + "★空欄は正常なピクセルなので画像では出ない種類（画面に入力欄が無く常に空欄だった #28）",

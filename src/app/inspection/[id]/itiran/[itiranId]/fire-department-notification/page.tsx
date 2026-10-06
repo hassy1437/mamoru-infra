@@ -3,6 +3,7 @@ import { notFound } from "next/navigation"
 import FireDepartmentNotificationBekki13Form from "@/components/fire-department-notification-bekki13-form"
 import { hasItiranInputStep, type ItiranInputStepId } from "@/lib/itiran-input-flow"
 import ItiranFormNav from "@/components/itiran-form-nav"
+import { bekkiInspectorInitial } from "@/lib/inspector-helpers"
 
 
 const CURRENT_STEP_ID: ItiranInputStepId = "fire-department-notification"
@@ -48,7 +49,7 @@ export default async function FireDepartmentNotificationBekki13Page({
         .eq("itiran_id", itiranId)
         .maybeSingle()
 
-    const inspector1 = (itiran?.inspector1 as { name?: string } | null) ?? null
+    const inspector = bekkiInspectorInitial(itiran?.inspector1)
 
     return (
         <main className="min-h-screen bg-gray-100 py-8">
@@ -66,7 +67,7 @@ export default async function FireDepartmentNotificationBekki13Page({
                         building_address: soukatsu.building_address,
                         notifier_name: soukatsu.notifier_name,
                         fire_manager_name: property?.fire_manager_name ?? null,
-                        inspector_name: inspector1?.name ?? "",
+                        ...inspector,
                         inspection_date: soukatsu.inspection_date,
                         inspection_type: soukatsu.inspection_type,
                     }}

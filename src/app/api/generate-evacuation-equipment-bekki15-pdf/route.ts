@@ -30,6 +30,7 @@ drawPeriodDate,
     drawTextRuns,
     FIT_EPSILON,
     reportIfBelowMinSize,
+    blankPrintedRows,
     type CellRef,
     type CellAt,
 } from "@/lib/pdf-form-helpers"
@@ -91,9 +92,14 @@ const P1_ROW_BOUNDS = [
     664.2, 678.24, 692.52,
 ]
 
+// ★478.2 より下を足した（2026-10-07）。以前は「格納箱」で表が終わっていて、雛形にある
+//   「格納状況 / 格納状況」と総合点検の「器具の取付け等」「降下」「格納」の 4 行を画面でも PDF でも書けなかった
+//   （総合点検の結果を記入できない）。罫線は雛形の実測（478.2 / 495.24 / 512.28 / 529.2 / 546.24 / 563.28）。
+//   帯23（495.24〜512.28）は全幅の「総合点検」の見出しなので描かない（下の blankPrintedRows）。
 const P2_ROW_BOUNDS = [
     83.52, 101.28, 119.28, 137.28, 155.28, 173.28, 191.28, 209.28, 227.28, 245.28, 263.28, 281.28,
     299.28, 317.28, 335.28, 353.28, 371.28, 389.28, 407.28, 425.28, 443.28, 461.28, 478.2,
+    495.24, 512.28, 529.2, 546.24, 563.28,
 ]
 
 const PERIOD_ROW = { top: 167.28, h: 13.92 }
@@ -337,7 +343,8 @@ export async function POST(req: NextRequest) {
             actionW: 102.72,
         }, { content: 5.8, judgment: 6.8, bad: 5.7, action: 5.7 })
 
-        drawResultRows(page2, p2Height, body.page2_rows ?? [], P2_ROW_BOUNDS, {
+        // ★帯23 は全幅の「総合点検」の見出し（行ではない）。check-header-rows.py がこの書き方（Set の直書き）を読む
+        drawResultRows(page2, p2Height, blankPrintedRows(body.page2_rows ?? [], new Set([23])), P2_ROW_BOUNDS, {
             rowsKey: "page2_rows",
             contentX: 212.04,
             contentW: 105.0,

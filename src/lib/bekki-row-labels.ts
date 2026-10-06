@@ -209,6 +209,11 @@ export const BEKKI_ROW_LABELS: Record<string, Record<string, readonly string[]>>
             "下蓋",
             "使用方法の表示",
             "格納箱（格納状況）",
+            "格納状況（格納状況）",
+            "総合点検（見出し行・通常入力不要）",
+            "器具の取付け等",
+            "降下",
+            "格納",
         ],
     },
     "別記様式第13": {

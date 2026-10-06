@@ -78,6 +78,26 @@ const P2_EQ_ROWS = [
 //     ＝ ★描かれた○を全部拾う検査（check-circle-coverage）が要る理由そのもの。
 const JUDGE_GOOD_CENTER_X = 170.04;   // 語「良」164.76〜175.32 の中心
 const JUDGE_BAD_CENTER_X = 196.38;    // 語「不良」185.88〜206.88 の中心
+// 点検種別「機器点検・総合点検・（設備等設置維持計画による点検）」の 1 行目（MS明朝 9.75pt・雛形実測）。
+//   機器点検 119.76〜156.37 / 総合点検 165.73〜202.46 / 1 行目 y 284.63〜294.38 / 2 行目の上端 295.08 /
+//   左の縦罫線 117.36〜117.84。
+// ★以前は中心 x=136（機器）/ 176（総合）・y=290.9・横 21・縦 8 の決め打ちで、総合の○が 8pt 左
+//   （「・総合点」を囲む）に寄り、機器の○は左の縦罫線（117.36）を越え、下は 2 行目に 4pt 食い込んでいた
+//   （2026-10-06 の印字テストで実測）。
+// ★罫線・2 行目に一切触れない○は描けない（1200dpi で実測）:
+//   1 行目のインク 284.04〜294.96 と 2 行目のインクの上端 295.02 は 0.06pt しか離れておらず、
+//   語の左端と左の縦罫線の間も 2.4pt しか無い。
+//   ＝ 囲んだ語そのものが読めることを優先し、○の下は 2 行目の字の頭に 0.8pt 乗る（cy 288.2・ry 7.0・線幅 1.2）。
+//      左は縦罫線まで 0.2pt 残す（rx 19.4）。語の両端の字は○が少し横切る（手書きの○と同じ）。
+//   ★縦を詰めて 2 行目から離す（ry 5.6）と、○の線が語の字の上を通って読みにくくなった（描いて比較）。
+const TYPE_MARK = {
+    kiki: { cx: (119.76 + 156.37) / 2 },
+    sougou: { cx: (165.73 + 202.46) / 2 },
+    cy: 288.2,
+    rx: 19.4,
+    ry: 7.0,
+    border: 1.2,  // 同じ紙の判定の○（drawJudgeCircle）と同じ太さ
+} as const;
 
 type DrawInCellOptions = {
     align?: "left" | "center";
@@ -319,31 +339,19 @@ export async function POST(req: NextRequest) {
         });
 
         const row3H = P1_ROW3.bottom - P1_ROW3.top;
-        const typeTextY = height - (P1_ROW3.top + 14);
 
-        if (isGeneralInspectionType(body.inspection_type)) {
-            page1.drawEllipse({
-                x: 136,
-                y: typeTextY,
-                xScale: 21,
-                yScale: 8,
-                borderColor: rgb(0, 0, 0),
-                borderWidth: 1.2,
-                color: undefined,
-                opacity: 0,
-            });
-        } else {
-            page1.drawEllipse({
-                x: 176,
-                y: typeTextY,
-                xScale: 21,
-                yScale: 8,
-                borderColor: rgb(0, 0, 0),
-                borderWidth: 1.2,
-                color: undefined,
-                opacity: 0,
-            });
-        }
+        // 点検種別の○。★中心は刷り込みの語の中心（TYPE_MARK の実測）。
+        const typeMark = isGeneralInspectionType(body.inspection_type) ? TYPE_MARK.kiki : TYPE_MARK.sougou;
+        page1.drawEllipse({
+            x: typeMark.cx,
+            y: height - TYPE_MARK.cy,
+            xScale: TYPE_MARK.rx,
+            yScale: TYPE_MARK.ry,
+            borderColor: rgb(0, 0, 0),
+            borderWidth: TYPE_MARK.border,
+            color: undefined,
+            opacity: 0,
+        });
 
         const dateY = P1_ROW3.top + (row3H + 9) / 2 - 1.8;
         const dateSize = 9;

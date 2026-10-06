@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useSyncExternalStore } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
@@ -12,23 +12,39 @@ import {
     resetEnabledEquipmentTypes,
 } from "@/lib/equipment-config"
 
+const noopSubscribe = () => () => {}
+
 export default function EquipmentSettingsPage() {
     const router = useRouter()
-    const [enabled, setEnabled] = useState<string[]>([])
+    /*
+      ★読み込むまでは null（#8・2026-10-06）。以前は [] から始めていて、サーバーの HTML と
+        読み込み前の一瞬は「0 / 23 種類を有効化中」・全部のチェックが外れて見えた（実際は全種が出る設定）。
+    */
+    //   ★端末の設定（localStorage）はブラウザでしか読めない。サーバーと読み込み前は null のまま描く
+    //   （effect で setState しない＝set-state-in-effect を避ける。useSyncExternalStore はサーバーでは false を返す）。
+    const isClient = useSyncExternalStore(noopSubscribe, () => true, () => false)
+    const [edits, setEdits] = useState<string[] | null>(null)
+    const enabled: string[] | null = edits ?? (isClient ? getEnabledEquipmentTypes() : null)
     const [saved, setSaved] = useState(false)
-
-    useEffect(() => {
-        setEnabled(getEnabledEquipmentTypes())
-    }, [])
+    const [emptyError, setEmptyError] = useState(false)
 
     const toggle = (name: string) => {
-        setEnabled(prev =>
-            prev.includes(name) ? prev.filter(e => e !== name) : [...prev, name]
-        )
+        if (enabled === null) return
+        setEdits(enabled.includes(name) ? enabled.filter(e => e !== name) : [...enabled, name])
         setSaved(false)
+        setEmptyError(false)
     }
 
     const handleSave = () => {
+        if (enabled === null) return
+        /*
+          ★0 種類では保存しない（#8）。保存すると物件登録に設備が 1 つも出なくなる
+            （物件に既に付いている設備だけが出る）。全種に戻すのは「絞り込みを解除」。
+        */
+        if (enabled.length === 0) {
+            setEmptyError(true)
+            return
+        }
         setEnabledEquipmentTypes(enabled)
         setSaved(true)
         setTimeout(() => setSaved(false), 2000)
@@ -36,13 +52,15 @@ export default function EquipmentSettingsPage() {
 
     const handleReset = () => {
         resetEnabledEquipmentTypes()
-        setEnabled(getEnabledEquipmentTypes())
+        setEdits(null) // 端末の設定（いまは無し＝全種）に戻す
         setSaved(false)
+        setEmptyError(false)
     }
 
     const handleSelectAll = () => {
-        setEnabled([...ALL_EQUIPMENT_TYPES])
+        setEdits([...ALL_EQUIPMENT_TYPES])
         setSaved(false)
+        setEmptyError(false)
     }
 
     return (
@@ -91,14 +109,15 @@ export default function EquipmentSettingsPage() {
                                 <label
                                     key={name}
                                     className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
-                                        enabled.includes(name)
+                                        enabled?.includes(name)
                                             ? "bg-blue-50 border-blue-400 text-blue-800"
                                             : "bg-white border-slate-200 text-slate-400 hover:bg-slate-50"
                                     }`}
                                 >
                                     <input
                                         type="checkbox"
-                                        checked={enabled.includes(name)}
+                                        checked={enabled?.includes(name) ?? false}
+                                        disabled={enabled === null}
                                         onChange={() => toggle(name)}
                                         className="w-4 h-4 text-blue-600 rounded"
                                     />
@@ -113,11 +132,21 @@ export default function EquipmentSettingsPage() {
                         </div>
 
                         <p className="text-sm text-slate-500">
-                            {enabled.length} / {ALL_EQUIPMENT_TYPES.length} 種類を有効化中
+                            {enabled === null
+                                ? "設定を読み込んでいます…"
+                                : enabled.length === ALL_EQUIPMENT_TYPES.length
+                                    ? `全 ${ALL_EQUIPMENT_TYPES.length} 種類を表示（絞り込みなし）`
+                                    : `${enabled.length} / ${ALL_EQUIPMENT_TYPES.length} 種類を表示中`}
                         </p>
+                        {emptyError && (
+                            <p className="text-sm text-red-600" role="alert">
+                                1 種類以上選んでください。0 種類で保存すると、物件登録に設備が出なくなります。
+                                全種に戻すときは「絞り込みを解除（全種に戻す）」を押してください。
+                            </p>
+                        )}
 
                         <div className="flex gap-3 pt-2">
-                            <Button onClick={handleSave} className="gap-2">
+                            <Button onClick={handleSave} disabled={enabled === null} className="gap-2">
                                 <Save className="w-4 h-4" />
                                 保存する
                             </Button>

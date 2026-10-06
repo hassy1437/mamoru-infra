@@ -484,6 +484,15 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-equipment-settings-page.mjs", stage: "静的",
+        why: "設備出力設定が、読み込み前に「0 / 23」と出さず、0 種類で保存させないか。"
+            + "★0 種類で保存すると物件登録に設備が出なくなる。端末の localStorage 次第で画面の検査では再現しにくい種類（#8）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-equipment-settings-page.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-equipment-settings-page.mjs"], sentinel: "EQUIPMENT_SETTINGS_PAGE_OK" },
+        ],
+    },
+    {
         file: "check-soukatsu-details.mjs", stage: "挙動",
         why: "総括表の不良内容・措置内容・立会者が、入力の整理・編集の突き合わせ（設備名と判定を消さない）・PDF の行と欄まで届くか。"
             + "★空欄は正常なピクセルなので画像では出ない種類（画面に入力欄が無く常に空欄だった #28）",

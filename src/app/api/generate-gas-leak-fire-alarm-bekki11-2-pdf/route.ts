@@ -347,13 +347,6 @@ export async function POST(req: NextRequest) {
         drawInCell(page1, p1Height, body.location, HEADER.valueX, HEADER.locationRow.top, HEADER.valueW, HEADER.locationRow.h, 8.1)
         drawInCell(page1, p1Height, body.witness, HEADER.rightX, HEADER.locationRow.top, HEADER.rightW, HEADER.locationRow.h, 7.8)
         const inspectionType = normalizeText(body.inspection_type) || "機器・総合"
-        // ★測定機器の製造者名は、1 行では 5pt を割るときだけ 2 行にする（2026-10-07・drawOrWrapWhenTiny。15 字で 3.5pt まで縮み、様式によっては 422 で PDF が出なかった）
-        const drawMaker = (page: PDFPage, pageHeight: number, text: unknown, cellX: number, cellTop: number, cellW: number, cellH: number, fontSize: number) =>
-            drawOrWrapWhenTiny({
-                page, pageHeight, fonts, text, cellX, cellTopFromTop: cellTop, cellW, cellH, fontSize,
-                single: { paddingX: 2.5, paddingY: 1.6, minFontSize: 3.5 }, at: { column: "maker" },
-                drawSingle: () => drawInCell(page, pageHeight, text, cellX, cellTop, cellW, cellH, fontSize),
-            })
         for (const choice of TYPE_CHOICES) {
             if (!inspectionType.includes(choice.label)) continue
             page1.drawEllipse({
@@ -435,6 +428,13 @@ export async function POST(req: NextRequest) {
             { name: { x: 80.5, w: 73.6, size: 6.4 }, model: { x: 154.0, w: 36.5, size: 6.6 }, date: { x: 190.5, w: 57.0, size: 6.2 }, maker: { x: 247.5, w: 57.0, size: 6.2 } },
             { name: { x: 304.5, w: 74.0, size: 6.4 }, model: { x: 378.5, w: 36.5, size: 6.4 }, date: { x: 415.0, w: 57.5, size: 6.0 }, maker: { x: 472.5, w: 57.0, size: 6.0 } },
         ]
+        // ★測定機器の製造者名は、1 行では 5pt を割るときだけ 2 行にする（2026-10-07・drawOrWrapWhenTiny。15 字で 3.5pt まで縮み、様式によっては 422 で PDF が出なかった）
+        const drawMaker = (page: PDFPage, pageHeight: number, text: unknown, cellX: number, cellTop: number, cellW: number, cellH: number, fontSize: number) =>
+            drawOrWrapWhenTiny({
+                page, pageHeight, fonts, text, cellX, cellTopFromTop: cellTop, cellW, cellH, fontSize,
+                single: { paddingX: 2.5, paddingY: 1.6, minFontSize: 3.5 }, at: { column: "maker" },
+                drawSingle: () => drawInCell(page, pageHeight, text, cellX, cellTop, cellW, cellH, fontSize),
+            })
         resolveDeviceTable(body, "bekki11_2").forEach((d, i) => {
             const col = DEVICE_COLS[Math.floor(i / DEVICE_TABLE_COLUMN_ROWS)]
             const top = DEVICE_ROW_TOPS[i % DEVICE_TABLE_COLUMN_ROWS]

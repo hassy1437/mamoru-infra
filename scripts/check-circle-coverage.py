@@ -57,7 +57,9 @@ _p.loader.exec_module(cpo)
 #     generate-gas-leak-…11-2        1 … 同上
 #     generate-leakage-…12           1 … 同上
 #     generate-soukatu               3 … 同上
-EXPECTED_DRAW_SITES = 7
+# ★2026-10-07: 7 → 6。総括表の点検種別の○は「機器」「総合」で別々に drawEllipse を書いていたのを、
+#   TYPE_MARK から中心を選ぶ 1 か所にまとめた（描く○の数は変わらない）。
+EXPECTED_DRAW_SITES = 6
 
 # ★静的検査が届いていない○の数。★増えたら落ちる。★減ったら登録を直すこと。
 #

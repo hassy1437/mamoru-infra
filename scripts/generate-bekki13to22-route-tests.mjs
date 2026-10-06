@@ -80,7 +80,9 @@ const jobs = [
     payload: {
       ...shared,
       page1_rows: makeRows(40, "B15-P1"),
-      page2_rows: makeRows(20, "B15-P2"),
+      // ★2026-10-07: 20 → 30。その2 は格納状況・見出し「総合点検」・総合点検 3 行を足して 27 行になった（route の P2_ROW_BOUNDS）。
+      //   20 のままだと足した行が一度も描かれず、見出し行の検査（check-banner-rows）も入力の有無を判定できなかった
+      page2_rows: makeRows(30, "B15-P2"),
     },
   },
   {

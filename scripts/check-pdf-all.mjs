@@ -326,6 +326,16 @@ const CHECKS = [
         runs: [{ cmd: ["node", "scripts/check-fit-error.mjs"], sentinel: "FIT_ERROR_CHECK_OK" }],
     },
     {
+        file: "check-soukatu-marks.mjs", stage: "挙動",
+        why: "総括表の期間の数字・判定「良」の○・点検種別の○が、刷り込みの字や罫線に触れず、○が語の中心にあるか"
+            + "（1 桁・2 桁の期間を実際に描き、1200dpi の画素で隙間を測る）。"
+            + "★重なりにならない近さ（0.06pt）や 8pt の横ずれは、重なりの検査にもピクセル比較にも出なかった（2026-10-07）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-soukatu-marks.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-soukatu-marks.mjs"], sentinel: "SOUKATU_MARKS_OK" },
+        ],
+    },
+    {
         file: "check-houkoku-layout.mjs", stage: "挙動",
         why: "報告書（様式第1）の届出者欄が記入用の下線の右端を越えないか・所在地/名称/用途が欄の縦の中央にあるか"
             + "（短い値・長い値で実際に描いて測る。罫線は雛形から毎回測る）。"

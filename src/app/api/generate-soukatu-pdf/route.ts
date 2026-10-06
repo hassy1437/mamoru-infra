@@ -255,7 +255,10 @@ export async function POST(req: NextRequest) {
         ) => {
             const centerX = isGood ? JUDGE_GOOD_CENTER_X : JUDGE_BAD_CENTER_X;
             const centerY = pageHeight - (rowTop + (rowBottom - rowTop) / 2);
-            const radiusX = isGood ? 9 : 13;
+            // ★「良」の○は横 8.0（2026-10-07）。以前の 9 では右端（線幅込み 179.64）が刷り込み「・」のインク
+            //   （179.68〜181.54・1200dpi 実測）に 0.04pt まで寄り、印字では接して見えていた（17 個）。
+            //   8.0 なら「・」まで 1.0pt・左の縦罫線（159.84）まで 1.6pt 空き、「良」のインク（165.94〜174.58）は囲める。
+            const radiusX = isGood ? 8.0 : 13;
             const radiusY = 8;
 
             page.drawEllipse({
@@ -356,7 +359,15 @@ export async function POST(req: NextRequest) {
         const dateY = P1_ROW3.top + (row3H + 9) / 2 - 1.8;
         const dateSize = 9;
 
-        const drawDate = (dateValue: unknown, anchors: { year: number; month: number; day: number }) => {
+        /**
+         * 年は右端（刷り込み「年」の手前）にそろえ、月・日は刷り込みの字と字の間（インクの隙間）の中央に置く。
+         * ★以前は月・日も右端そろえ（367/389・472/494）で、2 桁の月「10」が左の刷り込み「年」に
+         *   0.20pt まで寄っていた（2026-10-06 の印字テスト）。月の隙間は 11.46pt しか無く、
+         *   右にそろえると 2 桁は左へ伸びて「年」に届く。中央なら 1 桁でも 2 桁でも両側が空く。
+         * 隙間は 1200dpi で実測したインクの端: 年 …358.76 | 月 370.22…377.42 | 日 393.44…（始め）
+         *                                     年 …463.89 | 月 475.35…482.55 | 日 498.57…（終わり）
+         */
+        const drawDate = (dateValue: unknown, anchors: { yearRight: number; monthCenter: number; dayCenter: number }) => {
             const d = parseDate(dateValue);
             if (!d) return;
 
@@ -364,24 +375,24 @@ export async function POST(req: NextRequest) {
             const monthStr = String(d.getMonth() + 1);
             const dayStr = String(d.getDate());
 
-            const yearW = measureRuns(fonts, String(yearStr ?? ""), dateSize);
-            const monthW = measureRuns(fonts, String(monthStr ?? ""), dateSize);
-            const dayW = measureRuns(fonts, String(dayStr ?? ""), dateSize);
+            const yearW = measureRuns(fonts, yearStr, dateSize);
+            const monthW = measureRuns(fonts, monthStr, dateSize);
+            const dayW = measureRuns(fonts, dayStr, dateSize);
 
-            drawTextRuns(page1, fonts, String(yearStr ?? ""), anchors.year - yearW, height - dateY, dateSize);
-            drawTextRuns(page1, fonts, String(monthStr ?? ""), anchors.month - monthW, height - dateY, dateSize);
-            drawTextRuns(page1, fonts, String(dayStr ?? ""), anchors.day - dayW, height - dateY, dateSize);
+            drawTextRuns(page1, fonts, yearStr, anchors.yearRight - yearW, height - dateY, dateSize);
+            drawTextRuns(page1, fonts, monthStr, anchors.monthCenter - monthW / 2, height - dateY, dateSize);
+            drawTextRuns(page1, fonts, dayStr, anchors.dayCenter - dayW / 2, height - dateY, dateSize);
         };
 
         drawDate(body.inspection_period_start || body.inspection_date, {
-            year: 346,
-            month: 367,
-            day: 389,
+            yearRight: 346,
+            monthCenter: (358.76 + 370.22) / 2,
+            dayCenter: (377.42 + 393.44) / 2,
         });
         drawDate(body.inspection_period_end, {
-            year: 451,
-            month: 472,
-            day: 494,
+            yearRight: 451,
+            monthCenter: (463.89 + 475.35) / 2,
+            dayCenter: (482.55 + 498.57) / 2,
         });
 
         const results = ((body.equipment_results as EquipmentItem[] | null) ?? []).filter((item) => {

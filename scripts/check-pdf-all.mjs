@@ -431,6 +431,14 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-logout-scope.mjs", stage: "静的",
+        why: "ログアウトが「この端末だけ」か。★既定の global だと、同じ口座のマッチング側まで切れる（#4）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-logout-scope.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-logout-scope.mjs"], sentinel: "LOGOUT_SCOPE_OK" },
+        ],
+    },
+    {
         file: "check-password-mark.mjs", stage: "静的",
         why: "点検アプリでパスワードでログイン・再設定したときに「パスワードを決めた印」を付けているか。"
             + "★消えても画面には何も起きず、マッチング側に案内が出続けるだけの種類（#1・20261027）",

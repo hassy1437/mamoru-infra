@@ -9,7 +9,8 @@ export default function LogoutButton() {
 
     const handleLogout = async () => {
         const supabase = createClient()
-        await supabase.auth.signOut()
+        // ★この端末だけ（#4）。既定の global は同じ口座の全セッションを切り、マッチング側まで切れていた
+        await supabase.auth.signOut({ scope: "local" })
         router.push("/login")
         router.refresh()
     }

@@ -215,6 +215,10 @@ def parse_route(route: Path):
         blanks: set[int] = set()
         for cm in re.finditer(r"drawResultRows\((.*?)" + name + r"\s*,", src, re.S):
             seg = cm.group(1)
+            # ★同じ呼び出しの中だけを見る。非貪欲でも最初の drawResultRows( から始まるので、前のページの
+            #   呼び出しをまたぐ。そのページの呼び出しが blankPrintedRows を使わないと、前のページの Set を拾う
+            #   （2026-10-07 bekki6 その2 の見出し扱いを外したら、その1 の Set([0]) が その2 に化けた）。
+            seg = seg.split("drawResultRows(")[-1]
             if len(seg) > 600:          # 別の呼び出しをまたいで拾わない
                 seg = seg[-600:]
             # ★最後の一致を取る。最初の一致だと、直前のページの呼び出しの

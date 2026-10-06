@@ -33,7 +33,7 @@ async function run(viewport, tag) {
   await page.waitForURL((u) => !u.pathname.startsWith("/login"), { timeout: 60000 })
 
   await page.goto(URL, { waitUntil: "domcontentloaded", timeout: 120000 })
-  await page.getByRole("button", { name: "すべて良にする" }).first().waitFor({ timeout: 120000 })
+  await page.getByRole("button", { name: "この表の空欄を良にする" }).first().waitFor({ timeout: 120000 })
   await page.waitForTimeout(1000)
 
   // 判定 select 群。base は desktop table と mobile card の両方を描画し、
@@ -54,7 +54,7 @@ async function run(viewport, tag) {
   await page.screenshot({ path: path.join(SHOTS, `${tag}_before.png`), fullPage: true }).catch(() => {})
 
   // 一括「すべて良にする」（複数セクションがあり得るので全ボタン押す）
-  const btns = page.getByRole("button", { name: "すべて良にする" })
+  const btns = page.getByRole("button", { name: "この表の空欄を良にする" })
   const bcount = await btns.count()
   for (let i = 0; i < bcount; i++) await btns.nth(i).click()
   await page.waitForTimeout(300)

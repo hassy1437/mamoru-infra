@@ -5,6 +5,7 @@ import { CheckCircle2, Loader2, MinusCircle, Send } from "lucide-react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
+import { findBlankJudgmentSections } from "@/lib/blank-judgment-sections"
 import {
     ALL_PDF_FAILED,
     buildMergedReport,
@@ -208,9 +209,18 @@ export default function DeliverReportButton({
             //     不一致 … ○が1つも描かれず、その項目は**消えている**
             //     縮小   … 小さく描かれているが**情報は残っている**
             //   同じ一覧に混ぜると、消えている方が埋もれる。
-            if (choiceWarnings.length > 0 || shrinkWarnings.length > 0 || belowMinWarnings.length > 0) {
+            // ★判定が 1 つも無い表（その1 だけ入れて続きが空など）。2026-10-06 の納品物は その2 以降の判定が
+            //   空のまま届いた。止めずに、納品の瞬間に見せる（src/lib/blank-judgment-sections.ts）。
+            const blankSections = findBlankJudgmentSections(bekkiPayloads, applicableStepIds)
+            if (choiceWarnings.length > 0 || shrinkWarnings.length > 0 || belowMinWarnings.length > 0 || blankSections.length > 0) {
                 const lines: string[] = []
+                if (blankSections.length > 0) {
+                    lines.push("■ 判定が 1 つも入っていない表があります（入れ忘れではありませんか）")
+                    for (const b of blankSections) lines.push(`【${b.form}】${b.sections.join("・")}`)
+                    lines.push("   ※設備が無いなどで空欄が正しい場合は、このままで構いません")
+                }
                 if (choiceWarnings.length > 0) {
+                    if (lines.length) lines.push("")
                     lines.push("■ 選択肢と一致せず、様式に○が付いていません（この項目は出力されません）")
                     for (const w of choiceWarnings) {
                         lines.push(`【${w.label}】`)

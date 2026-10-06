@@ -595,7 +595,7 @@ export default function BekkiResultFormBase({
                         className="shrink-0"
                     >
                         <CheckCheck className="w-4 h-4 mr-1.5" />
-                        すべて良にする
+                        この表の空欄を良にする
                     </Button>
                 </div>
             </CardHeader>

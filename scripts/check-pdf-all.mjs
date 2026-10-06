@@ -530,6 +530,16 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-blank-judgment-sections.mjs", stage: "静的",
+        why: "判定が 1 つも入っていない表（その1 だけ入れて続きが空など）を、出力画面と納品の確認で知らせるか。"
+            + "総合点検の行・様式まるごと未入力は知らせない（空欄が正しいことがある）。"
+            + "★空欄は PDF では正常な見た目なので、どの PDF 検査でも出ない種類（2026-10-06 の納品で 306 行・2026-10-07）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-blank-judgment-sections.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-blank-judgment-sections.mjs"], sentinel: "BLANK_JUDGMENT_SECTIONS_OK" },
+        ],
+    },
+    {
         file: "check-row-label-placement.mjs", stage: "生成PDF", needsPdfs: true,
         why: "入力画面の行（行ラベル表）が、紙の同じ名前の行に印字されるか（別記 23 様式の全行・位置は実際に描かれた所で見る）。"
             + "★行数が偶然そろうと route は黙って描くので、ピクセルでも行ラベル表の検査でも出ない種類"

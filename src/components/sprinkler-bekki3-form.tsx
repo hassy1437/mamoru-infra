@@ -540,7 +540,7 @@ export default function SprinklerBekki3Form({
                         <CardDescription>種別・容量等の内容、判定、不良内容、措置内容を入力してください。</CardDescription>
                     </div>
                     <Button type="button" variant="outline" size="sm" onClick={markAllGood} className="shrink-0">
-                        <CheckCheck className="w-4 h-4 mr-1.5" />すべて良にする
+                        <CheckCheck className="w-4 h-4 mr-1.5" />この表の空欄を良にする
                     </Button>
                 </div>
             </CardHeader>

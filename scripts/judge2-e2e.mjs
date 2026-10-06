@@ -33,7 +33,7 @@ async function testForm(viewport, tag, url, extra) {
   const page = await context.newPage()
   await login(page)
   await page.goto(url, { waitUntil: "domcontentloaded", timeout: 120000 })
-  await page.getByRole("button", { name: "すべて良にする" }).first().waitFor({ timeout: 120000 })
+  await page.getByRole("button", { name: "この表の空欄を良にする" }).first().waitFor({ timeout: 120000 })
   await page.waitForTimeout(1000)
 
   const judge = page.locator("select:visible").filter({ has: page.locator('option[value="良"]') })
@@ -50,7 +50,7 @@ async function testForm(viewport, tag, url, extra) {
   await page.waitForTimeout(150)
 
   // セクションごとのボタン全部押す
-  const btns = page.getByRole("button", { name: "すべて良にする" })
+  const btns = page.getByRole("button", { name: "この表の空欄を良にする" })
   const bc = await btns.count()
   for (let i = 0; i < bc; i++) { if (await btns.nth(i).isVisible()) await btns.nth(i).click() }
   await page.waitForTimeout(300)

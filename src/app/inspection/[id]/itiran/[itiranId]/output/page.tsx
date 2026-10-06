@@ -11,6 +11,7 @@ import Breadcrumb from "@/components/breadcrumb"
 import { PDF_MERGE_CONFIG, formTableToStep } from "@/lib/pdf-merge-config"
 import { selectedSteps, buildItiranInputHref, getItiranInputPageTitle } from "@/lib/itiran-input-flow"
 import type { ItiranInputStepId } from "@/lib/itiran-input-flow"
+import { findBlankJudgmentSections } from "@/lib/blank-judgment-sections"
 
 export default async function OutputPage({
     params,
@@ -109,6 +110,13 @@ export default async function OutputPage({
     ]
 
     const notReady = pdfList.filter((p) => !p.ready)
+    // ★判定が 1 つも無い表（その1 だけ入れて続きが空など・src/lib/blank-judgment-sections.ts）。止めずに知らせる
+    const blankSections = findBlankJudgmentSections(bekkiPayloads, applicableStepIds).map((b) => ({
+        ...b,
+        href: applicableStepIds.includes(b.stepId as ItiranInputStepId)
+            ? buildItiranInputHref(b.stepId as ItiranInputStepId, id, itiranId)
+            : null,
+    }))
 
     // Sanitize data to avoid structured clone issues with server→client serialization
     const sanitizedSoukatsu = JSON.parse(JSON.stringify(soukatsu))
@@ -175,6 +183,27 @@ export default async function OutputPage({
                         <p className="text-sm text-amber-600">
                             ※ 未入力の様式があります。入力済みの様式のみPDFに含まれます。
                         </p>
+                    )}
+
+                    {blankSections.length > 0 && (
+                        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 space-y-2 text-sm text-amber-800">
+                            <p className="font-semibold">判定が 1 つも入っていない表があります（入れ忘れではありませんか）</p>
+                            <ul className="list-disc pl-5 space-y-1">
+                                {blankSections.map((b) => (
+                                    <li key={b.stepId}>
+                                        {b.href ? (
+                                            <Link href={b.href} className="underline hover:text-amber-900">{b.form}</Link>
+                                        ) : (
+                                            b.form
+                                        )}
+                                        ：{b.sections.join("・")}
+                                    </li>
+                                ))}
+                            </ul>
+                            <p className="text-xs text-amber-700">
+                                「この表の空欄を良にする」は、その表だけに効きます。設備が無いなどで空欄が正しい場合は、このままで構いません。
+                            </p>
+                        </div>
                     )}
 
                     <div className="pt-2">

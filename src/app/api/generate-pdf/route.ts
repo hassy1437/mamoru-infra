@@ -7,6 +7,7 @@ import {
     drawWrappedTextInCell,
     measureRuns,
     pickFont,
+    SINGLE_LINE_FIT_DEFAULTS,
     type ReportFonts,
 } from "@/lib/pdf-form-helpers"
 import { buildFitError, createFitCollector, fitWarningHeader, logFitDebug, systemFitFailures } from "@/lib/pdf-fit-report"
@@ -88,16 +89,21 @@ export async function POST(req: NextRequest) {
          *   刷り込みラベル（住所 y=151.7 / 氏名 y=168.7 / 電話 y=185.7）が 17pt 間隔で
          *   行を定義しているので、折り返す余地が無い。
          *   ＝ 罫線が無い箇所では、刷り込みラベルが行を定義する。
+         *
+         * ★縦は既定で中央（2026-10-07）。所在地・名称・用途は高さ 34.5pt の欄に 1 行だけ入ることが多く、
+         *   上寄せだと値が上の罫線に張りつき、欄の中央にある刷り込みラベル（例: 所在地 269.0–279.5）と段がずれていた。
+         *   設備欄（198.5pt・列挙が下へ伸びる）だけ上寄せのまま。
          */
         const drawWrapped = (
             text: string | undefined, cellX: number, cellTop: number,
             cellW: number, cellH: number, size: number,
+            verticalAlign: "center" | "top" = "center",
         ) => {
             if (!text) return
             drawWrappedTextInCell({
                 page: firstPage, pageHeight: height, fonts, text,
                 cellX, cellTopFromTop: cellTop, cellW, cellH,
-                fontSize: size, options: { verticalAlign: "top" },
+                fontSize: size, options: { verticalAlign },
             })
         }
 
@@ -150,16 +156,16 @@ export async function POST(req: NextRequest) {
         //     「間違った場所に正しく描く」ことになる。共同創立者に確認する。
         draw(toText(body.fire_department_name), 70.4, 95, 12)
 
-        // ★幅はテンプレート実測。旧値 200 は出所不明で、実物より 19pt(9.5%) 狭かった。
-        //   刷り込み「住 所」の右端 309.48 / 右の縦罫線 531.0 → 312 から 219.0pt 使える。
-        //   狭いままだと同じ住所が 27字で 7.61pt、実測幅なら 8.33pt（規定の下限 7pt を超える）。
+        // ★右端は各行の記入用の下線の右端（テンプレート実測・2026-10-07）。
+        //   住所 261.48–513.48 / 氏名 262.38–512.58 / 電話番号 261.48–513.48（いずれも y≈153〜188 の細い矩形）。
+        //   ★以前は右の縦罫線 531.0 を基準に 312+216.5＝528.5 まで描いており、長い住所が下線の先へ
+        //   15pt はみ出していた（印字テストで実測）。紙の記入欄は下線の上なので、そこで止める。
+        //   ★幅が 15pt 狭くなる分、長い住所はそのぶん小さく印字される（縮小の警告が業者に出る）。
         // ★この3欄は折り返せない。ブロック内に罫線が無く、刷り込みラベルが
         //   17pt 間隔（住所 151.7 / 氏名 168.7 / 電話 185.7）で行を定義しているため。
         const notifierX = 312
-        // ★罫線ぴったり(219.0)にすると、35字の住所でインクが縦罫線に5画素触れた。
-        //   他の欄は「セル右端＝刷り込みの左端」で余白を padding が担うが、
-        //   この draw は padding を持たないので幅から引く（他の欄の実践は 2.2〜2.9pt）。
-        const notifierW = 216.5
+        // drawTextInCell は左右に paddingX（既定 2.5）を取るので、インクの右端＝下線の右端になるよう足しておく
+        const notifierW = (underlineEnd: number) => underlineEnd - notifierX + SINGLE_LINE_FIT_DEFAULTS.paddingX
         /**
          * ★共有ヘルパーに通す（折り返しはしない・できない）。
          *
@@ -176,21 +182,21 @@ export async function POST(req: NextRequest) {
          *
          * cellH は刷り込みラベルの間隔（17pt）、cellTopFromTop はベースラインから1行分。
          */
-        const drawNotifier = (text: string | undefined, printedBaseline: number) => {
+        const drawNotifier = (text: string | undefined, printedBaseline: number, underlineEnd: number) => {
             if (!text) return
             drawTextInCell({
                 page: firstPage, pageHeight: height, fonts, text,
                 cellX: notifierX, cellTopFromTop: printedBaseline - 13.0,
-                cellW: notifierW, cellH: 17.0, fontSize: 10.5,
+                cellW: notifierW(underlineEnd), cellH: 17.0, fontSize: 10.5,
                 // ★刷り込みラベルのベースラインに合わせる。共有ヘルパーはセル中央に置くので、
                 //   指定しないと縮小の度合いで上下がばらつく（実測 149.32 対 刷り込み 151.7）。
                 baselineY: printedBaseline,
             })
         }
         // 刷り込み「住 所」「氏 名」「電話番号」のベースライン実測値
-        drawNotifier(toText(body.notifier_address), 151.7)
-        drawNotifier(toText(body.notifier_name), 168.7)
-        drawNotifier(toText(body.notifier_phone), 185.7)
+        drawNotifier(toText(body.notifier_address), 151.7, 513.48)
+        drawNotifier(toText(body.notifier_name), 168.7, 512.58)
+        drawNotifier(toText(body.notifier_phone), 185.7, 513.48)
 
         const tableX = 150
         // 罫線 257.6/292.1/326.6/361.1 の実測。各 34.5pt ＝ 10.5pt で約2行
@@ -214,7 +220,7 @@ export async function POST(req: NextRequest) {
         const equipments = Array.isArray(body.equipment_types) ? body.equipment_types.join("、") : ""
         // 罫線 395.6–594.1 の実測。198.5pt ＝ 9pt で22行分。左のラベル列は縦中央寄せで、
         // 値の列はブロック全体を使う（他の欄と違い内部のラベル行分割が無い）
-        drawWrapped(equipments || undefined, tableX, 395.6, 380, 198.5, 9)
+        drawWrapped(equipments || undefined, tableX, 395.6, 380, 198.5, 9, "top")
 
         // ⑧ 枠に収まらなかった項目があればPDFを返さずに一覧を返す（他25本と同じ扱いにする）。
         // ★入れる前に測った: 現実値セット 0件 / 長文セット 0件。既存の出力は落ちない。

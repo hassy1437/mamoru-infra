@@ -326,6 +326,16 @@ const CHECKS = [
         runs: [{ cmd: ["node", "scripts/check-fit-error.mjs"], sentinel: "FIT_ERROR_CHECK_OK" }],
     },
     {
+        file: "check-houkoku-layout.mjs", stage: "挙動",
+        why: "報告書（様式第1）の届出者欄が記入用の下線の右端を越えないか・所在地/名称/用途が欄の縦の中央にあるか"
+            + "（短い値・長い値で実際に描いて測る。罫線は雛形から毎回測る）。"
+            + "★報告書は別記用の検査の外で、下線の先へ 15pt はみ出し・値が上の罫線に張りついたまま出ていた（2026-10-07）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-houkoku-layout.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-houkoku-layout.mjs"], sentinel: "HOUKOKU_LAYOUT_OK" },
+        ],
+    },
+    {
         file: "check-shrink-warning.mjs", stage: "挙動",
         why: "設計値から大きく縮小したとき警告を返すか（PDFは返す）",
         runs: [{ cmd: ["node", "scripts/check-shrink-warning.mjs"], sentinel: "SHRINK_WARNING_CHECK_OK" }],

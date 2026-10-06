@@ -28,6 +28,7 @@ FIT_EPSILON,
     type ReportFonts,
     type CellRef,
     type CellAt,
+    drawOrWrapWhenTiny,
 } from "@/lib/pdf-form-helpers"
 
 /**
@@ -346,6 +347,13 @@ export async function POST(req: NextRequest) {
         drawInCell(page1, p1Height, body.location, HEADER.valueX, HEADER.locationRow.top, HEADER.valueW, HEADER.locationRow.h, 8.1)
         drawInCell(page1, p1Height, body.witness, HEADER.rightX, HEADER.locationRow.top, HEADER.rightW, HEADER.locationRow.h, 7.8)
         const inspectionType = normalizeText(body.inspection_type) || "機器・総合"
+        // ★測定機器の製造者名は、1 行では 5pt を割るときだけ 2 行にする（2026-10-07・drawOrWrapWhenTiny。15 字で 3.5pt まで縮み、様式によっては 422 で PDF が出なかった）
+        const drawMaker = (page: PDFPage, pageHeight: number, text: unknown, cellX: number, cellTop: number, cellW: number, cellH: number, fontSize: number) =>
+            drawOrWrapWhenTiny({
+                page, pageHeight, fonts, text, cellX, cellTopFromTop: cellTop, cellW, cellH, fontSize,
+                single: { paddingX: 2.5, paddingY: 1.6, minFontSize: 3.5 }, at: { column: "maker" },
+                drawSingle: () => drawInCell(page, pageHeight, text, cellX, cellTop, cellW, cellH, fontSize),
+            })
         for (const choice of TYPE_CHOICES) {
             if (!inspectionType.includes(choice.label)) continue
             page1.drawEllipse({
@@ -435,7 +443,7 @@ export async function POST(req: NextRequest) {
             }
             drawInCell(page2, p2Height, d.model, col.model.x, top, col.model.w, DEVICE_ROW_H, col.model.size)
             drawInCell(page2, p2Height, formatJapaneseDateText(d.calibrated_at), col.date.x, top, col.date.w, DEVICE_ROW_H, col.date.size)
-            drawInCell(page2, p2Height, d.maker, col.maker.x, top, col.maker.w, DEVICE_ROW_H, col.maker.size)
+            drawMaker(page2, p2Height, d.maker, col.maker.x, top, col.maker.w, DEVICE_ROW_H, col.maker.size)
         })
 
         // ⑧ 枠に収まらなかった項目があればPDFを返さずに一覧を返す。

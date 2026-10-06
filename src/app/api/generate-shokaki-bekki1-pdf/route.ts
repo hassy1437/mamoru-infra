@@ -25,6 +25,7 @@ FIT_EPSILON,
     type ReportFonts,
     type CellRef,
     type CellAt,
+    drawOrWrapWhenTiny,
 } from "@/lib/pdf-form-helpers"
 
 type MarkKey = "A" | "B" | "C" | "D" | "E" | "F"
@@ -404,11 +405,18 @@ export async function POST(req: NextRequest) {
         drawInCell(page2, p2Height, device1.name,         81.0,  deviceTop, 55.7, deviceH, 7.8)
         drawInCell(page2, p2Height, device1.model,       136.7,  deviceTop, 56.1, deviceH, 7.8)
         drawInCell(page2, p2Height, formatJapaneseDateText(device1.calibrated_at), 192.8, deviceTop, 56.2, deviceH, 7.2)
-        drawInCell(page2, p2Height, device1.maker,       249.0,  deviceTop, 55.7, deviceH, 7.4)
+        // ★測定機器の製造者名は、1 行では 5pt を割るときだけ 2 行にする（2026-10-07・drawOrWrapWhenTiny。15 字で 3.5pt まで縮み、様式によっては 422 で PDF が出なかった）
+        const drawMaker = (page: PDFPage, pageHeight: number, text: unknown, cellX: number, cellTop: number, cellW: number, cellH: number, fontSize: number) =>
+            drawOrWrapWhenTiny({
+                page, pageHeight, fonts, text, cellX, cellTopFromTop: cellTop, cellW, cellH, fontSize,
+                single: { paddingX: 3, paddingY: 2, minFontSize: 3.5 }, at: { column: "maker" },
+                drawSingle: () => drawInCell(page, pageHeight, text, cellX, cellTop, cellW, cellH, fontSize),
+            })
+        drawMaker(page2, p2Height, device1.maker,       249.0,  deviceTop, 55.7, deviceH, 7.4)
         drawInCell(page2, p2Height, device2.name,        304.7,  deviceTop, 56.6, deviceH, 7.8)
         drawInCell(page2, p2Height, device2.model,       361.3,  deviceTop, 56.2, deviceH, 7.8)
         drawInCell(page2, p2Height, formatJapaneseDateText(device2.calibrated_at), 417.5, deviceTop, 56.1, deviceH, 7.2)
-        drawInCell(page2, p2Height, device2.maker,       473.6,  deviceTop, 56.0, deviceH, 7.4)
+        drawMaker(page2, p2Height, device2.maker,       473.6,  deviceTop, 56.0, deviceH, 7.4)
 
         // 集計テーブル: H-lines: 582.6(ヘッダー上端), 598.7(ヘッダー下端=データrow0上端), 615.7, 632.6, 649.7, 666.7, 683.6, 700.7
         // V-lines (data rows): 65.5, 142.3, 219.8, 297.4, 374.8, 452.3, 529.6

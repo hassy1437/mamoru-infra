@@ -31,6 +31,7 @@ FIT_EPSILON,
     type ReportFonts,
     type CellRef,
     type CellAt,
+    drawOrWrapWhenTiny,
 } from "@/lib/pdf-form-helpers"
 
 /**
@@ -635,7 +636,14 @@ export async function POST(req: NextRequest) {
         drawInCell(page4, p4Height, device1.name, 85, 650, 56, 21, 7.2)
         drawInCell(page4, p4Height, device1.model, 141, 650, 55, 21, 7.2, { at: { column: "model" } })
         drawInCell(page4, p4Height, formatJapaneseDateText(device1.calibrated_at), 196, 650, 56, 21, 7.2)
-        drawInCell(page4, p4Height, device1.maker, 252, 650, 55, 21, 7.2, { at: { column: "maker" } })
+        // ★測定機器の製造者名は、1 行では 5pt を割るときだけ 2 行にする（2026-10-07・drawOrWrapWhenTiny。15 字で 3.5pt まで縮み、様式によっては 422 で PDF が出なかった）
+        const drawMaker = (page: PDFPage, pageHeight: number, text: unknown, cellX: number, cellTop: number, cellW: number, cellH: number, fontSize: number) =>
+            drawOrWrapWhenTiny({
+                page, pageHeight, fonts, text, cellX, cellTopFromTop: cellTop, cellW, cellH, fontSize,
+                single: BEKKI5_SINGLE_FIT, at: { column: "maker" },
+                drawSingle: () => drawInCell(page, pageHeight, text, cellX, cellTop, cellW, cellH, fontSize, { at: { column: "maker" } }),
+            })
+        drawMaker(page4, p4Height, device1.maker, 252, 650, 55, 21, 7.2)
 
         // ★2台目の機器名だけセル定義が左罫線から離れていた（定義313 / 左罫線308.52）。
         //   実描画は罫線から 7.48pt で、他7セルの 1.96〜2.40pt に対し3倍以上内側だった
@@ -645,7 +653,7 @@ export async function POST(req: NextRequest) {
         drawInCell(page4, p4Height, device2.name, 307.52, 650, 55.48, 21, 7.2)
         drawInCell(page4, p4Height, device2.model, 363, 650, 55, 21, 7.2, { at: { column: "model" } })
         drawInCell(page4, p4Height, formatJapaneseDateText(device2.calibrated_at), 418, 650, 56, 21, 7.2)
-        drawInCell(page4, p4Height, device2.maker, 474, 650, 55, 21, 7.2, { at: { column: "maker" } })
+        drawMaker(page4, p4Height, device2.maker, 474, 650, 55, 21, 7.2)
 
         // ⑧ 枠に収まらなかった項目があればPDFを返さずに一覧を返す。
         //   黙って "..." で切り詰めると、法定書類から情報が静かに欠落するため。

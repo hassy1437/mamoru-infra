@@ -29,6 +29,7 @@ FIT_EPSILON,
     type ReportFonts,
     type CellRef,
     type CellAt,
+    drawOrWrapWhenTiny,
 } from "@/lib/pdf-form-helpers"
 import { normalizeInspectorNameValue, normalizeWitnessValue } from "@/lib/bekki-header-normalization"
 import { AUTO_TEST_ATTR, isRowActive } from "@/lib/auto-test-rows"
@@ -309,7 +310,7 @@ export async function POST(req: NextRequest) {
             drawTextRuns(page, font, String(textToDraw ?? ""), textX, pageHeight - (textTopFromTop + textHeight * 0.78), currentSize)
         }
 
-        const drawDeviceMaker = (text: unknown, page: PDFPage, pageH: number, cellX: number, cellW: number, cellTop: number, cellH: number, baseFontSize = 6.0) => {
+        const drawDeviceMakerSingle = (text: unknown, page: PDFPage, pageH: number, cellX: number, cellW: number, cellTop: number, cellH: number, baseFontSize = 6.0) => {
             const norm = normalizeText(text)
             if (!norm) return
             const padX = 1
@@ -324,6 +325,13 @@ export async function POST(req: NextRequest) {
             const textTop = cellTop + (cellH - th) / 2
             drawTextRuns(page, fonts, String(norm ?? ""), cellX + padX, pageH - (textTop + th * 0.78), sz)
         }
+        // ★測定機器の製造者名は、1 行では 5pt を割るときだけ 2 行にする（2026-10-07・drawOrWrapWhenTiny。15 字で 3.5pt まで縮み、様式によっては 422 で PDF が出なかった）
+        const drawDeviceMaker = (text: unknown, page: PDFPage, pageH: number, cellX: number, cellW: number, cellTop: number, cellH: number, baseFontSize = 6.0) =>
+            drawOrWrapWhenTiny({
+                page, pageHeight: pageH, fonts, text, cellX, cellTopFromTop: cellTop, cellW, cellH, fontSize: baseFontSize,
+                single: { paddingX: 1, paddingY: 0, minFontSize: 3.5 }, at: { column: "maker" },
+                drawSingle: () => drawDeviceMakerSingle(text, page, pageH, cellX, cellW, cellTop, cellH, baseFontSize),
+            })
 
         // ★入力画面と同じ読み方に揃える（extra_fields の "1"）。2箇所で違う読み方をしない。
         const hasAutoTest = getExtra(body, AUTO_TEST_ATTR) === "1"

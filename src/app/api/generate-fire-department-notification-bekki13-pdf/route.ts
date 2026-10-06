@@ -25,6 +25,8 @@ drawPeriodDate,
     pickFont,
     type ReportFonts,
     type CellRef,
+    drawOrWrapWhenTiny,
+    SINGLE_LINE_FIT_DEFAULTS,
 } from "@/lib/pdf-form-helpers"
 
 /**
@@ -333,12 +335,19 @@ export async function POST(req: NextRequest) {
         drawInCell(page2, p2Height, device1.name, 80.52, deviceRowTop, 55.68, deviceRowH, 5.8)
         drawInCell(page2, p2Height, device1.model, 136.8, deviceRowTop, 55.68, deviceRowH, 5.8)
         drawInCell(page2, p2Height, formatJapaneseDateText(device1.calibrated_at), 192.96, deviceRowTop, 55.8, deviceRowH, 5.6)
-        drawInCell(page2, p2Height, device1.maker, 249.24, deviceRowTop, 55.32, deviceRowH, 5.6)
+        // ★測定機器の製造者名は、1 行では 5pt を割るときだけ 2 行にする（2026-10-07・drawOrWrapWhenTiny。15 字で 3.5pt まで縮み、様式によっては 422 で PDF が出なかった）
+        const drawMaker = (page: PDFPage, pageHeight: number, text: unknown, cellX: number, cellTop: number, cellW: number, cellH: number, fontSize: number) =>
+            drawOrWrapWhenTiny({
+                page, pageHeight, fonts, text, cellX, cellTopFromTop: cellTop, cellW, cellH, fontSize,
+                single: SINGLE_LINE_FIT_DEFAULTS, at: { column: "maker" },
+                drawSingle: () => drawInCell(page, pageHeight, text, cellX, cellTop, cellW, cellH, fontSize),
+            })
+        drawMaker(page2, p2Height, device1.maker, 249.24, deviceRowTop, 55.32, deviceRowH, 5.6)
 
         drawInCell(page2, p2Height, device2.name, 305.28, deviceRowTop, 56.04, deviceRowH, 5.8)
         drawInCell(page2, p2Height, device2.model, 361.8, deviceRowTop, 55.68, deviceRowH, 5.8)
         drawInCell(page2, p2Height, formatJapaneseDateText(device2.calibrated_at), 417.96, deviceRowTop, 55.8, deviceRowH, 5.6)
-        drawInCell(page2, p2Height, device2.maker, 474.24, deviceRowTop, 55.56, deviceRowH, 5.6)
+        drawMaker(page2, p2Height, device2.maker, 474.24, deviceRowTop, 55.56, deviceRowH, 5.6)
 
         // ⑧ 枠に収まらなかった項目があればPDFを返さずに一覧を返す。
         //   黙って "..." で切り詰めると、法定書類から情報が静かに欠落するため。

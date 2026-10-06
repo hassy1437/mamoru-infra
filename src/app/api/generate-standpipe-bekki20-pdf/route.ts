@@ -4,7 +4,7 @@ import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
 import { periodDateError,
-FIT_EPSILON, drawChoiceCircle, drawPeriodDate, drawTextInCell, drawTextRuns, drawWrappedTextInCell, formatDateText, formatJapaneseDateText, formatJudgment, cellAt, measureRuns, truncateRunsToFitWidth, parseDateParts, pickFont, reportIfBelowMinSize, type CellDrawOptions, type DateAnchors, type ReportFonts, type CellAt, type CellRef } from "@/lib/pdf-form-helpers"
+FIT_EPSILON, drawChoiceCircle, drawPeriodDate, drawTextInCell, drawTextRuns, drawWrappedTextInCell, formatDateText, formatJapaneseDateText, formatJudgment, cellAt, measureRuns, truncateRunsToFitWidth, parseDateParts, pickFont, reportIfBelowMinSize, type CellDrawOptions, type DateAnchors, type ReportFonts, type CellAt, type CellRef, drawOrWrapWhenTiny } from "@/lib/pdf-form-helpers"
 import {
     buildFitError,
     createFitCollector,
@@ -207,7 +207,7 @@ export async function POST(req: NextRequest) {
             drawTextRuns(page, font, String(textToDraw ?? ""), textX, pageHeight - (textTopFromTop + textHeight * 0.78), currentSize)
         }
 
-        const drawDeviceMaker = (text: unknown, page: PDFPage, pageH: number, cellX: number, cellW: number, cellTop: number, cellH: number, baseFontSize = 5.6) => {
+        const drawDeviceMakerSingle = (text: unknown, page: PDFPage, pageH: number, cellX: number, cellW: number, cellTop: number, cellH: number, baseFontSize = 5.6) => {
             const norm = normalizeText(text)
             if (!norm) return
             const padX = 1
@@ -222,6 +222,13 @@ export async function POST(req: NextRequest) {
             const textTop = cellTop + (cellH - th) / 2
             drawTextRuns(page, fonts, String(norm ?? ""), cellX + padX, pageH - (textTop + th * 0.78), sz)
         }
+        // ★測定機器の製造者名は、1 行では 5pt を割るときだけ 2 行にする（2026-10-07・drawOrWrapWhenTiny。15 字で 3.5pt まで縮み、様式によっては 422 で PDF が出なかった）
+        const drawDeviceMaker = (text: unknown, page: PDFPage, pageH: number, cellX: number, cellW: number, cellTop: number, cellH: number, baseFontSize = 5.6) =>
+            drawOrWrapWhenTiny({
+                page, pageHeight: pageH, fonts, text, cellX, cellTopFromTop: cellTop, cellW, cellH, fontSize: baseFontSize,
+                single: { paddingX: 1, paddingY: 0, minFontSize: 3.5 }, at: { column: "maker" },
+                drawSingle: () => drawDeviceMakerSingle(text, page, pageH, cellX, cellW, cellTop, cellH, baseFontSize),
+            })
 
 
         const drawResultRows = (page: PDFPage, pageHeight: number, rows: BekkiRow[], rowBounds: number[], cols: ResultColumns, contentOverrides: Record<number, { x: number; w: number }> = {}, skipContentRows?: Set<number>,

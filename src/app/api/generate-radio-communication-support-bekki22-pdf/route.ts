@@ -11,7 +11,7 @@ import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
 import { periodDateError,
-drawChoiceCircle, drawPeriodDate, drawTextInCell, drawWrappedTextInCell, formatDateText, formatJapaneseDateText, formatJudgment, parseDateParts, pickFont, type CellDrawOptions, type DateAnchors, type ReportFonts, type CellRef } from "@/lib/pdf-form-helpers"
+drawChoiceCircle, drawPeriodDate, drawTextInCell, drawWrappedTextInCell, formatDateText, formatJapaneseDateText, formatJudgment, parseDateParts, pickFont, type CellDrawOptions, type DateAnchors, type ReportFonts, type CellRef, drawOrWrapWhenTiny, SINGLE_LINE_FIT_DEFAULTS } from "@/lib/pdf-form-helpers"
 
 /**
  * テストデータ生成が読む「数値しか入らない欄」の宣言。
@@ -220,11 +220,25 @@ export async function POST(req: NextRequest) {
             //   高さ由来の上限は 9.67pt（18.0pt のセル）なので余裕がある。5.6pt にすると
             //   一番狭い 36.48pt のセルでも全角6文字まで 5.25pt 以上を保てる（実測）。
             //   同じ表の6欄なので値を揃える（4欄だけ直すと同じ表に2つの基準が残る）。
-            drawInCell(page, pageHeight, body.extra_fields?.cable_maker, 213.12, 245.76, 40.68, 18.0, 5.6, { align: "center" })
+            // ★製造者名（3 欄）は、1 行では 5pt を割るときだけ折り返す（2026-10-07）。15 字で 3.5pt でも入らず
+            //   422 になり、列名も渡していなかったため 422 は「測定機器 製造者名」を指していた。型式等は型番なので 1 行のまま
+            drawOrWrapWhenTiny({
+                page, pageHeight, fonts, text: body.extra_fields?.cable_maker, cellX: 213.12, cellTopFromTop: 245.76, cellW: 40.68, cellH: 18.0, fontSize: 5.6,
+                single: SINGLE_LINE_FIT_DEFAULTS, at: { column: "cable_maker" },
+                drawSingle: () => drawInCell(page, pageHeight, body.extra_fields?.cable_maker, 213.12, 245.76, 40.68, 18.0, 5.6, { align: "center" }),
+            })
             drawInCell(page, pageHeight, body.extra_fields?.cable_model, 213.12, 263.76, 40.68, 18.0, 5.6, { align: "center" })
-            drawInCell(page, pageHeight, body.extra_fields?.antenna_maker, 353.88, 245.76, 36.48, 18.0, 5.6, { align: "center" })
+            drawOrWrapWhenTiny({
+                page, pageHeight, fonts, text: body.extra_fields?.antenna_maker, cellX: 353.88, cellTopFromTop: 245.76, cellW: 36.48, cellH: 18.0, fontSize: 5.6,
+                single: SINGLE_LINE_FIT_DEFAULTS, at: { column: "antenna_maker" },
+                drawSingle: () => drawInCell(page, pageHeight, body.extra_fields?.antenna_maker, 353.88, 245.76, 36.48, 18.0, 5.6, { align: "center" }),
+            })
             drawInCell(page, pageHeight, body.extra_fields?.antenna_model, 353.88, 263.76, 36.48, 18.0, 5.6, { align: "center" })
-            drawInCell(page, pageHeight, body.extra_fields?.amplifier_maker, 490.44, 245.76, 39.12, 18.0, 5.6, { align: "center" })
+            drawOrWrapWhenTiny({
+                page, pageHeight, fonts, text: body.extra_fields?.amplifier_maker, cellX: 490.44, cellTopFromTop: 245.76, cellW: 39.12, cellH: 18.0, fontSize: 5.6,
+                single: SINGLE_LINE_FIT_DEFAULTS, at: { column: "amplifier_maker" },
+                drawSingle: () => drawInCell(page, pageHeight, body.extra_fields?.amplifier_maker, 490.44, 245.76, 39.12, 18.0, 5.6, { align: "center" }),
+            })
             drawInCell(page, pageHeight, body.extra_fields?.amplifier_model, 490.44, 263.76, 39.12, 18.0, 5.6, { align: "center" })
         }
 
@@ -250,11 +264,18 @@ export async function POST(req: NextRequest) {
         drawInCell(page1, p1Height, device1.name, 85.8, deviceRowTop, 55.56, deviceRowH, 5.6)
         drawInCell(page1, p1Height, device1.model, 141.36, deviceRowTop, 55.44, deviceRowH, 5.6)
         drawInCell(page1, p1Height, formatJapaneseDateText(device1.calibrated_at), 196.8, deviceRowTop, 55.56, deviceRowH, 5.4)
-        drawInCell(page1, p1Height, device1.maker, 252.36, deviceRowTop, 54.96, deviceRowH, 5.4)
+        // ★測定機器の製造者名は、1 行では 5pt を割るときだけ 2 行にする（2026-10-07・drawOrWrapWhenTiny。15 字で 3.5pt まで縮み、様式によっては 422 で PDF が出なかった）
+        const drawMaker = (page: PDFPage, pageHeight: number, text: unknown, cellX: number, cellTop: number, cellW: number, cellH: number, fontSize: number) =>
+            drawOrWrapWhenTiny({
+                page, pageHeight, fonts, text, cellX, cellTopFromTop: cellTop, cellW, cellH, fontSize,
+                single: SINGLE_LINE_FIT_DEFAULTS, at: { column: "maker" },
+                drawSingle: () => drawInCell(page, pageHeight, text, cellX, cellTop, cellW, cellH, fontSize),
+            })
+        drawMaker(page1, p1Height, device1.maker, 252.36, deviceRowTop, 54.96, deviceRowH, 5.4)
         drawInCell(page1, p1Height, device2.name, 308.28, deviceRowTop, 55.08, deviceRowH, 5.6)
         drawInCell(page1, p1Height, device2.model, 363.36, deviceRowTop, 55.44, deviceRowH, 5.6)
         drawInCell(page1, p1Height, formatJapaneseDateText(device2.calibrated_at), 418.8, deviceRowTop, 55.56, deviceRowH, 5.4)
-        drawInCell(page1, p1Height, device2.maker, 474.36, deviceRowTop, 54.96, deviceRowH, 5.4)
+        drawMaker(page1, p1Height, device2.maker, 474.36, deviceRowTop, 54.96, deviceRowH, 5.4)
 
         // ⑧ 枠に収まらなかった項目があればPDFを返さずに一覧を返す。
         //   黙って "..." で切り詰めると、法定書類から情報が静かに欠落するため。

@@ -87,6 +87,10 @@ export const FIELD_LABELS: Record<string, string> = {
     // 測定機器（全別記の共通欄）。入力欄は placeholder だけで <Label> が無い（check-field-labels.py で除外）
     model: "測定機器 型式",
     maker: "測定機器 製造者名",
+    // 別記22 の点検設備の製造者名（入力画面は設定の一覧から {field.label} で描く＝check-field-labels.py では除外）
+    cable_maker: "漏洩同軸ケーブル 製造者名",
+    antenna_maker: "空中線 製造者名",
+    amplifier_maker: "増幅器 製造者名",
 }
 
 /**

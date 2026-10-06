@@ -553,6 +553,16 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-device-maker-wrap.mjs", stage: "生成PDF", needsPdfs: true,
+        why: "測定機器の製造者名（と別記11/22 の点検設備の製造者名）が、ありそうな長さ（15 字）で PDF を止めず全文載り、"
+            + "測定機器は 5pt 以上か。短い値は 1 行のまま。★15 字で 7 様式が 422、8 様式が 3.5〜4pt だった（2026-10-07）。"
+            + "#22 の検査（社名など 4 様式）は測定機器の欄を見ていなかった",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-device-maker-wrap.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-device-maker-wrap.mjs"], sentinel: "DEVICE_MAKER_WRAP_OK" },
+        ],
+    },
+    {
         file: "check-heading-row-inputs.mjs", stage: "静的",
         why: "別記の入力画面が「見出し行」（紙では全幅の見出し・route は描かない）に入力欄を出さず、「すべて良にする」も入れないか。"
             + "★入れた値が黙って消えるだけで画面も PDF も正常に見える種類（2026-10-07）",

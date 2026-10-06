@@ -11,7 +11,7 @@ import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
 import { periodDateError,
-drawChoiceCircle, drawPeriodDate, drawTextInCell, drawTextInCellOrWrap, drawWrappedTextInCell, formatDateText, formatJapaneseDateText, formatJudgment, parseDateParts, pickFont, type CellDrawOptions, type DateAnchors, type ReportFonts, type CellRef } from "@/lib/pdf-form-helpers"
+drawChoiceCircle, drawPeriodDate, drawTextInCell, drawTextInCellOrWrap, drawWrappedTextInCell, formatDateText, formatJapaneseDateText, formatJudgment, parseDateParts, pickFont, type CellDrawOptions, type DateAnchors, type ReportFonts, type CellRef, drawOrWrapWhenTiny, SINGLE_LINE_FIT_DEFAULTS } from "@/lib/pdf-form-helpers"
 
 /**
  * テストデータ生成が読む「数値しか入らない欄」の宣言。
@@ -262,11 +262,18 @@ export async function POST(req: NextRequest) {
         drawInCell(page1, p1Height, device1.name, 85.8, deviceRowTop, 55.56, deviceRowH, 5.8)
         drawInCell(page1, p1Height, device1.model, 141.36, deviceRowTop, 55.44, deviceRowH, 5.8)
         drawInCell(page1, p1Height, formatJapaneseDateText(device1.calibrated_at), 196.8, deviceRowTop, 55.56, deviceRowH, 5.6)
-        drawInCell(page1, p1Height, device1.maker, 252.36, deviceRowTop, 54.96, deviceRowH, 5.6)
+        // ★測定機器の製造者名は、1 行では 5pt を割るときだけ 2 行にする（2026-10-07・drawOrWrapWhenTiny。15 字で 3.5pt まで縮み、様式によっては 422 で PDF が出なかった）
+        const drawMaker = (page: PDFPage, pageHeight: number, text: unknown, cellX: number, cellTop: number, cellW: number, cellH: number, fontSize: number) =>
+            drawOrWrapWhenTiny({
+                page, pageHeight, fonts, text, cellX, cellTopFromTop: cellTop, cellW, cellH, fontSize,
+                single: SINGLE_LINE_FIT_DEFAULTS, at: { column: "maker" },
+                drawSingle: () => drawInCell(page, pageHeight, text, cellX, cellTop, cellW, cellH, fontSize),
+            })
+        drawMaker(page1, p1Height, device1.maker, 252.36, deviceRowTop, 54.96, deviceRowH, 5.6)
         drawInCell(page1, p1Height, device2.name, 308.28, deviceRowTop, 55.08, deviceRowH, 5.8)
         drawInCell(page1, p1Height, device2.model, 363.36, deviceRowTop, 55.44, deviceRowH, 5.8)
         drawInCell(page1, p1Height, formatJapaneseDateText(device2.calibrated_at), 418.8, deviceRowTop, 55.56, deviceRowH, 5.6)
-        drawInCell(page1, p1Height, device2.maker, 474.36, deviceRowTop, 55.44, deviceRowH, 5.6)
+        drawMaker(page1, p1Height, device2.maker, 474.36, deviceRowTop, 55.44, deviceRowH, 5.6)
 
         // ⑧ 枠に収まらなかった項目があればPDFを返さずに一覧を返す。
         //   黙って "..." で切り詰めると、法定書類から情報が静かに欠落するため。

@@ -28,6 +28,7 @@ FIT_EPSILON,
     type ReportFonts,
     type CellRef,
     type CellAt,
+    drawOrWrapWhenTiny,
 } from "@/lib/pdf-form-helpers"
 
 /**
@@ -569,14 +570,21 @@ export async function POST(req: NextRequest) {
         drawInCell(page4, p4Height, device1.name, 80.64, 660.33, 57.84, 20.67, 7.0)
         drawInCell(page4, p4Height, device1.model, 138.33, 660.33, 52.67, 20.67, 7.0)
         drawInCell(page4, p4Height, formatJapaneseDateText(device1.calibrated_at), 191.0, 660.33, 55.33, 20.67, 7.0)
-        drawInCell(page4, p4Height, device1.maker, 246.33, 660.33, 54.67, 20.67, 7.0)
+        // ★測定機器の製造者名は、1 行では 5pt を割るときだけ 2 行にする（2026-10-07・drawOrWrapWhenTiny。15 字で 3.5pt まで縮み、様式によっては 422 で PDF が出なかった）
+        const drawMaker = (page: PDFPage, pageHeight: number, text: unknown, cellX: number, cellTop: number, cellW: number, cellH: number, fontSize: number) =>
+            drawOrWrapWhenTiny({
+                page, pageHeight, fonts, text, cellX, cellTopFromTop: cellTop, cellW, cellH, fontSize,
+                single: { paddingX: 2.5, paddingY: 1.8, minFontSize: 3.5 }, at: { column: "maker" },
+                drawSingle: () => drawInCell(page, pageHeight, text, cellX, cellTop, cellW, cellH, fontSize),
+            })
+        drawMaker(page4, p4Height, device1.maker, 246.33, 660.33, 54.67, 20.67, 7.0)
 
         // ★device2 は列が丸ごと1つ右にずれており、製造者名は次の行に落ちていた。
         //   実測の列境界: 301.9 | 363.8 | 417.7 | 471.5 | 529.1（device1 側は元から一致）。
         drawInCell(page4, p4Height, device2.name, 301.9, 660.4, 61.9, 20.5, 7.0)
         drawInCell(page4, p4Height, device2.model, 363.8, 660.4, 53.9, 20.5, 7.0)
         drawInCell(page4, p4Height, formatJapaneseDateText(device2.calibrated_at), 417.7, 660.4, 53.8, 20.5, 7.0)
-        drawInCell(page4, p4Height, device2.maker, 471.5, 660.4, 57.6, 20.5, 7.0)
+        drawMaker(page4, p4Height, device2.maker, 471.5, 660.4, 57.6, 20.5, 7.0)
 
         drawCylinderRows(page5, p5Height, body.page5_rows ?? [])
 

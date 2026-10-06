@@ -20,6 +20,7 @@ FIT_EPSILON,
     type ReportFonts,
     type CellRef,
     type CellAt,
+    drawOrWrapWhenTiny,
 } from "@/lib/pdf-form-helpers"
 import {
     buildFitError,
@@ -680,7 +681,7 @@ export async function POST(req: NextRequest) {
         drawInCellWithFont(page5, p5Height, fonts, device1.model, 139, 658, 55, 19, 7.2, devOpts)
         drawInCell(page5, p5Height, formatJapaneseDateText(device1.calibrated_at), 194.34, 658, 55.66, 19, 7.2, devOpts)
 
-        const drawDeviceMaker = (text: unknown, page: PDFPage, pageH: number, cellX: number, cellW: number, cellTop: number, cellH: number) => {
+        const drawDeviceMakerSingle = (text: unknown, page: PDFPage, pageH: number, cellX: number, cellW: number, cellTop: number, cellH: number) => {
             const norm = normalizeText(text)
             if (!norm) return
             const padX = 1
@@ -697,6 +698,13 @@ export async function POST(req: NextRequest) {
             const textTop = cellTop + (cellH - th) / 2
             drawTextRuns(page, fonts, String(drawn ?? ""), cellX + padX, pageH - (textTop + th * 0.78), sz)
         }
+        // ★測定機器の製造者名は、1 行では 5pt を割るときだけ 2 行にする（2026-10-07・drawOrWrapWhenTiny。15 字で 3.5pt まで縮み、様式によっては 422 で PDF が出なかった）
+        const drawDeviceMaker = (text: unknown, page: PDFPage, pageH: number, cellX: number, cellW: number, cellTop: number, cellH: number) =>
+            drawOrWrapWhenTiny({
+                page, pageHeight: pageH, fonts, text, cellX, cellTopFromTop: cellTop, cellW, cellH, fontSize: 7.2,
+                single: { paddingX: 1, paddingY: 0, minFontSize: 3.5 }, at: { column: "maker" },
+                drawSingle: () => drawDeviceMakerSingle(text, page, pageH, cellX, cellW, cellTop, cellH),
+            })
         // ★製造者名1も罫線（250.68〜251.16）の右へ寄せる。250 のままだと描き始め 251.0 が罫線に乗り、画素で接していた（2026-10-07）
         drawDeviceMaker(device1.maker, page5, p5Height, 250.26, 55.74, 658, 19)
 

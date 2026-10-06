@@ -804,6 +804,54 @@ export const drawTextInCellOrWrap = (
     drawTextInCell(args)
 }
 
+/**
+ * 様式ごとに 1 行の描き方が違う欄（測定機器の製造者名など）で、1 行では 5pt を割るときだけ折り返す（#22 の一般化・2026-10-07）。
+ *
+ * ■ なぜ要るか（2026-10-07 実測）
+ *   測定機器の製造者名（15 字）で、別記1/14/17/18/19/21/22 は 3.5pt でも入らず切り詰め＝422 で PDF が出ず、
+ *   別記2/3/4/11の1/15/16/20 は 3.5〜4pt まで縮んでいた。欄の高さには 2 行入る。
+ *   各様式の 1 行の描き方（余白・縦位置・下限）はばらばらで、drawTextInCellOrWrap に寄せると
+ *   ★収まっている値の見た目まで変わる。
+ * ■ 決めたこと
+ *   - drawSingle に様式の今の描き方をそのまま渡す。1 行で 5pt 以上入る値はそれで描く（見た目は変わらない）
+ *   - single には drawSingle の余白・下限を渡す（1 行で何 pt になるかの見積もりに使う）
+ *   - 折り返すときは drawWrappedTextInCell の既定（WRAPPED_FIT_DEFAULTS）。判定は wrapGivesLargerSize
+ *   - ★数値・型番など折り返してはいけない欄には使わない（呼ぶ側で欄を選ぶ）
+ */
+export const drawOrWrapWhenTiny = (args: {
+    page: PDFPage
+    pageHeight: number
+    fonts: ReportFonts
+    text: unknown
+    cellX: number
+    cellTopFromTop: number
+    cellW: number
+    cellH: number
+    fontSize: number
+    single: { paddingX: number; paddingY: number; minFontSize: number }
+    at?: CellRef
+    drawSingle: () => void
+}) => {
+    const normalized = normalizeText(args.text)
+    if (!normalized) return
+    const value = String(normalized)
+    const single = singleLineFitSize({
+        fonts: args.fonts, text: value, cellW: args.cellW, cellH: args.cellH, fontSize: args.fontSize, ...args.single,
+    })
+    const wrapped = wrappedFit({
+        fonts: args.fonts, text: value, cellW: args.cellW, cellH: args.cellH, fontSize: args.fontSize, ...WRAPPED_FIT_DEFAULTS,
+    })
+    if (wrapGivesLargerSize(single, wrapped.size)) {
+        drawWrappedTextInCell({
+            page: args.page, pageHeight: args.pageHeight, fonts: args.fonts, text: value,
+            cellX: args.cellX, cellTopFromTop: args.cellTopFromTop, cellW: args.cellW, cellH: args.cellH,
+            fontSize: args.fontSize, options: { at: args.at },
+        })
+        return
+    }
+    args.drawSingle()
+}
+
 export const drawRightAt = ({
     page,
     pageHeight,

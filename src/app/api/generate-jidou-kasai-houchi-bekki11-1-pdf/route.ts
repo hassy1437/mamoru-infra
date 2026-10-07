@@ -513,7 +513,13 @@ export async function POST(req: NextRequest) {
             const col = DEVICE_COLS[Math.floor(i / DEVICE_TABLE_COLUMN_ROWS)]
             const top = DEVICE_ROW_TOPS[i % DEVICE_TABLE_COLUMN_ROWS]
             if (DEVICE_TABLE_PRINTED.bekki11_1[i] === null) {
-                drawInCellWithFont(page3, p3Height, fonts, d.name, col.name.x, top, col.name.w, DEVICE_ROW_H, 6.4, devOpts)
+                // ★測定機器の機器名も、1 行では 5pt を割るときだけ 2 行にする（2026-10-07・drawOrWrapWhenTiny）
+                const at = { column: "name", labelKey: "device_name" }
+                drawOrWrapWhenTiny({
+                    page: page3, pageHeight: p3Height, fonts, text: d.name, cellX: col.name.x, cellTopFromTop: top, cellW: col.name.w, cellH: DEVICE_ROW_H, fontSize: 6.4,
+                    single: { paddingX: 1, paddingY: 2, minFontSize: 3.5 }, at,
+                    drawSingle: () => drawInCellWithFont(page3, p3Height, fonts, d.name, col.name.x, top, col.name.w, DEVICE_ROW_H, 6.4, { ...devOpts, at }),
+                })
             }
             drawInCellWithFont(page3, p3Height, fonts, d.model, col.model.x, top, col.model.w, DEVICE_ROW_H, col.model.size, devOpts)
             drawInCell(page3, p3Height, formatJapaneseDateText(d.calibrated_at), col.date.x, top, col.date.w, DEVICE_ROW_H, 5.2)

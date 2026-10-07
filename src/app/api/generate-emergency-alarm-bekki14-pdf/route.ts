@@ -324,7 +324,15 @@ export async function POST(req: NextRequest) {
         const deviceRowTop = 643.92
         const deviceRowH = 21.6
 
-        drawInCell(page3, p3Height, device1.name, 80.76, deviceRowTop, 56.16, deviceRowH, 6.0)
+        // ★測定機器の機器名も、1 行では 5pt を割るときだけ 2 行にする（2026-10-07・drawOrWrapWhenTiny。10 字「煙感知器用感度試験器」で 4.2〜5.4pt、16 字で 19 様式が 422 だった）
+        const DEVICE_NAME_AT = { column: "name", labelKey: "device_name" }
+        const drawDeviceName = (page: PDFPage, pageHeight: number, text: unknown, cellX: number, cellTop: number, cellW: number, cellH: number, fontSize: number, options?: Parameters<typeof drawInCell>[8]) =>
+            drawOrWrapWhenTiny({
+                page, pageHeight, fonts, text, cellX, cellTopFromTop: cellTop, cellW, cellH, fontSize,
+                single: { paddingX: options?.paddingX ?? 2.5, paddingY: options?.paddingY ?? 1.6, minFontSize: 3.5 }, at: DEVICE_NAME_AT,
+                drawSingle: () => drawInCell(page, pageHeight, text, cellX, cellTop, cellW, cellH, fontSize, { ...options, at: DEVICE_NAME_AT }),
+            })
+        drawDeviceName(page3, p3Height, device1.name, 80.76, deviceRowTop, 56.16, deviceRowH, 6.0)
         drawInCell(page3, p3Height, device1.model, 136.92, deviceRowTop, 56.16, deviceRowH, 6.0)
         drawInCell(page3, p3Height, formatJapaneseDateText(device1.calibrated_at), 193.08, deviceRowTop, 56.16, deviceRowH, 5.6)
         // ★測定機器の製造者名は、1 行では 5pt を割るときだけ 2 行にする（2026-10-07・drawOrWrapWhenTiny。15 字で 3.5pt まで縮み、様式によっては 422 で PDF が出なかった）
@@ -336,7 +344,7 @@ export async function POST(req: NextRequest) {
             })
         drawMaker(page3, p3Height, device1.maker, 249.24, deviceRowTop, 55.68, deviceRowH, 5.6)
 
-        drawInCell(page3, p3Height, device2.name, 305.88, deviceRowTop, 55.68, deviceRowH, 6.0)
+        drawDeviceName(page3, p3Height, device2.name, 305.88, deviceRowTop, 55.68, deviceRowH, 6.0)
         drawInCell(page3, p3Height, device2.model, 361.56, deviceRowTop, 56.16, deviceRowH, 6.0)
         drawInCell(page3, p3Height, formatJapaneseDateText(device2.calibrated_at), 417.72, deviceRowTop, 56.16, deviceRowH, 5.6)
         drawMaker(page3, p3Height, device2.maker, 473.88, deviceRowTop, 56.16, deviceRowH, 5.6)

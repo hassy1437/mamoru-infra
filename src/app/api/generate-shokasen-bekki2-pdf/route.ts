@@ -583,7 +583,15 @@ export async function POST(req: NextRequest) {
         //   描画域＝x+paddingX。罫線の右端から 0.10pt 外に出す位置を実測から算出した。
         //     device1.model 罫線 138.72〜139.20 / date 194.64〜195.12 / device2.name 306.96〜307.44
         const devOpts: DrawOptions = { paddingX: 1 }
-        drawInCell(page3, p3Height, device1.name, 83, 649, 55, 14, 7.2, devOpts)
+        // ★測定機器の機器名も、1 行では 5pt を割るときだけ 2 行にする（2026-10-07・drawOrWrapWhenTiny。10 字「煙感知器用感度試験器」で 4.2〜5.4pt、16 字で 19 様式が 422 だった）
+        const DEVICE_NAME_AT = { column: "name", labelKey: "device_name" }
+        const drawDeviceName = (page: PDFPage, pageHeight: number, text: unknown, cellX: number, cellTop: number, cellW: number, cellH: number, fontSize: number, options?: Parameters<typeof drawInCell>[8]) =>
+            drawOrWrapWhenTiny({
+                page, pageHeight, fonts, text, cellX, cellTopFromTop: cellTop, cellW, cellH, fontSize,
+                single: { paddingX: options?.paddingX ?? 3, paddingY: options?.paddingY ?? 2, minFontSize: 3.5 }, at: DEVICE_NAME_AT,
+                drawSingle: () => drawInCell(page, pageHeight, text, cellX, cellTop, cellW, cellH, fontSize, { ...options, at: DEVICE_NAME_AT }),
+            })
+        drawDeviceName(page3, p3Height, device1.name, 83, 649, 55, 14, 7.2, devOpts)
         drawInCellWithFont(page3, p3Height, fonts, device1.model, 138.31, 649, 55.69, 14, 7.2, devOpts)
         drawInCell(page3, p3Height, formatJapaneseDateText(device1.calibrated_at), 194.22, 649, 55.78, 14, 7.2, devOpts)
         // 製造者名は長い社名が多いため、0.85安全マージンなしで描画
@@ -614,7 +622,7 @@ export async function POST(req: NextRequest) {
         // ★製造者名1も罫線（250.56〜251.04）の右へ寄せる。250 のままだと描き始め 251.0 が罫線に乗っていた（2026-10-07）
         drawDeviceMaker(device1.maker, 250.14, 55.86)
 
-        drawInCell(page3, p3Height, device2.name, 306.55, 649, 55.45, 14, 7.2, devOpts)
+        drawDeviceName(page3, p3Height, device2.name, 306.55, 649, 55.45, 14, 7.2, devOpts)
         drawInCellWithFont(page3, p3Height, fonts, device2.model, 362, 649, 56, 14, 7.2, devOpts)
         drawInCell(page3, p3Height, formatJapaneseDateText(device2.calibrated_at), 418, 649, 56, 14, 7.2, devOpts)
         drawDeviceMaker(device2.maker, 474, 55)

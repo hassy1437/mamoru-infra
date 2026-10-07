@@ -438,12 +438,20 @@ export async function POST(req: NextRequest) {
         const deviceRowH = 19.92
 
         const devOpts: DrawOptions = { paddingX: 1 }
-        drawInCell(page3, p3Height, device1.name, 86.04, deviceRowTop, 55.56, deviceRowH, 5.8)
+        // ★測定機器の機器名も、1 行では 5pt を割るときだけ 2 行にする（2026-10-07・drawOrWrapWhenTiny。10 字「煙感知器用感度試験器」で 4.2〜5.4pt、16 字で 19 様式が 422 だった）
+        const DEVICE_NAME_AT = { column: "name", labelKey: "device_name" }
+        const drawDeviceName = (page: PDFPage, pageHeight: number, text: unknown, cellX: number, cellTop: number, cellW: number, cellH: number, fontSize: number, options?: Parameters<typeof drawInCell>[8]) =>
+            drawOrWrapWhenTiny({
+                page, pageHeight, fonts, text, cellX, cellTopFromTop: cellTop, cellW, cellH, fontSize,
+                single: { paddingX: options?.paddingX ?? 2.5, paddingY: options?.paddingY ?? 1.6, minFontSize: 3.5 }, at: DEVICE_NAME_AT,
+                drawSingle: () => drawInCell(page, pageHeight, text, cellX, cellTop, cellW, cellH, fontSize, { ...options, at: DEVICE_NAME_AT }),
+            })
+        drawDeviceName(page3, p3Height, device1.name, 86.04, deviceRowTop, 55.56, deviceRowH, 5.8)
         drawInCellWithFont(page3, p3Height, fonts, device1.model, 141.6, deviceRowTop, 55.44, deviceRowH, 5.8, devOpts)
         drawInCell(page3, p3Height, formatJapaneseDateText(device1.calibrated_at), 197.04, deviceRowTop, 55.56, deviceRowH, 5.6)
         drawDeviceMaker(device1.maker, page3, p3Height, 252.6, 54.96, deviceRowTop, deviceRowH)
 
-        drawInCell(page3, p3Height, device2.name, 308.52, deviceRowTop, 55.08, deviceRowH, 5.8)
+        drawDeviceName(page3, p3Height, device2.name, 308.52, deviceRowTop, 55.08, deviceRowH, 5.8)
         drawInCellWithFont(page3, p3Height, fonts, device2.model, 363.6, deviceRowTop, 55.44, deviceRowH, 5.8, devOpts)
         drawInCell(page3, p3Height, formatJapaneseDateText(device2.calibrated_at), 419.04, deviceRowTop, 55.56, deviceRowH, 5.6)
         drawDeviceMaker(device2.maker, page3, p3Height, 474.6, 55.44, deviceRowTop, deviceRowH)

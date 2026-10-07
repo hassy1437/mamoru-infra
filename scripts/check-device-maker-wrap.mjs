@@ -1,10 +1,11 @@
-// 測定機器の製造者名（と別記11/22 の点検設備の製造者名）が、ありそうな長さで PDF を止めず、5pt 未満に縮まないこと（2026-10-07）。
+// 測定機器の製造者名・機器名（と別記11/22 の点検設備の製造者名）が、ありそうな長さで PDF を止めず、5pt 未満に縮まないこと（2026-10-07）。
 //
 // ■ なぜ要るか（2026-10-07 実測・製造者名 15 字「株式会社サンプル防災機器製作所」）
 //   ・別記1/14/17/18/19/21/22 は 3.5pt でも 1 行に入らず切り詰め＝422 で PDF が出なかった（一括出力・納品も止まる）
 //   ・別記2/3/4/11の1/15/16/20 は 1 行のまま 3.5〜4pt まで縮んでいた
 //   欄の高さには 2 行入る。各様式の 1 行の描き方は残し、1 行で 5pt を割るときだけ折り返す（drawOrWrapWhenTiny）。
 //   ★#22（check-small-font-wrap.mjs）は社名など 4 様式の欄だけで、測定機器の製造者名は見ていなかった。
+//   ★機器名も同じだった（16 字「炎感知器用作動試験器（赤外線式）」で 19 様式が 422・10 字「煙感知器用感度試験器」で 4.2〜5.4pt）
 //
 // ■ 検査すること（測定機器のある全様式・実際に PDF を作って測る）
 //   1. 長い製造者名: 200 で PDF が出る・全文が載る（欄の数だけ）・測定機器の製造者名は 5pt 以上
@@ -24,6 +25,7 @@ const SELF_TEST = process.argv.includes("--self-test")
 // ★自己診断と本番で出力先を分ける（check-pdf-all は両方を並列に走らせる）
 const OUT = path.join("tmp", SELF_TEST ? "device-maker-wrap-selftest" : "device-maker-wrap")
 const LONG = "株式会社サンプル防災機器製作所"   // 15 字（実在しない一般的な形）
+const LONG_NAME = "炎感知器用作動試験器（赤外線式）"   // 機器名 16 字。★LONG・LONG_EXTRA と 2 字以上の共通部分を持たない
 const LONG_EXTRA = "近畿電波通信機材販売協同組合"   // 点検設備の製造者名（14 字）。★LONG と 2 字以上の共通部分を持たない（折り返した行を取り違えない）
 const MIN_PT = 5.0
 const MIN_PT_EXTRA = 4.5   // WRAPPED_FIT_DEFAULTS.minFontSize
@@ -47,10 +49,10 @@ function forms() {
 }
 
 /** 製造者名の欄（測定機器 2 つ・extra_fields の *_maker）に値を入れ、入れた欄の数を返す */
-function withMakers(payload, value, extraValue = value) {
+function withMakers(payload, value, extraValue = value, nameValue = null) {
     const p = structuredClone(payload)
     let n = 0, x = 0
-    for (const k of ["device1", "device2"]) { p[k] = { ...(p[k] ?? {}), name: p[k]?.name || "圧力計", maker: value }; n++ }
+    for (const k of ["device1", "device2"]) { p[k] = { ...(p[k] ?? {}), name: nameValue ?? (p[k]?.name || "圧力計"), maker: value }; n++ }
     if (p.extra_fields) for (const k of Object.keys(p.extra_fields)) if (k.endsWith("_maker")) { p.extra_fields[k] = extraValue; x++ }
     return { payload: p, fields: n, extraFields: x }
 }
@@ -91,16 +93,19 @@ async function inspect(list, routeOf = (f) => f.route) {
     fs.mkdirSync(OUT, { recursive: true })
     const problems = []
     for (const f of list) {
-        const long = withMakers(f.payload, LONG, LONG_EXTRA)
+        const long = withMakers(f.payload, LONG, LONG_EXTRA, LONG_NAME)
         const outLong = path.join(OUT, `${f.stem}_long.pdf`)
         const r = await render(routeOf(f), long.payload, outLong)
         if (r.status !== 200) {
-            problems.push(`${f.stem}: 製造者名 ${LONG.length} 字で ${r.status}（PDF が出ない）${(r.body ?? "").slice(0, 120)}`)
+            problems.push(`${f.stem}: 長い値（製造者名 ${LONG.length} 字・機器名 ${LONG_NAME.length} 字）で ${r.status}（PDF が出ない）${(r.body ?? "").slice(0, 120)}`)
             continue
         }
         const m = measure(outLong, LONG)
         if (m.full < long.fields) problems.push(`${f.stem}: 測定機器の製造者名 ${long.fields} 欄のうち全文が載ったのは ${m.full} 欄`)
         if (m.min !== null && m.min < MIN_PT) problems.push(`${f.stem}: 測定機器の製造者名が ${m.min}pt（${MIN_PT}pt 未満）`)
+        const mn = measure(outLong, LONG_NAME)
+        if (mn.full < long.fields) problems.push(`${f.stem}: 測定機器の機器名 ${long.fields} 欄のうち全文が載ったのは ${mn.full} 欄`)
+        if (mn.min !== null && mn.min < MIN_PT) problems.push(`${f.stem}: 測定機器の機器名が ${mn.min}pt（${MIN_PT}pt 未満）`)
         if (long.extraFields) {
             const mx = measure(outLong, LONG_EXTRA)
             if (mx.full < long.extraFields) problems.push(`${f.stem}: 点検設備の製造者名 ${long.extraFields} 欄のうち全文が載ったのは ${mx.full} 欄`)
@@ -154,14 +159,14 @@ if (SELF_TEST) {
         }
         console.log(`  陽性対照: 折り返しを止める → ${pos.find((p) => p.startsWith(stem))}`)
     }
-    console.log("  陰性対照: 別記15/17 の現状で、長い製造者名は 5pt 以上・全文、短い製造者名は 1 行")
+    console.log("  陰性対照: 別記15/17 の現状で、長い製造者名・機器名は 5pt 以上・全文、短い製造者名は 1 行")
     console.log("SELF_TEST_OK")
     process.exit(0)
 }
 
 const list = forms()
 const problems = await inspect(list)
-console.log(`測定機器の製造者名を検査: ${list.length} 様式 × 長い値（${LONG.length} 字）・短い値`)
+console.log(`測定機器の製造者名・機器名を検査: ${list.length} 様式 × 長い値（製造者名 ${LONG.length} 字・機器名 ${LONG_NAME.length} 字）・短い値`)
 if (problems.length) {
     console.log("★NG:")
     for (const p of problems) console.log("   ", p)

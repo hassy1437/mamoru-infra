@@ -91,6 +91,9 @@ export const FIELD_LABELS: Record<string, string> = {
     cable_maker: "漏洩同軸ケーブル 製造者名",
     antenna_maker: "空中線 製造者名",
     amplifier_maker: "増幅器 製造者名",
+    // 測定機器の機器名。★payload のキーは "name" だが、総括表の設備名も "name" なので、
+    //   表記を引くキーを分けている（CellRef.labelKey）。入力欄は placeholder だけ（check-field-labels.py で除外）
+    device_name: "測定機器 機器名",
 }
 
 /**
@@ -108,6 +111,12 @@ export type CellRef = {
     rowsKey?: string
     row?: number
     column?: string
+    /**
+     * FIELD_LABELS を引くキー（列名のままだと別の欄と表記が衝突するとき）。
+     * ★2026-10-07: 測定機器の機器名（"name"）。総括表の設備名も "name" で、同じ表記にできない。
+     *   入力の由来の確認（payload のキーとの照合）は column のまま行う。
+     */
+    labelKey?: string
 }
 
 export type CellAt = CellRef & {
@@ -348,7 +357,7 @@ export const createFitCollector = (): FitCollector => {
                 //   値で当てると同じ値を持つ別の欄に帰属する（2026-10-07: 別記5 の型式番号があふれたのに
                 //   422 が測定機器の「model」を 2 件返し、業者は直す欄を特定できなかった）。
                 if (f.at?.column && f.at.rowsKey === undefined) {
-                    f.field = f.at.column
+                    f.field = f.at.labelKey ?? f.at.column
                     const own = entries.find(
                         (e) => e.rowsKey === undefined && e.key === f.at!.column
                             && (e.value === f.text || e.value.includes(f.text)))

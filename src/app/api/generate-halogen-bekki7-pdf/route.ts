@@ -569,7 +569,15 @@ export async function POST(req: NextRequest) {
         const DEV_ROW = { top: 650.5, h: 20.5 }
         const DEV1_COLS = { name: [80.5, 68.3], model: [148.8, 53.8], date: [202.6, 53.8], maker: [256.4, 53.3] }
         const DEV2_COLS = { name: [311.2, 52.8], model: [364.0, 53.8], date: [417.8, 53.8], maker: [471.6, 57.6] }
-        drawInCell(page4, p4Height, device1.name, DEV1_COLS.name[0], DEV_ROW.top, DEV1_COLS.name[1], DEV_ROW.h, 7.0)
+        // ★測定機器の機器名も、1 行では 5pt を割るときだけ 2 行にする（2026-10-07・drawOrWrapWhenTiny。10 字「煙感知器用感度試験器」で 4.2〜5.4pt、16 字で 19 様式が 422 だった）
+        const DEVICE_NAME_AT = { column: "name", labelKey: "device_name" }
+        const drawDeviceName = (page: PDFPage, pageHeight: number, text: unknown, cellX: number, cellTop: number, cellW: number, cellH: number, fontSize: number, options?: Parameters<typeof drawInCell>[8]) =>
+            drawOrWrapWhenTiny({
+                page, pageHeight, fonts, text, cellX, cellTopFromTop: cellTop, cellW, cellH, fontSize,
+                single: { paddingX: options?.paddingX ?? 2.5, paddingY: options?.paddingY ?? 1.8, minFontSize: 3.5 }, at: DEVICE_NAME_AT,
+                drawSingle: () => drawInCell(page, pageHeight, text, cellX, cellTop, cellW, cellH, fontSize, { ...options, at: DEVICE_NAME_AT }),
+            })
+        drawDeviceName(page4, p4Height, device1.name, DEV1_COLS.name[0], DEV_ROW.top, DEV1_COLS.name[1], DEV_ROW.h, 7.0)
         drawInCell(page4, p4Height, device1.model, DEV1_COLS.model[0], DEV_ROW.top, DEV1_COLS.model[1], DEV_ROW.h, 7.0)
         drawInCell(page4, p4Height, formatJapaneseDateText(device1.calibrated_at), DEV1_COLS.date[0], DEV_ROW.top, DEV1_COLS.date[1], DEV_ROW.h, 6.6)
         // ★測定機器の製造者名は、1 行では 5pt を割るときだけ 2 行にする（2026-10-07・drawOrWrapWhenTiny。15 字で 3.5pt まで縮み、様式によっては 422 で PDF が出なかった）
@@ -581,7 +589,7 @@ export async function POST(req: NextRequest) {
             })
         drawMaker(page4, p4Height, device1.maker, DEV1_COLS.maker[0], DEV_ROW.top, DEV1_COLS.maker[1], DEV_ROW.h, 6.8)
 
-        drawInCell(page4, p4Height, device2.name, DEV2_COLS.name[0], DEV_ROW.top, DEV2_COLS.name[1], DEV_ROW.h, 7.0)
+        drawDeviceName(page4, p4Height, device2.name, DEV2_COLS.name[0], DEV_ROW.top, DEV2_COLS.name[1], DEV_ROW.h, 7.0)
         drawInCell(page4, p4Height, device2.model, DEV2_COLS.model[0], DEV_ROW.top, DEV2_COLS.model[1], DEV_ROW.h, 7.0)
         drawInCell(page4, p4Height, formatJapaneseDateText(device2.calibrated_at), DEV2_COLS.date[0], DEV_ROW.top, DEV2_COLS.date[1], DEV_ROW.h, 6.6)
         drawMaker(page4, p4Height, device2.maker, DEV2_COLS.maker[0], DEV_ROW.top, DEV2_COLS.maker[1], DEV_ROW.h, 6.8)

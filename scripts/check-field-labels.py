@@ -45,7 +45,9 @@ EXEMPT = {"content", "bad_content", "action_content", "equipment_name", "notes",
           # 測定機器の欄。見出し「測定機器 1」の下に placeholder（型式・製造者名）だけで並び <Label> が無い
           "model", "maker",
           # 別記22 の点検設備の製造者名。入力欄の見出しは設定の一覧から {field.label} で描く（固定の <Label> が無い）
-          "cable_maker", "antenna_maker", "amplifier_maker"}
+          "cable_maker", "antenna_maker", "amplifier_maker",
+          # 測定機器の機器名。payload のキーは "name"（表記を引くキーだけ device_name・CellRef.labelKey）。入力欄は placeholder だけ
+          "device_name"}
 
 
 def main() -> int:

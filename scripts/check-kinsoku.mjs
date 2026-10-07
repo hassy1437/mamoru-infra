@@ -115,7 +115,9 @@ if (r.status !== 0) {
     console.log(`★PDF を読めない: ${r.stderr.slice(0, 500)}`)
     process.exit(1)
 }
-const pages = JSON.parse(r.stdout)
+// ★結果は最後の 1 行だけ読む。PyMuPDF 1.28 は「`fitz` API is deprecated」の警告を標準出力に出し、
+//   出力全体を JSON として読むと CI（requirements.txt が版を固定していなかった）だけで落ちていた（2026-10-06）
+const pages = JSON.parse(r.stdout.trim().split(/\r?\n/).pop())
 let pairCount = 0
 const found = []
 for (const pg of pages) {

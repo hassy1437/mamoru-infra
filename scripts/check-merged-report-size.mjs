@@ -29,7 +29,10 @@ const PY = process.platform === "win32" ? "python" : "python3"
 const DELIVERY_LIMIT = 52_428_800
 const MIN_STREAM = 64 * 1024
 const DIR = path.join(ROOT, "tmp", "pdf-realistic")
-const OUT = path.join(ROOT, "tmp", "merged-report-size")
+// ★自己診断と本番で出力先を分ける（2026-10-07）。check-pdf-all は両方を並列に走らせ、同じ merged.pdf /
+//   merged-plain.pdf を書き合っていた。片方の突き合わせの最中にもう片方が上書きし、CI で自己診断の陰性対照が
+//   「全 66 ページ違う」で落ちた（手元では間に合って通っていた）。
+const OUT = path.join(ROOT, "tmp", process.argv.includes("--self-test") ? "merged-report-size-selftest" : "merged-report-size")
 fs.mkdirSync(OUT, { recursive: true })
 
 // ★本番の実体を読む（写しを検査すると、本番だけ戻されても緑のまま）。load-pdf-helpers.mjs と同じ形
@@ -38,7 +41,7 @@ async function loadMerge() {
     const js = ts.transpileModule(src, {
         compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
     }).outputText
-    const outPath = path.join(ROOT, "tmp", "merge-pdf-buffers.generated.mjs")
+    const outPath = path.join(OUT, "merge-pdf-buffers.generated.mjs")   // ★これも並列の相手と分ける
     fs.writeFileSync(outPath, js)
     return (await import(pathToFileURL(outPath).href)).mergePdfBuffers
 }

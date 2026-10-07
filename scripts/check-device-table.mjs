@@ -19,7 +19,9 @@ import path from "path"
 import { runRoutePdf } from "./run-route-pdf.mjs"
 
 const PY = process.platform === "win32" ? "python" : "python3"
-const OUT = path.join("tmp", "device-table")
+// ★自己診断と本番で出力先を分ける（check-pdf-all は両方を並列に走らせ、同じ名前の PDF を書き合うと
+//   書きかけを読みうる。check-merged-report-size.mjs は実際にそれで CI だけ落ちた・2026-10-07）
+const OUT = path.join("tmp", process.argv.includes("--self-test") ? "device-table-selftest" : "device-table")
 fs.mkdirSync(OUT, { recursive: true })
 
 const FORMS = {

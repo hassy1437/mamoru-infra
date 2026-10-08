@@ -6,6 +6,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { findBlankJudgmentSections } from "@/lib/blank-judgment-sections"
+import { findInspectionTypeMismatches } from "@/lib/inspection-type-consistency"
 import {
     ALL_PDF_FAILED,
     buildMergedReport,
@@ -212,9 +213,17 @@ export default function DeliverReportButton({
             // ★判定が 1 つも無い表（その1 だけ入れて続きが空など）。2026-10-06 の納品物は その2 以降の判定が
             //   空のまま届いた。止めずに、納品の瞬間に見せる（src/lib/blank-judgment-sections.ts）。
             const blankSections = findBlankJudgmentSections(bekkiPayloads, applicableStepIds)
-            if (choiceWarnings.length > 0 || shrinkWarnings.length > 0 || belowMinWarnings.length > 0 || blankSections.length > 0) {
+            // ★総括表と点検種別の○が違う別記（src/lib/inspection-type-consistency.ts・総点検 A2 の残り）
+            const typeMismatches = findInspectionTypeMismatches(inspectionType, bekkiPayloads, applicableStepIds)
+            if (choiceWarnings.length > 0 || shrinkWarnings.length > 0 || belowMinWarnings.length > 0 || blankSections.length > 0 || typeMismatches.length > 0) {
                 const lines: string[] = []
+                if (typeMismatches.length > 0) {
+                    lines.push("■ 点検種別が総括表と違う別記があります（同じ提出物の中で食い違います）")
+                    for (const m of typeMismatches) lines.push(`【${m.form}】別記は「${m.bekki}」、総括表は「${m.soukatsu}」に○`)
+                    lines.push("   ※別記の入力画面の「点検種別」を直して保存してください")
+                }
                 if (blankSections.length > 0) {
+                    if (lines.length) lines.push("")
                     lines.push("■ 判定が 1 つも入っていない表があります（入れ忘れではありませんか）")
                     for (const b of blankSections) lines.push(`【${b.form}】${b.sections.join("・")}`)
                     lines.push("   ※設備が無いなどで空欄が正しい場合は、このままで構いません")

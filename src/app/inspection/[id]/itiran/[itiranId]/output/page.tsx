@@ -12,6 +12,7 @@ import { PDF_MERGE_CONFIG, formTableToStep } from "@/lib/pdf-merge-config"
 import { selectedSteps, buildItiranInputHref, getItiranInputPageTitle } from "@/lib/itiran-input-flow"
 import type { ItiranInputStepId } from "@/lib/itiran-input-flow"
 import { findBlankJudgmentSections } from "@/lib/blank-judgment-sections"
+import { findInspectionTypeMismatches } from "@/lib/inspection-type-consistency"
 
 export default async function OutputPage({
     params,
@@ -118,6 +119,14 @@ export default async function OutputPage({
             : null,
     }))
 
+    // ★総括表と別記で点検種別の○が違う別記（別記を開いたあとで総括表の種別を変えた・複製した）。止めずに知らせる
+    const typeMismatches = findInspectionTypeMismatches(soukatsu.inspection_type, bekkiPayloads, applicableStepIds).map((m) => ({
+        ...m,
+        href: applicableStepIds.includes(m.stepId as ItiranInputStepId)
+            ? buildItiranInputHref(m.stepId as ItiranInputStepId, id, itiranId)
+            : null,
+    }))
+
     // Sanitize data to avoid structured clone issues with server→client serialization
     const sanitizedSoukatsu = JSON.parse(JSON.stringify(soukatsu))
     const sanitizedItiran = JSON.parse(JSON.stringify(itiran))
@@ -202,6 +211,27 @@ export default async function OutputPage({
                             </ul>
                             <p className="text-xs text-amber-700">
                                 「この表の空欄を良にする」は、その表だけに効きます。設備が無いなどで空欄が正しい場合は、このままで構いません。
+                            </p>
+                        </div>
+                    )}
+
+                    {typeMismatches.length > 0 && (
+                        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 space-y-2 text-sm text-amber-800">
+                            <p className="font-semibold">点検種別が総括表と違う別記があります</p>
+                            <ul className="list-disc pl-5 space-y-1">
+                                {typeMismatches.map((m) => (
+                                    <li key={m.stepId}>
+                                        {m.href ? (
+                                            <Link href={m.href} className="underline hover:text-amber-900">{m.form}</Link>
+                                        ) : (
+                                            m.form
+                                        )}
+                                        ：別記は「{m.bekki}」、総括表は「{m.soukatsu}」に○
+                                    </li>
+                                ))}
+                            </ul>
+                            <p className="text-xs text-amber-700">
+                                別記を開いたあとで総括表の種別を変えたときや、前回の報告書を複製したときに起きます。別記の入力画面の「点検種別」を直して保存してください。
                             </p>
                         </div>
                     )}

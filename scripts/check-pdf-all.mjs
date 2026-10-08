@@ -581,6 +581,24 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-inspection-type-consistency.mjs", stage: "静的",
+        why: "総括表と点検種別の○が違う別記を、出力画面と納品の確認で知らせるか（○がある 16 様式は雛形から導く一覧と照らす）。"
+            + "★別記を開いたあとで総括表の種別を変える・複製すると食い違い、本番でも 21 報告書・27 行あった（2026-10-08・総点検 A2）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-inspection-type-consistency.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-inspection-type-consistency.mjs"], sentinel: "INSPECTION_TYPE_CONSISTENCY_OK" },
+        ],
+    },
+    {
+        file: "check-match-property-delete.mjs", stage: "静的",
+        why: "成約から作った物件（取り消されていないもの）を業者が画面から消せないか。消すと納品できなくなり、作り直しても戻らない"
+            + "（2026-10-08・総点検の見直しで見つけた）。削除の入口が増えたら落とす",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-match-property-delete.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-match-property-delete.mjs"], sentinel: "MATCH_PROPERTY_DELETE_OK" },
+        ],
+    },
+    {
         file: "check-blank-judgment-sections.mjs", stage: "静的",
         why: "判定が 1 つも入っていない表（その1 だけ入れて続きが空など）を、出力画面と納品の確認で知らせるか。"
             + "総合点検の行・様式まるごと未入力は知らせない（空欄が正しいことがある）。"

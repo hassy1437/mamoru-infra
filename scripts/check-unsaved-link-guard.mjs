@@ -106,7 +106,7 @@ if (SELF_TEST) {
         ["修飾キーを見ない", (p) => p === LIB ? read(p).replace("click.metaKey || click.ctrlKey || click.shiftKey || click.altKey", "false") : read(p), "Ctrl"],
         ["# だけでも聞く", (p) => p === LIB ? read(p).replace("if (to.pathname === from.pathname && to.search === from.search) return false", "") : read(p), "# だけ"],
         ["捕捉で付けない", (p) => p === HOOK ? read(p).replace('document.addEventListener("click", onClick, true)', 'document.addEventListener("click", onClick)') : read(p), "捕捉"],
-        ["断っても止めない", (p) => p === HOOK ? read(p).replace("e.stopPropagation()\n", "\n") : read(p), "止めていない"],
+        ["断っても止めない", (p) => p === HOOK ? read(p).replace(/e\.stopPropagation\(\)(\r?\n)/, "$1") : read(p), "止めていない"],
         ["物件の画面が見張りを使わない", (p) => p === FORMS[3] ? read(p).replace("useUnsavedChanges()", "({ markDirty: () => {}, markClean: () => {} })") : read(p), "property-form"],
     ]
     for (const [label, src, expect] of mutants) {

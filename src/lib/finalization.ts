@@ -97,7 +97,12 @@ export async function loadFinalizationState(
         .eq("soukatsu_id", soukatsuId)
         .eq("kind", "finalize")
         .order("acted_at", { ascending: true })
-    if (rErr) console.error("[loadFinalizationState] finalizations select failed:", rErr)
+    if (rErr) {
+        // ★確定の記録が読めないときに「確定 0 件」として返すと、確定済みなのに PDF が止まり、
+        //   確定ボタンがもう一度出る（総点検 B5）。判定できない＝error に倒す（PDF は fail-open で通る）。
+        console.error("[loadFinalizationState] finalizations select failed:", rErr)
+        return { available: false, reason: "error" }
+    }
 
     // ★取り消されたものを除く判定は DB 側（active_finalizations）が正だが、
     //   表示のためだけに RPC をもう1本呼ばない。取消済みの表示は F4 以降で扱う。
@@ -171,5 +176,14 @@ export function canDownloadPdf(state: FinalizationState): boolean {
  *   下書きの確認手段がプレビューであることが、確定を必須にした判断の根拠なので、
  *   そこを必ず併記する。
  */
+/**
+ * ★確定の状態を読めなかったとき（available:false・reason:"error"）に、確定の導線の代わりに出す案内（総点検 B5）。
+ *   以前は導線が黙って消え、業者には「確定ボタンが無い」としか見えなかった。
+ *   ★PDF は fail-open で出せる（canDownloadPdf）ので、そのことも書く。
+ *   ★reason:"missing"（マイグレーション未適用）には出さない ―― 機能が無いだけで、業者に伝えることが無い。
+ */
+export const FINALIZATION_ERROR_MESSAGE =
+    "確定の状態を読み込めなかったため、確定のボタンを表示できません。少し待ってから画面を読み込み直してください。続くときは運営にお問い合わせください（PDF の出力はこのまま行えます）。"
+
 export const PDF_GATE_MESSAGE =
     "PDFの出力は、点検を確定してからになります。確定する前でも、下の「プレビュー」で内容はそのままご確認いただけます。"

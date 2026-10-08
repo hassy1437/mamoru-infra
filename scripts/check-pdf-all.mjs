@@ -617,6 +617,15 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-finalization-error-notice.mjs", stage: "静的",
+        why: "確定の状態を読めなかったとき、確定のボタンを黙って消さずに理由を出すか。確定の記録が読めないときに「確定 0 件」にしないか"
+            + "（0 件にすると確定済みなのに PDF が止まり、確定ボタンがもう一度出る）。★loadFinalizationState を偽の DB で動かす（2026-10-09・総点検 B5）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-finalization-error-notice.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-finalization-error-notice.mjs"], sentinel: "FINALIZATION_ERROR_NOTICE_OK" },
+        ],
+    },
+    {
         file: "check-blank-judgment-sections.mjs", stage: "静的",
         why: "判定が 1 つも入っていない表（その1 だけ入れて続きが空など）を、出力画面と納品の確認で知らせるか。"
             + "総合点検の行・様式まるごと未入力は知らせない（空欄が正しいことがある）。"

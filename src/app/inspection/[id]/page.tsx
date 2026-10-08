@@ -1,14 +1,14 @@
 ﻿import { getAuthenticatedClient } from "@/lib/supabase/auth-server"
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { ArrowRight, Pencil } from "lucide-react"
+import { AlertTriangle, ArrowRight, Pencil } from "lucide-react"
 import SoukatsuPdfButton from "@/components/soukatsu-pdf-button"
 import SoukatsuPdfPreview from "@/components/soukatsu-pdf-preview"
 import StepIndicator from "@/components/step-indicator"
 import { INSPECTION_STEPS } from "@/lib/inspection-steps"
 import Breadcrumb from "@/components/breadcrumb"
 import FinalizeSoukatsuButton from "@/components/finalize-soukatsu-button"
-import { canDownloadPdf, loadFinalizationState } from "@/lib/finalization"
+import { canDownloadPdf, FINALIZATION_ERROR_MESSAGE, loadFinalizationState } from "@/lib/finalization"
 import WithdrawnMatchNotice from "@/components/withdrawn-match-notice"
 import { withdrawnAtOf } from "@/lib/match-withdrawn"
 
@@ -98,7 +98,19 @@ export default async function InspectionDetailPage({ params }: { params: Promise
                 </div>
             </div>
 
-            {/* ★確定の導線。未適用（available:false）のときは何も出さない。 */}
+            {/* ★確定の導線。未適用（reason:"missing"）のときは何も出さない。 */}
+            {/* ★読めなかった（reason:"error"）ときは黙って消さず、理由を出す（総点検 B5） */}
+            {!finalization.available && finalization.reason === "error" && (
+                <div className="max-w-[210mm] mx-auto mb-6">
+                    <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800">
+                        <p className="flex items-center gap-2 font-semibold">
+                            <AlertTriangle className="h-4 w-4 shrink-0" />
+                            確定の状態を読み込めませんでした
+                        </p>
+                        <p className="mt-1 text-amber-700">{FINALIZATION_ERROR_MESSAGE}</p>
+                    </div>
+                </div>
+            )}
             {finalization.available && (
                 <div className="max-w-[210mm] mx-auto mb-6">
                     <FinalizeSoukatsuButton

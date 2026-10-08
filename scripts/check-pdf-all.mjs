@@ -599,6 +599,15 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-unsaved-link-guard.mjs", stage: "静的",
+        why: "保存していない入力があるとき、画面の中のリンク（Next の <Link>）で離れる前に確かめるか。"
+            + "★beforeunload だけだったので「← 物件一覧に戻る」等で総括表・物件・点検者の入力が黙って消えていた（2026-10-09・総点検 B13）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-unsaved-link-guard.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-unsaved-link-guard.mjs"], sentinel: "UNSAVED_LINK_GUARD_OK" },
+        ],
+    },
+    {
         file: "check-blank-judgment-sections.mjs", stage: "静的",
         why: "判定が 1 つも入っていない表（その1 だけ入れて続きが空など）を、出力画面と納品の確認で知らせるか。"
             + "総合点検の行・様式まるごと未入力は知らせない（空欄が正しいことがある）。"

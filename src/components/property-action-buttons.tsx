@@ -9,11 +9,19 @@ import { supabase } from "@/lib/supabase"
 interface PropertyActionButtonsProps {
     propertyId: string
     propertyName: string
+    /**
+     * 成約から作った物件か（取り消された成約は除く）。★true なら削除ボタンを出さない（2026-10-08）。
+     *   納品ボタンは物件に残る成約の結び付き（source_match_id）で出す（output/page.tsx）。物件を消すと総括表から
+     *   物件へのひもづけが外れて納品できなくなり、作り直しても結び付きは戻らない（成約したときにしか作られない）。
+     *   取り消された成約（withdrawn_at あり）はもともと納品できないので、消してよい。
+     */
+    fromActiveMatch?: boolean
 }
 
 export default function PropertyActionButtons({
     propertyId,
     propertyName,
+    fromActiveMatch = false,
 }: PropertyActionButtonsProps) {
     const router = useRouter()
     const [deleting, setDeleting] = useState(false)
@@ -65,15 +73,21 @@ export default function PropertyActionButtons({
                 <ClipboardCheck className="w-4 h-4" />
                 点検開始
             </Link>
-            <button
-                type="button"
-                onClick={handleDelete}
-                disabled={deleting}
-                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
-            >
-                {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                {deleting ? "削除中..." : "削除"}
-            </button>
+            {fromActiveMatch ? (
+                <p className="max-w-[10rem] text-xs leading-relaxed text-slate-500">
+                    成約から作った物件は削除できません（消すと報告書を納品できなくなります）
+                </p>
+            ) : (
+                <button
+                    type="button"
+                    onClick={handleDelete}
+                    disabled={deleting}
+                    className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
+                >
+                    {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                    {deleting ? "削除中..." : "削除"}
+                </button>
+            )}
         </div>
     )
 }

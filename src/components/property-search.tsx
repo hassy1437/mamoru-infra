@@ -15,6 +15,16 @@ interface PropertySearchProps {
 
 const ITEMS_PER_PAGE = 20
 
+/**
+ * 成約から作った物件で、成約が取り消されていないか（削除ボタンを出さない物件）。
+ * ★Property の型（src/types/database.ts）には source_match_id / withdrawn_at が無い（一覧は select("*") で読んでいる）。
+ *   出力画面（output/page.tsx）と同じく、この 2 列だけを絞って読む。
+ */
+const isFromActiveMatch = (property: Property): boolean => {
+    const p = property as Property & { source_match_id?: string | null; withdrawn_at?: string | null }
+    return Boolean(p.source_match_id) && !p.withdrawn_at
+}
+
 export default function PropertySearch({ items, mode }: PropertySearchProps) {
     const [query, setQuery] = useState("")
     const [page, setPage] = useState(0)
@@ -93,6 +103,7 @@ export default function PropertySearch({ items, mode }: PropertySearchProps) {
                                     <PropertyActionButtons
                                         propertyId={property.id}
                                         propertyName={property.building_name}
+                                        fromActiveMatch={isFromActiveMatch(property)}
                                     />
                                 )}
                             </div>

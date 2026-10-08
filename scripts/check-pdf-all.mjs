@@ -608,6 +608,15 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-withdrawn-match-notice.mjs", stage: "静的",
+        why: "成約が取り消された物件（withdrawn_at）を、物件・総括表・別記入力・出力の画面と物件一覧で知らせ、納品ボタンを出さないか。"
+            + "★点検アプリはこの列をどこでも読まず、点検を全部入力したあと納品で初めて INT3b で止まっていた。本番に取り消しは 0 件なので部品を描いて確かめる（2026-10-09・総点検 B3）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-withdrawn-match-notice.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-withdrawn-match-notice.mjs"], sentinel: "WITHDRAWN_MATCH_NOTICE_OK" },
+        ],
+    },
+    {
         file: "check-blank-judgment-sections.mjs", stage: "静的",
         why: "判定が 1 つも入っていない表（その1 だけ入れて続きが空など）を、出力画面と納品の確認で知らせるか。"
             + "総合点検の行・様式まるごと未入力は知らせない（空欄が正しいことがある）。"

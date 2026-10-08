@@ -6,6 +6,8 @@ import { INSPECTION_STEPS } from "@/lib/inspection-steps"
 import Breadcrumb from "@/components/breadcrumb"
 import WorkMinuteMarker from "@/components/work-minute-marker"
 import type { Property } from "@/types/database"
+import WithdrawnMatchNotice from "@/components/withdrawn-match-notice"
+import { withdrawnAtOf, type MatchLink } from "@/lib/match-withdrawn"
 
 export default async function NewInspectionPage({
     searchParams,
@@ -66,6 +68,8 @@ export default async function NewInspectionPage({
                             : "点検結果を入力して総括表を作成します。"
                         }
                     </p>
+                    {/* ★成約が取り消された物件（納品できない・総点検 B3）。入力を始める前に出す */}
+                    <WithdrawnMatchNotice withdrawnAt={withdrawnAtOf(property as MatchLink)} className="mt-4" />
                 </div>
                 <SoukatsuForm
                     property={property as Property}

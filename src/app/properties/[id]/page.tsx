@@ -16,6 +16,8 @@ import {
 import type { Property } from "@/types/database"
 import Breadcrumb from "@/components/breadcrumb"
 import MapLink from "@/components/map-link"
+import WithdrawnMatchNotice from "@/components/withdrawn-match-notice"
+import { withdrawnAtOf, type MatchLink } from "@/lib/match-withdrawn"
 
 export default async function PropertyDetailPage({
     params,
@@ -35,6 +37,8 @@ export default async function PropertyDetailPage({
     if (!property) return notFound()
 
     const p = property as Property
+    // ★成約が取り消された物件（納品できない・総点検 B3）。select("*") なので列は来ている（型に無いだけ）
+    const withdrawnAt = withdrawnAtOf(property as MatchLink)
 
     // 点検履歴を取得
     const { data: inspections } = await supabase
@@ -53,6 +57,7 @@ export default async function PropertyDetailPage({
                     { label: "物件一覧", href: "/properties" },
                     { label: p.building_name },
                 ]} />
+                <WithdrawnMatchNotice withdrawnAt={withdrawnAt} />
                 {/* ヘッダー */}
                 <div>
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4">

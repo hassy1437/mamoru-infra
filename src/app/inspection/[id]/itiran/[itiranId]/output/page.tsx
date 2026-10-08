@@ -13,6 +13,8 @@ import { selectedSteps, buildItiranInputHref, getItiranInputPageTitle } from "@/
 import type { ItiranInputStepId } from "@/lib/itiran-input-flow"
 import { findBlankJudgmentSections } from "@/lib/blank-judgment-sections"
 import { findInspectionTypeMismatches } from "@/lib/inspection-type-consistency"
+import WithdrawnMatchNotice from "@/components/withdrawn-match-notice"
+import { withdrawnAtOf } from "@/lib/match-withdrawn"
 
 export default async function OutputPage({
     params,
@@ -41,16 +43,18 @@ export default async function OutputPage({
     if (!itiran) return notFound()
 
     const { data: property } = soukatsu.property_id
-        ? await supabase.from("properties").select("equipment_types, fire_manager_name, source_match_id").eq("id", soukatsu.property_id).single()
-        : { data: null as { equipment_types: unknown; fire_manager_name: string | null; source_match_id: string | null } | null }
+        ? await supabase.from("properties").select("equipment_types, fire_manager_name, source_match_id, withdrawn_at").eq("id", soukatsu.property_id).single()
+        : { data: null as { equipment_types: unknown; fire_manager_name: string | null; source_match_id: string | null; withdrawn_at: string | null } | null }
 
     // マッチング由来（納品先オーナーが居る）物件のみ納品可能。source_match_id で判定する。
     // 納品状態は inspection.get_match_deliveries RPC で取得する（点検クライアントは
     // schema=inspection 固定で public.report_deliveries を直接 select できないため）。
     const sourceMatchId =
         (property as { source_match_id?: string | null } | null)?.source_match_id ?? null
+    // ★成約が取り消された物件は納品できない（deliver_report が INT3b で止める）。押せば落ちるボタンは出さず、知らせに替える（総点検 B3）
+    const withdrawnAt = withdrawnAtOf(property)
     let deliveryStatus: DeliveryStatus | null = null
-    if (sourceMatchId) {
+    if (sourceMatchId && !withdrawnAt) {
         const { data: ds } = await supabase.rpc("get_match_deliveries", { p_match_id: sourceMatchId })
         deliveryStatus = (ds as DeliveryStatus | null) ?? null
     }
@@ -248,7 +252,8 @@ export default async function OutputPage({
                         />
                     </div>
 
-                    {sourceMatchId && (
+                    <WithdrawnMatchNotice withdrawnAt={withdrawnAt} />
+                    {sourceMatchId && !withdrawnAt && (
                         <DeliverReportButton
                             canDeliver={canDownloadPdf(finalization)}
                             soukatsuData={sanitizedSoukatsu}

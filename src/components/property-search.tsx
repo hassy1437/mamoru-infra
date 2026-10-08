@@ -7,6 +7,7 @@ import Link from "next/link"
 import type { Property } from "@/types/database"
 import PropertyActionButtons from "@/components/property-action-buttons"
 import MapLink from "@/components/map-link"
+import { withdrawnAtOf, type MatchLink } from "@/lib/match-withdrawn"
 
 interface PropertySearchProps {
     items: Property[]
@@ -23,6 +24,16 @@ const ITEMS_PER_PAGE = 20
 const isFromActiveMatch = (property: Property): boolean => {
     const p = property as Property & { source_match_id?: string | null; withdrawn_at?: string | null }
     return Boolean(p.source_match_id) && !p.withdrawn_at
+}
+
+/** 成約が取り消された物件の印（src/lib/match-withdrawn.ts・総点検 B3）。点検を始める前に分かるように一覧にも出す。 */
+function WithdrawnBadge({ property }: { property: Property }) {
+    if (!withdrawnAtOf(property as MatchLink)) return null
+    return (
+        <span className="mt-1 inline-flex items-center rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">
+            成約取消・納品できません
+        </span>
+    )
 }
 
 export default function PropertySearch({ items, mode }: PropertySearchProps) {
@@ -78,6 +89,7 @@ export default function PropertySearch({ items, mode }: PropertySearchProps) {
                                     <h2 className="text-lg font-bold text-slate-900 truncate hover:text-blue-600 transition-colors">
                                         {property.building_name}
                                     </h2>
+                                    <WithdrawnBadge property={property} />
                                     <PropertyMeta property={property} />
                                     <EquipmentTags types={property.equipment_types ?? []} limit={5} />
                                 </Link>
@@ -86,6 +98,7 @@ export default function PropertySearch({ items, mode }: PropertySearchProps) {
                                     <h2 className="text-lg font-bold text-slate-900 truncate">
                                         {property.building_name}
                                     </h2>
+                                    <WithdrawnBadge property={property} />
                                     <PropertyMeta property={property} />
                                     <EquipmentTags types={property.equipment_types ?? []} />
                                 </div>

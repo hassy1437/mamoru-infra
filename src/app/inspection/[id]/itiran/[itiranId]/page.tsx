@@ -9,6 +9,8 @@ import { INSPECTION_STEPS } from "@/lib/inspection-steps"
 import Breadcrumb from "@/components/breadcrumb"
 import { ArrowRight, CheckCircle2, Circle, FileDown, Pencil } from "lucide-react"
 import { getEquipmentProgress } from "@/lib/inspection-progress"
+import WithdrawnMatchNotice from "@/components/withdrawn-match-notice"
+import { withdrawnAtOf } from "@/lib/match-withdrawn"
 
 export default async function ItiranDetailPage({
     params,
@@ -32,8 +34,10 @@ export default async function ItiranDetailPage({
         .single()
 
     const { data: property } = soukatsu?.property_id
-        ? await supabase.from("properties").select("equipment_types").eq("id", soukatsu.property_id).single()
-        : { data: null as { equipment_types: unknown } | null }
+        ? await supabase.from("properties").select("equipment_types, source_match_id, withdrawn_at").eq("id", soukatsu.property_id).single()
+        : { data: null as { equipment_types: unknown; source_match_id: string | null; withdrawn_at: string | null } | null }
+    // ★成約が取り消された物件（納品できない）。別記を入力し終える前に分かるように出す（総点検 B3）
+    const withdrawnAt = withdrawnAtOf(property)
 
     const { steps: progressSteps, completedCount, totalCount } = await getEquipmentProgress(
         supabase, itiranId, id, property?.equipment_types,
@@ -70,6 +74,7 @@ export default async function ItiranDetailPage({
                     { label: "別記入力" },
                 ]} />
                 <StepIndicator steps={[...INSPECTION_STEPS]} currentStep={3} />
+                <WithdrawnMatchNotice withdrawnAt={withdrawnAt} className="mt-4" />
             </div>
             <div className="max-w-[210mm] mx-auto mb-6 flex justify-between items-center gap-3 flex-wrap">
                 <Link href={`/inspection/${id}`} className="text-blue-600 hover:underline">

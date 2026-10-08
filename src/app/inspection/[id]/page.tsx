@@ -9,6 +9,8 @@ import { INSPECTION_STEPS } from "@/lib/inspection-steps"
 import Breadcrumb from "@/components/breadcrumb"
 import FinalizeSoukatsuButton from "@/components/finalize-soukatsu-button"
 import { canDownloadPdf, loadFinalizationState } from "@/lib/finalization"
+import WithdrawnMatchNotice from "@/components/withdrawn-match-notice"
+import { withdrawnAtOf } from "@/lib/match-withdrawn"
 
 export default async function InspectionDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { supabase, user } = await getAuthenticatedClient()
@@ -27,8 +29,10 @@ export default async function InspectionDetailPage({ params }: { params: Promise
 
     // 総括表の防火管理者欄=物件の防火管理者名。点検実施責任者(点検者氏名)はこの確認段階では未入力のため空。
     const { data: property } = report.property_id
-        ? await supabase.from("properties").select("fire_manager_name").eq("id", report.property_id).single()
-        : { data: null as { fire_manager_name: string | null } | null }
+        ? await supabase.from("properties").select("fire_manager_name, source_match_id, withdrawn_at").eq("id", report.property_id).single()
+        : { data: null as { fire_manager_name: string | null; source_match_id: string | null; withdrawn_at: string | null } | null }
+    // ★成約が取り消された物件（納品できない）。入力を始める前に分かるように出す（総点検 B3）
+    const withdrawnAt = withdrawnAtOf(property)
     const soukatsuData = { ...report, fire_manager: property?.fire_manager_name ?? "", inspector_responsible: "" }
 
     // ★確定の状態。マイグレーション（20260811090000）が未適用なら available:false が返り、
@@ -69,6 +73,7 @@ export default async function InspectionDetailPage({ params }: { params: Promise
                     { label: "確認" },
                 ]} />
                 <StepIndicator steps={[...INSPECTION_STEPS]} currentStep={1} />
+                <WithdrawnMatchNotice withdrawnAt={withdrawnAt} className="mt-4" />
             </div>
             <div className="max-w-[210mm] mx-auto mb-6 flex justify-between items-center gap-3 flex-wrap">
                 <Link href="/inspection" className="text-blue-600 hover:underline">

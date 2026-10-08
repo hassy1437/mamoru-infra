@@ -12,6 +12,9 @@
 //      ★別記11/22 の点検設備の製造者名（extra_fields の *_maker）は欄がもっと狭く（別記22 の空中線は 36.48×18pt）、
 //        15 字は 5pt では 3 行に入らない（物理的な限界）。PDF が出て全文が載り、折り返しの下限 4.5pt を守ることだけ見る
 //   2. 短い製造者名（現実値のまま）: 200 で、1 行で描かれる（収まる値の見た目を変えない）
+//   3. 長い製造者名・機器名を 2 行にしたとき、字が測定機器の行の上下の罫線の間に収まる（罫線は雛形から測る）
+//      ★2026-10-09 の本番の印字テストで、別記9・2 の測定機器の欄の定義（649／14）が上の罫線にかかっていて、
+//        2 行にした 1 行目が罫線に触れた。1 行の値は真ん中に置くので、短い値では出ない
 //
 // 使い方: node scripts/check-device-maker-wrap.mjs [--self-test]
 //   ★tmp/pdf-realistic の payload を土台にする（generate-realistic-route-tests.mjs / check-pdf-all --regen）
@@ -73,6 +76,47 @@ for page in d:
 print(json.dumps({"full": full, "min": min(sizes) if sizes else None, "lines": lines}))
 `
 
+// 長い値の字のかたまりが、雛形の行（上下の横罫線の間）に収まるか。字の枠からインクの目安を出す（上 12%・下 30% は字の外の余白）
+const BAND = String.raw`
+import fitz, json, sys
+pdf, tpl, values = sys.argv[1], sys.argv[2], json.loads(sys.argv[3])
+od, td = fitz.open(pdf), fitz.open(tpl)
+bad = []
+for pi in range(od.page_count):
+    spans = [s for b in od[pi].get_text("dict")["blocks"] for l in b.get("lines", []) for s in l["spans"]
+             if len(s["text"].strip()) >= 2 and any(s["text"].strip() in v for v in values)]
+    if not spans: continue
+    tp = td[min(pi, td.page_count - 1)]
+    rules = [it[1] for dr in tp.get_drawings() for it in dr["items"] if it[0] == "re" and it[1].height < 1.3 and it[1].width > 20]
+    # 同じ列（x）で、縦に続く行（間が 3pt 以下）だけを 1 つのかたまりにする（別記11 の表は同じ列に複数の機器が並ぶ）
+    cols = {}
+    for s in spans: cols.setdefault(round(s["bbox"][0] / 20), []).append(s)
+    groups = []
+    for c in cols.values():
+        c.sort(key=lambda s: s["bbox"][1])
+        cur = [c[0]]
+        for s in c[1:]:
+            if s["bbox"][1] - max(t["bbox"][3] for t in cur) > 3 - s["size"] * 0.42: groups.append(cur); cur = [s]
+            else: cur.append(s)
+        groups.append(cur)
+    for g in groups:
+        x = (g[0]["bbox"][0] + g[0]["bbox"][2]) / 2
+        top = min(s["bbox"][1] + s["size"] * 0.12 for s in g); bot = max(s["bbox"][3] - s["size"] * 0.3 for s in g)
+        mid = (top + bot) / 2
+        col = [r for r in rules if r.x0 <= x <= r.x1]
+        above = [r.y1 for r in col if r.y1 <= mid]; below = [r.y0 for r in col if r.y0 >= mid]
+        if above and top < max(above) - 0.05: bad.append(f"p{pi+1} x{x:.0f}: 字の上 {top:.2f} が上の罫線 {max(above):.2f} にかかる")
+        if below and bot > min(below) + 0.05: bad.append(f"p{pi+1} x{x:.0f}: 字の下 {bot:.2f} が下の罫線 {min(below):.2f} にかかる")
+print(json.dumps(bad, ensure_ascii=False))
+`
+
+function bandCheck(pdf, stem, values) {
+    const tpl = path.join("public", "PDF", `s50_kokuji14_${stem.split("__")[0].replace("_test", "")}.pdf`)
+    const r = spawnSync(PY, ["-c", BAND, pdf, tpl, JSON.stringify(values)], { encoding: "utf8", env: { ...process.env, PYTHONIOENCODING: "utf-8" } })
+    if (r.status !== 0) throw new Error(`罫線を測れない: ${r.stderr}`)
+    return JSON.parse(r.stdout.trim().split(/\r?\n/).pop())
+}
+
 async function render(route, payload, out) {
     try {
         await runRoutePdf({ routePath: route, payload, outPdfPath: out })
@@ -106,6 +150,7 @@ async function inspect(list, routeOf = (f) => f.route) {
         const mn = measure(outLong, LONG_NAME)
         if (mn.full < long.fields) problems.push(`${f.stem}: 測定機器の機器名 ${long.fields} 欄のうち全文が載ったのは ${mn.full} 欄`)
         if (mn.min !== null && mn.min < MIN_PT) problems.push(`${f.stem}: 測定機器の機器名が ${mn.min}pt（${MIN_PT}pt 未満）`)
+        for (const b of bandCheck(outLong, f.stem, [LONG, LONG_NAME])) problems.push(`${f.stem}: 測定機器の欄で罫線の外にはみ出す（${b}）`)
         if (long.extraFields) {
             const mx = measure(outLong, LONG_EXTRA)
             if (mx.full < long.extraFields) problems.push(`${f.stem}: 点検設備の製造者名 ${long.extraFields} 欄のうち全文が載ったのは ${mx.full} 欄`)
@@ -159,7 +204,17 @@ if (SELF_TEST) {
         }
         console.log(`  陽性対照: 折り返しを止める → ${pos.find((p) => p.startsWith(stem))}`)
     }
-    console.log("  陰性対照: 別記15/17 の現状で、長い製造者名・機器名は 5pt 以上・全文、短い製造者名は 1 行")
+    // 陽性対照 2: 別記9 の測定機器の欄を直す前の定義（649／14・上の罫線にかかる）に戻すと、罫線の外として落ちる
+    const b9 = forms().find((f) => f.stem === "bekki9_test")
+    const b9src = fs.readFileSync(b9.route, "utf8")
+    if (!b9src.includes("const DEV_ROW = { top: 650.88, h: 20.04 }")) { console.log("自己診断: 別記9 の測定機器の欄の定義が見つからない"); process.exit(2) }
+    if ((await inspect([b9])).length) { console.log("自己診断: 別記9 の現状が既にNG"); process.exit(1) }
+    const b9mut = path.join(mutDir, "bekki9.devrow.route.ts")
+    fs.writeFileSync(b9mut, b9src.replace("const DEV_ROW = { top: 650.88, h: 20.04 }", "const DEV_ROW = { top: 649, h: 14 }"), "utf8")
+    const pos2 = await inspect([b9], () => b9mut)
+    if (!pos2.some((p) => p.includes("罫線の外"))) { console.log("自己診断: 別記9 の欄を上の罫線にかかる定義に戻しても検出できない"); for (const p of pos2) console.log("   ", p); process.exit(1) }
+    console.log(`  陽性対照: 別記9 の欄を直す前の定義に戻す → ${pos2.find((p) => p.includes("罫線の外"))}`)
+    console.log("  陰性対照: 別記15/17/9 の現状で、長い製造者名・機器名は 5pt 以上・全文・罫線の内側、短い製造者名は 1 行")
     console.log("SELF_TEST_OK")
     process.exit(0)
 }

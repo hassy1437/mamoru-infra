@@ -23,7 +23,7 @@ export default function PrivacyPage() {
             <main className="mx-auto max-w-4xl px-4 py-12">
                 <h1 className="mb-8 text-3xl font-bold text-slate-900">プライバシーポリシー</h1>
                 <div className="prose prose-slate max-w-none space-y-6 text-sm leading-relaxed text-slate-700">
-                    <p>最終更新日: 2026年4月1日</p>
+                    <p>最終更新日: 2026年10月9日</p>
 
                     <section className="space-y-3">
                         <h2 className="text-lg font-bold text-slate-900">1. 収集する情報</h2>
@@ -31,7 +31,7 @@ export default function PrivacyPage() {
                         <ul className="list-disc pl-6 space-y-1">
                             <li><strong>アカウント情報</strong>: メールアドレス、パスワード（暗号化して保存）</li>
                             <li><strong>点検データ</strong>: 物件情報、点検結果、撮影写真など、ユーザーが入力した情報</li>
-                            <li><strong>利用ログ</strong>: アクセス日時、利用機能の情報</li>
+                            <li><strong>利用ログ</strong>: アクセス日時、利用機能の情報、点検の画面を操作していた時間（1 分単位。入力した内容は含みません。報告書の作成にかかる時間を把握し、サービスの改善に使います）</li>
                         </ul>
                     </section>
 

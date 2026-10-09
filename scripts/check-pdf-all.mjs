@@ -626,6 +626,15 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-itiran-soukatsu-guard.mjs", stage: "静的",
+        why: "URL の点検者一覧が URL の総括表のものかを、一覧の階層の外枠（layout）で確かめるか。"
+            + "★別記・出力は一覧を ID だけで読んでいて、別の報告書の一覧を URL に組むと保存で soukatsu_id が書き換わった（2026-10-09・総点検 C5）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-itiran-soukatsu-guard.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-itiran-soukatsu-guard.mjs"], sentinel: "ITIRAN_SOUKATSU_GUARD_OK" },
+        ],
+    },
+    {
         file: "check-blank-judgment-sections.mjs", stage: "静的",
         why: "判定が 1 つも入っていない表（その1 だけ入れて続きが空など）を、出力画面と納品の確認で知らせるか。"
             + "総合点検の行・様式まるごと未入力は知らせない（空欄が正しいことがある）。"

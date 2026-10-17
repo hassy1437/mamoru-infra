@@ -7,6 +7,7 @@ import { ServiceWorkerRegistrar } from "@/components/sw-registrar";
 import { OfflineIndicator } from "@/components/offline-indicator";
 import { Toaster } from "@/components/ui/toaster";
 import ChatbotHint from "@/components/chatbot-hint";
+import ChatbotPrivacyNotice from "@/components/chatbot-privacy-notice";
 
 export const metadata: Metadata = {
   title: "Mamoru Infra — 消防設備点検の報告書作成を効率化",
@@ -53,6 +54,8 @@ export default async function RootLayout({
           {children}
         </AuthProvider>
         <ChatbotHint />
+        {/* ★チャットを開いたら「個人の情報は入力しない」を出す（外部の Dify へ送られる・P3） */}
+        <ChatbotPrivacyNotice />
         <Script id="dify-chatbot-config" strategy="afterInteractive">
           {`window.difyChatbotConfig = { token: 'bvhfapiUdU8yqQmc' }`}
         </Script>

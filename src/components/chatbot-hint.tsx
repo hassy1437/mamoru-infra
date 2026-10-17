@@ -110,7 +110,7 @@ export default function ChatbotHint() {
                     お困りですか？ 💬
                 </p>
                 <p className="mt-0.5 sm:mt-1 text-[10px] sm:text-[11px] leading-snug sm:leading-relaxed text-slate-600">
-                    こちらからチャットで質問できます
+                    こちらからチャットで質問できます（個人の情報・物件の住所は入力しないでください）
                 </p>
                 {/* Pointer tail toward the Dify button */}
                 <div className="absolute -bottom-1.5 right-6 h-3 w-3 rotate-45 border-b border-r border-slate-200 bg-white" />

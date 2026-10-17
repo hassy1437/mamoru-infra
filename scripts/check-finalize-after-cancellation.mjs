@@ -1,4 +1,4 @@
-// 解約日を迎えた業者に、確定のボタンの代わりに理由を出すか（業務提携規約 第26条・2026-10-17）。
+// 解約日を迎えた業者・第1編の契約が無い口座に、確定のボタンの代わりに理由を出すか（業務提携規約 第26条・第4条2項・第12条1項・2026-10-17）。
 //
 // ■ なぜ要るか
 //   点検アプリはマッチングサイトの業者の状態を見ておらず、解約後も報告書を確定でき、利用料が立った。
@@ -40,14 +40,17 @@ async function loadLib(src) {
 const PREVIEW = { equipment_codes: ["a"], billable_codes: ["a"], unit_price_yen: 0, amount_yen: 0, duplicate_of: null, needs_duplicate_confirm: false }
 const ROW = { id: "f1", acted_at: "2026-10-01T00:00:00Z", actor_id: "u", equipment_codes: ["a"], billable_codes: ["a"], unit_price_yen: 0, duplicate_confirmed: false }
 
-/** 偽の DB。★rpc は名前で分ける（プレビューと読み口で結果が違う） */
-function fakeDb({ blocked, rows = { data: [], error: null } }) {
+/** 偽の DB。★rpc は名前で分ける（プレビュー・解約の読み口・契約の読み口で結果が違う） */
+function fakeDb({ blocked, notContracted = { data: false, error: null }, rows = { data: [], error: null } }) {
     const chain = (result) => {
         const q = { select: () => q, eq: () => q, in: () => q, order: () => q, then: (res, rej) => Promise.resolve(result).then(res, rej) }
         return q
     }
     return {
-        rpc: async (name) => (name === "finalize_blocked_since" ? blocked : { data: [PREVIEW], error: null }),
+        rpc: async (name) =>
+            name === "finalize_blocked_since" ? blocked
+            : name === "finalize_not_contracted" ? notContracted
+            : { data: [PREVIEW], error: null },
         from: () => chain(rows),
     }
 }
@@ -62,6 +65,16 @@ const CASES = [
     ["関数が無い（未適用）", { data: null, error: { code: "PGRST202", message: "Could not find the function" } }, NONE, null, false, false],
     ["関数が失敗した", { data: null, error: { code: "57014", message: "canceling statement due to statement timeout" } }, NONE, null, false, false],
     ["形が違う（配列）", { data: [PREVIEW], error: null }, NONE, null, false, false],
+]
+
+const NC_CASES = [
+    // [見出し, 契約の読み口の結果, 確定の記録, 期待する notContracted, 契約の案内を出すか]
+    ["契約が無い・未確定", { data: true, error: null }, NONE, true, true],
+    ["契約が無い・確定済み（以前の確定）", { data: true, error: null }, DONE, true, false],
+    ["契約がある", { data: false, error: null }, NONE, false, false],
+    ["関数が無い（未適用）", { data: null, error: { code: "PGRST202", message: "Could not find the function" } }, NONE, false, false],
+    ["関数が失敗した", { data: null, error: { code: "57014", message: "timeout" } }, NONE, false, false],
+    ["形が違う（配列）", { data: [PREVIEW], error: null }, NONE, false, false],
 ]
 
 async function inspect(src) {
@@ -97,6 +110,28 @@ async function inspect(src) {
     } finally {
         console.error = quiet
     }
+    console.error = () => {}
+    try {
+        for (const [label, nc, rows, want, ncMsg] of NC_CASES) {
+            const got = await lib.loadFinalizationState(fakeDb({ blocked: { data: null, error: null }, notContracted: nc, rows }), "s1")
+            if (!got.available) { problems.push(`判定が違う（契約）: ${label} → available:false`); continue }
+            if (got.notContracted !== want) problems.push(`契約の判定が違う: ${label} → ${got.notContracted}（期待 ${want}）`)
+            const gate = lib.finalizeBlockedGateMessage?.(got) ?? null
+            if (ncMsg) {
+                if (!gate || !/業者登録の承認を受けたあと/.test(gate)) problems.push(`契約が無いのに PDF・納品の案内が契約の文になっていない: ${label}`)
+            } else if (gate !== null) {
+                problems.push(`契約の案内を出す場面でないのに出している: ${label}`)
+            }
+        }
+    } finally {
+        console.error = quiet
+    }
+    if (!/第4条2項・第12条1項/.test(lib.FINALIZE_NOT_CONTRACTED_MESSAGE ?? "") || !/プレビュー/.test(lib.FINALIZE_NOT_CONTRACTED_MESSAGE ?? "")) {
+        problems.push("契約が無いときの案内に、根拠（第4条2項・第12条1項）か「プレビューは使える」が無い")
+    }
+    if (lib.finalizeBlockNotice?.("2026-11-30", true) !== lib.finalizeBlockedMessage?.("2026-11-30")) {
+        problems.push("解約日を迎えた（契約もある）ときは解約の文を優先していない")
+    }
     const m = lib.finalizeBlockedMessage?.("2026-11-30") ?? ""
     if (!/第26条/.test(m) || !/確定済みの報告書は、これまでどおり見る・PDF を出力できます/.test(m)) {
         problems.push("解約日の案内に、根拠（第26条）か「確定済みは見る・PDF を出力できる」が無い")
@@ -105,10 +140,11 @@ async function inspect(src) {
     const button = src(BUTTON)
     if (!/blockedSince: string \| null/.test(button)) problems.push("確定のボタンが blockedSince を受けていない")
     if (!/if \(blockedNotice\) return blockedNotice/.test(button)) problems.push("確定のボタンが、解約日を迎えたときに案内に替えていない（押すとエラーになるボタンのまま）")
-    if (!/finalizeBlockedMessage\(blockedSince\)/.test(button)) problems.push("確定のボタンの案内が finalizeBlockedMessage を使っていない")
-    if (!/\/\^VENDOR_CANCELLED\/\.test\(e\.message\)/.test(button)) problems.push("確定のボタンが 'VENDOR_CANCELLED'（画面を開いたあとで解約日をまたいだ）を見分けていない")
+    if (!/finalizeBlockNotice\(blockedSince, notContracted\)/.test(button)) problems.push("確定のボタンの案内が finalizeBlockNotice（解約・契約）を使っていない")
+    if (!button.includes("/^(VENDOR_CANCELLED|VENDOR_NOT_CONTRACTED)/.test(e.message)")) problems.push("確定のボタンが 'VENDOR_CANCELLED' / 'VENDOR_NOT_CONTRACTED'（画面を開いたあとで変わった）を見分けていない")
 
     if (!/blockedSince=\{finalization\.blockedSince\}/.test(src(PAGE))) problems.push("総括表の確認画面が blockedSince を渡していない")
+    if (!/notContracted=\{finalization\.notContracted\}/.test(src(PAGE))) problems.push("総括表の確認画面が notContracted を渡していない")
     for (const p of [PAGE, ITIRAN_PAGE, OUTPUT_PAGE]) {
         if (!/gateMessage=\{pdfGateMessage\(finalization\)\}/.test(src(p))) problems.push(`${p} が PDF のボタンに pdfGateMessage を渡していない`)
     }
@@ -132,6 +168,8 @@ if (SELF_TEST) {
         ["PDF の案内を「確定してから」のままにする", (p) => p === LIB ? read(p).replace("return finalizeBlockedGateMessage(state) ?? PDF_GATE_MESSAGE", "return PDF_GATE_MESSAGE") : read(p), "PDF の案内が解約日の文になっていない"],
         ["ボタンが案内に替えない", (p) => p === BUTTON ? read(p).replace("if (blockedNotice) return blockedNotice", "if (false) return blockedNotice") : read(p), "押すとエラーになるボタンのまま"],
         ["画面が blockedSince を渡さない", (p) => p === PAGE ? read(p).replace("blockedSince={finalization.blockedSince}", "blockedSince={null}") : read(p), "blockedSince を渡していない"],
+        ["契約の読み口の結果を捨てる", (p) => p === LIB ? read(p).replace("return data === true", "return false && data === true") : read(p), "契約の判定が違う: 契約が無い・未確定"],
+        ["画面が notContracted を渡さない", (p) => p === PAGE ? read(p).replace("notContracted={finalization.notContracted}", "") : read(p), "notContracted を渡していない"],
     ]
     for (const [label, src, expect] of mutants) {
         let found
@@ -154,7 +192,7 @@ if (SELF_TEST) {
 
 const problems = await inspect(read)
 fs.rmSync(OUT, { recursive: true, force: true })
-console.log(`解約日を迎えた業者の確定の扱いを検査: 判定 ${CASES.length} 通り・PDF と納品の案内・ボタンと画面`)
+console.log(`解約日を迎えた業者・契約の無い口座の確定の扱いを検査: 判定 ${CASES.length}＋${NC_CASES.length} 通り・PDF と納品の案内・ボタンと画面`)
 if (problems.length) {
     console.log("★NG:")
     for (const p of problems) console.log("   ", p)

@@ -70,7 +70,25 @@ export type FinalizationState =
           duplicates: DuplicateInfo[]
           /** 解約日を迎えた業者なら解約日（YYYY-MM-DD）。迎えていなければ・判定できなければ null（loadFinalizeBlockedSince） */
           blockedSince: string | null
+          /** 第1編の契約が無い（業者登録が無い・審査中）なら true。判定できなければ false（loadFinalizeNotContracted） */
+          notContracted: boolean
       }
+
+/**
+ * ★第1編の契約が無いか（業者登録が無い・審査中・業務提携規約 第4条2項・第12条1項・マッチング側 20261107090000・K1）。
+ *   止めるのは DB（finalize_soukatsu が 'VENDOR_NOT_CONTRACTED ' で弾く）。ここは画面の案内のためだけ。
+ *   ＝ 判定できない（関数が無い＝未適用・失敗）ときは false（今までどおりボタンを出す）。
+ */
+async function loadFinalizeNotContracted(supabase: AppSupabaseClient): Promise<boolean> {
+    const { data, error } = await supabase.rpc("finalize_not_contracted")
+    if (error) {
+        if (!isMissingFunction(error)) {
+            console.error("[loadFinalizationState] finalize_not_contracted failed:", error)
+        }
+        return false
+    }
+    return data === true
+}
 
 /**
  * ★解約日を迎えた業者か（業務提携規約 第26条・マッチング側のマイグレーション 20261105090000）。
@@ -164,6 +182,7 @@ export async function loadFinalizationState(
         finalized: ((rows ?? []) as unknown as FinalizationRow[]),
         duplicates,
         blockedSince: await loadFinalizeBlockedSince(supabase),
+        notContracted: await loadFinalizeNotContracted(supabase),
     }
 }
 
@@ -186,12 +205,26 @@ export function finalizeBlockedMessage(blockedSince: string): string {
 }
 
 /**
- * ★確定していない報告書で、解約日を迎えて確定もできないときの案内（PDF・納品のボタンが使う）。それ以外は null。
+ * ★第1編の契約が無い（業者登録が無い・審査中）ときに、確定のボタンの代わりに出す案内（K1）。
+ */
+export const FINALIZE_NOT_CONTRACTED_MESSAGE =
+    "報告書の確定は、マモルインフラ（マッチングサイト）で業者登録の承認を受けたあとにご利用いただけます（業務提携規約 第4条2項・第12条1項）。"
+    + "下書きの保存とプレビューは、このままご利用いただけます。"
+
+/** 確定のボタンの代わりに出す案内（解約日を迎えた・契約が無い）。止めていなければ null */
+export function finalizeBlockNotice(blockedSince: string | null, notContracted: boolean): string | null {
+    if (blockedSince) return finalizeBlockedMessage(blockedSince)
+    if (notContracted) return FINALIZE_NOT_CONTRACTED_MESSAGE
+    return null
+}
+
+/**
+ * ★確定していない報告書で、確定もできないとき（解約日を迎えた・契約が無い）の案内（PDF・納品のボタンが使う）。それ以外は null。
  *   「確定してから」と案内すると、できないことを求めることになる。
  */
 export function finalizeBlockedGateMessage(state: FinalizationState): string | null {
-    if (state.available && state.blockedSince && state.finalized.length === 0) {
-        return finalizeBlockedMessage(state.blockedSince)
+    if (state.available && state.finalized.length === 0) {
+        return finalizeBlockNotice(state.blockedSince, state.notContracted)
     }
     return null
 }

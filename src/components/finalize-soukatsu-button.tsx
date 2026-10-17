@@ -6,7 +6,7 @@ import { AlertTriangle, CheckCircle2, Ban, Lock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 import {
-    finalizeBlockedMessage,
+    finalizeBlockNotice,
     formatAmount,
     type DuplicateInfo,
     type FinalizationPreview,
@@ -27,7 +27,8 @@ import {
  *   （同一敷地の別棟を午前・午後に点検した場合、総括表は2枚になる）。
  *   確認のダイアログを出し、★何と重複しているかを示したうえで業者に選ばせる。
  *
- * ■ ★解約日を迎えた業者は確定できない（業務提携規約 第26条・blockedSince）
+ * ■ ★解約日を迎えた業者（業務提携規約 第26条・blockedSince）と、第1編の契約が無い口座（業者登録が無い・審査中・
+ *   第4条2項・第12条1項・notContracted・K1）は確定できない
  *   ボタンの代わりに理由を出す。止めるのは DB（'VENDOR_CANCELLED '）なので、
  *   画面を開いたまま解約日をまたいで押した場合も、エラーの文を出して画面を読み直す。
  */
@@ -37,12 +38,14 @@ export default function FinalizeSoukatsuButton({
     finalized,
     duplicates,
     blockedSince,
+    notContracted = false,
 }: {
     soukatsuId: string
     preview: FinalizationPreview | null
     finalized: FinalizationRow[]
     duplicates: DuplicateInfo[]
     blockedSince: string | null
+    notContracted?: boolean
 }) {
     const [open, setOpen] = useState(false)
     const [confirmingDup, setConfirmingDup] = useState(false)
@@ -53,13 +56,14 @@ export default function FinalizeSoukatsuButton({
     const alreadyFinalized = finalized.length > 0
 
     // ★解約日を迎えたときの案内（確定済みでも出す＝「確定し直す」こともできないため）
-    const blockedNotice = blockedSince ? (
+    const noticeText = finalizeBlockNotice(blockedSince, notContracted)
+    const blockedNotice = noticeText ? (
         <p
             role="note"
             className="flex items-start gap-2 rounded-lg border border-slate-300 bg-slate-50 p-4 text-sm leading-relaxed text-slate-700"
         >
             <Ban className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
-            <span>{finalizeBlockedMessage(blockedSince)}</span>
+            <span>{noticeText}</span>
         </p>
     ) : null
 
@@ -79,9 +83,9 @@ export default function FinalizeSoukatsuButton({
                 setConfirmingDup(true)
                 return
             }
-            // ★解約日を迎えた（画面を開いたあとで日付をまたいだ等）。文を出し、画面を読み直して案内に替える
-            if (/^VENDOR_CANCELLED/.test(e.message)) {
-                setError(e.message.replace(/^VENDOR_CANCELLED\s*/, ""))
+            // ★解約日を迎えた・契約が無い（画面を開いたあとで変わった等）。文を出し、画面を読み直して案内に替える
+            if (/^(VENDOR_CANCELLED|VENDOR_NOT_CONTRACTED)/.test(e.message)) {
+                setError(e.message.replace(/^(VENDOR_CANCELLED|VENDOR_NOT_CONTRACTED)\s*/, ""))
                 router.refresh()
                 return
             }

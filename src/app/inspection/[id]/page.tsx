@@ -119,6 +119,7 @@ export default async function InspectionDetailPage({ params }: { params: Promise
                         finalized={finalization.finalized}
                         duplicates={finalization.duplicates}
                         blockedSince={finalization.blockedSince}
+                        notContracted={finalization.notContracted}
                     />
                 </div>
             )}

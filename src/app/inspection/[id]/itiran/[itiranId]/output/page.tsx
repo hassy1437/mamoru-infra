@@ -3,7 +3,7 @@ import { notFound } from "next/navigation"
 import Link from "next/link"
 import { CheckCircle2, MinusCircle, Copy } from "lucide-react"
 import CombinedPdfButton from "@/components/combined-pdf-button"
-import { canDownloadPdf, loadFinalizationState } from "@/lib/finalization"
+import { canDownloadPdf, finalizeBlockedGateMessage, loadFinalizationState, pdfGateMessage } from "@/lib/finalization"
 import DeliverReportButton, { type DeliveryStatus } from "@/components/deliver-report-button"
 import StepIndicator from "@/components/step-indicator"
 import { INSPECTION_STEPS } from "@/lib/inspection-steps"
@@ -243,6 +243,7 @@ export default async function OutputPage({
                     <div className="pt-2">
                         <CombinedPdfButton
                             canDownload={canDownloadPdf(finalization)}
+                            gateMessage={pdfGateMessage(finalization)}
                             soukatsuData={sanitizedSoukatsu}
                             itiranData={sanitizedItiran}
                             bekkiPayloads={sanitizedBekkiPayloads}
@@ -256,6 +257,7 @@ export default async function OutputPage({
                     {sourceMatchId && !withdrawnAt && (
                         <DeliverReportButton
                             canDeliver={canDownloadPdf(finalization)}
+                            gateMessage={finalizeBlockedGateMessage(finalization)}
                             soukatsuData={sanitizedSoukatsu}
                             itiranData={sanitizedItiran}
                             bekkiPayloads={sanitizedBekkiPayloads}

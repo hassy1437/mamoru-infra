@@ -12,16 +12,18 @@ interface Props {
     buildingName?: string
     /** ★既定 true（通す）。呼び出し側を触り忘れても本番は止まらない＝fail-open。 */
     canDownload?: boolean
+    /** 確定前に押したときの案内（解約日を迎えた業者には「確定してから」と言わない・pdfGateMessage） */
+    gateMessage?: string
 }
 
-export default function ItiranPdfButton({ data, buildingName, canDownload = true }: Props) {
+export default function ItiranPdfButton({ data, buildingName, canDownload = true, gateMessage = PDF_GATE_MESSAGE }: Props) {
     const [gateMsg, setGateMsg] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
 
     const handleDownload = async () => {
         // ★確定前は出力しない。ボタンは消さずに案内を出す（fail-open は Props の既定値）。
         if (!canDownload) {
-            setGateMsg(PDF_GATE_MESSAGE)
+            setGateMsg(gateMessage)
             return
         }
         setLoading(true)

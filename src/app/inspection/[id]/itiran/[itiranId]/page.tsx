@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import ItiranPdfButton from "@/components/itiran-pdf-button"
-import { canDownloadPdf, loadFinalizationState } from "@/lib/finalization"
+import { canDownloadPdf, loadFinalizationState, pdfGateMessage } from "@/lib/finalization"
 import ItiranPdfPreviewCollapsible from "@/components/itiran-pdf-preview-collapsible"
 import StepIndicator from "@/components/step-indicator"
 import { INSPECTION_STEPS } from "@/lib/inspection-steps"
@@ -89,7 +89,7 @@ export default async function ItiranDetailPage({
                         <Pencil className="w-4 h-4" />
                         点検者を編集
                     </Link>
-                    <ItiranPdfButton data={record} buildingName={soukatsu?.building_name} canDownload={canDownloadPdf(finalization)} />
+                    <ItiranPdfButton data={record} buildingName={soukatsu?.building_name} canDownload={canDownloadPdf(finalization)} gateMessage={pdfGateMessage(finalization)} />
                 </div>
             </div>
 

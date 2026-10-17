@@ -8,7 +8,7 @@ import StepIndicator from "@/components/step-indicator"
 import { INSPECTION_STEPS } from "@/lib/inspection-steps"
 import Breadcrumb from "@/components/breadcrumb"
 import FinalizeSoukatsuButton from "@/components/finalize-soukatsu-button"
-import { canDownloadPdf, FINALIZATION_ERROR_MESSAGE, loadFinalizationState } from "@/lib/finalization"
+import { canDownloadPdf, FINALIZATION_ERROR_MESSAGE, loadFinalizationState, pdfGateMessage } from "@/lib/finalization"
 import WithdrawnMatchNotice from "@/components/withdrawn-match-notice"
 import { withdrawnAtOf } from "@/lib/match-withdrawn"
 
@@ -87,7 +87,7 @@ export default async function InspectionDetailPage({ params }: { params: Promise
                         <Pencil className="w-4 h-4" />
                         編集
                     </Link>
-                    <SoukatsuPdfButton data={soukatsuData} canDownload={canDownloadPdf(finalization)} />
+                    <SoukatsuPdfButton data={soukatsuData} canDownload={canDownloadPdf(finalization)} gateMessage={pdfGateMessage(finalization)} />
                     <Link
                         href={nextItiranHref}
                         className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors"
@@ -118,6 +118,7 @@ export default async function InspectionDetailPage({ params }: { params: Promise
                         preview={finalization.preview}
                         finalized={finalization.finalized}
                         duplicates={finalization.duplicates}
+                        blockedSince={finalization.blockedSince}
                     />
                 </div>
             )}

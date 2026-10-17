@@ -68,7 +68,29 @@ export type FinalizationState =
           preview: FinalizationPreview | null
           finalized: FinalizationRow[]
           duplicates: DuplicateInfo[]
+          /** 解約日を迎えた業者なら解約日（YYYY-MM-DD）。迎えていなければ・判定できなければ null（loadFinalizeBlockedSince） */
+          blockedSince: string | null
       }
+
+/**
+ * ★解約日を迎えた業者か（業務提携規約 第26条・マッチング側のマイグレーション 20261105090000）。
+ *   迎えていれば解約日（YYYY-MM-DD）、迎えていなければ null。
+ *
+ * ■ ★止めるのは DB（finalize_soukatsu が 'VENDOR_CANCELLED ' で弾く）。ここは画面の案内のためだけ
+ *   確定のボタンを「押すとエラーになるボタン」のまま出さず、理由の案内に替える。
+ *   ＝ 判定できない（関数が無い＝未適用・失敗）ときは null（今までどおりボタンを出す）。
+ *   読み違えても確定はできないので、止める側に倒す必要が無い。
+ */
+async function loadFinalizeBlockedSince(supabase: AppSupabaseClient): Promise<string | null> {
+    const { data, error } = await supabase.rpc("finalize_blocked_since")
+    if (error) {
+        if (!isMissingFunction(error)) {
+            console.error("[loadFinalizationState] finalize_blocked_since failed:", error)
+        }
+        return null
+    }
+    return typeof data === "string" && /^\d{4}-\d{2}-\d{2}$/.test(data) ? data : null
+}
 
 /**
  * 確定の状態を読む。★未適用なら { available: false } を返し、画面は導線を出さない。
@@ -141,7 +163,42 @@ export async function loadFinalizationState(
         preview: preview ?? null,
         finalized: ((rows ?? []) as unknown as FinalizationRow[]),
         duplicates,
+        blockedSince: await loadFinalizeBlockedSince(supabase),
     }
+}
+
+/** 2026-11-30 → 2026年11月30日 */
+function formatJaDate(isoDate: string): string {
+    const [y, m, d] = isoDate.split("-").map(Number)
+    return `${y}年${m}月${d}日`
+}
+
+/**
+ * ★解約日を迎えたときに、確定のボタンの代わりに出す案内（業務提携規約 第26条）。
+ *   ★見る・確定済みの PDF は止めていないことを必ず書く（止めたのは新しい確定だけ）。
+ */
+export function finalizeBlockedMessage(blockedSince: string): string {
+    return (
+        `解約日（${formatJaDate(blockedSince)}）を迎えたため、新しい報告書は確定できません（業務提携規約 第26条）。`
+        + "確定済みの報告書は、これまでどおり見る・PDF を出力できます。"
+        + "確定していない報告書は、下の「プレビュー」で内容をご確認いただけます。"
+    )
+}
+
+/**
+ * ★確定していない報告書で、解約日を迎えて確定もできないときの案内（PDF・納品のボタンが使う）。それ以外は null。
+ *   「確定してから」と案内すると、できないことを求めることになる。
+ */
+export function finalizeBlockedGateMessage(state: FinalizationState): string | null {
+    if (state.available && state.blockedSince && state.finalized.length === 0) {
+        return finalizeBlockedMessage(state.blockedSince)
+    }
+    return null
+}
+
+/** PDF のボタンを確定前に押したときの案内 */
+export function pdfGateMessage(state: FinalizationState): string {
+    return finalizeBlockedGateMessage(state) ?? PDF_GATE_MESSAGE
 }
 
 /** 金額の表示（★0円も必ず出す。出ないと「課金されたのか分からない」になる） */

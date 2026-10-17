@@ -2,10 +2,11 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { AlertTriangle, CheckCircle2, Lock } from "lucide-react"
+import { AlertTriangle, CheckCircle2, Ban, Lock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 import {
+    finalizeBlockedMessage,
     formatAmount,
     type DuplicateInfo,
     type FinalizationPreview,
@@ -25,17 +26,23 @@ import {
  *   同じ物件・同じ日・同じ種別に確定済みがあっても、正当な2回がありうる
  *   （同一敷地の別棟を午前・午後に点検した場合、総括表は2枚になる）。
  *   確認のダイアログを出し、★何と重複しているかを示したうえで業者に選ばせる。
+ *
+ * ■ ★解約日を迎えた業者は確定できない（業務提携規約 第26条・blockedSince）
+ *   ボタンの代わりに理由を出す。止めるのは DB（'VENDOR_CANCELLED '）なので、
+ *   画面を開いたまま解約日をまたいで押した場合も、エラーの文を出して画面を読み直す。
  */
 export default function FinalizeSoukatsuButton({
     soukatsuId,
     preview,
     finalized,
     duplicates,
+    blockedSince,
 }: {
     soukatsuId: string
     preview: FinalizationPreview | null
     finalized: FinalizationRow[]
     duplicates: DuplicateInfo[]
+    blockedSince: string | null
 }) {
     const [open, setOpen] = useState(false)
     const [confirmingDup, setConfirmingDup] = useState(false)
@@ -44,6 +51,17 @@ export default function FinalizeSoukatsuButton({
     const router = useRouter()
 
     const alreadyFinalized = finalized.length > 0
+
+    // ★解約日を迎えたときの案内（確定済みでも出す＝「確定し直す」こともできないため）
+    const blockedNotice = blockedSince ? (
+        <p
+            role="note"
+            className="flex items-start gap-2 rounded-lg border border-slate-300 bg-slate-50 p-4 text-sm leading-relaxed text-slate-700"
+        >
+            <Ban className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
+            <span>{finalizeBlockedMessage(blockedSince)}</span>
+        </p>
+    ) : null
 
     async function run(duplicateConfirmed: boolean) {
         setBusy(true)
@@ -59,6 +77,12 @@ export default function FinalizeSoukatsuButton({
             if (/DUPLICATE_CONFIRM_REQUIRED/.test(e.message)) {
                 setOpen(false)
                 setConfirmingDup(true)
+                return
+            }
+            // ★解約日を迎えた（画面を開いたあとで日付をまたいだ等）。文を出し、画面を読み直して案内に替える
+            if (/^VENDOR_CANCELLED/.test(e.message)) {
+                setError(e.message.replace(/^VENDOR_CANCELLED\s*/, ""))
+                router.refresh()
                 return
             }
             setError(e.message)
@@ -78,6 +102,7 @@ export default function FinalizeSoukatsuButton({
         const items = finalized.reduce((a, f) => a + (f.billable_codes?.length ?? 0), 0)
         const last = finalized[finalized.length - 1]
         return (
+            <div className="space-y-3">
             <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
                 <p className="flex items-center gap-2 font-bold text-emerald-800">
                     <CheckCircle2 className="h-4 w-4" />
@@ -108,8 +133,12 @@ export default function FinalizeSoukatsuButton({
                     </span>
                 </p>
             </div>
+            {blockedNotice}
+            </div>
         )
     }
+
+    if (blockedNotice) return blockedNotice
 
     if (!preview) return null
 

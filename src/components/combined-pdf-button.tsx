@@ -21,6 +21,8 @@ interface CombinedPdfButtonProps {
     equipmentTypes?: string[]
     /** ★既定 true（通す）。呼び出し側を触り忘れても本番は止まらない＝fail-open。 */
     canDownload?: boolean
+    /** 確定前に押したときの案内（解約日を迎えた業者には「確定してから」と言わない・pdfGateMessage） */
+    gateMessage?: string
 }
 
 export default function CombinedPdfButton({
@@ -31,6 +33,7 @@ export default function CombinedPdfButton({
     buildingName,
     equipmentTypes,
     canDownload = true,
+    gateMessage = PDF_GATE_MESSAGE,
 }: CombinedPdfButtonProps) {
     const [loading, setLoading] = useState(false)
     const [progress, setProgress] = useState({ done: 0, total: 0 })
@@ -48,7 +51,7 @@ export default function CombinedPdfButton({
     const handleDownload = async () => {
         // ★確定前は出力しない（規約 第12条3項）。ボタンは消さずに案内を出す。
         if (!canDownload) {
-            setGateMsg(PDF_GATE_MESSAGE)
+            setGateMsg(gateMessage)
             return
         }
         setLoading(true)

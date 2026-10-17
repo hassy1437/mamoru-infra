@@ -626,6 +626,15 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-finalize-after-cancellation.mjs", stage: "静的",
+        why: "解約日を迎えた業者に、確定のボタンの代わりに理由を出すか。PDF・納品の案内が「確定してから」（できないこと）を求めないか。"
+            + "★止めるのはマッチング側の DB（20261105090000・業務提携規約 第26条）。★loadFinalizationState を偽の DB で動かす（2026-10-17）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-finalize-after-cancellation.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-finalize-after-cancellation.mjs"], sentinel: "FINALIZE_AFTER_CANCELLATION_OK" },
+        ],
+    },
+    {
         file: "check-itiran-soukatsu-guard.mjs", stage: "静的",
         why: "URL の点検者一覧が URL の総括表のものかを、一覧の階層の外枠（layout）で確かめるか。"
             + "★別記・出力は一覧を ID だけで読んでいて、別の報告書の一覧を URL に組むと保存で soukatsu_id が書き換わった（2026-10-09・総点検 C5）",

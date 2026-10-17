@@ -14,7 +14,9 @@ export default function SoukatsuPdfButton({
     data,
     // ★既定は true（通す）。呼び出し側を触り忘れても本番は止まらない＝fail-open。
     canDownload = true,
-}: { data: SoukatsuPdfData; canDownload?: boolean }) {
+    // ★確定前に押したときの案内（解約日を迎えた業者には「確定してから」と言わない・pdfGateMessage）
+    gateMessage = PDF_GATE_MESSAGE,
+}: { data: SoukatsuPdfData; canDownload?: boolean; gateMessage?: string }) {
     const [loading, setLoading] = useState(false)
     const [gateMsg, setGateMsg] = useState<string | null>(null)
 
@@ -22,7 +24,7 @@ export default function SoukatsuPdfButton({
         // ★確定前は出力しない（規約 第12条3項: 確定前の下書きには課金しない）。
         //   ボタンは消さずに案内を出す（消すと「なぜ無いのか」が分からない）。
         if (!canDownload) {
-            setGateMsg(PDF_GATE_MESSAGE)
+            setGateMsg(gateMessage)
             return
         }
         setLoading(true)

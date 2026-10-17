@@ -55,6 +55,8 @@ interface DeliverReportButtonProps {
      * しかも納品は記録が残る唯一の操作なので、その事実が証跡として残ってしまう。
      */
     canDeliver?: boolean
+    /** 確定前の案内を差し替える（解約日を迎えて確定できないとき・finalizeBlockedGateMessage）。null なら既定の文 */
+    gateMessage?: string | null
     itiranId: string // p_source_itiran_id（複製ゲート用・常に渡す＝迂回しない）
     inspectionType: string // この soukatsu の種別（機器点検 / 総合点検）
     inspectionDate: string // p_inspection_date（YYYY-MM-DD）
@@ -89,6 +91,7 @@ export default function DeliverReportButton({
     equipmentTypes,
     matchId,
     canDeliver = true,
+    gateMessage = null,
     itiranId,
     inspectionType,
     inspectionDate,
@@ -378,7 +381,7 @@ export default function DeliverReportButton({
             {/* ★確定前は納品できない。ボタンは残し、何をすればいいかを添える。 */}
             {!canDeliver && (
                 <p className="mb-2 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
-                    納品は、点検を確定してからになります。確定する前でも、内容はプレビューでご確認いただけます。
+                    {gateMessage ?? "納品は、点検を確定してからになります。確定する前でも、内容はプレビューでご確認いただけます。"}
                 </p>
             )}
 

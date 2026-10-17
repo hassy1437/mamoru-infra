@@ -22,6 +22,7 @@ import {
 } from "@/lib/bekki-form-normalization"
 import CameraInput from "@/components/camera-input"
 import { pdfRequestError, pdfErrorText } from "@/lib/pdf-request-error"
+import { soukatsuPdfGate } from "@/lib/pdf-gate-client"
 
 type MarkKey = "A" | "B" | "C" | "D" | "E" | "F"
 
@@ -406,6 +407,12 @@ export default function ShokakiBekki1Form({
         setLoadingDownload(true)
         setError(null)
         try {
+            // ★点検票の PDF も確定してから（K2・業務提携規約 第12条2項・3項）。プレビューは止めない
+            const gate = await soukatsuPdfGate(soukatsuId)
+            if (gate) {
+                setError(gate)
+                return
+            }
             const saved = await persistDraft(false)
             if (!saved) return
 
@@ -423,7 +430,7 @@ export default function ShokakiBekki1Form({
         } finally {
             setLoadingDownload(false)
         }
-    }, [generatePdfBlob, formName, persistDraft])
+    }, [generatePdfBlob, formName, persistDraft, soukatsuId])
 
     // Auto-save on unmount (navigation away)
     const persistDraftRef = useRef(persistDraft)

@@ -38,6 +38,11 @@ export default async function EditSoukatsuPage({
         }
     }
 
+    // ★確定済みか（K2）。建物名・点検日・点検種別を変えると確定し直しになるので、編集の前に知らせる。
+    //   ★読めなければ注意を出さない（編集は止めない）。
+    const { data: finalizedData } = await supabase.rpc("is_finalized", { p_soukatsu_id: id })
+    const isFinalized = finalizedData === true
+
     return (
         <main className="min-h-screen bg-gray-50 py-10">
             <div className="container mx-auto px-4">
@@ -55,6 +60,7 @@ export default async function EditSoukatsuPage({
                 <SoukatsuEditForm
                     soukatsu={soukatsu as Record<string, unknown> & { id: string }}
                     isDelivered={isDelivered}
+                    isFinalized={isFinalized}
                 />
             </div>
         </main>

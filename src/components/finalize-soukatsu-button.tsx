@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client"
 import {
     finalizeBlockNotice,
     formatAmount,
+    IDENTITY_CHANGED_MESSAGE,
     type DuplicateInfo,
     type FinalizationPreview,
     type FinalizationRow,
@@ -39,6 +40,7 @@ export default function FinalizeSoukatsuButton({
     duplicates,
     blockedSince,
     notContracted = false,
+    identityChanged = false,
 }: {
     soukatsuId: string
     preview: FinalizationPreview | null
@@ -46,6 +48,8 @@ export default function FinalizeSoukatsuButton({
     duplicates: DuplicateInfo[]
     blockedSince: string | null
     notContracted?: boolean
+    /** 確定のあとに建物名などを変えて、今の確定が無い（K2） */
+    identityChanged?: boolean
 }) {
     const [open, setOpen] = useState(false)
     const [confirmingDup, setConfirmingDup] = useState(false)
@@ -151,6 +155,13 @@ export default function FinalizeSoukatsuButton({
 
     return (
         <>
+            {/* ★確定のあとに建物名などを変えた（K2）。ボタンは出す＝別の点検として確定し直せる */}
+            {identityChanged && (
+                <p role="note" className="mb-3 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm leading-relaxed text-amber-900">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>{IDENTITY_CHANGED_MESSAGE}</span>
+                </p>
+            )}
             <Button onClick={() => setOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white">
                 この点検を確定する
             </Button>

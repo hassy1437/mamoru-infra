@@ -627,7 +627,8 @@ const CHECKS = [
     },
     {
         file: "check-finalize-after-cancellation.mjs", stage: "静的",
-        why: "解約日を迎えた業者に、確定のボタンの代わりに理由を出すか。PDF・納品の案内が「確定してから」（できないこと）を求めないか。"
+        why: "解約日を迎えた業者・契約の無い口座（K1）に、確定のボタンの代わりに理由を出すか。PDF・納品の案内が「確定してから」（できないこと）を求めないか。"
+            + "確定のあとに建物名などを変えたら確定し直しを案内し、点検票の PDF も確定してからか（K2）。"
             + "★止めるのはマッチング側の DB（20261105090000・業務提携規約 第26条）。★loadFinalizationState を偽の DB で動かす（2026-10-17）",
         runs: [
             { label: "自己診断", cmd: ["node", "scripts/check-finalize-after-cancellation.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },

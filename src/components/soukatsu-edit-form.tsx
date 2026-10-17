@@ -19,6 +19,7 @@ import { useUnsavedChanges } from "@/hooks/use-unsaved-changes"
 import { toDateInputValue } from "@/lib/date-utils"
 import { mergeEquipmentDetails, type DetailField, type SoukatsuEquipmentItem } from "@/lib/soukatsu-equipment"
 import { EquipmentDetailInputs, WitnessFillAll } from "@/components/soukatsu-equipment-details"
+import { EDIT_AFTER_FINALIZE_NOTICE } from "@/lib/finalization"
 
 // 編集対象の soukatsu 行（必要な列を緩く受ける）。プリフィル元＝この soukatsu 自身。
 type SoukatsuRow = Record<string, unknown> & { id: string }
@@ -26,6 +27,8 @@ type SoukatsuRow = Record<string, unknown> & { id: string }
 interface SoukatsuEditFormProps {
     soukatsu: SoukatsuRow
     isDelivered?: boolean
+    /** 確定済みか（K2: 建物名・点検日・点検種別を変えると確定し直しになる） */
+    isFinalized?: boolean
 }
 
 const str = (v: unknown) => (v == null ? "" : String(v))
@@ -36,7 +39,7 @@ const str = (v: unknown) => (v == null ? "" : String(v))
 //     ★保存の直前に DB の最新を読み、設備名で突き合わせてこの3つだけを重ねる（mergeEquipmentDetails）
 //     ＝既存の点検結果（設備名・判定・行の数・順番）を絶対に消さない。
 //   - update は編集項目「だけ」の部分更新。updated_at は BEFORE UPDATE トリガが自動で立てる。
-export default function SoukatsuEditForm({ soukatsu, isDelivered }: SoukatsuEditFormProps) {
+export default function SoukatsuEditForm({ soukatsu, isDelivered, isFinalized }: SoukatsuEditFormProps) {
     const router = useRouter()
     const { user } = useAuth()
     const { markDirty, markClean } = useUnsavedChanges()
@@ -147,6 +150,13 @@ export default function SoukatsuEditForm({ soukatsu, isDelivered }: SoukatsuEdit
             )}
 
             {/* 納品済み注意（納品済みのときだけ・修正の反映には再納品が要る） */}
+            {/* ★確定済みの総括表で建物名などを変えると、別の点検として確定し直し（K2・業務提携規約 第12条3項） */}
+            {isFinalized && (
+                <div role="note" className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+                    <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                    <div className="text-sm text-amber-800">{EDIT_AFTER_FINALIZE_NOTICE}</div>
+                </div>
+            )}
             {isDelivered && (
                 <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
                     <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />

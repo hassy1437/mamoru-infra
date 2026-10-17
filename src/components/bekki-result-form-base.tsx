@@ -35,6 +35,7 @@ import {
 import { pdfRequestError, pdfErrorText } from "@/lib/pdf-request-error"
 
 import { createEmptyRow, coerceRow, hydrateRows, type BekkiRowState } from "@/lib/bekki-row-state"
+import { soukatsuPdfGate } from "@/lib/pdf-gate-client"
 export type { BekkiRowState } from "@/lib/bekki-row-state"
 
 export type BekkiDeviceState = {
@@ -415,6 +416,12 @@ export default function BekkiResultFormBase({
         setLoadingDownload(true)
         setError(null)
         try {
+            // ★点検票の PDF も確定してから（K2・業務提携規約 第12条2項・3項）。プレビューは止めない
+            const gate = await soukatsuPdfGate(soukatsuId)
+            if (gate) {
+                setError(gate)
+                return
+            }
             const savedOk = await persistDraft(false)
             if (!savedOk) return
 
@@ -432,7 +439,7 @@ export default function BekkiResultFormBase({
         } finally {
             setLoadingDownload(false)
         }
-    }, [downloadFilenamePrefix, formName, generatePdfBlob, persistDraft])
+    }, [downloadFilenamePrefix, formName, generatePdfBlob, persistDraft, soukatsuId])
 
     // Keep a stable ref to the latest persistDraft
     const persistDraftRef = useRef(persistDraft)

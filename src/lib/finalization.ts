@@ -72,7 +72,24 @@ export type FinalizationState =
           blockedSince: string | null
           /** 第1編の契約が無い（業者登録が無い・審査中）なら true。判定できなければ false（loadFinalizeNotContracted） */
           notContracted: boolean
+          /**
+           * 確定はあるのに、確定のあとで建物名・点検日・点検種別（物件）を変えたせいで、今の総括表の確定が無いなら true
+           * （K2・マッチング側 20261108090000）。判定できなければ false。
+           */
+          identityChanged: boolean
       }
+
+/** 確定のあとに建物名などを変えたか（K2）。★判定できない（関数が無い＝未適用・失敗）ときは false */
+async function loadIdentityChanged(supabase: AppSupabaseClient, soukatsuId: string): Promise<boolean> {
+    const { data, error } = await supabase.rpc("finalization_identity_changed", { p_soukatsu_id: soukatsuId })
+    if (error) {
+        if (!isMissingFunction(error)) {
+            console.error("[loadFinalizationState] finalization_identity_changed failed:", error)
+        }
+        return false
+    }
+    return data === true
+}
 
 /**
  * ★第1編の契約が無いか（業者登録が無い・審査中・業務提携規約 第4条2項・第12条1項・マッチング側 20261107090000・K1）。
@@ -131,12 +148,9 @@ export async function loadFinalizationState(
     // setof を返すので配列で来る
     const preview = (Array.isArray(data) ? data[0] : data) as FinalizationPreview | undefined
 
-    const { data: rows, error: rErr } = await supabase
-        .from("soukatsu_finalizations")
-        .select("id, acted_at, actor_id, equipment_codes, billable_codes, unit_price_yen, duplicate_confirmed, kind")
-        .eq("soukatsu_id", soukatsuId)
-        .eq("kind", "finalize")
-        .order("acted_at", { ascending: true })
+    // ★有効な確定は DB の active_finalizations が正（取り消されていない＋確定したときと建物名・点検日・点検種別が同じ・K2）。
+    //   以前は表を直に読んでいて、取り消された確定や、建物名を変えて使い回した総括表の確定も「確定あり」と数えていた。
+    const { data: rows, error: rErr } = await supabase.rpc("active_finalizations", { p_soukatsu_id: soukatsuId })
     if (rErr) {
         // ★確定の記録が読めないときに「確定 0 件」として返すと、確定済みなのに PDF が止まり、
         //   確定ボタンがもう一度出る（総点検 B5）。判定できない＝error に倒す（PDF は fail-open で通る）。
@@ -144,8 +158,6 @@ export async function loadFinalizationState(
         return { available: false, reason: "error" }
     }
 
-    // ★取り消されたものを除く判定は DB 側（active_finalizations）が正だが、
-    //   表示のためだけに RPC をもう1本呼ばない。取消済みの表示は F4 以降で扱う。
     // ★重複の相手を引く。preview.duplicate_of は「確定行の id」なので、
     //   そこから総括表まで辿らないと「何と重複しているか」を示せない。
     let duplicates: DuplicateInfo[] = []
@@ -183,6 +195,7 @@ export async function loadFinalizationState(
         duplicates,
         blockedSince: await loadFinalizeBlockedSince(supabase),
         notContracted: await loadFinalizeNotContracted(supabase),
+        identityChanged: await loadIdentityChanged(supabase, soukatsuId),
     }
 }
 
@@ -210,6 +223,19 @@ export function finalizeBlockedMessage(blockedSince: string): string {
 export const FINALIZE_NOT_CONTRACTED_MESSAGE =
     "報告書の確定は、マモルインフラ（マッチングサイト）で業者登録の承認を受けたあとにご利用いただけます（業務提携規約 第4条2項・第12条1項）。"
     + "下書きの保存とプレビューは、このままご利用いただけます。"
+
+/**
+ * ★確定のあとに建物名・点検日・点検種別を変えたときの案内（K2・業務提携規約 第12条2項・3項）。
+ *   確定のボタンの上に出す（ボタンは出す＝別の点検として確定し直せる）。
+ */
+export const IDENTITY_CHANGED_MESSAGE =
+    "確定したときから、建物名・点検日・点検種別のいずれかが変わっています。別の点検として、もう一度確定が必要です（利用料がかかります・業務提携規約 第12条3項）。"
+    + "誤りを直しただけの場合は、確定する前に運営までご連絡ください。"
+
+/** 編集の画面に出す注意（確定済みの総括表で、建物名などを変える前に） */
+export const EDIT_AFTER_FINALIZE_NOTICE =
+    "この総括表は確定済みです。建物名・点検日・点検種別を変えると、別の点検として確定し直し（利用料）が必要になります（業務提携規約 第12条3項）。"
+    + "点検結果の書き直しは、確定し直しの対象になりません。"
 
 /** 確定のボタンの代わりに出す案内（解約日を迎えた・契約が無い）。止めていなければ null */
 export function finalizeBlockNotice(blockedSince: string | null, notContracted: boolean): string | null {

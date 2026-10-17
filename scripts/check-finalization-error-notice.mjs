@@ -37,13 +37,19 @@ async function loadLib(src) {
 const PREVIEW = { equipment_codes: ["a"], billable_codes: ["a"], unit_price_yen: 0, amount_yen: 0, duplicate_of: null, needs_duplicate_confirm: false }
 const ROW = { id: "f1", acted_at: "2026-10-01T00:00:00Z", actor_id: "u", equipment_codes: ["a"], billable_codes: ["a"], unit_price_yen: 0, duplicate_confirmed: false }
 
-/** 偽の DB。rpc の結果と、確定の記録の select の結果を差し替えられる */
+/** 偽の DB。rpc の結果と、確定の記録（★rpc("active_finalizations")・K2）の結果を差し替えられる */
 function fakeDb({ rpc, rows }) {
     const chain = (result) => {
         const q = { select: () => q, eq: () => q, in: () => q, order: () => q, then: (res, rej) => Promise.resolve(result).then(res, rej) }
         return q
     }
-    return { rpc: async () => rpc, from: () => chain(rows) }
+    return {
+        rpc: async (name) =>
+            name === "active_finalizations" ? rows
+            : name === "finalization_identity_changed" ? { data: false, error: null }
+            : rpc,
+        from: () => chain(rows),
+    }
 }
 
 const CASES = [

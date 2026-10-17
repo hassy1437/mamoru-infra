@@ -25,6 +25,11 @@ const BUTTON = "src/components/finalize-soukatsu-button.tsx"
 const PAGE = "src/app/inspection/[id]/page.tsx"
 const ITIRAN_PAGE = "src/app/inspection/[id]/itiran/[itiranId]/page.tsx"
 const OUTPUT_PAGE = "src/app/inspection/[id]/itiran/[itiranId]/output/page.tsx"
+const EDIT_PAGE = "src/app/inspection/[id]/edit/page.tsx"
+const EDIT_FORM = "src/components/soukatsu-edit-form.tsx"
+const GATE = "src/lib/pdf-gate-client.ts"
+const BEKKI_FORMS = ["bekki-result-form-base", "foam-bekki5-form", "halogen-bekki7-form", "inert-gas-bekki6-form", "powder-bekki8-form",
+    "shokaki-bekki1-form", "shokasen-bekki2-form", "sprinkler-bekki3-form", "water-spray-bekki4-form"].map((n) => `src/components/${n}.tsx`)
 const PDF_BUTTONS = ["src/components/soukatsu-pdf-button.tsx", "src/components/itiran-pdf-button.tsx", "src/components/combined-pdf-button.tsx"]
 const read = (p) => fs.readFileSync(path.join(ROOT, p), "utf8")
 
@@ -41,7 +46,7 @@ const PREVIEW = { equipment_codes: ["a"], billable_codes: ["a"], unit_price_yen:
 const ROW = { id: "f1", acted_at: "2026-10-01T00:00:00Z", actor_id: "u", equipment_codes: ["a"], billable_codes: ["a"], unit_price_yen: 0, duplicate_confirmed: false }
 
 /** 偽の DB。★rpc は名前で分ける（プレビュー・解約の読み口・契約の読み口で結果が違う） */
-function fakeDb({ blocked, notContracted = { data: false, error: null }, rows = { data: [], error: null } }) {
+function fakeDb({ blocked, notContracted = { data: false, error: null }, rows = { data: [], error: null }, identityChanged = { data: false, error: null } }) {
     const chain = (result) => {
         const q = { select: () => q, eq: () => q, in: () => q, order: () => q, then: (res, rej) => Promise.resolve(result).then(res, rej) }
         return q
@@ -50,6 +55,8 @@ function fakeDb({ blocked, notContracted = { data: false, error: null }, rows = 
         rpc: async (name) =>
             name === "finalize_blocked_since" ? blocked
             : name === "finalize_not_contracted" ? notContracted
+            : name === "active_finalizations" ? rows
+            : name === "finalization_identity_changed" ? identityChanged
             : { data: [PREVIEW], error: null },
         from: () => chain(rows),
     }
@@ -126,6 +133,20 @@ async function inspect(src) {
     } finally {
         console.error = quiet
     }
+    // ---- K2: 確定のあとに建物名などを変えた ----
+    console.error = () => {}
+    try {
+        const ic = await lib.loadFinalizationState(fakeDb({ blocked: { data: null, error: null }, identityChanged: { data: true, error: null } }), "s1")
+        if (!ic.available || ic.identityChanged !== true) problems.push("K2: 「変わった」の判定が読み口の結果を使っていない")
+        const icMissing = await lib.loadFinalizationState(fakeDb({ blocked: { data: null, error: null }, identityChanged: { data: null, error: { code: "PGRST202", message: "Could not find the function" } } }), "s1")
+        if (!icMissing.available || icMissing.identityChanged !== false) problems.push("K2: 関数が無い（未適用）ときに「変わった」と読んでいる")
+    } finally {
+        console.error = quiet
+    }
+    if (!/別の点検として、もう一度確定が必要です/.test(lib.IDENTITY_CHANGED_MESSAGE ?? "")) problems.push("K2: 変わったときの案内（IDENTITY_CHANGED_MESSAGE）が無い")
+    if (!/建物名・点検日・点検種別を変えると/.test(lib.EDIT_AFTER_FINALIZE_NOTICE ?? "")) problems.push("K2: 編集の前の注意（EDIT_AFTER_FINALIZE_NOTICE）が無い")
+    if (!/supabase\.rpc\("active_finalizations"/.test(src(LIB))) problems.push("K2: 有効な確定を DB（active_finalizations）から読んでいない（取消・使い回しも確定ありと数える）")
+
     if (!/第4条2項・第12条1項/.test(lib.FINALIZE_NOT_CONTRACTED_MESSAGE ?? "") || !/プレビュー/.test(lib.FINALIZE_NOT_CONTRACTED_MESSAGE ?? "")) {
         problems.push("契約が無いときの案内に、根拠（第4条2項・第12条1項）か「プレビューは使える」が無い")
     }
@@ -145,6 +166,19 @@ async function inspect(src) {
 
     if (!/blockedSince=\{finalization\.blockedSince\}/.test(src(PAGE))) problems.push("総括表の確認画面が blockedSince を渡していない")
     if (!/notContracted=\{finalization\.notContracted\}/.test(src(PAGE))) problems.push("総括表の確認画面が notContracted を渡していない")
+    if (!/identityChanged=\{finalization\.identityChanged\}/.test(src(PAGE))) problems.push("K2: 総括表の確認画面が identityChanged を渡していない")
+    if (!/\{identityChanged && \(/.test(button) || !/IDENTITY_CHANGED_MESSAGE/.test(button)) problems.push("K2: 確定のボタンが「変わった」の案内を出していない")
+    const editPage = src(EDIT_PAGE)
+    if (!/supabase\.rpc\("is_finalized"/.test(editPage) || !/isFinalized=\{isFinalized\}/.test(editPage)) problems.push("K2: 編集の画面が確定済みかを渡していない")
+    if (!/\{isFinalized && \(/.test(src(EDIT_FORM)) || !/EDIT_AFTER_FINALIZE_NOTICE/.test(src(EDIT_FORM))) problems.push("K2: 編集のフォームが確定済みの注意を出していない")
+    // ★点検票の PDF も確定してから（9 か所すべて・ダウンロードの中で・プレビューは止めない）
+    for (const f of BEKKI_FORMS) {
+        const body = src(f)
+        const dl = body.slice(body.indexOf("const handleDownload = useCallback("), body.indexOf("const handleDownload = useCallback(") + 900)
+        if (!/const gate = await soukatsuPdfGate\(soukatsuId\)/.test(dl)) problems.push(`K2: ${f} の点検票の PDF が確定を見ていない`)
+    }
+    const gateSrc = src(GATE)
+    if (!/rpc\("is_finalized"/.test(gateSrc) || !/if \(error\) \{[\s\S]*?return null/.test(gateSrc)) problems.push("K2: 点検票の門が is_finalized を見ていない（か、読めないときに止めている＝fail-open でない）")
     for (const p of [PAGE, ITIRAN_PAGE, OUTPUT_PAGE]) {
         if (!/gateMessage=\{pdfGateMessage\(finalization\)\}/.test(src(p))) problems.push(`${p} が PDF のボタンに pdfGateMessage を渡していない`)
     }
@@ -168,8 +202,11 @@ if (SELF_TEST) {
         ["PDF の案内を「確定してから」のままにする", (p) => p === LIB ? read(p).replace("return finalizeBlockedGateMessage(state) ?? PDF_GATE_MESSAGE", "return PDF_GATE_MESSAGE") : read(p), "PDF の案内が解約日の文になっていない"],
         ["ボタンが案内に替えない", (p) => p === BUTTON ? read(p).replace("if (blockedNotice) return blockedNotice", "if (false) return blockedNotice") : read(p), "押すとエラーになるボタンのまま"],
         ["画面が blockedSince を渡さない", (p) => p === PAGE ? read(p).replace("blockedSince={finalization.blockedSince}", "blockedSince={null}") : read(p), "blockedSince を渡していない"],
-        ["契約の読み口の結果を捨てる", (p) => p === LIB ? read(p).replace("return data === true", "return false && data === true") : read(p), "契約の判定が違う: 契約が無い・未確定"],
+        ["契約の読み口の結果を捨てる", (p) => p === LIB ? read(p).replace('supabase.rpc("finalize_not_contracted")', 'supabase.rpc("x_finalize_not_contracted")') : read(p), "契約の判定が違う: 契約が無い・未確定"],
         ["画面が notContracted を渡さない", (p) => p === PAGE ? read(p).replace("notContracted={finalization.notContracted}", "") : read(p), "notContracted を渡していない"],
+        ["K2: 確定の記録を表から直に読む（直す前）", (p) => p === LIB ? read(p).replace('supabase.rpc("active_finalizations"', 'supabase.rpc("x_active_finalizations"') : read(p), "K2: 有効な確定を DB"],
+        ["K2: 点検票の 1 つが確定を見ない", (p) => p === BEKKI_FORMS[5] ? read(p).replace("const gate = await soukatsuPdfGate(soukatsuId)", "const gate = null") : read(p), "shokaki-bekki1-form.tsx の点検票の PDF が確定を見ていない"],
+        ["K2: 編集の画面が確定済みを渡さない", (p) => p === EDIT_PAGE ? read(p).replace("isFinalized={isFinalized}", "") : read(p), "K2: 編集の画面が確定済みかを渡していない"],
     ]
     for (const [label, src, expect] of mutants) {
         let found

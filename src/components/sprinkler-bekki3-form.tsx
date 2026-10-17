@@ -22,6 +22,7 @@ import {
 } from "@/lib/bekki-form-normalization"
 import CameraInput from "@/components/camera-input"
 import { pdfRequestError, pdfErrorText } from "@/lib/pdf-request-error"
+import { soukatsuPdfGate } from "@/lib/pdf-gate-client"
 
 type RowState = {
     content: string
@@ -478,6 +479,12 @@ export default function SprinklerBekki3Form({
         setLoadingDownload(true)
         setError(null)
         try {
+            // ★点検票の PDF も確定してから（K2・業務提携規約 第12条2項・3項）。プレビューは止めない
+            const gate = await soukatsuPdfGate(soukatsuId)
+            if (gate) {
+                setError(gate)
+                return
+            }
             const savedOk = await persistDraft(false)
             if (!savedOk) return
 
@@ -495,7 +502,7 @@ export default function SprinklerBekki3Form({
         } finally {
             setLoadingDownload(false)
         }
-    }, [formName, generatePdfBlob, persistDraft])
+    }, [formName, generatePdfBlob, persistDraft, soukatsuId])
 
     // Auto-save on unmount (navigation away)
     const persistDraftRef = useRef(persistDraft)

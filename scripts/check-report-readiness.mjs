@@ -175,7 +175,8 @@ function wiring(src) {
     if (!/if \(blockedNotice\) return blockedNotice/.test(btn)) problems.push("確定のボタン: 解約・契約なしの案内が消えた")
     const out = src(OUTPUT)
     if (!out.includes("checkReportReadiness({ soukatsu, itiran, bekkiPayloads, stepIds: applicableStepIds })")) problems.push("出力画面が点検者・別記まで渡していない")
-    if (!/<ReportReadinessBox[\s\S]*?mode="review"/.test(out)) problems.push("出力画面に出力前の確認が無い")
+    // ★未確定で確定のボタンをこの画面に置くときは「確定前の確認」（2026-10-19・通しチェック D）
+    if (!/<ReportReadinessBox[\s\S]*?mode=\{needsFinalizeOnOutput\(finalization\) \? "finalize" : "review"\}/.test(out)) problems.push("出力画面に出力前の確認が無い")
     if (!/min-h-11/.test(src(BOX))) problems.push("確定前の確認のリンクが押しにくい（高さ 44px 未満）")
     const base = src(BASE)
     if (!/useState\(\(\) => basicInfoBlank\.length > 0\)/.test(base)) problems.push("共通の別記フォーム: 基本情報が入っていても最初から開いている（判定表が下に押し出される）")

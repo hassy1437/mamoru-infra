@@ -484,8 +484,9 @@ const CHECKS = [
     },
     {
         file: "check-finalize-link.mjs", stage: "静的",
-        why: "出力の画面から確定（総括表の画面の #finalize）へ行けるか。確定できて未確定のときだけ出し、確定できないとき（解約・契約なし）・"
-            + "状態が分からないときは出さない。★以前は「確定してから」と言うだけで、確定の場所へのリンクが無かった（2026-10-19・本番の通しチェック D）",
+        why: "出力の画面で確定できるか（総括表の画面と同じ確定のボタン・空の必須なら押せない）。確定できて未確定のときだけ出し、"
+            + "確定できないとき（解約・契約なし）・状態が分からないときは出さない。★以前は「確定してから」と言うだけで、確定の場所への道が無かった"
+            + "（2026-10-19・本番の通しチェック D。#finalize へのリンクは中身が後から出て届かなかった）",
         runs: [
             { label: "自己診断", cmd: ["node", "scripts/check-finalize-link.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
             { cmd: ["node", "scripts/check-finalize-link.mjs"], sentinel: "FINALIZE_LINK_OK" },

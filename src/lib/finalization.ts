@@ -258,19 +258,19 @@ export function finalizeBlockedGateMessage(state: FinalizationState): string | n
 }
 
 /**
- * ★出力の画面から確定へ（2026-10-19・本番の通しチェック D）。
+ * ★出力の画面で確定する（2026-10-19・本番の通しチェック D）。
  *   出力の画面は「納品は、点検を確定してからになります」と言うのに、確定のボタンは総括表の画面にしか無く、
- *   出力の画面からそこへ行くリンクも無かった（パンくずの「総括表」だけ）。
- *   ＝ 確定できるのにまだ確定していないときだけ、総括表の画面の確定の場所（#finalize）へのリンクを出す。
+ *   出力の画面からそこへ行く道も無かった（パンくずの「総括表」だけ）。
+ *   ★はじめは総括表の画面の確定の欄（#finalize）へのリンクにしたが、総括表の画面は中身が後から出て、
+ *     上の PDF のプレビューも後から大きくなるので、移っても確定の欄が画面の外に押し出された（本番で確かめた）。
+ *   ＝ 確定できるのにまだ確定していないときだけ、出力の画面に確定のボタン（総括表の画面と同じ部品）を置く。
  *   ★確定できないとき（解約日を迎えた・契約が無い）は出さない ―― できないことを求めない（finalizeBlockedGateMessage が理由を出す）。
  *   ★確定の状態が分からないとき（available:false）も出さない（PDF は fail-open で出せる）。
  */
-export const FINALIZE_ANCHOR = "finalize"
-export const FINALIZE_LINK_NOTE =
-    "PDFの出力と納品は、点検を確定してからです。確定は総括表の画面で行います（押す前に、利用料の金額が出ます）。"
-export const FINALIZE_LINK_LABEL = "総括表の画面で確定する"
+export const FINALIZE_ON_OUTPUT_NOTE =
+    "PDFの出力と納品は、点検を確定してからです。ここで確定できます（押すと、利用料の金額を確かめる画面が出ます）。"
 
-export function needsFinalizeLink(state: FinalizationState): boolean {
+export function needsFinalizeOnOutput(state: FinalizationState): state is Extract<FinalizationState, { available: true }> {
     if (!state.available) return false
     return state.finalized.length === 0 && finalizeBlockNotice(state.blockedSince, state.notContracted) === null
 }

@@ -5,14 +5,13 @@ import { AlertTriangle, CheckCircle2, MinusCircle, Copy, Lock } from "lucide-rea
 import CombinedPdfButton from "@/components/combined-pdf-button"
 import {
     canDownloadPdf,
-    FINALIZE_ANCHOR,
-    FINALIZE_LINK_LABEL,
-    FINALIZE_LINK_NOTE,
+    FINALIZE_ON_OUTPUT_NOTE,
     finalizeBlockedGateMessage,
     loadFinalizationState,
-    needsFinalizeLink,
+    needsFinalizeOnOutput,
     pdfGateMessage,
 } from "@/lib/finalization"
+import FinalizeSoukatsuButton from "@/components/finalize-soukatsu-button"
 import DeliverReportButton, { type DeliveryStatus } from "@/components/deliver-report-button"
 import StepIndicator from "@/components/step-indicator"
 import { INSPECTION_STEPS } from "@/lib/inspection-steps"
@@ -212,10 +211,11 @@ export default async function OutputPage({
                     </div>
 
                     {/* ★未入力の様式の知らせ（以前の「※ 未入力の様式があります」）もこの中に入れた。様式ごとに開くリンクが付く */}
+                    {/* ★確定のボタンをこの画面に置くとき（未確定）は、総括表の画面と同じ「確定前の確認」の言い方にする */}
                     <ReportReadinessBox
                         readiness={readiness}
                         ctx={{ soukatsuId: id, itiranId, propertyId: (soukatsu.property_id as string | null) ?? null }}
-                        mode="review"
+                        mode={needsFinalizeOnOutput(finalization) ? "finalize" : "review"}
                     />
 
                     {blankSections.length > 0 && (
@@ -260,21 +260,26 @@ export default async function OutputPage({
                         </div>
                     )}
 
-                    {/* ★確定していないときは、確定の場所へのリンク（2026-10-19 の通しチェック D・src/lib/finalization.ts）。
+                    {/* ★確定していないときは、ここで確定できる（2026-10-19 の通しチェック D・src/lib/finalization.ts）。
+                        ★総括表の画面と同じ部品（押すと金額の確認 → 確定 → 画面を読み直すと PDF・納品が押せる）。
                         ★いま見てほしい所なので角のある四角で囲む（録音 101） */}
-                    {needsFinalizeLink(finalization) && (
+                    {needsFinalizeOnOutput(finalization) && (
                         <div role="note" className="rounded-none border-[3px] border-teal-600 bg-teal-50 p-4 space-y-3">
                             <p className="flex items-center gap-2 text-sm font-semibold text-teal-900">
                                 <Lock className="w-4 h-4 shrink-0" />
                                 まだ確定していません
                             </p>
-                            <p className="text-sm text-teal-900">{FINALIZE_LINK_NOTE}</p>
-                            <Link
-                                href={`/inspection/${id}#${FINALIZE_ANCHOR}`}
-                                className="inline-flex min-h-11 items-center rounded-lg bg-teal-700 px-5 text-sm font-bold text-white hover:bg-teal-800"
-                            >
-                                {FINALIZE_LINK_LABEL} →
-                            </Link>
+                            <p className="text-sm text-teal-900">{FINALIZE_ON_OUTPUT_NOTE}</p>
+                            <FinalizeSoukatsuButton
+                                soukatsuId={id}
+                                preview={finalization.preview}
+                                finalized={finalization.finalized}
+                                duplicates={finalization.duplicates}
+                                blockedSince={finalization.blockedSince}
+                                notContracted={finalization.notContracted}
+                                identityChanged={finalization.identityChanged}
+                                missingRequired={readiness.missing.map((m) => m.label)}
+                            />
                         </div>
                     )}
 

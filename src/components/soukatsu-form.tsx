@@ -22,6 +22,8 @@ import FormProgress from "@/components/form-progress"
 import { toDateInputValue } from "@/lib/date-utils"
 import { cleanEquipmentItem, type DetailField, type SoukatsuEquipmentItem } from "@/lib/soukatsu-equipment"
 import { EquipmentDetailInputs, WitnessFillAll } from "@/components/soukatsu-equipment-details"
+import { SoukatsuCoverInputs } from "@/components/soukatsu-cover-inputs"
+import { coverFieldsForSave } from "@/lib/soukatsu-cover"
 
 const FORM_SECTIONS = [
     "点検基本情報",
@@ -69,6 +71,10 @@ export default function SoukatsuForm({ property, previousData, copyFromId, sourc
     // 複製時は複製元の期間で埋まっているので、点検年月日(today)への追従で上書きしない＝手動扱いで開始。
     const [startManuallyEdited, setStartManuallyEdited] = useState(isClone)
     const [endManuallyEdited, setEndManuallyEdited] = useState(isClone)
+    // ★表紙（lib/soukatsu-cover.ts）。報告年月日は点検ごとに違うので、前回からも写さず空で始める。
+    //   宛名（管轄の消防署）は建物で決まるので、前回の報告書があればそこから写す。
+    const [reportDate, setReportDate] = useState("")
+    const [fireDepartmentName, setFireDepartmentName] = useState(src("fire_department_name"))
 
     // 届出者情報（複製時は複製元 soukatsu、通常は物件マスターから初期化）
     const [notifierAddress, setNotifierAddress] = useState(isClone ? src("notifier_address") : (property?.notifier_address ?? ""))
@@ -166,6 +172,7 @@ export default function SoukatsuForm({ property, previousData, copyFromId, sourc
                     equipment_results: equipmentResults.filter(e => e.result !== "該当なし").map(cleanEquipmentItem),
                     overall_judgment: overallJudgment || null,
                     notes: notes || null,
+                    ...coverFieldsForSave(reportDate, fireDepartmentName),
                     property_id: property?.id ?? null,
                     user_id: user?.id,
                 })
@@ -253,7 +260,7 @@ export default function SoukatsuForm({ property, previousData, copyFromId, sourc
             <Card>
                 <CardHeader>
                     <CardTitle>点検基本情報</CardTitle>
-                    <CardDescription>点検の日付・種別・期間を入力してください。</CardDescription>
+                    <CardDescription>点検の日付・種別・期間と、表紙の報告年月日・宛名を入力してください。</CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-6 md:grid-cols-2">
                     <div className="space-y-2 min-w-0">
@@ -332,6 +339,12 @@ export default function SoukatsuForm({ property, previousData, copyFromId, sourc
                             }}
                         />
                     </div>
+                    <SoukatsuCoverInputs
+                        reportDate={reportDate}
+                        onReportDateChange={setReportDate}
+                        fireDepartmentName={fireDepartmentName}
+                        onFireDepartmentNameChange={setFireDepartmentName}
+                    />
                 </CardContent>
             </Card>
 

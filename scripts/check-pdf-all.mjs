@@ -351,7 +351,8 @@ const CHECKS = [
         file: "check-houkoku-layout.mjs", stage: "挙動",
         why: "報告書（様式第1）の届出者欄が記入用の下線の右端を越えないか・所在地/名称/用途が欄の縦の中央にあるか"
             + "（短い値・長い値で実際に描いて測る。罫線は雛形から毎回測る）。"
-            + "★報告書は別記用の検査の外で、下線の先へ 15pt はみ出し・値が上の罫線に張りついたまま出ていた（2026-10-07）",
+            + "★報告書は別記用の検査の外で、下線の先へ 15pt はみ出し・値が上の罫線に張りついたまま出ていた（2026-10-07）。"
+            + "宛名が日付（年）に重ならないか（画面の上限いっぱいの全角で・2026-10-19）",
         runs: [
             { label: "自己診断", cmd: ["node", "scripts/check-houkoku-layout.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
             { cmd: ["node", "scripts/check-houkoku-layout.mjs"], sentinel: "HOUKOKU_LAYOUT_OK" },
@@ -460,6 +461,15 @@ const CHECKS = [
         runs: [
             { label: "自己診断", cmd: ["node", "scripts/check-current-value-labels.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
             { cmd: ["node", "scripts/check-current-value-labels.mjs"], sentinel: "CURRENT_VALUE_LABELS_OK" },
+        ],
+    },
+    {
+        file: "check-soukatsu-cover.mjs", stage: "静的",
+        why: "表紙（様式第１）へ総括表の報告年月日・宛名を渡し、作る画面・直す画面の両方で保存しているか。"
+            + "★報告年月日に点検日を印字していた（正しい形の日付が描かれるので PDF を見ても気付けない・2026-10-19 録音 101）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-soukatsu-cover.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-soukatsu-cover.mjs"], sentinel: "SOUKATSU_COVER_OK" },
         ],
     },
     {

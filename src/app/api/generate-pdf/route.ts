@@ -31,6 +31,9 @@ type GeneratePdfBody = {
     equipment_types?: string[] | null
 }
 
+/** 宛名の右端（日付の年の数字の手前）。scripts/check-houkoku-layout.mjs が実際に描いて重ならないことを確かめる */
+const FIRE_DEPARTMENT_RIGHT_X = 370
+
 const toText = (value: unknown) => {
     if (value === null || value === undefined) return undefined
     const text = String(value).trim()
@@ -154,7 +157,11 @@ export async function POST(req: NextRequest) {
         //     ・宛名の行に足そうにも、罫線 64.9 と刷り込み 70.4 の間は 5.5pt しかなく入らない
         //   ＝「どこに書くか」は実務の記入方法の話で、推測で動かすと
         //     「間違った場所に正しく描く」ことになる。共同創立者に確認する。
-        draw(toText(body.fire_department_name), 70.4, 95, 12)
+        //
+        // ★幅は日付（年の数字・左端 約 379）の手前 370 まで（2026-10-19）。宛名は総括表の欄から入るようになり
+        //   （lib/soukatsu-cover.ts）、幅を決めていなかったので、長い宛名が日付に重なり右の罫線の先まで出ていた
+        //   （全角 60 字で右端 598・実測）。入らないときは縮める。画面の上限（全角 30 字）なら 10pt で収まる。
+        draw(toText(body.fire_department_name), 70.4, 95, 12, FIRE_DEPARTMENT_RIGHT_X - 70.4)
 
         // ★右端は各行の記入用の下線の右端（テンプレート実測・2026-10-07）。
         //   住所 261.48–513.48 / 氏名 262.38–512.58 / 電話番号 261.48–513.48（いずれも y≈153〜188 の細い矩形）。

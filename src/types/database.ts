@@ -530,6 +530,10 @@ export interface Database {
                     overall_judgment: string | null
                     notes: string | null
                     property_id: string | null
+                    /** 表紙の報告年月日（消防署へ出す日・点検日ではない）。null は空欄で印字 */
+                    report_date: string | null
+                    /** 表紙の宛名（例: 大阪市消防局 北消防署長）。null は空欄で印字 */
+                    fire_department_name: string | null
                 }
                 Insert: {
                     id?: string
@@ -553,6 +557,8 @@ export interface Database {
                     overall_judgment?: string | null
                     notes?: string | null
                     property_id?: string | null
+                    report_date?: string | null
+                    fire_department_name?: string | null
                 }
                 Update: {
                     id?: string
@@ -576,6 +582,8 @@ export interface Database {
                     overall_judgment?: string | null
                     notes?: string | null
                     property_id?: string | null
+                    report_date?: string | null
+                    fire_department_name?: string | null
                 }
             }
         }

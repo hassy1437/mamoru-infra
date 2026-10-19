@@ -56,7 +56,7 @@ export const FIELD_LABELS: Record<string, string> = {
     notes: "備考",
     // 報告書（第1号様式）の欄。★この様式は長らく fit コレクタ自体が無く、
     //   ラベルも登録されていなかった（英語のキーがそのまま業者に出る状態だった）。
-    fire_department_name: "消防本部名",
+    fire_department_name: "宛名",
     notifier_address: "住所",
     notifier_name: "氏名（法人名及び役職等）",
     notifier_phone: "電話番号",

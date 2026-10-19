@@ -19,6 +19,8 @@ import { useUnsavedChanges } from "@/hooks/use-unsaved-changes"
 import { toDateInputValue } from "@/lib/date-utils"
 import { mergeEquipmentDetails, type DetailField, type SoukatsuEquipmentItem } from "@/lib/soukatsu-equipment"
 import { EquipmentDetailInputs, WitnessFillAll } from "@/components/soukatsu-equipment-details"
+import { SoukatsuCoverInputs } from "@/components/soukatsu-cover-inputs"
+import { coverFieldsForSave } from "@/lib/soukatsu-cover"
 import { EDIT_AFTER_FINALIZE_NOTICE } from "@/lib/finalization"
 
 // 編集対象の soukatsu 行（必要な列を緩く受ける）。プリフィル元＝この soukatsu 自身。
@@ -50,6 +52,9 @@ export default function SoukatsuEditForm({ soukatsu, isDelivered, isFinalized }:
     const [inspectionType, setInspectionType] = useState(str(soukatsu.inspection_type) || "機器点検")
     const [periodStart, setPeriodStart] = useState(str(soukatsu.inspection_period_start))
     const [periodEnd, setPeriodEnd] = useState(str(soukatsu.inspection_period_end))
+    // ★表紙（lib/soukatsu-cover.ts）。確定の元（建物名・点検日・点検種別）ではないので、直しても確定し直しにならない
+    const [reportDate, setReportDate] = useState(str(soukatsu.report_date))
+    const [fireDepartmentName, setFireDepartmentName] = useState(str(soukatsu.fire_department_name))
     const [notifierAddress, setNotifierAddress] = useState(str(soukatsu.notifier_address))
     const [notifierName, setNotifierName] = useState(str(soukatsu.notifier_name))
     const [notifierPhone, setNotifierPhone] = useState(str(soukatsu.notifier_phone))
@@ -121,6 +126,7 @@ export default function SoukatsuEditForm({ soukatsu, isDelivered, isFinalized }:
                     total_floor_area: totalFloorArea ? parseFloat(totalFloorArea) : null,
                     overall_judgment: overallJudgment || null,
                     notes: notes || null,
+                    ...coverFieldsForSave(reportDate, fireDepartmentName),
                     ...(mergedResults ? { equipment_results: mergedResults } : {}),
                 })
                 .eq("id", soukatsu.id)
@@ -203,6 +209,12 @@ export default function SoukatsuEditForm({ soukatsu, isDelivered, isFinalized }:
                             value={toDateInputValue(periodEnd)}
                             onChange={(e) => setPeriodEnd(e.target.value)} />
                     </div>
+                    <SoukatsuCoverInputs
+                        reportDate={reportDate}
+                        onReportDateChange={setReportDate}
+                        fireDepartmentName={fireDepartmentName}
+                        onFireDepartmentNameChange={setFireDepartmentName}
+                    />
                 </CardContent>
             </Card>
 

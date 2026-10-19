@@ -24,7 +24,9 @@ type PdfTask = { label: string; route: string; body: Record<string, unknown> }
 
 function buildTasks(input: ReportInputs): PdfTask[] {
     const houkokuBody: Record<string, unknown> = {
-        report_date: input.soukatsuData.inspection_date,
+        // ★報告年月日は点検日ではない（消防署へ出す日・lib/soukatsu-cover.ts）。空なら表紙は空欄で印字される
+        report_date: input.soukatsuData.report_date,
+        fire_department_name: input.soukatsuData.fire_department_name,
         notifier_address: input.soukatsuData.notifier_address,
         notifier_name: input.soukatsuData.notifier_name,
         notifier_phone: input.soukatsuData.notifier_phone,

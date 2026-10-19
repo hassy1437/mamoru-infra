@@ -31,16 +31,19 @@ LABELS_TS = ROOT / "src" / "lib" / "pdf-fit-report.ts"
 #   「画面に無い」と誤って落ちた（＝走査範囲の限定で取りこぼす形をここでも踏んだ）。
 # ★総括表（#28・2026-10-06）: 不良内容・措置内容・立会者の入力欄は共有の部品にあり、
 #   保存の形（bad_detail / action / witness）は lib/soukatsu-equipment.ts に定義している。
+# ★表紙の宛名（2026-10-19）: 入力欄は共有の部品 soukatsu-cover-inputs.tsx にあり、
+#   保存の形（fire_department_name）は lib/soukatsu-cover.ts に定義している。
 FORM_TSX = sorted([ROOT / "src" / "components" / "bekki-result-form-base.tsx",
                    ROOT / "src" / "components" / "property-form.tsx",
                    ROOT / "src" / "components" / "soukatsu-equipment-details.tsx",
-                   ROOT / "src" / "lib" / "soukatsu-equipment.ts"]
+                   ROOT / "src" / "components" / "soukatsu-cover-inputs.tsx",
+                   ROOT / "src" / "lib" / "soukatsu-equipment.ts",
+                   ROOT / "src" / "lib" / "soukatsu-cover.ts"]
                   + list((ROOT / "src" / "components").glob("*bekki*-form.tsx")))
 
 # 入力画面に固定ラベルが無い項目（理由は docstring 参照）
 EXEMPT = {"content", "bad_content", "action_content", "equipment_name", "notes",
           # 報告書の欄で、入力画面に固定の <Label> が無いもの
-          "fire_department_name",   # 宛名。payload に無く、出力側で組み立てる
           "equipment_types",        # チェックボックス群で <Label> が動的
           # 測定機器の欄。見出し「測定機器 1」の下に placeholder（型式・製造者名）だけで並び <Label> が無い
           "model", "maker",

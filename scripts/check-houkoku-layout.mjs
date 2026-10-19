@@ -10,6 +10,9 @@
 // ■ 検査すること（罫線・下線は雛形 public/PDF/bekki_houkoku.pdf から毎回測る。数値の写しは持たない）
 //   1. 届出者の住所・氏名・電話番号: 描いた文字の右端が、その行の下線の右端を越えない（長い値で満杯にして見る）
 //   2. 所在地・名称・用途: 値のかたまりの縦の中心が、欄（上下の横罫線）の中心から 2pt 以内（1 行・2 行の両方）
+//   3. 宛名（2026-10-19）: 右端が日付（年の数字）の左端より 4pt 以上手前・7pt 以上の大きさ
+//      ★宛名は総括表の欄から入るようになり、幅を決めていなかったので、長い宛名が日付に重なり罫線の先まで出ていた。
+//      画面の上限（lib/soukatsu-cover.ts の FIRE_DEPARTMENT_NAME_MAX）いっぱいの全角で描いて測る
 //
 // 使い方: node scripts/check-houkoku-layout.mjs [--self-test]
 import { spawnSync } from "child_process"
@@ -21,6 +24,9 @@ const PY = process.platform === "win32" ? "python" : "python3"
 const ROUTE = "src/app/api/generate-pdf/route.ts"
 const SELF_TEST = process.argv.includes("--self-test")
 const OUT = path.join("tmp", SELF_TEST ? "houkoku-layout-selftest" : "houkoku-layout")
+const COVER_LIB = "src/lib/soukatsu-cover.ts"
+const NAME_MAX = Number(fs.readFileSync(COVER_LIB, "utf8").match(/FIRE_DEPARTMENT_NAME_MAX\s*=\s*(\d+)/)?.[1])
+if (!NAME_MAX) throw new Error(`${COVER_LIB} に FIRE_DEPARTMENT_NAME_MAX が見つからない`)
 
 const BASE = {
     report_date: "2026-10-07",
@@ -41,6 +47,8 @@ const CASES = [
         notifier_phone: "06-1234-5678（内線2040）／携帯090-1234-5678（夜間・休日）",
         building_address: "大阪府大阪市北区梅田三丁目一番一号グランフロント大阪タワーＡ二十階から三十階まで全部",
         building_name: "グランフロント大阪タワーＡ北館・南館・うめきた広場",
+        // ★画面で入れられるいちばん長い宛名（全角）
+        fire_department_name: "消".repeat(NAME_MAX),
     }],
 ]
 
@@ -64,6 +72,14 @@ def lines_of(cell):
     ys = sorted(s["bbox"][1] for s in cell)
     return 1 + sum(1 for a, b in zip(ys, ys[1:]) if b - a > 4)
 res = {"underlines": [], "cells": []}
+# 宛名（左端 70.4・表題と「消防長…殿」の間）と、日付の年の数字（右上・年の刷り込みの左）
+head = [s for s in spans if 78 < (s["bbox"][1] + s["bbox"][3]) / 2 < 104]
+name = [s for s in head if s["bbox"][0] < 300]
+year = [s for s in head if 330 < s["bbox"][0] < 405]
+res["name"] = {"right": round(max((s["bbox"][2] for s in name), default=0), 2),
+               "size": round(min((s["size"] for s in name), default=0), 2),
+               "text": "".join(s["text"] for s in name)[:12]}
+res["yearLeft"] = round(min((s["bbox"][0] for s in year), default=0), 2)
 for u in underlines:
     row = [s for s in spans if s["bbox"][0] > 311 and u.y0 - 16 < s["bbox"][3] < u.y0 + 3]
     res["underlines"].append({"y": round(u.y0, 2), "end": round(u.x1, 2),
@@ -101,6 +117,12 @@ async function measure(routePath) {
             const mid = (c.top + c.bottom) / 2
             if (Math.abs(c.center - mid) > 2) problems.push(`${label}: ${cellNames[i]}（${c.lines} 行）の縦の中心 ${c.center} が欄の中心 ${mid.toFixed(2)} から ${(c.center - mid).toFixed(2)}pt ずれている「${c.text}」`)
         })
+        if (!m.name.right) problems.push(`${label}: 宛名が描かれていない`)
+        else if (!m.yearLeft) problems.push(`${label}: 日付（年）が描かれていない`)
+        else {
+            if (m.name.right > m.yearLeft - 4) problems.push(`${label}: 宛名の右端 ${m.name.right} が日付（年）の左端 ${m.yearLeft} に重なる・近すぎる「${m.name.text}」`)
+            if (m.name.size < 7) problems.push(`${label}: 宛名が ${m.name.size}pt まで縮んでいる（下限 7pt）「${m.name.text}」`)
+        }
         if (label === "長い値" && m.cells[0]?.lines !== 2) problems.push(`長い値: 所在地が 2 行に折り返されていない（${m.cells[0]?.lines} 行）＝ 2 行の中央寄せを見られていない`)
     }
     return problems
@@ -125,6 +147,7 @@ if (SELF_TEST) {
     }
     const mutants = [
         ["届出者の住所を右の縦罫線まで描く（直す前の幅）", "drawNotifier(toText(body.notifier_address), 151.7, 513.48)", "drawNotifier(toText(body.notifier_address), 151.7, 531.0)", "届出者の住所が下線の右端"],
+        ["宛名の幅を決めない（直す前）", "draw(toText(body.fire_department_name), 70.4, 95, 12, FIRE_DEPARTMENT_RIGHT_X - 70.4)", "draw(toText(body.fire_department_name), 70.4, 95, 12)", "宛名の右端"],
         ["所在地・名称・用途を上寄せに戻す", 'verticalAlign: "center" | "top" = "center"', 'verticalAlign: "center" | "top" = "top"', "所在地（1 行）の縦の中心"],
     ]
     for (const [label, from, to, expect] of mutants) {
@@ -136,13 +159,13 @@ if (SELF_TEST) {
         }
         console.log(`  陽性対照: ${label} → 検出`)
     }
-    console.log("  陰性対照: 短い値・長い値の両方で、届出者は下線の内側・所在地等は欄の中央")
+    console.log("  陰性対照: 短い値・長い値の両方で、届出者は下線の内側・所在地等は欄の中央・宛名は日付の手前")
     console.log("SELF_TEST_OK")
     process.exit(0)
 }
 
 const problems = await measure(ROUTE)
-console.log("報告書の値の置き場所を検査: 届出者 3 行（下線の右端）・所在地/名称/用途（縦の中央）× 短い値・長い値")
+console.log(`報告書の値の置き場所を検査: 届出者 3 行（下線の右端）・所在地/名称/用途（縦の中央）・宛名（日付の手前・全角 ${NAME_MAX} 字）× 短い値・長い値`)
 if (problems.length) {
     console.log("★NG:")
     for (const p of problems) console.log("   ", p)

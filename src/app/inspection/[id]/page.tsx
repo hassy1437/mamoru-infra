@@ -8,6 +8,7 @@ import StepIndicator from "@/components/step-indicator"
 import { INSPECTION_STEPS } from "@/lib/inspection-steps"
 import Breadcrumb from "@/components/breadcrumb"
 import FinalizeSoukatsuButton from "@/components/finalize-soukatsu-button"
+import ScrollToHash from "@/components/scroll-to-hash"
 import { canDownloadPdf, FINALIZE_ANCHOR, finalizeBlockNotice, FINALIZATION_ERROR_MESSAGE, loadFinalizationState, pdfGateMessage } from "@/lib/finalization"
 import WithdrawnMatchNotice from "@/components/withdrawn-match-notice"
 import { withdrawnAtOf } from "@/lib/match-withdrawn"
@@ -141,6 +142,8 @@ export default async function InspectionDetailPage({ params }: { params: Promise
             {finalization.available && (
                 // ★出力の画面の「総括表の画面で確定する」の行き先（#finalize・src/lib/finalization.ts の FINALIZE_ANCHOR）
                 <div id={FINALIZE_ANCHOR} className="max-w-[210mm] mx-auto mb-6 scroll-mt-4">
+                    {/* ★中身が後から出る画面なので、#finalize で来たら欄が出たときに自分で動かす */}
+                    <ScrollToHash id={FINALIZE_ANCHOR} />
                     <FinalizeSoukatsuButton
                         soukatsuId={id}
                         preview={finalization.preview}

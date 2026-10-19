@@ -22,6 +22,7 @@ const OUT = path.join(ROOT, "tmp", SELF_TEST ? "finalize-link-selftest" : "final
 const LIB = "src/lib/finalization.ts"
 const OUTPUT = "src/app/inspection/[id]/itiran/[itiranId]/output/page.tsx"
 const SOUKATSU = "src/app/inspection/[id]/page.tsx"
+const SCROLL = "src/components/scroll-to-hash.tsx"
 const read = (f) => fs.readFileSync(path.join(ROOT, f), "utf8")
 
 async function load(src) {
@@ -62,12 +63,17 @@ function wiring(files) {
     // ★リンクは PDF・納品のボタンより上（押せないボタンの近くで、先に目に入る所）
     const link = out.indexOf("needsFinalizeLink(finalization) &&")
     if (link < 0 || link > out.indexOf("<CombinedPdfButton")) problems.push(`${OUTPUT}: 確定へのリンクが PDF のボタンより下にある`)
-    if (!/id=\{FINALIZE_ANCHOR\}/.test(sou)) problems.push(`${SOUKATSU}: 確定の場所に id={FINALIZE_ANCHOR} が無い（リンクの行き先が無い）`)
-    if (sou.indexOf("id={FINALIZE_ANCHOR}") > sou.indexOf("<FinalizeSoukatsuButton")) problems.push(`${SOUKATSU}: id が確定のボタンを囲んでいない`)
+    // ★<div ...> の id で見る（<ScrollToHash id={FINALIZE_ANCHOR} /> にも同じ文字列があるので、id= だけだと外しても当たる）
+    if (!/<div id=\{FINALIZE_ANCHOR\}/.test(sou)) problems.push(`${SOUKATSU}: 確定の場所に id={FINALIZE_ANCHOR} が無い（リンクの行き先が無い）`)
+    else if (sou.indexOf("<div id={FINALIZE_ANCHOR}") > sou.indexOf("<FinalizeSoukatsuButton")) problems.push(`${SOUKATSU}: id が確定のボタンを囲んでいない`)
+    // ★総括表の画面は中身を後から出す（loading.tsx）ので、ブラウザの #finalize への移動は効かない（本番で確かめた）。欄の中で動かす
+    if (!/<ScrollToHash id=\{FINALIZE_ANCHOR\} \/>/.test(sou)) problems.push(`${SOUKATSU}: 確定の欄に <ScrollToHash id={FINALIZE_ANCHOR} /> が無い（移っても確定の欄まで下がらない）`)
+    const sth = files[SCROLL]
+    if (!/window\.location\.hash !== `#\$\{id\}`/.test(sth) || !/scrollIntoView\(/.test(sth)) problems.push(`${SCROLL}: #id のときに scrollIntoView していない`)
     return problems
 }
 
-const files = Object.fromEntries([OUTPUT, SOUKATSU].map((f) => [f, read(f)]))
+const files = Object.fromEntries([OUTPUT, SOUKATSU, SCROLL].map((f) => [f, read(f)]))
 const lib = read(LIB)
 
 if (SELF_TEST) {
@@ -92,6 +98,8 @@ if (SELF_TEST) {
         ["リンクを外す（直す前）", OUTPUT, "{needsFinalizeLink(finalization) && (", "{false && (", "リンクを出していない"],
         ["行き先を総括表の画面の上にする", OUTPUT, "href={`/inspection/${id}#${FINALIZE_ANCHOR}`}", "href={`/inspection/${id}`}", "#finalize"],
         ["総括表の画面の id を外す", SOUKATSU, "id={FINALIZE_ANCHOR} ", "", "id={FINALIZE_ANCHOR}"],
+        ["欄の中で動かすのをやめる（ブラウザ任せに戻す）", SOUKATSU, "<ScrollToHash id={FINALIZE_ANCHOR} />", "", "ScrollToHash"],
+        ["動かす部品が何もしない", SCROLL, "scrollIntoView(", "focus(", "scrollIntoView"],
     ]
     for (const [label, file, from, to, expect] of wireMutants) {
         if (!files[file].includes(from)) { console.log(`自己診断: 書き換える箇所が ${file} に無い: ${from}`); process.exit(1) }
@@ -99,7 +107,7 @@ if (SELF_TEST) {
         if (!r.some((p) => p.includes(expect))) { console.log(`自己診断: ${label} → 検出できない`); for (const p of r) console.log("   ", p); process.exit(1) }
         console.log(`  陽性対照: ${label} → 検出`)
     }
-    console.log("  陰性対照: 確定できて未確定のときだけ出す・出力の画面から #finalize へ・総括表の画面に行き先がある")
+    console.log("  陰性対照: 確定できて未確定のときだけ出す・出力の画面から #finalize へ・総括表の画面に行き先があり、欄が出たら動かす")
     console.log("SELF_TEST_OK")
     process.exit(0)
 }

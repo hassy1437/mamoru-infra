@@ -2,6 +2,7 @@ import { BEKKI_ROW_LABELS } from "@/lib/bekki-row-labels"
 import { isBekkiHeadingLabel } from "@/lib/bekki-heading-row"
 import { PDF_MERGE_CONFIG } from "@/lib/pdf-merge-config"
 import type { ItiranInputStepId } from "@/lib/itiran-input-flow"
+import { sogoRowIndexes } from "@/lib/bekki-bulk-good"
 
 /**
  * 判定が 1 つも入っていない表（2026-10-07）。
@@ -22,19 +23,15 @@ export type BlankJudgmentSection = { stepId: string; form: string; sections: str
 
 type Row = { judgment?: unknown }
 
-/** その表の「機器点検の行」の添字（見出し行と、総合点検の見出しより下・「総合点検」で始まる行を除く） */
-function kikiRowIndexes(labels: readonly string[]): number[] {
-    const out: number[] = []
-    let inSogo = false
-    labels.forEach((label, i) => {
-        if (isBekkiHeadingLabel(label)) {
-            inSogo = label.startsWith("総合点検")
-            return
-        }
-        if (inSogo || label.startsWith("総合点検")) return
-        out.push(i)
-    })
-    return out
+/**
+ * その表の「機器点検の行」の添字（見出し行と総合点検の行を除く）。
+ * ★総合点検の行は「様式の空欄をすべて良」と同じ決め方（bekki-bulk-good.ts の sogoRowIndexes）。
+ *   以前はラベルだけで決めていて、見出しが入力画面に無い表（別記7・8 その4／別記12 その2 など・SOGO_FROM_INDEX）を
+ *   機器点検の行と数え、機器点検だけの報告書で「判定が空」と出ていた（2026-10-19）。
+ */
+function kikiRowIndexes(form: string, key: string, labels: readonly string[]): number[] {
+    const sogo = sogoRowIndexes(form, key, labels)
+    return labels.flatMap((label, i) => (isBekkiHeadingLabel(label) || sogo.has(i) ? [] : [i]))
 }
 
 const sectionTitle = (key: string) => {
@@ -56,7 +53,7 @@ export function findBlankJudgmentSections(
         if (!labelsByKey) continue
         const sections = Object.entries(labelsByKey).map(([key, labels]) => {
             const rows = (Array.isArray(payload[key]) ? payload[key] : []) as Row[]
-            const idx = kikiRowIndexes(labels)
+            const idx = kikiRowIndexes(form, key, labels)
             const judged = idx.filter((i) => typeof rows[i]?.judgment === "string" && rows[i]?.judgment !== "").length
             return { key, kiki: idx.length, judged }
         })

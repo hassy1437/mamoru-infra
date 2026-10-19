@@ -10,6 +10,8 @@
 //   3. 様式まるごと判定が無い → 出さない（未入力の様式は出力画面が別に案内する）
 //   4. 全部入っている → 出さない
 //   ・機器点検が空で総合点検だけ判定がある表 → 出す／総合点検の行だけの表（別記5 その4）が空 → 出さない
+//   ・入力画面に「総合点検」の見出しが無い総合点検の表（別記7 その4 など・bekki-bulk-good.ts の SOGO_FROM_INDEX）が空 → 出さない
+//     ★以前はラベルだけで決めていて、機器点検だけの報告書で「その4 の判定が空」と出ていた（2026-10-19）
 //   5. 呼び出し側: 出力画面と納品ボタンの両方が使っている
 //
 // 使い方: node scripts/check-blank-judgment-sections.mjs [--self-test]
@@ -19,7 +21,7 @@ import { pathToFileURL } from "url"
 import ts from "typescript"
 
 const ROOT = process.cwd()
-const MODULES = ["blank-judgment-sections", "bekki-row-labels", "bekki-heading-row", "pdf-merge-config", "itiran-input-flow"]
+const MODULES = ["blank-judgment-sections", "bekki-bulk-good", "bekki-row-labels", "bekki-heading-row", "pdf-merge-config", "itiran-input-flow"]
 const OUT = path.join(ROOT, "tmp", process.argv.includes("--self-test") ? "blank-judgment-selftest" : "blank-judgment")
 
 /** src/lib の TS を JS にして、@/lib の import を同じフォルダの .mjs に向け直す（mutate で中身を差し替えられる） */
@@ -52,6 +54,8 @@ function behaviour(mod) {
     ].map((c) => [id, "別記様式第15", ...c])
     // 別記5: その4 は見出し「総合点検」と総合点検の行だけ（機器点検だけの点検では表まるごと空が正しい）
     cases.push(["foam", "別記様式第5", "総合点検だけの表（別記5 その4）が空", { page1_rows: rows(19, () => true), page2_rows: rows(34, () => true), page3_rows: rows(27, () => true), page4_rows: rows(23, () => false) }, []])
+    // 別記7: その4 は紙では「総合点検」の見出しの下だが、入力画面のラベルに見出しが無い（SOGO_FROM_INDEX）
+    cases.push(["halogen", "別記様式第7", "見出しの無い総合点検の表（別記7 その4）が空", { page1_rows: rows(37, () => true), page2_rows: rows(47, () => true), page3_rows: rows(27, () => true), page4_rows: rows(11, () => false) }, []])
     for (const [stepId, form, label, payload, want] of cases) {
         const got = f({ [stepId]: payload }, [stepId])
         const sections = got[0]?.sections ?? []
@@ -79,7 +83,8 @@ if (process.argv.includes("--self-test")) {
         process.exit(1)
     }
     const mutants = [
-        ["総合点検の行も数える", (n, s) => n === "blank-judgment-sections" ? s.replace("if (inSogo || label.startsWith(\"総合点検\")) return", "") : s, "総合点検だけの表"],
+        ["総合点検の行も数える", (n, s) => n === "blank-judgment-sections" ? s.replace("isBekkiHeadingLabel(label) || sogo.has(i)", "isBekkiHeadingLabel(label)") : s, "総合点検だけの表"],
+        ["見出しの無い総合点検の表を見ない（直す前）", (n, s) => n === "bekki-bulk-good" ? s.replace('"別記様式第7": { page4_rows: 0 },', "") : s, "見出しの無い総合点検の表"],
         ["別の表に判定があるかを見ない", (n, s) => n === "blank-judgment-sections" ? s.replace("if (!sections.some((s) => s.judged > 0)) continue", "") : s, "様式まるごと判定なし"],
     ]
     for (const [label, mutate, expect] of mutants) {
@@ -90,13 +95,13 @@ if (process.argv.includes("--self-test")) {
         }
         console.log(`  陽性対照: ${label} → 検出`)
     }
-    console.log("  陰性対照: 7 通りの入力で、入れ忘れらしい表だけを出す・出力画面と納品ボタンの両方が使う")
+    console.log("  陰性対照: 8 通りの入力で、入れ忘れらしい表だけを出す・出力画面と納品ボタンの両方が使う")
     console.log("SELF_TEST_OK")
     process.exit(0)
 }
 
 const problems = [...behaviour(await load()), ...wiring()]
-console.log("判定の無い表の知らせを検査: 7 通り＋呼び出し 2 か所")
+console.log("判定の無い表の知らせを検査: 8 通り＋呼び出し 2 か所")
 if (problems.length) {
     console.log("★NG:")
     for (const p of problems) console.log("   ", p)

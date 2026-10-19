@@ -1,9 +1,18 @@
 import { createClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { AlertTriangle, CheckCircle2, MinusCircle, Copy } from "lucide-react"
+import { AlertTriangle, CheckCircle2, MinusCircle, Copy, Lock } from "lucide-react"
 import CombinedPdfButton from "@/components/combined-pdf-button"
-import { canDownloadPdf, finalizeBlockedGateMessage, loadFinalizationState, pdfGateMessage } from "@/lib/finalization"
+import {
+    canDownloadPdf,
+    FINALIZE_ANCHOR,
+    FINALIZE_LINK_LABEL,
+    FINALIZE_LINK_NOTE,
+    finalizeBlockedGateMessage,
+    loadFinalizationState,
+    needsFinalizeLink,
+    pdfGateMessage,
+} from "@/lib/finalization"
 import DeliverReportButton, { type DeliveryStatus } from "@/components/deliver-report-button"
 import StepIndicator from "@/components/step-indicator"
 import { INSPECTION_STEPS } from "@/lib/inspection-steps"
@@ -248,6 +257,24 @@ export default async function OutputPage({
                             <p className="text-xs text-amber-700">
                                 別記を開いたあとで総括表の種別を変えたときや、前回の報告書を複製したときに起きます。別記の入力画面の「点検種別」を直して保存してください。
                             </p>
+                        </div>
+                    )}
+
+                    {/* ★確定していないときは、確定の場所へのリンク（2026-10-19 の通しチェック D・src/lib/finalization.ts）。
+                        ★いま見てほしい所なので角のある四角で囲む（録音 101） */}
+                    {needsFinalizeLink(finalization) && (
+                        <div role="note" className="rounded-none border-[3px] border-teal-600 bg-teal-50 p-4 space-y-3">
+                            <p className="flex items-center gap-2 text-sm font-semibold text-teal-900">
+                                <Lock className="w-4 h-4 shrink-0" />
+                                まだ確定していません
+                            </p>
+                            <p className="text-sm text-teal-900">{FINALIZE_LINK_NOTE}</p>
+                            <Link
+                                href={`/inspection/${id}#${FINALIZE_ANCHOR}`}
+                                className="inline-flex min-h-11 items-center rounded-lg bg-teal-700 px-5 text-sm font-bold text-white hover:bg-teal-800"
+                            >
+                                {FINALIZE_LINK_LABEL} →
+                            </Link>
                         </div>
                     )}
 

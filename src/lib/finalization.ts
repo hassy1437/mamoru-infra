@@ -257,6 +257,24 @@ export function finalizeBlockedGateMessage(state: FinalizationState): string | n
     return null
 }
 
+/**
+ * ★出力の画面から確定へ（2026-10-19・本番の通しチェック D）。
+ *   出力の画面は「納品は、点検を確定してからになります」と言うのに、確定のボタンは総括表の画面にしか無く、
+ *   出力の画面からそこへ行くリンクも無かった（パンくずの「総括表」だけ）。
+ *   ＝ 確定できるのにまだ確定していないときだけ、総括表の画面の確定の場所（#finalize）へのリンクを出す。
+ *   ★確定できないとき（解約日を迎えた・契約が無い）は出さない ―― できないことを求めない（finalizeBlockedGateMessage が理由を出す）。
+ *   ★確定の状態が分からないとき（available:false）も出さない（PDF は fail-open で出せる）。
+ */
+export const FINALIZE_ANCHOR = "finalize"
+export const FINALIZE_LINK_NOTE =
+    "PDFの出力と納品は、点検を確定してからです。確定は総括表の画面で行います（押す前に、利用料の金額が出ます）。"
+export const FINALIZE_LINK_LABEL = "総括表の画面で確定する"
+
+export function needsFinalizeLink(state: FinalizationState): boolean {
+    if (!state.available) return false
+    return state.finalized.length === 0 && finalizeBlockNotice(state.blockedSince, state.notContracted) === null
+}
+
 /** PDF のボタンを確定前に押したときの案内 */
 export function pdfGateMessage(state: FinalizationState): string {
     return finalizeBlockedGateMessage(state) ?? PDF_GATE_MESSAGE

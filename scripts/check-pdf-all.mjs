@@ -473,6 +473,16 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-auth-handoff.mjs", stage: "静的",
+        why: "ログインの戻り先がこのアプリの中の相対パスだけか（callback・login・confirm）／マッチング側からログインした状態で入る口"
+            + "（/auth/confirm）が magiclink・email だけを受け、token_hash 入りの URL を残さないか。"
+            + "★callback は next に「@evil.example」を入れるとよそへ飛ばせた。画面には何も出ない種類（2026-10-19・録音 101）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-auth-handoff.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-auth-handoff.mjs"], sentinel: "AUTH_HANDOFF_OK" },
+        ],
+    },
+    {
         file: "check-logout-scope.mjs", stage: "静的",
         why: "ログアウトが「この端末だけ」か。★既定の global だと、同じ口座のマッチング側まで切れる（#4）",
         runs: [

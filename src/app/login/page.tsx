@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import { markMyPasswordSet } from "@/lib/password-mark"
+import { safeNextPath } from "@/lib/safe-next"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,7 +15,10 @@ import { Loader2 } from "lucide-react"
 function LoginForm() {
     const router = useRouter()
     const searchParams = useSearchParams()
-    const redirectTo = searchParams.get("redirectTo") || "/tool"
+    // ★戻り先はこのアプリの中の相対パスだけ（https://… を入れると、よそのサイトへ出ていた・src/lib/safe-next.ts）
+    const redirectTo = safeNextPath(searchParams.get("redirectTo"))
+    // ★マッチング側の「点検アプリで開く」から来て、ワンタイムのリンクが使えなかった（src/app/auth/confirm/route.ts）
+    const linkInvalid = searchParams.get("error") === "link_invalid"
 
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
@@ -53,6 +57,12 @@ function LoginForm() {
             </CardHeader>
             <CardContent>
                 <form onSubmit={handleLogin} className="space-y-4">
+                    {linkInvalid && !error && (
+                        <div role="status" className="bg-amber-50 text-amber-800 p-3 rounded-md border border-amber-200 text-sm">
+                            自動でログインできませんでした（リンクの期限が切れたか、すでに使われています）。
+                            マッチングの画面からもう一度「点検アプリで開く」を押すか、ここでログインしてください。
+                        </div>
+                    )}
                     {error && (
                         <div className="bg-red-50 text-red-600 p-3 rounded-md border border-red-200 text-sm">
                             {error}

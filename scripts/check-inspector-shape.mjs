@@ -43,6 +43,8 @@ const MUST_NORMALIZE = new Map([
     ["src/components/itiran-form.tsx", "一覧表の入力（初期値・自動プリフィル・マスタ選択）"],
     ["src/app/inspection/[id]/itiran/[itiranId]/edit/page.tsx", "一覧表の編集（DB → フォーム）"],
     ["src/app/api/generate-itiran-pdf/route.ts", "PDF 描画（免状の行を回す）"],
+    // ★2026-10-19（打合せ #101）: 出力前の確認が点検者1の氏名と免状の有無を見る（免状を読むので通す側）
+    ["src/lib/report-readiness.ts", "出力前の確認（点検者1の氏名・免状の有無）"],
 ])
 
 /**

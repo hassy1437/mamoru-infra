@@ -655,6 +655,16 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-report-readiness.mjs", stage: "静的",
+        why: "確定前・出力前の不備チェック。必須（届出者の氏名・住所／名称／所在地／用途／延べ面積／地上階数／点検年月日／設備）が空なら確定のボタンを押せないか、"
+            + "注意（「否」「要改善」の不良内容・点検者1の氏名と資格・未入力の様式）は止めずに出すか。総括表の確認画面がプレビューを確定より先に出すか。"
+            + "★DB は止めない方針なので、画面の確定ボタンが唯一の止め口（2026-10-19・打合せ #101）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-report-readiness.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-report-readiness.mjs"], sentinel: "REPORT_READINESS_OK" },
+        ],
+    },
+    {
         file: "check-row-label-placement.mjs", stage: "生成PDF", needsPdfs: true,
         why: "入力画面の行（行ラベル表）が、紙の同じ名前の行に印字されるか（別記 23 様式の全行・位置は実際に描かれた所で見る）。"
             + "★行数が偶然そろうと route は黙って描くので、ピクセルでも行ラベル表の検査でも出ない種類"

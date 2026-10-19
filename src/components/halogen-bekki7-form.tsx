@@ -8,6 +8,10 @@ import { BEKKI_ROW_NOTES } from "@/lib/bekki-row-notes"
 import { WRAP_CLS, bindLabelBreaks } from "@/components/row-label"
 import { RowNote } from "@/components/row-note"
 import { Button } from "@/components/ui/button"
+import { applyBulkGood } from "@/lib/bekki-bulk-good"
+import { BekkiBulkGoodButton } from "@/components/bekki-bulk-good-button"
+import { defectPhraseListId } from "@/lib/defect-phrases"
+import { DefectPhraseDatalists } from "@/components/defect-phrase-datalists"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -659,6 +663,7 @@ export default function HalogenBekki7Form({
                                         <Input
                                             value={rows[idx]?.bad_content ?? ""}
                                             onChange={(e) => updateRowField(setter, idx, "bad_content", e.target.value)}
+                                            list={defectPhraseListId("bad", label)}
                                             placeholder="不良内容"
                                         />
                                     </td>
@@ -666,6 +671,7 @@ export default function HalogenBekki7Form({
                                         <Input
                                             value={rows[idx]?.action_content ?? ""}
                                             onChange={(e) => updateRowField(setter, idx, "action_content", e.target.value)}
+                                            list={defectPhraseListId("action", label)}
                                             placeholder="措置内容"
                                         />
                                     </td>
@@ -714,6 +720,7 @@ export default function HalogenBekki7Form({
                                         <Input
                                             value={rows[idx]?.bad_content ?? ""}
                                             onChange={(e) => updateRowField(setter, idx, "bad_content", e.target.value)}
+                                            list={defectPhraseListId("bad", label)}
                                             className="h-9 text-sm"
                                         />
                                     </div>
@@ -722,6 +729,7 @@ export default function HalogenBekki7Form({
                                         <Input
                                             value={rows[idx]?.action_content ?? ""}
                                             onChange={(e) => updateRowField(setter, idx, "action_content", e.target.value)}
+                                            list={defectPhraseListId("action", label)}
                                             className="h-9 text-sm"
                                         />
                                     </div>
@@ -739,6 +747,25 @@ export default function HalogenBekki7Form({
 
     return (
         <div className="space-y-6">
+            {/* ★様式の頭に 1 つ。表ごとの「この表の空欄を良にする」は残す（#101）。機器点検だけのときは総合点検の行に入れない */}
+            <BekkiBulkGoodButton
+                form="別記様式第7"
+                inspectionType={inspectionType}
+                sections={[
+                    { key: "page1_rows", labels: PAGE1_ITEMS, rows: page1Rows },
+                    { key: "page2_rows", labels: PAGE2_ITEMS, rows: page2Rows },
+                    { key: "page3_rows", labels: PAGE3_ITEMS, rows: page3Rows },
+                    { key: "page4_rows", labels: PAGE4_ITEMS, rows: page4Rows },
+                ]}
+                onApply={(targets) => {
+                    setPage1Rows((prev) => applyBulkGood(prev, targets.page1_rows))
+                    setPage2Rows((prev) => applyBulkGood(prev, targets.page2_rows))
+                    setPage3Rows((prev) => applyBulkGood(prev, targets.page3_rows))
+                    setPage4Rows((prev) => applyBulkGood(prev, targets.page4_rows))
+                }}
+            />
+            {/* 不良内容・措置内容の候補（自由入力のまま・src/lib/defect-phrases.ts） */}
+            <DefectPhraseDatalists />
             <Card>
                 <CardHeader>
                     <CardTitle>ハロゲン化物消火設備点検票（別記様式7）入力</CardTitle>

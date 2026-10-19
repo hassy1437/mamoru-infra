@@ -1,10 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useId, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import type { DetailField, SoukatsuEquipmentItem } from "@/lib/soukatsu-equipment"
+import { DEFECT_PHRASE_LIST_PREFIX, defectPhraseListId } from "@/lib/defect-phrases"
+import { DefectPhraseDatalists } from "@/components/defect-phrase-datalists"
 
 /**
  * 総括表の1行ぶんの「不良内容・措置内容（要改善のときだけ）・立会者」（#28）。
@@ -17,18 +19,29 @@ export function EquipmentDetailInputs({
     item: SoukatsuEquipmentItem
     onChange: (field: DetailField, value: string) => void
 }) {
+    // ★不良内容・措置内容の候補（自由入力のまま・src/lib/defect-phrases.ts）。設備の数だけ並ぶので id を部品ごとに分ける
+    const phrasePrefix = `${DEFECT_PHRASE_LIST_PREFIX}${useId()}`
     if (item.result === "該当なし") return null
     return (
         <div className="grid gap-2 sm:grid-cols-3">
             {item.result === "要改善" && (
                 <>
+                    <DefectPhraseDatalists prefix={phrasePrefix} generalOnly />
                     <div className="space-y-1">
                         <Label className="text-xs font-normal text-slate-500">不良内容</Label>
-                        <Input value={item.bad_detail ?? ""} onChange={(e) => onChange("bad_detail", e.target.value)} />
+                        <Input
+                            value={item.bad_detail ?? ""}
+                            onChange={(e) => onChange("bad_detail", e.target.value)}
+                            list={defectPhraseListId("bad", "", phrasePrefix)}
+                        />
                     </div>
                     <div className="space-y-1">
                         <Label className="text-xs font-normal text-slate-500">措置内容</Label>
-                        <Input value={item.action ?? ""} onChange={(e) => onChange("action", e.target.value)} />
+                        <Input
+                            value={item.action ?? ""}
+                            onChange={(e) => onChange("action", e.target.value)}
+                            list={defectPhraseListId("action", "", phrasePrefix)}
+                        />
                     </div>
                 </>
             )}

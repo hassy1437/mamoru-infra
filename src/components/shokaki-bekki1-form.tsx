@@ -7,6 +7,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { loadDraftLocal, saveDraftLocal } from "@/lib/local-draft"
 import { WRAP_CLS, bindLabelBreaks } from "@/components/row-label"
 import { Button } from "@/components/ui/button"
+import { applyBulkGood } from "@/lib/bekki-bulk-good"
+import { BekkiBulkGoodButton } from "@/components/bekki-bulk-good-button"
+import { defectPhraseListId } from "@/lib/defect-phrases"
+import { DefectPhraseDatalists } from "@/components/defect-phrase-datalists"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -596,6 +600,7 @@ export default function ShokakiBekki1Form({
                                         <Input
                                             value={rows[idx].bad_content}
                                             onChange={(e) => updateRowField(page, idx, "bad_content", e.target.value)}
+                                            list={defectPhraseListId("bad", label)}
                                             placeholder="不良内容"
                                         />
                                     </td>
@@ -603,6 +608,7 @@ export default function ShokakiBekki1Form({
                                         <Input
                                             value={rows[idx].action_content}
                                             onChange={(e) => updateRowField(page, idx, "action_content", e.target.value)}
+                                            list={defectPhraseListId("action", label)}
                                             placeholder="措置内容"
                                         />
                                     </td>
@@ -678,6 +684,7 @@ export default function ShokakiBekki1Form({
                                             <Input
                                                 value={row.bad_content}
                                                 onChange={(e) => updateRowField(page, idx, "bad_content", e.target.value)}
+                                                list={defectPhraseListId("bad", label)}
                                                 className="h-9 text-sm"
                                                 placeholder="不良内容"
                                             />
@@ -687,6 +694,7 @@ export default function ShokakiBekki1Form({
                                             <Input
                                                 value={row.action_content}
                                                 onChange={(e) => updateRowField(page, idx, "action_content", e.target.value)}
+                                                list={defectPhraseListId("action", label)}
                                                 className="h-9 text-sm"
                                                 placeholder="措置内容"
                                             />
@@ -706,6 +714,20 @@ export default function ShokakiBekki1Form({
 
     return (
         <div className="space-y-6">
+            {/* ★様式の頭に 1 つ。表ごとの「この表の空欄を良にする」は残す（#101）。消火器は点検種別の欄も総合点検の行も無い */}
+            <BekkiBulkGoodButton
+                form="別記様式第1"
+                sections={[
+                    { key: "page1_rows", labels: PAGE1_ITEMS, rows: page1Rows },
+                    { key: "page2_rows", labels: PAGE2_ITEMS, rows: page2Rows },
+                ]}
+                onApply={(targets) => {
+                    setPage1Rows((prev) => applyBulkGood(prev, targets.page1_rows))
+                    setPage2Rows((prev) => applyBulkGood(prev, targets.page2_rows))
+                }}
+            />
+            {/* 不良内容・措置内容の候補（自由入力のまま・src/lib/defect-phrases.ts） */}
+            <DefectPhraseDatalists />
             <Card>
                 <CardHeader>
                     <CardTitle>消火器点検票 入力</CardTitle>

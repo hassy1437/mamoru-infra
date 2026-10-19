@@ -36,6 +36,10 @@ import { pdfRequestError, pdfErrorText } from "@/lib/pdf-request-error"
 
 import { createEmptyRow, coerceRow, hydrateRows, type BekkiRowState } from "@/lib/bekki-row-state"
 import { soukatsuPdfGate } from "@/lib/pdf-gate-client"
+import { applyBulkGood, bekkiFormNameOfApiRoute } from "@/lib/bekki-bulk-good"
+import { BekkiBulkGoodButton } from "@/components/bekki-bulk-good-button"
+import { defectPhraseListId } from "@/lib/defect-phrases"
+import { DefectPhraseDatalists } from "@/components/defect-phrase-datalists"
 export type { BekkiRowState } from "@/lib/bekki-row-state"
 
 export type BekkiDeviceState = {
@@ -595,6 +599,16 @@ export default function BekkiResultFormBase({
         }))
     }
 
+    // 「この様式の空欄をすべて良にする」: 全部の表に同じ規則（src/lib/bekki-bulk-good.ts）。
+    // ★機器点検だけのときは総合点検の行に入れない。画面で畳んでいる行（hiddenRow）にも入れない
+    const applyBulkGoodToSections = (targets: Record<string, number[]>) => {
+        setRowsByKey((prev) => {
+            const next = { ...prev }
+            for (const section of sections) next[section.key] = applyBulkGood(prev[section.key], targets[section.key])
+            return next
+        })
+    }
+
     const renderItemTable = (section: SectionConfig) => (
         <Card key={section.key}>
             <CardHeader>
@@ -749,12 +763,14 @@ export default function BekkiResultFormBase({
                                         <Input
                                             value={rowsByKey[section.key]?.[idx]?.bad_content ?? ""}
                                             onChange={(e) => updateRowField(section.key, idx, "bad_content", e.target.value)}
+                                            list={defectPhraseListId("bad", label)}
                                         />
                                     </td>
                                     <td className="p-1 border">
                                         <Input
                                             value={rowsByKey[section.key]?.[idx]?.action_content ?? ""}
                                             onChange={(e) => updateRowField(section.key, idx, "action_content", e.target.value)}
+                                            list={defectPhraseListId("action", label)}
                                         />
                                     </td>
                                 </tr>
@@ -880,6 +896,7 @@ export default function BekkiResultFormBase({
                                             value={rowsByKey[section.key]?.[idx]?.bad_content ?? ""}
                                             onChange={(e) => updateRowField(section.key, idx, "bad_content", e.target.value)}
                                             className="h-9 text-sm"
+                                            list={defectPhraseListId("bad", label)}
                                         />
                                     </div>
                                     <div className="space-y-1">
@@ -888,6 +905,7 @@ export default function BekkiResultFormBase({
                                             value={rowsByKey[section.key]?.[idx]?.action_content ?? ""}
                                             onChange={(e) => updateRowField(section.key, idx, "action_content", e.target.value)}
                                             className="h-9 text-sm"
+                                            list={defectPhraseListId("action", label)}
                                         />
                                     </div>
                                 </div>
@@ -904,6 +922,15 @@ export default function BekkiResultFormBase({
 
     return (
         <div className="space-y-6">
+            {/* ★様式の頭に 1 つ。表ごとの「この表の空欄を良にする」は残す（#101） */}
+            <BekkiBulkGoodButton
+                form={bekkiFormNameOfApiRoute(apiPath) ?? apiPath}
+                inspectionType={inspectionType}
+                sections={sections.map((s) => ({ key: s.key, labels: s.labels, rows: rowsByKey[s.key], hiddenRow: s.hiddenRow }))}
+                onApply={applyBulkGoodToSections}
+            />
+            {/* 不良内容・措置内容の候補（自由入力のまま・src/lib/defect-phrases.ts） */}
+            <DefectPhraseDatalists />
             <Card>
                 <CardHeader>
                     <CardTitle>{title}</CardTitle>

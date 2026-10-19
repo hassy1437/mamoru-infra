@@ -6,6 +6,10 @@ import { bekkiPeriodDefault } from "@/lib/bekki-period"
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react"
 import { WRAP_CLS, bindLabelBreaks } from "@/components/row-label"
 import { Button } from "@/components/ui/button"
+import { applyBulkGood } from "@/lib/bekki-bulk-good"
+import { BekkiBulkGoodButton } from "@/components/bekki-bulk-good-button"
+import { defectPhraseListId } from "@/lib/defect-phrases"
+import { DefectPhraseDatalists } from "@/components/defect-phrase-datalists"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -669,6 +673,7 @@ export default function SprinklerBekki3Form({
                                         <Input
                                             value={rows[idx].bad_content}
                                             onChange={(e) => updateRowField(setter, idx, "bad_content", e.target.value)}
+                                            list={defectPhraseListId("bad", label)}
                                             placeholder="不良内容"
                                         />
                                     </td>
@@ -676,6 +681,7 @@ export default function SprinklerBekki3Form({
                                         <Input
                                             value={rows[idx].action_content}
                                             onChange={(e) => updateRowField(setter, idx, "action_content", e.target.value)}
+                                            list={defectPhraseListId("action", label)}
                                             placeholder="措置内容"
                                         />
                                     </td>
@@ -799,6 +805,7 @@ export default function SprinklerBekki3Form({
                                         <Input
                                             value={rows[idx].bad_content}
                                             onChange={(e) => updateRowField(setter, idx, "bad_content", e.target.value)}
+                                            list={defectPhraseListId("bad", label)}
                                             placeholder="不良内容"
                                             className="h-9 text-sm"
                                         />
@@ -808,6 +815,7 @@ export default function SprinklerBekki3Form({
                                         <Input
                                             value={rows[idx].action_content}
                                             onChange={(e) => updateRowField(setter, idx, "action_content", e.target.value)}
+                                            list={defectPhraseListId("action", label)}
                                             placeholder="措置内容"
                                             className="h-9 text-sm"
                                         />
@@ -826,6 +834,27 @@ export default function SprinklerBekki3Form({
 
     return (
         <div className="space-y-6">
+            {/* ★様式の頭に 1 つ。表ごとの「この表の空欄を良にする」は残す（#101）。機器点検だけのときは総合点検の行に入れない */}
+            <BekkiBulkGoodButton
+                form="別記様式第3"
+                inspectionType={inspectionType}
+                sections={[
+                    { key: "page1_rows", labels: PAGE1_ITEMS, rows: page1Rows },
+                    { key: "page2_rows", labels: PAGE2_ITEMS, rows: page2Rows },
+                    { key: "page3_rows", labels: PAGE3_ITEMS, rows: page3Rows },
+                    { key: "page4_rows", labels: PAGE4_ITEMS, rows: page4Rows },
+                    { key: "page5_rows", labels: PAGE5_ITEMS, rows: page5Rows },
+                ]}
+                onApply={(targets) => {
+                    setPage1Rows((prev) => applyBulkGood(prev, targets.page1_rows))
+                    setPage2Rows((prev) => applyBulkGood(prev, targets.page2_rows))
+                    setPage3Rows((prev) => applyBulkGood(prev, targets.page3_rows))
+                    setPage4Rows((prev) => applyBulkGood(prev, targets.page4_rows))
+                    setPage5Rows((prev) => applyBulkGood(prev, targets.page5_rows))
+                }}
+            />
+            {/* 不良内容・措置内容の候補（自由入力のまま・src/lib/defect-phrases.ts） */}
+            <DefectPhraseDatalists />
             <Card>
                 <CardHeader>
                     <CardTitle>スプリンクラー設備点検票（別記様式3）入力</CardTitle>

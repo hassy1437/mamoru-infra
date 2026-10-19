@@ -665,6 +665,26 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-bekki-bulk-good.mjs", stage: "静的",
+        why: "様式まるごとの「この様式の空欄をすべて良にする」が、判定が空の行にだけ・見出し行と畳んだ行を除いて入れ、"
+            + "機器点検だけのときは総合点検の行に入れないか（総合点検の行は雛形の見出しから導いて照らす）・23 様式の頭にあるか。"
+            + "★していない点検に○が付いても正常な見た目なので、どの PDF 検査でも出ない種類（2026-10-19・#101）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-bekki-bulk-good.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-bekki-bulk-good.mjs"], sentinel: "BEKKI_BULK_GOOD_OK" },
+        ],
+    },
+    {
+        file: "check-defect-phrases.mjs", stage: "生成PDF", needsPdfs: true,
+        why: "不良内容・措置内容の候補（src/lib/defect-phrases.ts）が 10 字以内で、別記 23 様式（PC・スマホ）と総括表の入力欄の全部に添えてあり、"
+            + "一番長い候補を全行に入れても PDF が 200 で返り・縮まず・1 行で載るか。"
+            + "★欄は幅 65pt・6pt 前後しかなく、長い候補は選んだだけで 422（PDF が出ない）か縮小になる（2026-10-19・#101）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-defect-phrases.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-defect-phrases.mjs"], sentinel: "DEFECT_PHRASES_OK" },
+        ],
+    },
+    {
         file: "check-row-label-placement.mjs", stage: "生成PDF", needsPdfs: true,
         why: "入力画面の行（行ラベル表）が、紙の同じ名前の行に印字されるか（別記 23 様式の全行・位置は実際に描かれた所で見る）。"
             + "★行数が偶然そろうと route は黙って描くので、ピクセルでも行ラベル表の検査でも出ない種類"

@@ -32,6 +32,10 @@ import {
  *   第4条2項・第12条1項・notContracted・K1）は確定できない
  *   ボタンの代わりに理由を出す。止めるのは DB（'VENDOR_CANCELLED '）なので、
  *   画面を開いたまま解約日をまたいで押した場合も、エラーの文を出して画面を読み直す。
+ *
+ * ■ ★必須の項目が空のあいだは押せない（missingRequired・src/lib/report-readiness.ts・2026-10-19 打合せ #101）
+ *   届出者・名称・所在地・用途・延べ面積・地上階数・点検年月日・設備。★止めるのは画面だけで、DB は止めない
+ *   （判定できないときは止めない・src/lib/finalization.ts）。何が空か・どこで直すかは上の「確定前の確認」が出す。
  */
 export default function FinalizeSoukatsuButton({
     soukatsuId,
@@ -41,6 +45,7 @@ export default function FinalizeSoukatsuButton({
     blockedSince,
     notContracted = false,
     identityChanged = false,
+    missingRequired = [],
 }: {
     soukatsuId: string
     preview: FinalizationPreview | null
@@ -50,6 +55,8 @@ export default function FinalizeSoukatsuButton({
     notContracted?: boolean
     /** 確定のあとに建物名などを変えて、今の確定が無い（K2） */
     identityChanged?: boolean
+    /** 空の必須の項目の名前（report-readiness の missing）。1 つでもあれば確定のボタンを押せない */
+    missingRequired?: readonly string[]
 }) {
     const [open, setOpen] = useState(false)
     const [confirmingDup, setConfirmingDup] = useState(false)
@@ -152,6 +159,8 @@ export default function FinalizeSoukatsuButton({
 
     const billable = preview.billable_codes?.length ?? 0
     const codes = preview.equipment_codes ?? []
+    // ★必須の項目が空なら押せない（画面だけ。DB は止めない）
+    const blockedByReadiness = missingRequired.length > 0
 
     return (
         <>
@@ -162,12 +171,25 @@ export default function FinalizeSoukatsuButton({
                     <span>{IDENTITY_CHANGED_MESSAGE}</span>
                 </p>
             )}
-            <Button onClick={() => setOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white">
+            <Button
+                onClick={() => setOpen(true)}
+                disabled={blockedByReadiness}
+                aria-describedby={blockedByReadiness ? "finalize-readiness-note" : undefined}
+                className="min-h-11 bg-blue-600 hover:bg-blue-700 text-white"
+            >
                 この点検を確定する
             </Button>
+            {blockedByReadiness && (
+                <p id="finalize-readiness-note" role="note" className="mt-2 flex items-start gap-2 text-sm leading-relaxed text-slate-700">
+                    <Ban className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
+                    <span>
+                        必須の項目（{missingRequired.join("・")}）が空のため、まだ確定できません。上の「確定前の確認」のリンクから直してください。
+                    </span>
+                </p>
+            )}
 
             {/* ---- 確定の確認（★押す前に金額を全部見せる） ---- */}
-            {open && (
+            {open && !blockedByReadiness && (
                 <div
                     className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
                     role="dialog"

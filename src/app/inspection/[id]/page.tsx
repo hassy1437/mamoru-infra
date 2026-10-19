@@ -8,9 +8,11 @@ import StepIndicator from "@/components/step-indicator"
 import { INSPECTION_STEPS } from "@/lib/inspection-steps"
 import Breadcrumb from "@/components/breadcrumb"
 import FinalizeSoukatsuButton from "@/components/finalize-soukatsu-button"
-import { canDownloadPdf, FINALIZATION_ERROR_MESSAGE, loadFinalizationState, pdfGateMessage } from "@/lib/finalization"
+import { canDownloadPdf, finalizeBlockNotice, FINALIZATION_ERROR_MESSAGE, loadFinalizationState, pdfGateMessage } from "@/lib/finalization"
 import WithdrawnMatchNotice from "@/components/withdrawn-match-notice"
 import { withdrawnAtOf } from "@/lib/match-withdrawn"
+import { checkReportReadiness } from "@/lib/report-readiness"
+import ReportReadinessBox from "@/components/report-readiness-box"
 
 export default async function InspectionDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { supabase, user } = await getAuthenticatedClient()
@@ -64,6 +66,16 @@ export default async function InspectionDetailPage({ params }: { params: Promise
         ? `/inspection/${id}/itiran/${nextItiranId}`
         : `/inspection/${id}/itiran`
 
+    // ★確定前の不備チェック（src/lib/report-readiness.ts・2026-10-19 打合せ #101）。
+    //   見るのは総括表だけ（点検者一覧・別記は確定のあとに入れるのが普通なので、ここでは見ない・出力画面で見る）。
+    //   ★空の必須があると確定のボタンを押せない。止めるのは画面だけで DB は止めない。
+    const readiness = checkReportReadiness({ soukatsu: report })
+    // 確定のボタンが出る状態か（確定済み・解約・契約なしならボタンの代わりに別の表示になる）
+    const finalizeButtonShown = finalization.available
+        && finalization.finalized.length === 0
+        && !!finalization.preview
+        && !finalizeBlockNotice(finalization.blockedSince, finalization.notContracted)
+
     return (
         <div className="min-h-screen bg-gray-100 p-4 md:p-8">
             <div className="max-w-[210mm] mx-auto mb-6">
@@ -98,6 +110,21 @@ export default async function InspectionDetailPage({ params }: { params: Promise
                 </div>
             </div>
 
+            {/* ★プレビューを確定より先に出す（何を確定するかを見てから押す・2026-10-19 打合せ #101）。
+                 以前は確定のボタンがプレビューの上にあり、内容を見る前に押せる並びだった */}
+            <div className="max-w-[210mm] mx-auto mb-6">
+                <SoukatsuPdfPreview data={soukatsuData} />
+            </div>
+
+            {/* ★確定前の確認（必須・注意）。確定のボタンのすぐ上に出す */}
+            <div className="max-w-[210mm] mx-auto mb-6">
+                <ReportReadinessBox
+                    readiness={readiness}
+                    ctx={{ soukatsuId: id, itiranId: nextItiranId, propertyId: report.property_id ?? null }}
+                    mode={finalizeButtonShown ? "finalize" : "review"}
+                />
+            </div>
+
             {/* ★確定の導線。未適用（reason:"missing"）のときは何も出さない。 */}
             {/* ★読めなかった（reason:"error"）ときは黙って消さず、理由を出す（総点検 B5） */}
             {!finalization.available && finalization.reason === "error" && (
@@ -121,13 +148,10 @@ export default async function InspectionDetailPage({ params }: { params: Promise
                         blockedSince={finalization.blockedSince}
                         notContracted={finalization.notContracted}
                         identityChanged={finalization.identityChanged}
+                        missingRequired={readiness.missing.map((m) => m.label)}
                     />
                 </div>
             )}
-
-            <div className="max-w-[210mm] mx-auto">
-                <SoukatsuPdfPreview data={soukatsuData} />
-            </div>
         </div>
     )
 }

@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { CheckCheck, Eye, FileDown, Loader2, Save, WifiOff } from "lucide-react"
+import { AlertTriangle, CheckCheck, ChevronDown, Eye, FileDown, Loader2, Save, WifiOff } from "lucide-react"
 import { toast } from "sonner"
 import { friendlyError } from "@/lib/error-messages"
 import { supabase } from "@/lib/supabase"
@@ -246,6 +246,16 @@ export default function BekkiResultFormBase({
         }
         return base
     })
+
+    // ★基本情報（名称・所在地・点検種別・期間・点検者）は総括表・点検者一覧から自動で入る。
+    //   入っていれば最初は畳み、判定表を先に見せる（2026-10-19 打合せ #101）。開けば今までどおり直せる。
+    //   ★開閉は最初の 1 回だけ決める。入力のたびに決め直すと、最後の 1 文字を入れた瞬間に畳まれて入力中の欄が消える。
+    //   防火管理者・立会者・TEL・所属会社・住所は空が正しいことがある（物件に防火管理者が無い等）ので数えない。
+    const basicInfoBlank = ([
+        ["名称", formName], ["所在地", location], ["点検種別", inspectionType],
+        ["点検年月日（開始）", periodStart], ["点検年月日（終了）", periodEnd], ["点検者氏名", inspectorName],
+    ] as const).filter(([, v]) => v.trim() === "").map(([label]) => label)
+    const [basicInfoOpen, setBasicInfoOpen] = useState(() => basicInfoBlank.length > 0)
 
     const [saving, setSaving] = useState(false)
     const [loadingPreview, setLoadingPreview] = useState(false)
@@ -899,7 +909,39 @@ export default function BekkiResultFormBase({
                     <CardTitle>{title}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-5">
-                    <div className="grid md:grid-cols-2 gap-4">
+                    {/* ★基本情報の開閉（畳んでいるときは中身を 1 行で見せる）。押しやすさ: 高さ 44px 以上 */}
+                    <button
+                        type="button"
+                        onClick={() => setBasicInfoOpen((v) => !v)}
+                        aria-expanded={basicInfoOpen}
+                        aria-controls="bekki-basic-info-1 bekki-basic-info-2 bekki-basic-info-3"
+                        className="flex min-h-11 w-full items-center justify-between gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-left hover:bg-slate-100"
+                    >
+                        <span className="min-w-0">
+                            <span className="block text-sm font-medium text-slate-800">
+                                基本情報（名称・所在地・点検種別・期間・点検者）
+                            </span>
+                            {basicInfoBlank.length > 0 ? (
+                                <span className="flex items-center gap-1 text-xs text-amber-700">
+                                    <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                                    空の欄があります（{basicInfoBlank.join("・")}）
+                                </span>
+                            ) : (
+                                !basicInfoOpen && (
+                                    <span className="block truncate text-xs text-slate-500">
+                                        {formName} ／ {inspectionType} ／ {periodStart === periodEnd ? periodStart : `${periodStart}〜${periodEnd}`} ／ 点検者 {inspectorName}
+                                    </span>
+                                )
+                            )}
+                        </span>
+                        <span className="flex shrink-0 items-center gap-1 text-xs text-slate-600">
+                            {basicInfoOpen ? "閉じる" : "開いて直す"}
+                            <ChevronDown className={`h-4 w-4 transition-transform ${basicInfoOpen ? "rotate-180" : ""}`} />
+                        </span>
+                    </button>
+
+                    {/* ★畳むのは hidden 属性（入力欄と値はそのまま残る）。Tailwind の preflight が [hidden] を display:none !important にする */}
+                    <div id="bekki-basic-info-1" hidden={!basicInfoOpen} className="grid md:grid-cols-2 gap-4">
                         <div className="space-y-1">
                             <Label>名称</Label>
                             <Input value={formName} onChange={(e) => setFormName(e.target.value)} />
@@ -918,7 +960,7 @@ export default function BekkiResultFormBase({
                         </div>
                     </div>
 
-                    <div className="grid md:grid-cols-4 gap-4">
+                    <div id="bekki-basic-info-2" hidden={!basicInfoOpen} className="grid md:grid-cols-4 gap-4">
                         <div className="space-y-1">
                             <Label>点検種別</Label>
                             <Input value={inspectionType} onChange={(e) => setInspectionType(e.target.value)} />
@@ -937,7 +979,7 @@ export default function BekkiResultFormBase({
                         </div>
                     </div>
 
-                    <div className="grid md:grid-cols-2 gap-4">
+                    <div id="bekki-basic-info-3" hidden={!basicInfoOpen} className="grid md:grid-cols-2 gap-4">
                         <div className="space-y-1">
                             <Label>点検者氏名</Label>
                             <Input value={inspectorName} onChange={(e) => setInspectorName(e.target.value)} />

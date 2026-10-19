@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { CheckCircle2, MinusCircle, Copy } from "lucide-react"
+import { AlertTriangle, CheckCircle2, MinusCircle, Copy } from "lucide-react"
 import CombinedPdfButton from "@/components/combined-pdf-button"
 import { canDownloadPdf, finalizeBlockedGateMessage, loadFinalizationState, pdfGateMessage } from "@/lib/finalization"
 import DeliverReportButton, { type DeliveryStatus } from "@/components/deliver-report-button"
@@ -15,6 +15,8 @@ import { findBlankJudgmentSections } from "@/lib/blank-judgment-sections"
 import { findInspectionTypeMismatches } from "@/lib/inspection-type-consistency"
 import WithdrawnMatchNotice from "@/components/withdrawn-match-notice"
 import { withdrawnAtOf } from "@/lib/match-withdrawn"
+import { checkReportReadiness } from "@/lib/report-readiness"
+import ReportReadinessBox from "@/components/report-readiness-box"
 
 export default async function OutputPage({
     params,
@@ -104,17 +106,22 @@ export default async function OutputPage({
         }
     }
 
+    // ★出力前の不備チェック（src/lib/report-readiness.ts・2026-10-19 打合せ #101）。
+    //   総括表の必須・点検者1の氏名と資格・別記の「否」の不良内容・未入力の様式。★止めない（PDF・納品はそのまま）
+    const readiness = checkReportReadiness({ soukatsu, itiran, bekkiPayloads, stepIds: applicableStepIds })
+    const flagged = new Set([...readiness.missing, ...readiness.warnings].map((r) => r.id))
+
+    // ★attention … 出せるが、出力前の確認に指摘がある（以前は報告書（様式第１）が中身に関係なくいつも準備済みに見えた）
     const pdfList = [
-        { label: "報告書（様式第１）", ready: true },
-        { label: "総括表", ready: true },
-        { label: "点検者一覧表", ready: true },
+        { label: "報告書（様式第１）", ready: true, attention: readiness.missing.length > 0 },
+        { label: "総括表", ready: true, attention: readiness.missing.length > 0 || flagged.has("soukatsu_bad_detail") },
+        { label: "点検者一覧表", ready: true, attention: flagged.has("inspector1_name") || flagged.has("inspector1_license") },
         ...applicableSteps.map((step) => ({
             label: step.title,
             ready: !!bekkiPayloads[step.id],
+            attention: flagged.has(`bekki_bad_content:${step.id}`),
         })),
     ]
-
-    const notReady = pdfList.filter((p) => !p.ready)
     // ★判定が 1 つも無い表（その1 だけ入れて続きが空など・src/lib/blank-judgment-sections.ts）。止めずに知らせる
     const blankSections = findBlankJudgmentSections(bekkiPayloads, applicableStepIds).map((b) => ({
         ...b,
@@ -182,21 +189,25 @@ export default async function OutputPage({
                     <div className="space-y-2">
                         {pdfList.map((item, idx) => (
                             <div key={idx} className="flex items-center gap-2 text-sm">
-                                {item.ready ? (
-                                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                                ) : (
+                                {!item.ready ? (
                                     <MinusCircle className="w-4 h-4 text-slate-400 shrink-0" />
+                                ) : item.attention ? (
+                                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                                ) : (
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                                 )}
                                 <span className={item.ready ? "" : "text-slate-400"}>{item.label}</span>
+                                {item.ready && item.attention && <span className="text-xs text-amber-700">（下の「出力前の確認」を見てください）</span>}
                             </div>
                         ))}
                     </div>
 
-                    {notReady.length > 0 && (
-                        <p className="text-sm text-amber-600">
-                            ※ 未入力の様式があります。入力済みの様式のみPDFに含まれます。
-                        </p>
-                    )}
+                    {/* ★未入力の様式の知らせ（以前の「※ 未入力の様式があります」）もこの中に入れた。様式ごとに開くリンクが付く */}
+                    <ReportReadinessBox
+                        readiness={readiness}
+                        ctx={{ soukatsuId: id, itiranId, propertyId: (soukatsu.property_id as string | null) ?? null }}
+                        mode="review"
+                    />
 
                     {blankSections.length > 0 && (
                         <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 space-y-2 text-sm text-amber-800">

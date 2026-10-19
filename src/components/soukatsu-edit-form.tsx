@@ -273,7 +273,8 @@ export default function SoukatsuEditForm({ soukatsu, isDelivered, isFinalized }:
 
             {/* 点検結果の不良内容・措置内容・立会者（#28）。設備名と判定は作成画面で決めたまま */}
             {details.length > 0 && (
-                <Card>
+                // ★id は確定前の確認（report-readiness・「要改善」の不良内容）からのリンク先
+                <Card id="equipment-results" className="scroll-mt-4">
                     <CardHeader><CardTitle>消防用設備等の点検結果</CardTitle></CardHeader>
                     <CardContent className="space-y-3">
                         <p className="text-xs text-slate-500">

@@ -9,6 +9,7 @@ import { WRAP_CLS, bindLabelBreaks } from "@/components/row-label"
 import { RowNote } from "@/components/row-note"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { BekkiInspectionTypeInput } from "@/components/bekki-inspection-type-input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -962,7 +963,7 @@ export default function BekkiResultFormBase({
                     <div id="bekki-basic-info-2" hidden={!basicInfoOpen} className="grid md:grid-cols-4 gap-4">
                         <div className="space-y-1">
                             <Label>点検種別</Label>
-                            <Input value={inspectionType} onChange={(e) => setInspectionType(e.target.value)} />
+                            <BekkiInspectionTypeInput value={inspectionType} onChange={setInspectionType} />
                         </div>
                         <div className="space-y-1 min-w-0">
                             <Label>点検年月日（開始）</Label>

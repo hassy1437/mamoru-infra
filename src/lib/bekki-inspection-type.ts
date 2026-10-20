@@ -18,6 +18,23 @@
  * ★別記の既定をここ以外に書かないこと。scripts/check-bekki-inspection-type.mjs が見張る。
  */
 
+/**
+ * 点検種別の選ぶ欄（機器点検・総合点検のチェック・2026-10-20）。★以前は文字の欄だった。
+ * ★保存の形は今までどおり（機器だけ "機器点検"・総合だけ "総合点検"・両方 "機器・総合"）。
+ *   ルートの○（"機器" / "総合" を含むか）・「すべて良」の判定（isKikiOnly）・総括表との整合の検査がこの形を前提にしている。
+ *   以前の「機器・総合点検」なども「含む」で読むので、両方にチェックが付いて見える（紙と同じ）。
+ */
+export function inspectionTypeParts(value: string): { kiki: boolean; sougou: boolean } {
+    return { kiki: value.includes("機器"), sougou: value.includes("総合") }
+}
+
+export function inspectionTypeFromParts(p: { kiki: boolean; sougou: boolean }): string {
+    if (p.kiki && p.sougou) return BEKKI_INSPECTION_TYPE_FALLBACK
+    if (p.kiki) return "機器点検"
+    if (p.sougou) return "総合点検"
+    return ""
+}
+
 /** 総括表に点検種別が無いときの既定（両方に○）。従来の別記の既定と同じ。 */
 export const BEKKI_INSPECTION_TYPE_FALLBACK = "機器・総合"
 

@@ -49,6 +49,7 @@ function routeChoices(routeFiles) {
             const row = inner.match(/\{ rowsKey: "(page\d_rows)", row: (\d+), column: "content" \}\s*\)$/)
             if (row) ((out[apiPath] ??= { rows: {} }).rows[row[1]] ??= {})[row[2]] = labels
             else if (/\{ column: "equipment_system" \}\s*\)$/.test(inner)) (out[apiPath] ??= { rows: {} }).system = labels
+            else if (/\{ column: "inspection_type" \}\s*\)$/.test(inner)) (out[apiPath] ??= { rows: {} }).type = labels
             i = j
         }
     }
@@ -59,7 +60,9 @@ function correspondence(mod, routeFiles) {
     const problems = []
     const want = routeChoices(routeFiles)
     const have = mod.BEKKI_CHOICE_ROWS
-    for (const [api, { rows, system }] of Object.entries(want)) {
+    for (const [api, { rows, system, type }] of Object.entries(want)) {
+        // 点検種別: 画面の選ぶ欄は「機器点検」「総合点検」（保存は "機器" / "総合" を含む形）。紙の○の語と同じ 2 つであること
+        if (type && type.join("|") !== "機器|総合") problems.push(`${api}: 点検種別の紙の○の語が「機器・総合」でない（${type.join("・")}）。画面の選ぶ欄と合わない`)
         for (const [rk, byRow] of Object.entries(rows)) {
             for (const [row, labels] of Object.entries(byRow)) {
                 const got = have[api]?.[rk]?.[row]?.options.map((o) => o.value)
@@ -97,6 +100,19 @@ function behaviour(mod) {
     return problems
 }
 
+const TYPE_LIB = "src/lib/bekki-inspection-type.ts"
+function typeBehaviour(t) {
+    const problems = []
+    const eq = (got, want, label) => { if (JSON.stringify(got) !== JSON.stringify(want)) problems.push(`点検種別: ${label}: ${JSON.stringify(got)}（期待 ${JSON.stringify(want)}）`) }
+    eq(t.inspectionTypeFromParts({ kiki: true, sougou: false }), "機器点検", "機器だけ → 機器点検（総括表と同じ形）")
+    eq(t.inspectionTypeFromParts({ kiki: false, sougou: true }), "総合点検", "総合だけ → 総合点検")
+    eq(t.inspectionTypeFromParts({ kiki: true, sougou: true }), "機器・総合", "両方 → 機器・総合（ルートは両方に○）")
+    eq(t.inspectionTypeFromParts({ kiki: false, sougou: false }), "", "どちらも外す → 空")
+    eq(t.inspectionTypeParts("機器・総合点検"), { kiki: true, sougou: true }, "以前の「機器・総合点検」も両方に付いて見える")
+    eq(t.inspectionTypeParts("機器点検"), { kiki: true, sougou: false }, "機器点検 → 機器だけ")
+    return problems
+}
+
 function wiring(mod, formFiles) {
     const problems = []
     const base = formFiles[BASE] ?? ""
@@ -111,6 +127,9 @@ function wiring(mod, formFiles) {
         for (const rk of Object.keys(mod.BEKKI_CHOICE_ROWS[api])) {
             if (!s.includes(`choiceRowsOf("${api}", "${rk}")`)) problems.push(`${f}: ${rk} の表に選択肢を渡していない`)
         }
+    }
+    for (const [f, s] of Object.entries(formFiles)) {
+        if (/const \[inspectionType, setInspectionType\]/.test(s) && !/<BekkiInspectionTypeInput value=\{inspectionType\} onChange=\{setInspectionType\} \/>/.test(s)) problems.push(`${f}: 点検種別が選ぶ欄になっていない（文字の欄のまま）`)
     }
     for (const f of ["inert-gas-bekki6", "halogen-bekki7", "powder-bekki8"].map((n) => `src/components/${n}-form.tsx`)) {
         if (!/row=\{EQUIPMENT_SYSTEM_CHOICES\}/.test(formFiles[f] ?? "")) problems.push(`${f}: 設備方式（全域・局所・移動）が選ぶ欄になっていない`)
@@ -137,9 +156,10 @@ function forms() {
 const lib = read(LIB)
 const routeFiles = routes()
 const formFiles = forms()
-const run = async (libSrc, r = routeFiles, fm = formFiles) => {
+const typeLib = read(TYPE_LIB)
+const run = async (libSrc, r = routeFiles, fm = formFiles, tl = typeLib) => {
     const mod = await load(libSrc)
-    return [...correspondence(mod, r), ...behaviour(mod), ...wiring(mod, fm)]
+    return [...correspondence(mod, r), ...behaviour(mod), ...wiring(mod, fm), ...typeBehaviour(await load(tl))]
 }
 
 if (SELF_TEST) {
@@ -158,13 +178,16 @@ if (SELF_TEST) {
         ["第2 の（その3）に選択肢を渡さない", { form: ["src/components/shokasen-bekki2-form.tsx", (s) => s.replace('choiceRowsOf("/api/generate-shokasen-bekki2-pdf", "page3_rows"), HOSE_ROW_INDEXES)', "undefined, HOSE_ROW_INDEXES)")] }, "page3_rows の表に選択肢を渡していない"],
         ["スマホの表で選択肢を出さない", { form: ["src/components/powder-bekki8-form.tsx", (s) => { const k = s.lastIndexOf("choiceRows?.[idx] ? ("); return s.slice(0, k) + "false ? (" + s.slice(k + "choiceRows?.[idx] ? (".length) }] }, "両方で選択肢の欄を出していない"],
         ["設備方式を文字の欄に戻す", { form: ["src/components/halogen-bekki7-form.tsx", (s) => s.replace("row={EQUIPMENT_SYSTEM_CHOICES}", "row={undefined as never}")] }, "設備方式"],
+        ["点検種別を文字の欄に戻す", { form: ["src/components/bekki-result-form-base.tsx", (s) => s.replace("<BekkiInspectionTypeInput value={inspectionType} onChange={setInspectionType} />", "<Input value={inspectionType} onChange={(e) => setInspectionType(e.target.value)} />")] }, "点検種別が選ぶ欄になっていない"],
+        ["両方を選んだときの保存の形を変える", { typeLib: (s) => s.replace("    if (p.kiki && p.sougou) return BEKKI_INSPECTION_TYPE_FALLBACK\n", "    if (p.kiki && p.sougou) return \"機器点検・総合点検\"\n") }, "両方 → 機器・総合"],
     ]
     for (const [label, m, expect] of mutants) {
-        let l = lib, r = routeFiles, fm = formFiles
+        let l = lib, r = routeFiles, fm = formFiles, tl = typeLib
         if (m.lib) { l = m.lib(lib); if (l === lib) { console.log(`自己診断: 書き換えられない: ${label}`); process.exit(1) } }
+        if (m.typeLib) { tl = m.typeLib(typeLib); if (tl === typeLib) { console.log(`自己診断: 書き換えられない: ${label}`); process.exit(1) } }
         if (m.route) { const [f, fn] = m.route; const n = fn(r[f]); if (n === r[f]) { console.log(`自己診断: 書き換えられない: ${label}`); process.exit(1) } r = { ...r, [f]: n } }
         if (m.form) { const [f, fn] = m.form; const n = fn(fm[f]); if (n === fm[f]) { console.log(`自己診断: 書き換えられない: ${label}`); process.exit(1) } fm = { ...fm, [f]: n } }
-        const got = await run(l, r, fm)
+        const got = await run(l, r, fm, tl)
         if (!got.some((p) => p.includes(expect))) { console.log(`自己診断: ${label} → 検出できない`); for (const p of got) console.log("   ", p); process.exit(1) }
         console.log(`  陽性対照: ${label} → 検出`)
     }

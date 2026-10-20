@@ -11,6 +11,7 @@ import { BekkiBulkGoodButton } from "@/components/bekki-bulk-good-button"
 import { defectPhraseListId } from "@/lib/defect-phrases"
 import { DefectPhraseDatalists } from "@/components/defect-phrase-datalists"
 import { Input } from "@/components/ui/input"
+import { BekkiInspectionTypeInput } from "@/components/bekki-inspection-type-input"
 import { BekkiChoiceCheckboxes } from "@/components/bekki-choice-checkboxes"
 import { choiceRowsOf, type ChoiceRow } from "@/lib/bekki-choice-rows"
 import { Label } from "@/components/ui/label"
@@ -895,7 +896,7 @@ export default function FoamBekki5Form({
                     <div className="grid md:grid-cols-4 gap-4">
                         <div className="space-y-1">
                             <Label>点検種別</Label>
-                            <Input value={inspectionType} onChange={(e) => setInspectionType(e.target.value)} />
+                            <BekkiInspectionTypeInput value={inspectionType} onChange={setInspectionType} />
                         </div>
                         <div className="space-y-1 min-w-0">
                             <Label>点検年月日（開始）</Label>

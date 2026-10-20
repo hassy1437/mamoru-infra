@@ -505,7 +505,7 @@ export default function SoukatsuForm({ property, previousData, copyFromId, sourc
                                             key={result}
                                             type="button"
                                             onClick={() => updateEquipmentResult(index, result)}
-                                            className={`inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-full transition-all ${
+                                            className={`inline-flex min-h-11 md:min-h-0 items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-full transition-all ${
                                                 item.result === result
                                                     ? result === "指摘なし"
                                                         ? "bg-green-100 text-green-700 ring-2 ring-green-500"

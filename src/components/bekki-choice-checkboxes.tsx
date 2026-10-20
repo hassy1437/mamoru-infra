@@ -24,7 +24,7 @@ export function BekkiChoiceCheckboxes({
         <div role="group" aria-label={ariaLabel} className="space-y-1">
             <div className="flex flex-wrap gap-x-3 gap-y-1">
                 {row.options.map((opt) => (
-                    <label key={opt.value} className="inline-flex min-h-8 cursor-pointer items-center gap-1 text-sm">
+                    <label key={opt.value} className="inline-flex min-h-11 md:min-h-8 cursor-pointer items-center gap-1.5 text-sm">
                         <input
                             type="checkbox"
                             className="h-4 w-4"

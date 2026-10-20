@@ -36,9 +36,11 @@ const ITIRAN = "src/components/itiran-form.tsx"
 const DEVICE = "src/components/device-table-inputs.tsx"
 const LICENSE = "src/components/license-editor.tsx"
 const SHOKAKI = "src/components/shokaki-bekki1-form.tsx"
+const SOUKATSU = "src/components/soukatsu-form.tsx"
+const CHOICE = "src/components/bekki-choice-checkboxes.tsx"
 const NUMERIC_PLACEHOLDERS = ["吐出量(L/min)", "吐出圧力(MPa)", "電流(A)", "電圧(V)", "設定圧力(MPa)", "作動圧力(MPa)", "長さ(m)", "長さ", "口径(mm)", "口径",
     "空質量", "全質量", "ガス質量", "本数", "番号", "例: 67.2", "例: 14.7"]
-const ALL = [...new Set([...FORMS, CSS, JUDGE, BAR, AUTO, CAMERA, CRUMB, NAV, MEASURE, ITIRAN, DEVICE, LICENSE])]
+const ALL = [...new Set([...FORMS, CSS, JUDGE, BAR, AUTO, CAMERA, CRUMB, NAV, MEASURE, ITIRAN, DEVICE, LICENSE, SOUKATSU, CHOICE])]
 
 /** <Input ... /> を 1 つずつ（属性に => があるので正規表現の [^>] では切れない） */
 const inputsOf = (src) => {
@@ -86,6 +88,9 @@ function check(files) {
         if (/<select\n\s*className="w-full h-9 border border-input rounded-md bg-background px-2 text-sm"\n\s*value=\{[^\n]*\}\n\s*onChange=\{\(e\) => [^\n]*"judgment"/.test(src)) problems.push(`${f}: スマホの判定がプルダウンのまま`)
         if (!/<JudgmentButtons\n/.test(src)) problems.push(`${f}: スマホの判定のボタンが無い`)
         if (!/useAutoSave\(payload, \(\) => persistDraftRef\.current\(false\), /.test(src)) problems.push(`${f}: 自動保存（5 秒後・別のアプリに切り替えた瞬間）が無い`)
+        for (const h of ["handleSave", "handlePreview", "handleDownload"]) {
+            if (!src.includes(`<Button type="button" onClick={${h}} disabled={busy} className="min-h-11 md:min-h-0 `)) problems.push(`${f}: 一番下のボタン（${h}）がスマホで 44px 未満`)
+        }
     }
     const judge = files[JUDGE]
     if (!/onClick=\{\(\) => onChange\(pressed \? "" : o\.v\)\}/.test(judge) || !/v: "良"/.test(judge) || !/v: "否"/.test(judge)) problems.push(`${JUDGE}: 良・否のボタンの値が今までと違う（"" / 良 / 否）`)
@@ -100,6 +105,8 @@ function check(files) {
     if (!/<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">\n\s*<h3/.test(files[CAMERA])) problems.push(`${CAMERA}: 点検写真の見出しとボタンがスマホでも横並び（見出しが縦に折れる）`)
     if ((files[CRUMB].match(/min-h-11 md:min-h-0/g) ?? []).length < 2) problems.push(`${CRUMB}: パンくずが 44px 未満`)
     if (!/<Link href=\{hubHref\} className="inline-flex min-h-11 items-center/.test(files[NAV])) problems.push(`${NAV}: 「← 別記ハブに戻る」が 44px 未満`)
+    if (!/className=\{`inline-flex min-h-11 md:min-h-0 items-center gap-1 px-3 py-1\.5 text-xs font-medium rounded-full/.test(files[SOUKATSU])) problems.push(`${SOUKATSU}: 総括表の「指摘なし・要改善」がスマホで 44px 未満`)
+    if (!/<label key=\{opt\.value\} className="inline-flex min-h-11 md:min-h-8 /.test(files[CHOICE])) problems.push(`${CHOICE}: 選ぶ欄（専用・兼用など）がスマホで 44px 未満`)
     // 8. 英数字の欄
     for (const [f, re, label] of [[DEVICE, /<Input \{\.\.\.CODE_INPUT_PROPS\} placeholder="型式"/g, "測定機器の型式"], [LICENSE, /<Input \{\.\.\.CODE_INPUT_PROPS\}[^\n]*placeholder="交付番号"/g, "交付番号"]]) {
         if ((files[f].match(re) ?? []).length < 2) problems.push(`${f}: ${label}の欄で自動の大文字・修正を切っていない`)
@@ -139,6 +146,8 @@ if (SELF_TEST) {
         ["帯の余白を外す", mut(BAR, 'aria-hidden className="h-24 md:hidden"', 'aria-hidden className="hidden"'), "余白が無い"],
         ["写真の見出しを横並びに戻す", mut(CAMERA, '<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">', '<div className="flex items-center justify-between">'), "縦に折れる"],
         ["戻るリンクを小さく戻す", mut(NAV, 'className="inline-flex min-h-11 items-center text-blue-600', 'className="text-blue-600'), "別記ハブに戻る"],
+        ["一番下の保存ボタンを小さく戻す", mut(FORMS[5], '<Button type="button" onClick={handleSave} disabled={busy} className="min-h-11 md:min-h-0 ', '<Button type="button" onClick={handleSave} disabled={busy} className="'), "一番下のボタン（handleSave）"],
+        ["総括表の指摘なし・要改善を小さく戻す", mut(SOUKATSU, "inline-flex min-h-11 md:min-h-0 items-center gap-1 px-3", "inline-flex items-center gap-1 px-3"), "指摘なし・要改善"],
         ["型式の自動修正を戻す", mut(DEVICE, '<Input {...CODE_INPUT_PROPS} placeholder="型式"', '<Input placeholder="型式"'), "測定機器の型式"],
     ]
     for (const [label, m, expect] of mutants) {

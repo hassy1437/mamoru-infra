@@ -96,7 +96,7 @@ export default function DeviceTableInputs({
                 })}
             </div>
             {lines < perColumn && (
-                <Button type="button" variant="outline" size="sm" onClick={() => setLinesShown(lines + 1)}>
+                <Button type="button" variant="outline" size="sm" className="min-h-11 md:min-h-0" onClick={() => setLinesShown(lines + 1)}>
                     <Plus className="w-4 h-4 mr-1" />
                     測定機器の欄を足す（様式は {perColumn * 2} 台まで）
                 </Button>

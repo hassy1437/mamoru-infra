@@ -20,7 +20,9 @@ import { buildItiranInputHref, getItiranInputPageTitle, type ItiranInputStepId }
  *       （src/lib/finalization.ts の「判定できないときは止めない」。ここを DB に入れると、判定を誤ったときに確定ごと止まる）
  *   ・注意（warnings）… 止めない。知らせて、直す画面へのリンクを出す
  *     - 総括表で「要改善」なのに不良内容（bad_detail）が空（様式の備考2「不良の場合は不良内容欄に記入」）
- *     - 点検者1の氏名・資格（免状）が無い ★itiran を渡したときだけ（確定の前は点検者一覧がまだ無いのが普通）
+ *     - 点検者1の氏名・資格（免状）・電話番号が無い ★itiran を渡したときだけ（確定の前は点検者一覧がまだ無いのが普通）
+ *     - 表紙の報告年月日が空（★空欄で印字する＝手書き用なので止めない・2026-10-20・録音 102）
+ *     ★点検者 1 の氏名・資格・電話番号と報告年月日は、赤で目立たせる（urgent・録音 102）
  *     - 別記で「否」なのに不良内容（bad_content）が空 ★stepIds を渡したときだけ
  *     - 様式が未入力 ★同上
  *     - ★判定が初期値（良）のまま（2026-10-20・録音 102・src/lib/bekki-default-good.ts）★同上。止めない
@@ -47,6 +49,11 @@ export type ReadinessItem = {
     details: string[]
     /** 直す画面。直せる画面が無ければ null */
     fix: ReadinessFix | null
+    /**
+     * ★赤で目立たせる注意（2026-10-20・録音 102「点検者の電話番号・資格区分・報告日など、不足している項目は一覧で赤く光らせる」）。
+     *   止めないのは他の注意と同じ（確定・出力はできる）
+     */
+    urgent?: boolean
 }
 
 export type ReportReadiness = {
@@ -188,8 +195,13 @@ export function checkReportReadiness(input: ReadinessInput): ReportReadiness {
     })
 
     const warnings: ReadinessItem[] = []
-    const warn = (id: string, label: string, message: string, details: string[], fix: ReadinessFix | null) =>
-        warnings.push({ id, level: "warning", label, ok: false, message, details: clip(details), fix })
+    const warn = (id: string, label: string, message: string, details: string[], fix: ReadinessFix | null, urgent = false) =>
+        warnings.push({ id, level: "warning", label, ok: false, message, details: clip(details), fix, ...(urgent ? { urgent: true } : {}) })
+
+    // ★表紙の報告年月日（2026-10-20・録音 102）。空なら空欄で印字する（手書き用）ので止めない
+    if (text(s.report_date) === "") {
+        warn("report_date", "報告年月日", "表紙の報告年月日が空です（空欄のまま印字します。手書きにする場合はそのままで構いません）", [], { kind: "soukatsu", anchor: "reportDate" }, true)
+    }
 
     const noDetail = rows.filter((r) => r.result === "要改善" && text(r.bad_detail) === "").map((r) => text(r.name) || "（設備名なし）")
     if (noDetail.length) {
@@ -200,10 +212,14 @@ export function checkReportReadiness(input: ReadinessInput): ReportReadiness {
     if (input.itiran !== undefined) {
         const inspector = normalizeInspectorData(input.itiran?.inspector1)
         if (inspector.name.trim() === "") {
-            warn("inspector1_name", "点検者1の氏名", "点検者一覧表に点検者1の氏名が入っていません（総括表の点検実施責任者の欄にも使います）", [], { kind: "itiran" })
+            warn("inspector1_name", "点検者1の氏名", "点検者一覧表に点検者1の氏名が入っていません（総括表の点検実施責任者の欄にも使います）", [], { kind: "itiran" }, true)
         }
         if (!hasLicense(input.itiran?.inspector1)) {
-            warn("inspector1_license", "点検者1の資格", "点検者一覧表に点検者1の免状（消防設備士・消防設備点検資格者）が入っていません", [], { kind: "itiran" })
+            warn("inspector1_license", "点検者1の資格", "点検者一覧表に点検者1の免状（消防設備士・消防設備点検資格者）が入っていません", [], { kind: "itiran" }, true)
+        }
+        // ★電話番号（2026-10-20・録音 102）。別記の TEL の欄にも使う（inspector-helpers の inspector_tel）
+        if (inspector.phone.trim() === "") {
+            warn("inspector1_phone", "点検者1の電話番号", "点検者一覧表に点検者1の電話番号が入っていません（別記の TEL の欄にも使います）", [], { kind: "itiran" }, true)
         }
     }
 

@@ -54,10 +54,10 @@ const COMPLETE = {
     id: "s1", property_id: "p1",
     notifier_name: "山田太郎", notifier_address: "東京都千代田区1-1",
     building_name: "テストビル", building_address: "東京都千代田区2-2", building_usage: "（15）項",
-    total_floor_area: 1200.5, floor_above: 5, floor_below: 1, inspection_date: "2026-10-19",
+    total_floor_area: 1200.5, floor_above: 5, floor_below: 1, inspection_date: "2026-10-19", report_date: "2026-10-20",
     equipment_results: [{ name: "消火器", result: "指摘なし" }, { name: "避難器具", result: "要改善", bad_detail: "標識の汚損" }],
 }
-const ITIRAN_OK = { inspector1: { name: "点検太郎", shoubou_licenses: { class6: { license_number: "第123号" } } } }
+const ITIRAN_OK = { inspector1: { name: "点検太郎", phone: "06-1234-5678", shoubou_licenses: { class6: { license_number: "第123号" } } } }
 const STEP = "evacuation-equipment" // 別記15: その1 26 行・その2 27 行（23 が見出し「総合点検」）
 const rows = (n, f = () => ({ judgment: "良" })) => Array.from({ length: n }, (_, i) => f(i))
 const BEKKI_OK = { [STEP]: { page1_rows: rows(26), page2_rows: rows(27) } }
@@ -134,9 +134,21 @@ function behaviour({ lib, labels }) {
         ["soukatsu_bad_detail"], (r) => {
             if (!same(r.warnings[0].details, ["避難器具"])) problems.push(`総括表の「要改善」: 設備名が ${JSON.stringify(r.warnings[0].details)}`)
         })
-    warnCase("点検者1が空", { itiran: { inspector1: null } }, ["inspector1_name", "inspector1_license"])
-    warnCase("点検者1の資格が無い", { itiran: { inspector1: { name: "点検太郎" } } }, ["inspector1_license"])
-    warnCase("点検者1の資格は点検資格者の免状", { itiran: { inspector1: { name: "点検太郎", kensa_licenses: { class1: { issue_year: "2020" } } } } }, [])
+    warnCase("点検者1が空", { itiran: { inspector1: null } }, ["inspector1_name", "inspector1_license", "inspector1_phone"])
+    warnCase("点検者1の資格が無い", { itiran: { inspector1: { name: "点検太郎", phone: "06-1234-5678" } } }, ["inspector1_license"])
+    warnCase("点検者1の資格は点検資格者の免状", { itiran: { inspector1: { name: "点検太郎", phone: "06-1234-5678", kensa_licenses: { class1: { issue_year: "2020" } } } } }, [])
+    // ★電話番号・報告年月日（2026-10-20・録音 102）。どちらも赤で目立たせる（urgent）・止めない
+    warnCase("点検者1の電話番号が無い", { itiran: { inspector1: { ...ITIRAN_OK.inspector1, phone: " " } } }, ["inspector1_phone"], (r) => {
+        if (r.warnings[0].urgent !== true) problems.push("点検者1の電話番号が無い: 赤で目立たせていない（urgent）")
+        if (r.warnings[0].fix?.kind !== "itiran") problems.push("点検者1の電話番号が無い: 直す画面が点検者一覧表でない")
+    })
+    warnCase("報告年月日が空", { soukatsu: { ...COMPLETE, report_date: null } }, ["report_date"], (r) => {
+        if (r.warnings[0].urgent !== true) problems.push("報告年月日が空: 赤で目立たせていない（urgent）")
+        if (r.warnings[0].fix?.kind !== "soukatsu" || r.warnings[0].fix?.anchor !== "reportDate") problems.push("報告年月日が空: 直す画面が総括表の報告年月日でない")
+    })
+    warnCase("★赤で目立たせるのは決めた 4 つだけ（「否」の不良内容は黄色のまま）", { bekkiPayloads: { [STEP]: { page1_rows: rows(26, (i) => (i === 3 ? { judgment: "否" } : { judgment: "良" })), page2_rows: rows(27) } } }, [`bekki_bad_content:${STEP}`], (r) => {
+        if (r.warnings[0].urgent) problems.push("「否」の不良内容まで赤にしている（赤は点検者の氏名・資格・電話番号と報告年月日だけ）")
+    })
     warnCase("★点検者一覧を渡さない（確定の前）", { itiran: undefined }, [])
     warnCase("未入力の様式", { bekkiPayloads: {} }, [`bekki_missing:${STEP}`])
     // ★判定の初期値「良」（2026-10-20・録音 102）: 確かめるまで知らせる・止めない・確かめたら消える
@@ -184,6 +196,10 @@ function wiring(src) {
     // ★未確定で確定のボタンをこの画面に置くときは「確定前の確認」（2026-10-19・通しチェック D）
     if (!/<ReportReadinessBox[\s\S]*?mode=\{needsFinalizeOnOutput\(finalization\) \? "finalize" : "review"\}/.test(out)) problems.push("出力画面に出力前の確認が無い")
     if (!/min-h-11/.test(src(BOX))) problems.push("確定前の確認のリンクが押しにくい（高さ 44px 未満）")
+    // ★足りない項目（urgent）は赤い枠・点滅する印で出す（2026-10-20・録音 102）
+    const boxSrc = src(BOX)
+    if (!boxSrc.includes("warnings.filter((w) => w.urgent)") || !/border-red-400[\s\S]*?motion-safe:animate-pulse/.test(boxSrc)) problems.push("確定前の確認: 足りない項目を赤い枠・点滅する印で出していない")
+    if (!/"urgent" in item && item\.urgent \?/.test(out)) problems.push("出力画面: 足りない項目のある書類に赤い印を出していない")
     const base = src(BASE)
     if (!/useState\(\(\) => basicInfoBlank\.length > 0\)/.test(base)) problems.push("共通の別記フォーム: 基本情報が入っていても最初から開いている（判定表が下に押し出される）")
     if ((base.match(/hidden=\{!basicInfoOpen\}/g) ?? []).length !== 3) problems.push("共通の別記フォーム: 基本情報の 3 段がそろって畳まれない")

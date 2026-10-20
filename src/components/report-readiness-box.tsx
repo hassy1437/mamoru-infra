@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { AlertTriangle, CheckCircle2, ChevronRight, ClipboardCheck, XCircle } from "lucide-react"
+import { AlertCircle, AlertTriangle, CheckCircle2, ChevronRight, ClipboardCheck, XCircle } from "lucide-react"
 import { readinessFixHref, type ReadinessFix, type ReadinessItem, type ReportReadiness } from "@/lib/report-readiness"
 
 /**
@@ -9,6 +9,8 @@ import { readinessFixHref, type ReadinessFix, type ReadinessItem, type ReportRea
  *   ・必須はチェックリストとして全部出す（入っているものも ✓ で出す＝何を見たかが分かる）
  *   ・空の必須は先頭に出し、直す画面へのリンクを付ける
  *   ・注意は入っていないものだけ。止めない（確定・出力はできる）と書く
+ *   ・★点検者 1 の氏名・資格・電話番号と報告年月日（urgent）は、赤い枠に点滅する印で出す
+ *     （2026-10-20・録音 102「不足している項目は一覧上で赤く光らせるなど、誰が見ても一目で気づく表示」）。止めないのは同じ
  *   ★確定のボタンを止めるのは FinalizeSoukatsuButton（missingRequired）。ここは知らせるだけ
  */
 
@@ -46,6 +48,9 @@ export default function ReportReadinessBox({
 }) {
     const { required, missing, warnings } = readiness
     const okItems = required.filter((r) => r.ok)
+    // ★赤で目立たせる注意と、黄色の注意に分ける
+    const urgent = warnings.filter((w) => w.urgent)
+    const normal = warnings.filter((w) => !w.urgent)
     return (
         <section aria-labelledby="report-readiness-title" className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -93,13 +98,35 @@ export default function ReportReadinessBox({
                 </ul>
             )}
 
-            {warnings.length > 0 ? (
+            {urgent.length > 0 && (
+                <div role="alert" className="space-y-2 rounded-lg border-2 border-red-400 bg-red-50 p-3">
+                    <p className="text-sm font-semibold text-red-800">
+                        足りない項目（{mode === "finalize" ? "確定はできます" : "出力・納品はできます"}が、報告書に空欄で出ます）
+                    </p>
+                    <ul className="space-y-2">
+                        {urgent.map((w) => (
+                            <li key={w.id} className="flex flex-wrap items-center justify-between gap-2">
+                                <span className="flex min-w-0 items-start gap-2 text-sm text-red-800">
+                                    {/* ★印を点滅させて目に入れる（動きを減らす設定の人には点滅させない） */}
+                                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600 motion-safe:animate-pulse" />
+                                    <span className="min-w-0">
+                                        <span className="font-bold">{w.label}</span>：{w.message}
+                                    </span>
+                                </span>
+                                <FixLink item={w} ctx={ctx} />
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+
+            {normal.length > 0 ? (
                 <div className="space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-3">
                     <p className="text-sm font-semibold text-amber-800">
                         注意（{mode === "finalize" ? "確定はできます" : "出力・納品はできます"}。入れ忘れでないか確かめてください）
                     </p>
                     <ul className="space-y-2">
-                        {warnings.map((w) => (
+                        {normal.map((w) => (
                             <li key={w.id} className="flex flex-wrap items-center justify-between gap-2">
                                 <span className="flex min-w-0 items-start gap-2 text-sm text-amber-800">
                                     <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -116,7 +143,7 @@ export default function ReportReadinessBox({
                     </ul>
                 </div>
             ) : (
-                missing.length === 0 && (
+                missing.length === 0 && urgent.length === 0 && (
                     <p className="flex items-center gap-2 text-sm text-emerald-700">
                         <CheckCircle2 className="h-4 w-4 shrink-0" />
                         必須の項目はすべて入っています。注意の項目もありません。

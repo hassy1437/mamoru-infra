@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { AlertTriangle, CheckCircle2, MinusCircle, Copy, Lock } from "lucide-react"
+import { AlertCircle, AlertTriangle, CheckCircle2, Copy, Lock, MinusCircle } from "lucide-react"
 import CombinedPdfButton from "@/components/combined-pdf-button"
 import {
     canDownloadPdf,
@@ -121,9 +121,10 @@ export default async function OutputPage({
 
     // ★attention … 出せるが、出力前の確認に指摘がある（以前は報告書（様式第１）が中身に関係なくいつも準備済みに見えた）
     const pdfList = [
-        { label: "報告書（様式第１）", ready: true, attention: readiness.missing.length > 0 },
+        { label: "報告書（様式第１）", ready: true, attention: readiness.missing.length > 0 || flagged.has("report_date"), urgent: flagged.has("report_date") },
         { label: "総括表", ready: true, attention: readiness.missing.length > 0 || flagged.has("soukatsu_bad_detail") },
-        { label: "点検者一覧表", ready: true, attention: flagged.has("inspector1_name") || flagged.has("inspector1_license") },
+        // ★電話番号（2026-10-20・録音 102）も。点検者 1 の氏名・資格・電話番号は赤で目立たせる
+        { label: "点検者一覧表", ready: true, attention: flagged.has("inspector1_name") || flagged.has("inspector1_license") || flagged.has("inspector1_phone"), urgent: flagged.has("inspector1_name") || flagged.has("inspector1_license") || flagged.has("inspector1_phone") },
         // ★綴じる順（様式番号の順・src/lib/build-merged-report.ts と同じ）に並べる。
         //   以前は入力の順（1→12〜22→2〜11）のままで、一覧と実際の PDF の順が違っていた（2026-10-20 の本番の通しチェック）
         ...[...applicableSteps].sort((a, b) => PDF_MERGE_CONFIG[a.id].formNo - PDF_MERGE_CONFIG[b.id].formNo).map((step) => ({
@@ -201,13 +202,20 @@ export default async function OutputPage({
                             <div key={idx} className="flex items-center gap-2 text-sm">
                                 {!item.ready ? (
                                     <MinusCircle className="w-4 h-4 text-slate-400 shrink-0" />
+                                ) : "urgent" in item && item.urgent ? (
+                                    // ★足りない項目（点検者 1 の氏名・資格・電話番号／報告年月日）は赤い印を点滅させる（2026-10-20・録音 102）
+                                    <AlertCircle className="w-4 h-4 text-red-600 shrink-0 motion-safe:animate-pulse" />
                                 ) : item.attention ? (
                                     <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
                                 ) : (
                                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                                 )}
                                 <span className={item.ready ? "" : "text-slate-400"}>{item.label}</span>
-                                {item.ready && item.attention && <span className="text-xs text-amber-700">（下の「出力前の確認」を見てください）</span>}
+                                {item.ready && item.attention && (
+                                    <span className={"urgent" in item && item.urgent ? "text-xs font-semibold text-red-700" : "text-xs text-amber-700"}>
+                                        {"urgent" in item && item.urgent ? "（足りない項目があります。下の「出力前の確認」を見てください）" : "（下の「出力前の確認」を見てください）"}
+                                    </span>
+                                )}
                             </div>
                         ))}
                     </div>

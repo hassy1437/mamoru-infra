@@ -275,9 +275,9 @@ export async function POST(req: NextRequest) {
 
             currentSize = Math.max(currentSize, minFontSize)
 
-            fonts.fit?.reportShrink(normalized, designSize, currentSize)
+            fonts.fit?.reportShrink(normalized, designSize, currentSize, options?.at)
 
-            reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth)
+            reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth, options?.at)
 
             const textToDraw = truncateToFitWidth(normalized, currentSize, maxWidth,
                 cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at))
@@ -322,8 +322,8 @@ export async function POST(req: NextRequest) {
             const h = font.jp.heightAtSize(currentSize, { descender: true })
             if (h > maxHeight) currentSize = currentSize * (maxHeight / h)
             currentSize = Math.max(currentSize, minFontSize)
-            fonts.fit?.reportShrink(normalized, designSize, currentSize)
-            reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth)
+            fonts.fit?.reportShrink(normalized, designSize, currentSize, options?.at)
+            reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth, options?.at)
             // ★共有の truncateRunsToFitWidth に寄せた（8本目の複製だった）。
             //   自前版は cut が 0 まで落ちた場合の report(value, 0) を持たず、
             //   1文字も入らないときに情報が消えたまま 200 が返っていた。
@@ -427,7 +427,7 @@ export async function POST(req: NextRequest) {
         drawChoiceCircle(page1, p1Height, fonts, body.inspection_type || "機器・総合", [
             { label: "機器", cx: 132.36, cy: 169.45, rx: 17.27, ry: 7.78 },
             { label: "総合", cx: 187.74, cy: 169.45, rx: 16.96, ry: 7.78 },
-        ])
+        ], undefined, { column: "inspection_type" })
         const periodStart = formatDateText(body.period_start)
         const periodEnd = formatDateText(body.period_end)
         if (parseDateParts(body.period_start) || parseDateParts(body.period_end)) {
@@ -567,7 +567,7 @@ export async function POST(req: NextRequest) {
         drawChoiceCircle(page2, p2Height, fonts, p2Rows3[7]?.content ?? "", [
             { label: "専用", cx: 267.2, cy: 239.4, rx: 14, ry: 7 },
             { label: "兼用", cx: 309.2, cy: 239.4, rx: 14.02, ry: 7.28 },
-        ])
+        ], undefined, { rowsKey: "page2_rows", row: 7, column: "content" })
 
         drawResultRows(page3, p3Height, body.page3_rows ?? [], P3_ROW_BOUNDS, {
             rowsKey: "page3_rows",

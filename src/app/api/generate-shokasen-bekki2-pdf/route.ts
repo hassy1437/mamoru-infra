@@ -56,6 +56,8 @@ type Bekki2Row = {
     action_content?: string
     current_value?: string  // 電圧計・電流計行の電流値（A）
     flow_value?: string     // 性能行のL/min値（MPaラベルとL/minラベルの間）
+    hose_count?: string     // ホース行の本数（content は長さ・2026-10-20 から入力欄を 3 つに分けた）
+    nozzle_dia?: string     // ホース行のノズル径（mm）
 }
 
 type DeviceRow = {
@@ -250,9 +252,9 @@ export async function POST(req: NextRequest) {
 
             currentSize = Math.max(currentSize, minFontSize)
 
-            fonts.fit?.reportShrink(normalized, designSize, currentSize)
+            fonts.fit?.reportShrink(normalized, designSize, currentSize, options?.at)
 
-            reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth)
+            reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth, options?.at)
 
             const textToDraw = truncateToFitWidth(normalized, currentSize, maxWidth,
                 cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at))
@@ -298,8 +300,8 @@ export async function POST(req: NextRequest) {
             const h = font.jp.heightAtSize(currentSize, { descender: true })
             if (h > maxHeight) currentSize = currentSize * (maxHeight / h)
             currentSize = Math.max(currentSize, minFontSize)
-            fonts.fit?.reportShrink(normalized, designSize, currentSize)
-            reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth)
+            fonts.fit?.reportShrink(normalized, designSize, currentSize, options?.at)
+            reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth, options?.at)
             // truncate if still too wide (+ 0.1 tolerance for floating point)
             // ★共有の truncateRunsToFitWidth に寄せた（8本目の複製だった）。
             //   自前版は cut が 0 まで落ちた場合の report(value, 0) を持たず、
@@ -409,7 +411,7 @@ export async function POST(req: NextRequest) {
         drawChoiceCircle(page1, p1Height, fonts, body.inspection_type || "機器・総合", [
             { label: "機器", cx: 137.40, cy: 154.81, rx: 16.90, ry: 8.03 },
             { label: "総合", cx: 192.17, cy: 154.81, rx: 16.96, ry: 8.03 },
-        ])
+        ], undefined, { column: "inspection_type" })
         const periodStart = formatDateText(body.period_start)
         const periodEnd = formatDateText(body.period_end)
         if (parseDateParts(body.period_start) || parseDateParts(body.period_end)) {
@@ -518,7 +520,7 @@ export async function POST(req: NextRequest) {
         drawChoiceCircle(page2, p2Height, fonts, p2Rows[7]?.content ?? "", [
             { label: "専用", cx: 266,   cy: 209, rx: 14, ry: 7 },
             { label: "兼用", cx: 318.6, cy: 209.29, rx: 14.07, ry: 7.53 },
-        ])
+        ], undefined, { rowsKey: "page2_rows", row: 7, column: "content" })
 
         const p3Rows = body.page3_rows ?? []
         drawResultRows(page3, p3Height, p3Rows, P3_ROW_BOUNDS_A, 0, {}, new Set([
@@ -531,21 +533,24 @@ export async function POST(req: NextRequest) {
         drawChoiceCircle(page3, p3Height, fonts, p3Rows[13]?.content ?? "", [
             { label: "専用", cx: 270, cy: 306.75, rx: 16.06, ry: 5.78 },
             { label: "兼用", cx: 312.1, cy: 306.75, rx: 14, ry: 7 },
-        ])
+        ], undefined, { rowsKey: "page3_rows", row: 13, column: "content" })
 
         // P3A row 8, 9: ホース/ノズル径「ホース ___m× ___本 ｜ ノズル径 ___mm」を手動3分割描画
-        // content="20/2/19" → ホース20m × 2本, ノズル径19mm（skipContentRows で content をスキップ済）
-        // bekki3(row25)/bekki20(row7) と同手法。公式PDF実測座標を使用。
+        // ★新キー優先（content=長さ, hose_count=本数, nozzle_dia=口径）→ 以前の "/" 区切り（content="20/2/19"）→ 単一 content。
+        //   入力欄が 1 つで「長さ/本数/口径」と書く決まりが画面のどこにも無かった（2026-10-20・本番の通しチェック）。
+        //   bekki3(row25)/bekki20(row7) と同手法。公式PDF実測座標を使用（skipContentRows で content をスキップ済）。
         for (const hi of [8, 9]) {
             const hoseRow = p3Rows[hi]
             if (!hoseRow) continue
             const hTop = P3_ROW_BOUNDS_A[hi]
             const hH = P3_ROW_BOUNDS_A[hi + 1] - P3_ROW_BOUNDS_A[hi]
             const hContent = normalizeText(hoseRow.content)
+            const hCount = normalizeText(hoseRow.hose_count)
+            const nDia = normalizeText(hoseRow.nozzle_dia)
             // 値は行の下半分（m×/本/mm ラベルと同じ高さ）に配置
             const hValTop = hTop + hH / 2 - 2
             const hValH = hH / 2 + 2
-            const parts = hContent.split("/")
+            const parts = hCount || nDia ? [hContent, hCount, nDia] : hContent.split("/")
             if (parts.length >= 3) {
                 // ホース長(m): 「m」(x=264.6)の左
                 drawInCellWithFont(page3, p3Height, fonts, parts[0]?.trim(), 244, hValTop, 20, hValH, 6.5, { paddingX: 0.5 })

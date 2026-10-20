@@ -18,6 +18,8 @@ interface Props {
         /** 総括表の点検期間。別記の期間の初期値にする（src/lib/bekki-period.ts） */
         inspection_period_start?: string | null
         inspection_period_end?: string | null
+        /** 総括表の設備の行から引き継いだ立会者（点検票に保存が無いときの初期値・src/lib/bekki-witness.ts） */
+        witness?: string | null
         inspection_type?: string | null
     }
     soukatsuId: string
@@ -68,6 +70,14 @@ export default function LeakageFireAlarmBekki12Form(props: Props) {
             apiPath="/api/generate-leakage-fire-alarm-bekki12-pdf"
             dbTable="inspection_leakage_fire_alarm_bekki12"
             downloadFilenamePrefix="漏電火災警報器点検票"
+            // ★様式の点検設備名の欄（受信機・変流器）。入力欄が無く、いつも空で出ていた（2026-10-20）
+            extraFieldsTitle="受信機・変流器（製造者・型式）"
+            extraFields={[
+                { key: "receiver_maker", label: "受信機 製造者名" },
+                { key: "receiver_model", label: "受信機 型式等" },
+                { key: "ct_maker", label: "変流器 製造者名" },
+                { key: "ct_model", label: "変流器 型式等" },
+            ]}
             sections={[
                 { key: "page1_rows", title: "（その1）機器点検", labels: PAGE1_ITEMS },
                 {

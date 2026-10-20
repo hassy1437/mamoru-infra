@@ -11,6 +11,8 @@ import { BekkiBulkGoodButton } from "@/components/bekki-bulk-good-button"
 import { defectPhraseListId } from "@/lib/defect-phrases"
 import { DefectPhraseDatalists } from "@/components/defect-phrase-datalists"
 import { Input } from "@/components/ui/input"
+import { BekkiChoiceCheckboxes } from "@/components/bekki-choice-checkboxes"
+import { choiceRowsOf, type ChoiceRow } from "@/lib/bekki-choice-rows"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -24,6 +26,7 @@ import {
     normalizeBekkiWitnessForPayload,
     normalizeBekkiWitnessForState,
 } from "@/lib/bekki-form-normalization"
+import { bekkiWitnessInitial } from "@/lib/bekki-witness"
 import CameraInput from "@/components/camera-input"
 import { pdfRequestError, pdfErrorText } from "@/lib/pdf-request-error"
 import { soukatsuPdfGate } from "@/lib/pdf-gate-client"
@@ -83,6 +86,8 @@ interface Props {
         /** 総括表の点検期間。別記の期間の初期値にする（src/lib/bekki-period.ts） */
         inspection_period_start?: string | null
         inspection_period_end?: string | null
+        /** 総括表の設備の行から引き継いだ立会者（点検票に保存が無いときの初期値・src/lib/bekki-witness.ts） */
+        witness?: string | null
         inspection_type?: string | null
     }
     soukatsuId: string
@@ -245,7 +250,7 @@ export default function WaterSprayBekki4Form({
 
     const [formName, setFormName] = useState(coerceString(saved.form_name, initial.building_name ?? ""))
     const [fireManager, setFireManager] = useState(coerceString(saved.fire_manager, initial.fire_manager_name ?? ""))
-    const [witness, setWitness] = useState(normalizeBekkiWitnessForState(coerceString(saved.witness)))
+    const [witness, setWitness] = useState(normalizeBekkiWitnessForState(bekkiWitnessInitial(saved.witness, initial.witness)))
     const [location, setLocation] = useState(coerceString(saved.location, initial.building_address ?? ""))
     const [inspectionType, setInspectionType] = useState(coerceString(saved.inspection_type, bekkiInspectionTypeDefault(initial.inspection_type)))
     const [periodStart, setPeriodStart] = useState(coerceString(saved.period_start, bekkiPeriodDefault(initial).start))
@@ -476,6 +481,8 @@ export default function WaterSprayBekki4Form({
          * 前提にしていたため、書式を知らない点検者が値を1つ書くと作動圧力が空になった。
          */
         pressureSwitchRowIndex?: number,
+        /** 選択肢の欄（専用・兼用など・src/lib/bekki-choice-rows.ts）。キーはこの表の中の行番号 */
+        choiceRows?: Readonly<Record<number, ChoiceRow>>,
     ) => {
     const markAllGood = () => setter((prev) => prev.map((row, i) => (row.judgment === "" && !isBekkiHeadingLabel(labels[i] ?? "") ? { ...row, judgment: "良" } : row)))
     return (
@@ -562,6 +569,13 @@ export default function WaterSprayBekki4Form({
                                                 />
                                                 <span className="text-xs text-muted-foreground">A</span>
                                             </div>
+                                        ) : choiceRows?.[idx] ? (
+                                            <BekkiChoiceCheckboxes
+                                                row={choiceRows[idx]}
+                                                value={rows[idx].content}
+                                                onChange={(next) => updateRowField(setter, idx, "content", next)}
+                                                ariaLabel={`${label}（選択）`}
+                                            />
                                         ) : (
                                             <Input
                                                 value={rows[idx].content}
@@ -664,6 +678,13 @@ export default function WaterSprayBekki4Form({
                                             />
                                             <span className="text-xs text-muted-foreground">A</span>
                                         </div>
+                                    ) : choiceRows?.[idx] ? (
+                                        <BekkiChoiceCheckboxes
+                                            row={choiceRows[idx]}
+                                            value={rows[idx].content}
+                                            onChange={(next) => updateRowField(setter, idx, "content", next)}
+                                            ariaLabel={`${label}（選択）`}
+                                        />
                                     ) : (
                                         <Input
                                             value={rows[idx].content}
@@ -822,7 +843,7 @@ export default function WaterSprayBekki4Form({
             </Card>
 
             {renderItemTable("（その1）機器点検", PAGE1_ITEMS, page1Rows, setPage1Rows, 10)}
-            {renderItemTable("（その2）機器点検", PAGE2_ITEMS, page2Rows, setPage2Rows, undefined, 19)}
+            {renderItemTable("（その2）機器点検", PAGE2_ITEMS, page2Rows, setPage2Rows, undefined, 19, undefined, choiceRowsOf("/api/generate-water-spray-bekki4-pdf", "page2_rows"))}
             {/* 5 = 圧力検知装置の圧力スイッチ。様式が「設定圧力 MPa / 作動圧力 MPa」の2値を求める行 */}
             {renderItemTable("（その3）機器点検・総合点検", PAGE3_ITEMS, page3Rows, setPage3Rows, undefined, undefined, 5)}
 

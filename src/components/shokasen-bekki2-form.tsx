@@ -11,6 +11,8 @@ import { defectPhraseListId } from "@/lib/defect-phrases"
 import { DefectPhraseDatalists } from "@/components/defect-phrase-datalists"
 import { WRAP_CLS, bindLabelBreaks } from "@/components/row-label"
 import { Input } from "@/components/ui/input"
+import { BekkiChoiceCheckboxes } from "@/components/bekki-choice-checkboxes"
+import { choiceRowsOf, type ChoiceRow } from "@/lib/bekki-choice-rows"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -24,6 +26,7 @@ import {
     normalizeBekkiWitnessForPayload,
     normalizeBekkiWitnessForState,
 } from "@/lib/bekki-form-normalization"
+import { bekkiWitnessInitial } from "@/lib/bekki-witness"
 import CameraInput from "@/components/camera-input"
 import { pdfRequestError, pdfErrorText } from "@/lib/pdf-request-error"
 import { soukatsuPdfGate } from "@/lib/pdf-gate-client"
@@ -35,6 +38,8 @@ type RowState = {
     action_content: string
     current_value: string  // 電圧計・電流計行の電流値（A）
     flow_value: string     // ポンプ性能行の吐出量（L/min）
+    hose_count: string     // ホース行の本数（content は長さ）
+    nozzle_dia: string     // ホース行のノズル径（mm）
 }
 
 type DeviceState = {
@@ -83,6 +88,8 @@ interface Props {
         /** 総括表の点検期間。別記の期間の初期値にする（src/lib/bekki-period.ts） */
         inspection_period_start?: string | null
         inspection_period_end?: string | null
+        /** 総括表の設備の行から引き継いだ立会者（点検票に保存が無いときの初期値・src/lib/bekki-witness.ts） */
+        witness?: string | null
         inspection_type?: string | null
     }
     soukatsuId: string
@@ -192,6 +199,8 @@ const createEmptyRow = (): RowState => ({
     action_content: "",
     current_value: "",
     flow_value: "",
+    hose_count: "",
+    nozzle_dia: "",
 })
 
 const createEmptyDevice = (): DeviceState => ({
@@ -215,7 +224,21 @@ const coerceRow = (value: unknown): RowState => {
         action_content: coerceString(source.action_content),
         current_value: coerceString(source.current_value),
         flow_value: coerceString(source.flow_value),
+        hose_count: coerceString(source.hose_count),
+        nozzle_dia: coerceString(source.nozzle_dia),
     }
+}
+
+/**
+ * （その3）のホース・ノズルの行（1号・易操作1/2号）。刷り込みが「ホース ___m× ___本 ｜ ノズル径 ___mm」で空欄が 3 つある。
+ * ★入力欄が 1 つで「長さ/本数/口径」（例 20/2/19）と書く決まりが画面に無かった（2026-10-20・本番の通しチェック）。
+ *   以前の保存（"/" 区切り）は読むときに 3 つへ分ける（ルートは新キーを優先し、無ければ "/" 区切りを読む）。
+ */
+const HOSE_ROW_INDEXES = [8, 9] as const
+const splitLegacyHoseRow = (row: RowState): RowState => {
+    if (row.hose_count || row.nozzle_dia || !row.content.includes("/")) return row
+    const [len = "", count = "", dia = ""] = row.content.split("/").map((v) => v.trim())
+    return { ...row, content: len, hose_count: count, nozzle_dia: dia }
 }
 
 const coerceDevice = (value: unknown): DeviceState => {
@@ -251,7 +274,7 @@ export default function ShokasenBekki2Form({
 
     const [formName, setFormName] = useState(coerceString(saved.form_name, initial.building_name ?? ""))
     const [fireManager, setFireManager] = useState(coerceString(saved.fire_manager, initial.fire_manager_name ?? ""))
-    const [witness, setWitness] = useState(normalizeBekkiWitnessForState(coerceString(saved.witness)))
+    const [witness, setWitness] = useState(normalizeBekkiWitnessForState(bekkiWitnessInitial(saved.witness, initial.witness)))
     const [location, setLocation] = useState(coerceString(saved.location, initial.building_address ?? ""))
     const [inspectionType, setInspectionType] = useState(coerceString(saved.inspection_type, bekkiInspectionTypeDefault(initial.inspection_type)))
     const [periodStart, setPeriodStart] = useState(coerceString(saved.period_start, bekkiPeriodDefault(initial).start))
@@ -273,7 +296,8 @@ export default function ShokasenBekki2Form({
 
     const [page1Rows, setPage1Rows] = useState<RowState[]>(() => hydrateRows(PAGE1_ITEMS.length, saved.page1_rows))
     const [page2Rows, setPage2Rows] = useState<RowState[]>(() => hydrateRows(PAGE2_ITEMS.length, saved.page2_rows))
-    const [page3Rows, setPage3Rows] = useState<RowState[]>(() => hydrateRows(PAGE3_ITEMS.length, saved.page3_rows))
+    const [page3Rows, setPage3Rows] = useState<RowState[]>(() =>
+        hydrateRows(PAGE3_ITEMS.length, saved.page3_rows).map((row, i) => ((HOSE_ROW_INDEXES as readonly number[]).includes(i) ? splitLegacyHoseRow(row) : row)))
 
     const [saving, setSaving] = useState(false)
     const [loadingPreview, setLoadingPreview] = useState(false)
@@ -479,6 +503,10 @@ export default function ShokasenBekki2Form({
         setter: React.Dispatch<React.SetStateAction<RowState[]>>,
         currentValueRowIndex?: number,
         perfRowIndex?: number,
+        /** 選択肢の欄（専用・兼用など・src/lib/bekki-choice-rows.ts）。キーはこの表の中の行番号 */
+        choiceRows?: Readonly<Record<number, ChoiceRow>>,
+        /** ホース・ノズルの行（長さ・本数・口径の 3 つの欄） */
+        hoseRowIndexes?: readonly number[],
     ) => {
     // 「すべて良にする」: このセクションで判定が空("")の行だけ "良" に（既存の良/否は触らない）
     const markAllGood = () => setter((prev) => prev.map((row, i) => (row.judgment === "" && !isBekkiHeadingLabel(labels[i] ?? "") ? { ...row, judgment: "良" } : row)))
@@ -515,7 +543,39 @@ export default function ShokasenBekki2Form({
                                 <tr key={`${title}-${label}`}>
                                     <td className={`p-2 border ${WRAP_CLS}`}>{bindLabelBreaks(label)}</td>
                                     <td className="p-1 border">
-                                        {idx === perfRowIndex ? (
+                                        {hoseRowIndexes?.includes(idx) ? (
+                                            <div className="space-y-1">
+                                                <div className="flex items-center gap-1">
+                                                    <Input
+                                                        value={rows[idx].content}
+                                                        onChange={(e) => updateRowField(setter, idx, "content", e.target.value)}
+                                                        placeholder="長さ"
+                                                        aria-label={`${label} ホースの長さ(m)`}
+                                                        className="w-16"
+                                                    />
+                                                    <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">m ×</span>
+                                                    <Input
+                                                        value={rows[idx].hose_count}
+                                                        onChange={(e) => updateRowField(setter, idx, "hose_count", e.target.value)}
+                                                        placeholder="本数"
+                                                        aria-label={`${label} 本数`}
+                                                        className="w-16"
+                                                    />
+                                                    <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">本</span>
+                                                </div>
+                                                <div className="flex items-center gap-1">
+                                                    <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">ノズル径</span>
+                                                    <Input
+                                                        value={rows[idx].nozzle_dia}
+                                                        onChange={(e) => updateRowField(setter, idx, "nozzle_dia", e.target.value)}
+                                                        placeholder="口径"
+                                                        aria-label={`${label} ノズル径(mm)`}
+                                                        className="w-16"
+                                                    />
+                                                    <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">mm</span>
+                                                </div>
+                                            </div>
+                                        ) : idx === perfRowIndex ? (
                                             <div className="flex gap-1 items-center">
                                                 <Input
                                                     value={rows[idx].content}
@@ -549,6 +609,13 @@ export default function ShokasenBekki2Form({
                                                 />
                                                 <span className="text-xs text-muted-foreground">A</span>
                                             </div>
+                                        ) : choiceRows?.[idx] ? (
+                                            <BekkiChoiceCheckboxes
+                                                row={choiceRows[idx]}
+                                                value={rows[idx].content}
+                                                onChange={(next) => updateRowField(setter, idx, "content", next)}
+                                                ariaLabel={`${label}（選択）`}
+                                            />
                                         ) : (
                                             <Input
                                                 value={rows[idx].content}
@@ -600,7 +667,39 @@ export default function ShokasenBekki2Form({
                             <div className="grid grid-cols-2 gap-2">
                                 <div className="space-y-1">
                                     <span className="text-xs text-slate-500">内容</span>
-                                    {idx === perfRowIndex ? (
+                                    {hoseRowIndexes?.includes(idx) ? (
+                                        <div className="space-y-1">
+                                            <div className="flex items-center gap-1">
+                                                <Input
+                                                    value={rows[idx].content}
+                                                    onChange={(e) => updateRowField(setter, idx, "content", e.target.value)}
+                                                    placeholder="長さ"
+                                                    aria-label={`${label} ホースの長さ(m)`}
+                                                    className="h-9 w-12 px-2 text-sm"
+                                                />
+                                                <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">m ×</span>
+                                                <Input
+                                                    value={rows[idx].hose_count}
+                                                    onChange={(e) => updateRowField(setter, idx, "hose_count", e.target.value)}
+                                                    placeholder="本数"
+                                                    aria-label={`${label} 本数`}
+                                                    className="h-9 w-12 px-2 text-sm"
+                                                />
+                                                <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">本</span>
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                                <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">ノズル径</span>
+                                                <Input
+                                                    value={rows[idx].nozzle_dia}
+                                                    onChange={(e) => updateRowField(setter, idx, "nozzle_dia", e.target.value)}
+                                                    placeholder="口径"
+                                                    aria-label={`${label} ノズル径(mm)`}
+                                                    className="h-9 w-12 px-2 text-sm"
+                                                />
+                                                <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">mm</span>
+                                            </div>
+                                        </div>
+                                    ) : idx === perfRowIndex ? (
                                         <div className="flex gap-1 items-center flex-wrap">
                                             <Input
                                                 value={rows[idx].content}
@@ -634,6 +733,13 @@ export default function ShokasenBekki2Form({
                                             />
                                             <span className="text-xs text-muted-foreground">A</span>
                                         </div>
+                                    ) : choiceRows?.[idx] ? (
+                                        <BekkiChoiceCheckboxes
+                                            row={choiceRows[idx]}
+                                            value={rows[idx].content}
+                                            onChange={(next) => updateRowField(setter, idx, "content", next)}
+                                            ariaLabel={`${label}（選択）`}
+                                        />
                                     ) : (
                                         <Input
                                             value={rows[idx].content}
@@ -792,8 +898,8 @@ export default function ShokasenBekki2Form({
             </Card>
 
             {renderItemTable("（その1）機器点検", PAGE1_ITEMS, page1Rows, setPage1Rows, 10)}
-            {renderItemTable("（その2）機器点検", PAGE2_ITEMS, page2Rows, setPage2Rows, undefined, 24)}
-            {renderItemTable("（その3）配管等・総合点検", PAGE3_ITEMS, page3Rows, setPage3Rows)}
+            {renderItemTable("（その2）機器点検", PAGE2_ITEMS, page2Rows, setPage2Rows, undefined, 24, choiceRowsOf("/api/generate-shokasen-bekki2-pdf", "page2_rows"))}
+            {renderItemTable("（その3）配管等・総合点検", PAGE3_ITEMS, page3Rows, setPage3Rows, undefined, undefined, choiceRowsOf("/api/generate-shokasen-bekki2-pdf", "page3_rows"), HOSE_ROW_INDEXES)}
 
             <Card>
                 <CardHeader>

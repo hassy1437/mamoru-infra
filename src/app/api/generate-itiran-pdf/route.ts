@@ -181,8 +181,8 @@ export async function POST(req: NextRequest) {
                 currentSize = currentSize * (maxHeight / h)
             }
             currentSize = Math.max(currentSize, 3.5)
-            fonts.fit?.reportShrink(normalized, designSize, currentSize)
-            reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth)
+            fonts.fit?.reportShrink(normalized, designSize, currentSize, options?.at)
+            reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth, options?.at)
 
             const textToDraw = truncateToFitWidth(normalized, currentSize, maxWidth,
                 cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at))

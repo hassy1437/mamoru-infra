@@ -217,9 +217,9 @@ export async function POST(req: NextRequest) {
 
             currentSize = Math.max(currentSize, minFontSize)
 
-            fonts.fit?.reportShrink(normalized, designSize, currentSize)
+            fonts.fit?.reportShrink(normalized, designSize, currentSize, options?.at)
 
-            reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth);
+            reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth, options?.at);
 
             // ★共有の truncateRunsToFitWidth に寄せた（9本目の複製だった）。
             //   自前版は切り詰めても fonts.fit?.report を**一度も呼ばない**。

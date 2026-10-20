@@ -219,8 +219,8 @@ export async function POST(req: NextRequest) {
             const h = font.jp.heightAtSize(currentSize, { descender: true })
             if (h > maxHeight) currentSize = currentSize * (maxHeight / h)
             currentSize = Math.max(currentSize, minFontSize)
-            fonts.fit?.reportShrink(normalized, designSize, currentSize)
-            reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth)
+            fonts.fit?.reportShrink(normalized, designSize, currentSize, options?.at)
+            reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth, options?.at)
             // ★共有の truncateRunsToFitWidth に寄せた（8本目の複製だった）。
             //   自前版は cut が 0 まで落ちた場合の report(value, 0) を持たず、
             //   1文字も入らないときに情報が消えたまま 200 が返っていた。
@@ -292,7 +292,7 @@ export async function POST(req: NextRequest) {
             drawChoiceCircle(page, pageHeight, fonts, body.inspection_type || "機器・総合", [
                 { label: "機器", cx: 136.50, cy: 173.99, rx: 18.24, ry: 6.00 },
                 { label: "総合", cx: 187.37, cy: 173.99, rx: 18.24, ry: 6.00 },
-            ])
+            ], undefined, { column: "inspection_type" })
 
             const periodText = (() => {
                 const start = formatDateText(body.period_start)

@@ -49,6 +49,9 @@ EXEMPT = {"content", "bad_content", "action_content", "equipment_name", "notes",
           "model", "maker",
           # 別記22 の点検設備の製造者名。入力欄の見出しは設定の一覧から {field.label} で描く（固定の <Label> が無い）
           "cable_maker", "antenna_maker", "amplifier_maker",
+          # 点検設備名の欄（別記11の1・11の2・12・14・22）。同じく設定の一覧（extraFields）から {field.label} で描く
+          "amplifier_model", "receiver_maker", "receiver_model", "repeater_maker", "repeater_model",
+          "ct_maker", "ct_model", "operation_maker", "operation_model",
           # 測定機器の機器名。payload のキーは "name"（表記を引くキーだけ device_name・CellRef.labelKey）。入力欄は placeholder だけ
           "device_name"}
 

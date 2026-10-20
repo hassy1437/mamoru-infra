@@ -243,9 +243,9 @@ export async function POST(req: NextRequest) {
 
             currentSize = Math.max(currentSize, minFontSize)
 
-            fonts.fit?.reportShrink(normalized, designSize, currentSize)
+            fonts.fit?.reportShrink(normalized, designSize, currentSize, options?.at)
 
-            reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth)
+            reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth, options?.at)
 
             const textToDraw = truncateToFitWidth(normalized, currentSize, maxWidth,
                 cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at))
@@ -349,7 +349,7 @@ export async function POST(req: NextRequest) {
         drawChoiceCircle(page1, p1Height, fonts, body.inspection_type || "機器・総合", [
             { label: "機器", cx: 132, cy: 171.85, rx: 16.9, ry: 7.78 },
             { label: "総合", cx: 186.77, cy: 171.85, rx: 16.96, ry: 7.53 },
-        ])
+        ], undefined, { column: "inspection_type" })
 
         const periodText = (() => {
             const start = formatDateText(body.period_start)
@@ -438,7 +438,7 @@ export async function POST(req: NextRequest) {
         drawChoiceCircle(page2, p2Height, fonts, body.page2_rows?.[7]?.content ?? "", [
             { label: "専用", cx: 237.24, cy: 210, rx: 14, ry: 7 },
             { label: "兼用", cx: 279.3, cy: 210.13, rx: 14.01, ry: 7.28 },
-        ])
+        ], undefined, { rowsKey: "page2_rows", row: 7, column: "content" })
 
         // PAGE2 row 21「ポンプ / 性能（MPa・L/min）」: 吐出圧力(MPa)/吐出量(L/min) を分割描画
         // 新キー優先（content=MPa, flow_value=L/min）→ content の "/" 分割 → 単一content の3段fallback

@@ -213,8 +213,8 @@ export async function POST(req: NextRequest) {
             const heightAtCurrent = fonts.jp.heightAtSize(currentSize, { descender: true })
             if (heightAtCurrent > maxHeight) currentSize *= maxHeight / heightAtCurrent
             currentSize = Math.max(currentSize, minFontSize)
-            fonts.fit?.reportShrink(normalized, designSize, currentSize)
-            reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth)
+            fonts.fit?.reportShrink(normalized, designSize, currentSize, options?.at)
+            reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth, options?.at)
 
             const textToDraw = truncateToFitWidth(normalized, currentSize, maxWidth,
                 cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at))
@@ -309,7 +309,7 @@ export async function POST(req: NextRequest) {
         drawChoiceCircle(page1, p1Height, fonts, body.inspection_type || "機器・総合", [
             { label: "機器", cx: 127.38, cy: 180.61, rx: 17.56, ry: 8.03 },
             { label: "総合", cx: 186.11, cy: 180.61, rx: 17.62, ry: 8.03 },
-        ])
+        ], undefined, { column: "inspection_type" })
 
         const periodText = (() => {
             const start = formatDateText(body.period_start)

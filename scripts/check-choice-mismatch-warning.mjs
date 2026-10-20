@@ -74,6 +74,18 @@ const run = async (payload, outName) => {
     check(bytes > 0, "警告が出たときに PDF が返っていない（止めてはいけない）")
 }
 
+// --- 1b. 同じ値が前の行にもある → 警告は○を描いた行を指す ----------
+// ★値の一致で当てていた頃は「同じ値を持つ最初の行」（ここでは 1 行目の外形）を指した（2026-10-20）
+{
+    const payload = withAlarmMode("順次")
+    payload.page1_rows[0].content = "順次"
+    const { warning } = await run(payload, "choice-mismatch-same-value.pdf")
+    const items = warning?.choices ?? []
+    check(items.length === 1, `同じ値が前の行にもあるとき警告1件を期待、実際 ${items.length} 件`)
+    check(items[0]?.label?.includes("その1・24行目"),
+        `警告が鳴動方式の行（その1・24行目）を指さない: ${JSON.stringify(items[0]?.label)}`)
+}
+
 // --- 2. 一致する値（誤検出しないこと） ------------------------------
 for (const v of ["一斉", "区分", "相互", "再鳴動", "一斉鳴動"]) {
     const { warning } = await run(withAlarmMode(v), "choice-match.pdf")

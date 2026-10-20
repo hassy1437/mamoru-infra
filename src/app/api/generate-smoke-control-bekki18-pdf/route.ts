@@ -208,7 +208,7 @@ export async function POST(req: NextRequest) {
             drawChoiceCircle(page, pageHeight, fonts, body.inspection_type || "機器・総合", [
                 { label: "機器", cx: 136.50, cy: 172.57, rx: 17.24, ry: 7.03 },
                 { label: "総合", cx: 187.37, cy: 172.57, rx: 16.74, ry: 7.03 },
-            ])
+            ], undefined, { column: "inspection_type" })
 
             const periodText = (() => {
                 const start = formatDateText(body.period_start)

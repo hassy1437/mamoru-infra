@@ -132,6 +132,13 @@ const jobs = [
     outPdfPath: "tmp/pdf-test-bekki9to12/bekki12_test.pdf",
     payload: {
       ...shared,
+      // 点検設備名の欄（受信機・変流器）。2026-10-20 に入力欄と描画を足した
+      extra_fields: {
+        receiver_maker: "受信機製造株式会社",
+        receiver_model: "RCV-12",
+        ct_maker: "変流器製造株式会社",
+        ct_model: "ZCT-12",
+      },
       page1_rows: makeRows(23, "B12-P1"),
       // row 0: 感度範囲 — 刷り込み「－ ___ ％ ～ ＋ ___ ％」の2値。空欄は 10.5pt しかない
       page2_rows: makeRows(4, "B12-P2").map((row, i) =>

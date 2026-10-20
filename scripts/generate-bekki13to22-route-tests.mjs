@@ -68,6 +68,13 @@ const jobs = [
     choiceRows: { page1_rows: { 23: "一斉" }, page2_rows: { 30: "相互" } },
     payload: {
       ...shared,
+      // 点検設備名の欄（操作部・複合装置／増幅器）。2026-10-20 に入力欄と描画を足した
+      extra_fields: {
+        operation_maker: "操作部製造株式会社",
+        operation_model: "OPU-14",
+        amplifier_maker: "増幅器製造株式会社",
+        amplifier_model: "AMP-14",
+      },
       page1_rows: makeRows(40, "B14-P1"),
       page2_rows: makeRows(50, "B14-P2"),
       page3_rows: makeRows(10, "B14-P3"),

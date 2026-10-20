@@ -24,6 +24,8 @@ interface Props {
         /** 総括表の点検期間。別記の期間の初期値にする（src/lib/bekki-period.ts） */
         inspection_period_start?: string | null
         inspection_period_end?: string | null
+        /** 総括表の設備の行から引き継いだ立会者（点検票に保存が無いときの初期値・src/lib/bekki-witness.ts） */
+        witness?: string | null
         inspection_type?: string | null
     }
     soukatsuId: string
@@ -108,32 +110,7 @@ const PAGE3_ITEMS = [
 // 同一セル複数選択欄（罫線座標で確認: 選択肢が1セルに並ぶ行）のチェックボックス定義。
 // value は PDF route の drawSelectionCircle options.label と完全一致（不一致だと○が出ない）。
 // 複数該当可（併用式・複数型）。独立セル(空気管式/熱電対式・熱半導体式/感知線型/分離型)は対象外。
-const PAGE2_CHOICES: Record<number, readonly { value: string; label: string }[]> = {
-    // 熱感知器 スポット型: 差動・定温（再）・熱アナログ
-    5: [
-        { value: "差動", label: "差動" },
-        { value: "定温", label: "定温（再）" },
-        { value: "熱アナログ", label: "熱アナログ" },
-    ],
-    // 煙感知器 スポット型: イオン・光電・アナログ
-    9: [
-        { value: "イオン", label: "イオン" },
-        { value: "光電", label: "光電" },
-        { value: "アナログ", label: "アナログ" },
-    ],
-    // 炎感知器: 赤外線・紫外線
-    11: [
-        { value: "赤外線", label: "赤外線" },
-        { value: "紫外線", label: "紫外線" },
-    ],
-    // 音響装置 鳴動方式: 一斉・区分・相互・再鳴動
-    22: [
-        { value: "一斉", label: "一斉" },
-        { value: "区分", label: "区分" },
-        { value: "相互", label: "相互" },
-        { value: "再鳴動", label: "再鳴動" },
-    ],
-}
+// ★感知器の種類・鳴動方式の選択肢は src/lib/bekki-choice-rows.ts（全様式の選択肢の欄を 1 か所で定義・2026-10-20）
 
 export default function JidouKasaiHouchiBekki11_1Form(props: Props) {
     // ★保存済み payload の extra_fields から読む（保存形は string の "1"）。
@@ -163,7 +140,6 @@ export default function JidouKasaiHouchiBekki11_1Form(props: Props) {
                     key: "page2_rows",
                     title: "（その2）機器点検",
                     labels: PAGE2_ITEMS,
-                    choiceRows: PAGE2_CHOICES,
                     hiddenRow: (l) => !isRowActive(l, hasAutoTest),
                     hiddenRowNotice: AUTO_TEST_COLLAPSED_NOTICE,
                 },

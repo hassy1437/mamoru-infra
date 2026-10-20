@@ -18,6 +18,8 @@ interface Props {
         /** 総括表の点検期間。別記の期間の初期値にする（src/lib/bekki-period.ts） */
         inspection_period_start?: string | null
         inspection_period_end?: string | null
+        /** 総括表の設備の行から引き継いだ立会者（点検票に保存が無いときの初期値・src/lib/bekki-witness.ts） */
+        witness?: string | null
         inspection_type?: string | null
     }
     soukatsuId: string
@@ -106,6 +108,14 @@ export default function EmergencyAlarmBekki14Form(props: Props) {
             apiPath="/api/generate-emergency-alarm-bekki14-pdf"
             dbTable="inspection_emergency_alarm_bekki14"
             downloadFilenamePrefix="非常警報器具及び設備点検票"
+            // ★様式の点検設備名の欄（操作部・複合装置／増幅器）。入力欄が無く、いつも空で出ていた（2026-10-20）
+            extraFieldsTitle="操作部・複合装置／増幅器（製造者・型式）"
+            extraFields={[
+                { key: "operation_maker", label: "操作部・複合装置 製造者名" },
+                { key: "operation_model", label: "操作部・複合装置 型式等" },
+                { key: "amplifier_maker", label: "増幅器 製造者名" },
+                { key: "amplifier_model", label: "増幅器 型式等" },
+            ]}
             sections={[
                 { key: "page1_rows", title: "（その1）機器点検", labels: PAGE1_ITEMS },
                 { key: "page2_rows", title: "（その2）機器点検", labels: PAGE2_ITEMS },

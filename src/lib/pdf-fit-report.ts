@@ -29,9 +29,24 @@ import { BEKKI_ROW_LABELS } from "./bekki-row-labels"
  * ★行ラベルが引けないときは行番号を出す。出典（フォームの PAGE{n}_ITEMS）と
  *   payload の行数がズレることは原理的にありうるので、黙って何も出さない方が悪い。
  */
-const withRow = (base: string, form: string, rowsKey?: string, row?: number): string => {
+const withRow = (base: string, form: string, rowsKey?: string, row?: number, more = 0): string => {
     const r = rowLabelOf(form, rowsKey, row)
-    return r ? `${base}（${r}）` : base
+    // ★同じ値が何行にも出る警告は 1 件に畳むので、最初の行に「ほか N か所」を添える
+    //   （畳んだ行を黙って消さない。最初の行は描画位置で決まった本当の行）
+    const others = more > 0 ? `ほか${more}か所` : ""
+    return r ? `${base}（${r}${others ? `・${others}` : ""}）` : others ? `${base}（${others}）` : base
+}
+
+/** [欄, 値] で畳み、畳んだ件数を数える（警告を同じ項目で埋めないため） */
+const groupByFieldText = <T extends { field?: string; text: string }>(items: T[]): { first: T; more: number }[] => {
+    const groups = new Map<string, { first: T; more: number }>()
+    for (const it of items) {
+        const key = JSON.stringify([it.field, it.text])
+        const g = groups.get(key)
+        if (g) g.more += 1
+        else groups.set(key, { first: it, more: 0 })
+    }
+    return [...groups.values()]
 }
 
 export const rowLabelOf = (form: string, rowsKey?: string, row?: number): string | null => {
@@ -91,6 +106,16 @@ export const FIELD_LABELS: Record<string, string> = {
     cable_maker: "漏洩同軸ケーブル 製造者名",
     antenna_maker: "空中線 製造者名",
     amplifier_maker: "増幅器 製造者名",
+    amplifier_model: "増幅器 型式等",
+    // 点検設備名の欄（別記11の1・11の2・12・14）。入力画面は設定の一覧から {field.label} で描く（2026-10-20）
+    receiver_maker: "受信機 製造者名",
+    receiver_model: "受信機 型式等",
+    repeater_maker: "中継器 製造者名",
+    repeater_model: "中継器 型式等",
+    ct_maker: "変流器 製造者名",
+    ct_model: "変流器 型式等",
+    operation_maker: "操作部・複合装置 製造者名",
+    operation_model: "操作部・複合装置 型式等",
     // 測定機器の機器名。★payload のキーは "name" だが、総括表の設備名も "name" なので、
     //   表記を引くキーを分けている（CellRef.labelKey）。入力欄は placeholder だけ（check-field-labels.py で除外）
     device_name: "測定機器 機器名",
@@ -154,7 +179,7 @@ export type FitCollector = {
      * ＝ 絶対下限は単独では判定に使えない。設計値からの逸脱と組み合わせる必要がある。
      * それまでは記録のみ行い、監視で傾向を見る。
      */
-    reportSmall: (text: string, size: number) => void
+    reportSmall: (text: string, size: number, at?: CellRef) => void
     /**
      * ⑨ 設計値からの逸脱の記録。
      * 各セルには呼び出し側が指定した設計サイズがある。実描画がそこからどれだけ
@@ -162,7 +187,7 @@ export type FitCollector = {
      * （絶対下限が失敗した理由がこれ）。閾値はキャリブレーションで決めるため、
      * まずは全ての縮小を記録して分布を測る。
      */
-    reportShrink: (text: string, design: number, actual: number) => void
+    reportShrink: (text: string, design: number, actual: number, at?: CellRef) => void
     /**
      * 様式の行数を超えて描けなかった項目の報告。
      * ★これは縮小(警告)ではなくデータ欠落(エラー)。切り詰めと同じ扱いにする。
@@ -189,10 +214,12 @@ export type FitCollector = {
      *
      * ★Phase 3 でフォームを選択式にしたら、そのときエラーへ格上げすること。
      *   選択式なら不一致＝バグなので止めるのが正しくなる。
+     *   2026-10-20: 行の選択肢の欄と設備方式は選ぶ欄にした（src/lib/bekki-choice-rows.ts）。ただし
+     *   以前に自由入力で保存した値と、点検種別（文字の欄のまま）が残るので、まだ警告に留める。
      *   （それまでは「データが消えるのにエラーでないのは誤りだ」と見えるが、
      *     上の非対称性が理由。自由入力のまま格上げすると誤ブロックが起きる）
      */
-    reportChoiceMismatch: (text: string, choices: string[]) => void
+    reportChoiceMismatch: (text: string, choices: string[], at?: CellRef) => void
     /** 選択肢と一致しなかった値（警告に載せる） */
     choiceMismatches: ChoiceMismatch[]
     /** 行数超過で落ちた項目（業者向けエラーに載せる） */
@@ -216,6 +243,8 @@ export type ChoiceMismatch = {
     choices: string[]
     /** payload 上のキー（分かった場合） */
     field?: string
+    /** 描画位置（分かった場合）。帰属はこれを優先する */
+    at?: CellRef
 }
 
 export type FitShrink = {
@@ -229,6 +258,8 @@ export type FitShrink = {
     deviation: number
     fromInput: boolean
     field?: string
+    /** 描画位置（分かった場合）。帰属はこれを優先する */
+    at?: CellRef
 }
 
 /**
@@ -246,6 +277,8 @@ export type FitSmall = {
     field?: string
     rowsKey?: string
     row?: number
+    /** 描画位置（分かった場合）。帰属と重複の畳み込みはこれを優先する */
+    at?: CellRef
 }
 
 export const createFitCollector = (): FitCollector => {
@@ -261,10 +294,12 @@ export const createFitCollector = (): FitCollector => {
         shrinks,
         overflowRows,
         choiceMismatches,
-        reportChoiceMismatch(text, choices) {
+        reportChoiceMismatch(text, choices, at) {
             const t = String(text ?? "").replace(/\s+/g, " ").trim()
-            if (!t || choiceMismatches.some((c) => c.text === t)) return
-            choiceMismatches.push({ text: t, choices: [...choices] })
+            // ★重複の畳み込みは「同じ欄」だけ（位置が分からない経路は従来どおり値で畳む）。
+            //   値で畳むと、同じ値が 2 行で外れても 1 件しか残らない
+            if (!t || choiceMismatches.some((c) => sameCell(c.at, at, c.text, t))) return
+            choiceMismatches.push({ text: t, choices: [...choices], at })
         },
         reportOverflowRow(text, capacity) {
             const t = String(text ?? "").trim()
@@ -274,7 +309,7 @@ export const createFitCollector = (): FitCollector => {
         get drawCount() {
             return state.drawCount
         },
-        reportShrink(text, design, actual) {
+        reportShrink(text, design, actual, at) {
             state.drawCount += 1
             const t = String(text ?? "").trim()
             if (!t || !(design > 0)) return
@@ -287,12 +322,13 @@ export const createFitCollector = (): FitCollector => {
                 actual: Math.round(actual * 100) / 100,
                 deviation: Math.round(deviation * 10) / 10,
                 fromInput: false,
+                at,
             })
         },
-        reportSmall(text, size) {
+        reportSmall(text, size, at) {
             const t = String(text ?? "").trim()
-            if (!t || smalls.some((s) => s.text === t)) return
-            smalls.push({ text: t, size: Math.round(size * 10) / 10, fromInput: false })
+            if (!t || smalls.some((s) => sameCell(s.at, at, s.text, t))) return
+            smalls.push({ text: t, size: Math.round(size * 10) / 10, fromInput: false, at })
         },
         report(text, fits, at) {
             // ★既に切り詰め済みの文字列を渡してくる経路があるので、末尾の "..." を外してから
@@ -315,25 +351,19 @@ export const createFitCollector = (): FitCollector => {
         },
         resolve(body) {
             const entries = collectStrings(body)
+            // ★選択肢・縮小・5pt未満も、描画位置が分かるなら位置で欄を決める（2026-10-20）。
+            //   以前は値の一致だけで当てており、「40個」「専用」のように同じ値が並ぶ様式では
+            //   警告が「同じ値を持つ最初の行」を指していた（本番の通しチェックで、
+            //   不活性ガスの 5pt 未満と鳴動方式の選択肢の警告が別の行を指した）。
             for (const c of choiceMismatches) {
-                const hit = entries.find((e) => e.value === c.text)
-                if (hit) { c.field = hit.key; c.rowsKey = hit.rowsKey; c.row = hit.row }
+                const hit = locate(entries, c.text, c.at, true)
+                if (hit) { c.field = hit.field; c.rowsKey = hit.rowsKey; c.row = hit.row }
             }
-            for (const f of shrinks) {
-                const hit =
-                    entries.find((e) => e.value === f.text) ?? entries.find((e) => e.value.includes(f.text))
+            for (const f of [...shrinks, ...smalls]) {
+                const hit = locate(entries, f.text, f.at, false)
                 if (!hit) continue
-                f.fromInput = true
-                f.field = hit.key
-                f.rowsKey = hit.rowsKey
-                f.row = hit.row
-            }
-            for (const f of smalls) {
-                const hit =
-                    entries.find((e) => e.value === f.text) ?? entries.find((e) => e.value.includes(f.text))
-                if (!hit) continue
-                f.fromInput = true
-                f.field = hit.key
+                f.fromInput = hit.fromInput
+                f.field = hit.field
                 f.rowsKey = hit.rowsKey
                 f.row = hit.row
             }
@@ -382,6 +412,39 @@ export const createFitCollector = (): FitCollector => {
 }
 
 type Located = { key: string; value: string; rowsKey?: string; row?: number }
+
+/** 同じ欄か（位置が両方分かるなら位置で、どちらかが無ければ値で比べる） */
+const sameCell = (a: CellRef | undefined, b: CellRef | undefined, textA: string, textB: string): boolean =>
+    a && b
+        ? a.rowsKey === b.rowsKey && a.row === b.row && a.column === b.column && textA === textB
+        : textA === textB
+
+/**
+ * 警告の欄を決める（選択肢・縮小・5pt未満）。
+ * ★位置（at）があればそれで決める。値の一致は「同じ値を持つ最初の欄」を拾うので、
+ *   定型値が並ぶ様式では別の行を指す（failures の帰属と同じ考え方）。
+ *   由来（業者の入力か）だけは、その欄の値で確かめる。
+ * exact: 選択肢は値そのものを照合する（部分一致にしない）
+ */
+const locate = (
+    entries: Located[], text: string, at: CellRef | undefined, exact: boolean,
+): { field?: string; rowsKey?: string; row?: number; fromInput: boolean } | null => {
+    const same = (e: Located) => e.value === text || (!exact && e.value.includes(text))
+    if (at?.rowsKey !== undefined && at.row !== undefined) {
+        const own = entries.find((e) => e.rowsKey === at.rowsKey && e.row === at.row
+            && (at.column ? e.key === at.column : true) && same(e))
+        if (!own) return null
+        return { field: at.labelKey ?? own.key, rowsKey: at.rowsKey, row: at.row, fromInput: true }
+    }
+    if (at?.column) {
+        const own = entries.find((e) => e.rowsKey === undefined && e.key === at.column && same(e))
+        if (!own) return null
+        return { field: at.labelKey ?? at.column, fromInput: true }
+    }
+    // 位置が無い経路は従来どおり値で当てる
+    const hit = entries.find((e) => e.value === text) ?? (exact ? undefined : entries.find((e) => e.value.includes(text)))
+    return hit ? { field: hit.key, rowsKey: hit.rowsKey, row: hit.row, fromInput: true } : null
+}
 
 /**
  * payload から (キー, 文字列) を再帰的に集める。キーは最後の要素名だけ使う。
@@ -566,16 +629,11 @@ export type BelowMinWarnItem = {
  *   出荷品質は「現実値セットで0件」を CI で守る（scripts/check-below-min.py）。
  */
 export const buildBelowMinWarning = (form: string, collector: FitCollector): BelowMinWarnItem[] => {
-    const seen = new Set<string>()
     const items: BelowMinWarnItem[] = []
-    for (const s of collector.smalls) {
-        if (!s.fromInput || !s.field) continue
-        const key = JSON.stringify([s.field, s.text])
-        if (seen.has(key)) continue
-        seen.add(key)
+    for (const { first: s, more } of groupByFieldText(collector.smalls.filter((s) => s.fromInput && s.field))) {
         items.push({
-            field: s.field,
-            label: withRow(FIELD_LABELS[s.field] ?? s.field, form, s.rowsKey, s.row),
+            field: s.field!,
+            label: withRow(FIELD_LABELS[s.field!] ?? s.field!, form, s.rowsKey, s.row, more),
             size: s.size,
             text: s.text,
         })
@@ -598,12 +656,11 @@ export type ChoiceWarnItem = {
  */
 export const buildChoiceWarning = (form: string, collector: FitCollector): ChoiceWarnItem[] => {
     const items: ChoiceWarnItem[] = []
-    for (const c of collector.choiceMismatches) {
-        // 入力(payload)に無い値＝システム由来。業者には直しようがないので出さない
-        if (!c.field) continue
-        const label = withRow(FIELD_LABELS[c.field] ?? c.field, form, c.rowsKey, c.row)
+    // 入力(payload)に無い値＝システム由来。業者には直しようがないので出さない
+    for (const { first: c, more } of groupByFieldText(collector.choiceMismatches.filter((c) => c.field))) {
+        const label = withRow(FIELD_LABELS[c.field!] ?? c.field!, form, c.rowsKey, c.row, more)
         items.push({
-            field: c.field,
+            field: c.field!,
             label,
             text: c.text,
             choices: c.choices,
@@ -620,18 +677,13 @@ export const buildChoiceWarning = (form: string, collector: FitCollector): Choic
  *   同一項目が並んで読めなくなる（実測: 生117件 → 畳んで28件）。
  */
 export const buildShrinkWarning = (form: string, collector: FitCollector): FitWarnBody | null => {
-    const seen = new Set<string>()
     const items: FitWarnItem[] = []
-    for (const s of collector.shrinks) {
-        if (!s.fromInput || !s.field) continue
-        if (PURELY_NUMERIC.test(s.text)) continue
-        if (s.deviation < SHRINK_WARN_THRESHOLD) continue
-        const key = JSON.stringify([s.field, s.text])
-        if (seen.has(key)) continue
-        seen.add(key)
+    const targets = collector.shrinks.filter((s) =>
+        s.fromInput && s.field && !PURELY_NUMERIC.test(s.text) && s.deviation >= SHRINK_WARN_THRESHOLD)
+    for (const { first: s, more } of groupByFieldText(targets)) {
         items.push({
-            field: s.field,
-            label: withRow(FIELD_LABELS[s.field] ?? s.field, form, s.rowsKey, s.row),
+            field: s.field!,
+            label: withRow(FIELD_LABELS[s.field!] ?? s.field!, form, s.rowsKey, s.row, more),
             design: s.design,
             actual: s.actual,
             deviation: s.deviation,

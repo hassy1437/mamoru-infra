@@ -4,6 +4,7 @@ import ShokakiBekki1Form from "@/components/shokaki-bekki1-form"
 import { hasItiranInputStep, type ItiranInputStepId } from "@/lib/itiran-input-flow"
 import ItiranFormNav from "@/components/itiran-form-nav"
 import { bekkiInspectorInitial } from "@/lib/inspector-helpers"
+import { bekkiWitnessFromSoukatsu } from "@/lib/bekki-witness"
 
 
 const CURRENT_STEP_ID: ItiranInputStepId = "shokaki"
@@ -18,7 +19,7 @@ export default async function ShokakiBekki1Page({
 
     const { data: soukatsu } = await supabase
         .from("inspection_soukatsu")
-        .select("id, property_id, building_name, building_address, notifier_name, inspection_date, inspection_period_start, inspection_period_end")
+        .select("id, property_id, building_name, building_address, notifier_name, inspection_date, inspection_period_start, inspection_period_end, equipment_results")
         .eq("id", id)
         .single()
 
@@ -71,6 +72,8 @@ export default async function ShokakiBekki1Page({
                         inspection_date: soukatsu.inspection_date,
                         inspection_period_start: soukatsu.inspection_period_start,
                         inspection_period_end: soukatsu.inspection_period_end,
+                        // ★総括表の設備の行の立会者を引き継ぐ（2026-10-20・src/lib/bekki-witness.ts）
+                        witness: bekkiWitnessFromSoukatsu(soukatsu.equipment_results, CURRENT_STEP_ID),
                     }}
                     soukatsuId={id}
                     itiranId={itiranId}

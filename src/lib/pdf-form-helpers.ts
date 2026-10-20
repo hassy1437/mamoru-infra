@@ -393,10 +393,12 @@ export const reportIfBelowMinSize = (
     value: string,
     size: number,
     maxWidth: number,
+    /** どの欄の何行目のどの列か。★警告が「同じ値の最初の行」を指さないよう、位置で帰属させる */
+    at?: CellRef,
 ) => {
     void maxWidth
     if (!fonts.fit || size >= ABSOLUTE_MIN_FONT_SIZE || !value) return
-    fonts.fit.reportSmall(value, size)
+    fonts.fit.reportSmall(value, size, at)
 }
 
 /**
@@ -498,8 +500,8 @@ export const drawTextInCell = ({
         paddingX, paddingY, minFontSize, maxFontSize: options?.maxFontSize,
     })
 
-    fonts.fit?.reportShrink(normalized, designSize, currentSize)
-    reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth)
+    fonts.fit?.reportShrink(normalized, designSize, currentSize, options?.at)
+    reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth, options?.at)
 
     const textToDraw = truncateRunsToFitWidth(fonts, normalized, currentSize, maxWidth,
         cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at))
@@ -628,8 +630,8 @@ export const drawWrappedTextInCell = ({
         paddingX, paddingY, minFontSize, maxFontSize: options?.maxFontSize, lineGap,
     })
     // 折り返しは縮小ループが別なので、ここでも設計値からの逸脱を記録する
-    fonts.fit?.reportShrink(normalized, designSize, currentSize)
-    reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth)
+    fonts.fit?.reportShrink(normalized, designSize, currentSize, options?.at)
+    reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth, options?.at)
 
     const visibleLines = wrapped.lines.slice(0, wrapped.maxLines)
     if (!visibleLines.length) return
@@ -964,6 +966,12 @@ export const drawChoiceCircle = (
     value: unknown,
     choices: ChoiceMark[],
     borderWidth = 0.7,
+    /**
+     * どの欄の値か（行の選択肢なら rowsKey・row・column、見出しの選択肢なら column）。
+     * ★不一致の警告を位置で帰属させる。値で当てると「専用」「一斉」のように
+     *   同じ値が並ぶ様式で別の行を指す（2026-10-20 本番の通しチェック）
+     */
+    at?: CellRef,
 ) => {
     const text = String(value ?? "").replace(/\s+/g, " ").trim()
     if (!text) return
@@ -985,7 +993,7 @@ export const drawChoiceCircle = (
     //   ＝ 全検査が緑のまま情報だけ落ちる唯一の経路なので、必ず報告する。
     //   エラーにせず警告に留める理由と、Phase 3 での格上げの申し送りは
     //   FitCollector.reportChoiceMismatch のコメントに書いてある。
-    if (matched === 0) fonts.fit?.reportChoiceMismatch(text, choices.map((c) => c.label))
+    if (matched === 0) fonts.fit?.reportChoiceMismatch(text, choices.map((c) => c.label), at)
 }
 
 /**

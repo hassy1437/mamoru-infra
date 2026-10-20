@@ -65,6 +65,9 @@ const getStep = (id: ItiranInputStepId) => {
     return step
 }
 
+/** その様式の設備名（総括表の設備の行・物件の設備の種類と突き合わせる語） */
+export const equipmentKeywordOf = (id: ItiranInputStepId) => getStep(id).equipmentKeyword
+
 export const selectedSteps = (equipmentTypes: unknown) => STEPS.filter((step) => includesKeyword(equipmentTypes, step.equipmentKeyword))
 
 export const hasItiranInputStep = (id: ItiranInputStepId, equipmentTypes: unknown) =>

@@ -224,8 +224,8 @@ export async function POST(req: NextRequest) {
             const heightAtCurrent = fonts.jp.heightAtSize(currentSize, { descender: true })
             if (heightAtCurrent > maxHeight) currentSize *= maxHeight / heightAtCurrent
             currentSize = Math.max(currentSize, minFontSize)
-            fonts.fit?.reportShrink(normalized, designSize, currentSize)
-            reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth)
+            fonts.fit?.reportShrink(normalized, designSize, currentSize, options?.at)
+            reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth, options?.at)
             const textToDraw = truncateToFitWidth(normalized, currentSize, maxWidth,
                 cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at))
             if (!textToDraw) return
@@ -295,8 +295,8 @@ export async function POST(req: NextRequest) {
             const h = font.jp.heightAtSize(currentSize, { descender: true })
             if (h > maxHeight) currentSize = currentSize * (maxHeight / h)
             currentSize = Math.max(currentSize, minFontSize)
-            fonts.fit?.reportShrink(normalized, designSize, currentSize)
-            reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth)
+            fonts.fit?.reportShrink(normalized, designSize, currentSize, options?.at)
+            reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth, options?.at)
             // ★共有の truncateRunsToFitWidth に寄せた（8本目の複製だった）。
             //   自前版は cut が 0 まで落ちた場合の report(value, 0) を持たず、
             //   1文字も入らないときに情報が消えたまま 200 が返っていた。
@@ -402,7 +402,7 @@ export async function POST(req: NextRequest) {
         drawChoiceCircle(page1, p1Height, fonts, body.inspection_type || "機器・総合", [
             { label: "機器", cx: 137.88, cy: 169.74, rx: 19.62, ry: 6.25 },
             { label: "総合", cx: 196.61, cy: 169.74, rx: 19.56, ry: 6.25 },
-        ])
+        ], undefined, { column: "inspection_type" })
         const periodText = (() => {
             const start = formatDateText(body.period_start)
             const end = formatDateText(body.period_end)
@@ -456,7 +456,7 @@ export async function POST(req: NextRequest) {
             { label: "差動", cx: 242.52, cy: 209.57, rx: 10.42, ry: 6.82 },
             { label: "定温", cx: 262.26, cy: 209.57, rx: 10.36, ry: 6.57 },
             { label: "熱アナログ", cx: 317.4, cy: 209.57, rx: 22.18, ry: 10.57 },
-        ], 0.8)
+        ], 0.8, { rowsKey: "page2_rows", row: 5, column: "content" })
         }
         // P2 Row 9: スポット型(煙) — イオン 光電 アナログ
         if (p2Rows[9]) {
@@ -464,14 +464,14 @@ export async function POST(req: NextRequest) {
             { label: "イオン", cx: 249.12, cy: 301.09, rx: 17.84, ry: 6.03 },
             { label: "光電", cx: 280.63, cy: 301.09, rx: 13.01, ry: 8.03 },
             { label: "アナログ", cx: 317.41, cy: 301.09, rx: 23.01, ry: 9.78 },
-        ], 0.8)
+        ], 0.8, { rowsKey: "page2_rows", row: 9, column: "content" })
         }
         // P2 Row 11: 炎感知器 — 赤外線 紫外線
         if (p2Rows[11]) {
             drawChoiceCircle(page2, p2Height, fonts, p2Rows[11].content ?? "", [
             { label: "赤外線", cx: 264.86, cy: 347.05, rx: 18.34, ry: 8.28 },
             { label: "紫外線", cx: 306.93, cy: 347.05, rx: 18.28, ry: 8.78 },
-        ], 0.8)
+        ], 0.8, { rowsKey: "page2_rows", row: 11, column: "content" })
         }
         // P2 Row 22: 鳴動方式 — 一斉 区分 相互 再鳴動
         if (p2Rows[22]) {
@@ -480,7 +480,7 @@ export async function POST(req: NextRequest) {
             { label: "区分", cx: 269.16, cy: 600.33, rx: 11.98, ry: 7.00 },
             { label: "相互", cx: 292.91, cy: 600.33, rx: 11.98, ry: 7.00 },
             { label: "再鳴動", cx: 321.59, cy: 600.33, rx: 16.78, ry: 7.5 },
-        ], 0.8)
+        ], 0.8, { rowsKey: "page2_rows", row: 22, column: "content" })
         }
 
         // 7行目「総合点検」は全幅の刷り込み見出し行。以前はこのルートだけ独自の

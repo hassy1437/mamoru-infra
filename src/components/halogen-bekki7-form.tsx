@@ -13,6 +13,8 @@ import { BekkiBulkGoodButton } from "@/components/bekki-bulk-good-button"
 import { defectPhraseListId } from "@/lib/defect-phrases"
 import { DefectPhraseDatalists } from "@/components/defect-phrase-datalists"
 import { Input } from "@/components/ui/input"
+import { BekkiChoiceCheckboxes } from "@/components/bekki-choice-checkboxes"
+import { EQUIPMENT_SYSTEM_CHOICES, choiceRowsOf } from "@/lib/bekki-choice-rows"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -26,6 +28,7 @@ import {
     normalizeBekkiWitnessForPayload,
     normalizeBekkiWitnessForState,
 } from "@/lib/bekki-form-normalization"
+import { bekkiWitnessInitial } from "@/lib/bekki-witness"
 import CameraInput from "@/components/camera-input"
 import { pdfRequestError, pdfErrorText } from "@/lib/pdf-request-error"
 import { soukatsuPdfGate } from "@/lib/pdf-gate-client"
@@ -110,6 +113,8 @@ interface Props {
         /** 総括表の点検期間。別記の期間の初期値にする（src/lib/bekki-period.ts） */
         inspection_period_start?: string | null
         inspection_period_end?: string | null
+        /** 総括表の設備の行から引き継いだ立会者（点検票に保存が無いときの初期値・src/lib/bekki-witness.ts） */
+        witness?: string | null
         inspection_type?: string | null
     }
     soukatsuId: string
@@ -375,7 +380,7 @@ export default function HalogenBekki7Form({
     const [equipmentSystem, setEquipmentSystem] = useState(coerceString(saved.equipment_system, "全域"))
     const [formName, setFormName] = useState(coerceString(saved.form_name, initial.building_name ?? ""))
     const [fireManager, setFireManager] = useState(coerceString(saved.fire_manager, initial.fire_manager_name ?? ""))
-    const [witness, setWitness] = useState(normalizeBekkiWitnessForState(coerceString(saved.witness)))
+    const [witness, setWitness] = useState(normalizeBekkiWitnessForState(bekkiWitnessInitial(saved.witness, initial.witness)))
     const [location, setLocation] = useState(coerceString(saved.location, initial.building_address ?? ""))
     const [inspectionType, setInspectionType] = useState(coerceString(saved.inspection_type, bekkiInspectionTypeDefault(initial.inspection_type)))
     const [periodStart, setPeriodStart] = useState(coerceString(saved.period_start, bekkiPeriodDefault(initial).start))
@@ -600,6 +605,8 @@ export default function HalogenBekki7Form({
         //   共有ベースは section.key を持っているが、この3様式は専用フォームなので明示的に渡す。
         rowsKey: string,
     ) => {
+    // 選択肢の欄（専用・兼用・src/lib/bekki-choice-rows.ts）
+    const choiceRows = choiceRowsOf(API_PATH, rowsKey)
     const markAllGood = () => setter((prev) => prev.map((row, i) => (row.judgment === "" && !isBekkiHeadingLabel(labels[i] ?? "") ? { ...row, judgment: "良" } : row)))
     return (
         <Card>
@@ -642,11 +649,20 @@ export default function HalogenBekki7Form({
                                         )}
                                     </td>
                                     <td className="p-1 border">
-                                        <Input
-                                            value={rows[idx]?.content ?? ""}
-                                            onChange={(e) => updateRowField(setter, idx, "content", e.target.value)}
-                                            placeholder="種別・容量等の内容"
-                                        />
+                                        {choiceRows?.[idx] ? (
+                                            <BekkiChoiceCheckboxes
+                                                row={choiceRows[idx]}
+                                                value={rows[idx]?.content ?? ""}
+                                                onChange={(next) => updateRowField(setter, idx, "content", next)}
+                                                ariaLabel={`${label}（選択）`}
+                                            />
+                                        ) : (
+                                            <Input
+                                                value={rows[idx]?.content ?? ""}
+                                                onChange={(e) => updateRowField(setter, idx, "content", e.target.value)}
+                                                placeholder="種別・容量等の内容"
+                                            />
+                                        )}
                                     </td>
                                     <td className="p-1 border">
                                         <select
@@ -694,11 +710,20 @@ export default function HalogenBekki7Form({
                             <div className="grid grid-cols-2 gap-2">
                                 <div className="space-y-1">
                                     <span className="text-xs text-slate-500">内容</span>
-                                    <Input
-                                        value={rows[idx]?.content ?? ""}
-                                        onChange={(e) => updateRowField(setter, idx, "content", e.target.value)}
-                                        className="h-9 text-sm"
-                                    />
+                                    {choiceRows?.[idx] ? (
+                                        <BekkiChoiceCheckboxes
+                                            row={choiceRows[idx]}
+                                            value={rows[idx]?.content ?? ""}
+                                            onChange={(next) => updateRowField(setter, idx, "content", next)}
+                                            ariaLabel={`${label}（選択）`}
+                                        />
+                                    ) : (
+                                        <Input
+                                            value={rows[idx]?.content ?? ""}
+                                            onChange={(e) => updateRowField(setter, idx, "content", e.target.value)}
+                                            className="h-9 text-sm"
+                                        />
+                                    )}
                                 </div>
                                 <div className="space-y-1">
                                     <span className="text-xs text-slate-500">判定</span>
@@ -778,7 +803,13 @@ export default function HalogenBekki7Form({
                         </div>
                         <div className="space-y-1">
                             <Label>設備方式</Label>
-                            <Input value={equipmentSystem} onChange={(e) => setEquipmentSystem(e.target.value)} placeholder="全域 / 局所 / 移動" />
+                            {/* ★様式の「全域・局所・移動」を○で囲む欄。文字の欄だと合わない語で○が付かない（2026-10-20） */}
+                            <BekkiChoiceCheckboxes
+                                row={EQUIPMENT_SYSTEM_CHOICES}
+                                value={equipmentSystem}
+                                onChange={setEquipmentSystem}
+                                ariaLabel="設備方式（選択）"
+                            />
                         </div>
                         <div className="space-y-1">
                             <Label>点検種別</Label>

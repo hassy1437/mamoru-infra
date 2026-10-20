@@ -72,9 +72,10 @@ const jobs = [
         return row;
       }),
       page3_rows: makeRows(32, "別記2-3").map((row, i) => {
-        // row 8/9: ホース・ノズル径（1号/易操作1・2号）— 長さ/本数/口径を "/" 区切りで投入
+        // row 8/9: ホース・ノズル径（1号/易操作1・2号）。row 8 は以前の保存の形（"/" 区切り）、
+        //   row 9 は 2026-10-20 からの 3 つの欄（content=長さ・hose_count=本数・nozzle_dia=口径）。どちらも同じに出る
         if (i === 8) return { ...row, content: "20/2/19" };
-        if (i === 9) return { ...row, content: "15/1/25" };
+        if (i === 9) return { ...row, content: "15", hose_count: "1", nozzle_dia: "25" };
         // row 13: 表示灯（専用/兼用）— 丸囲み確認用に「兼用」を投入
         if (i === 13) return { ...row, content: "兼用" };
         return row;

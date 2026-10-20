@@ -492,6 +492,44 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-warning-row-attribution.mjs", stage: "静的",
+        why: "PDF 出力の警告（選択肢の不一致・縮小・5pt 未満）が実際に起きた行を指すか。★値の文字列一致で欄を当てており、"
+            + "「40個」「専用」のように同じ値が並ぶ様式では同じ値を持つ最初の行を指した（2026-10-20・本番の通しチェック。"
+            + "不活性ガスの 5pt 未満と鳴動方式の選択肢の警告が別の行を指した）。PDF は正しく出るので画像の検査では出ない種類",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-warning-row-attribution.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-warning-row-attribution.mjs"], sentinel: "WARNING_ROW_ATTRIBUTION_OK" },
+        ],
+    },
+    {
+        file: "check-bekki-witness-inherit.mjs", stage: "静的",
+        why: "点検票の立会者が総括表（設備の行の立会者）から引き継がれ、畳んだ基本情報の 1 行にも出るか。★点検票の立会者は空で始まり、"
+            + "欄は畳んだ中にあった。本番の通しで 23 様式すべてが立会者の空欄で出た（2026-10-20）。PDF は空欄を正しく描くので画像の検査では出ない種類",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-bekki-witness-inherit.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-bekki-witness-inherit.mjs"], sentinel: "BEKKI_WITNESS_OK" },
+        ],
+    },
+    {
+        file: "check-bekki2-hose-row.mjs", stage: "挙動", needsPdfs: true,
+        why: "別記2 のホース・ノズルの行が長さ・本数・口径の 3 つの欄で入り、以前の \"/\" 区切りと同じ位置・同じ文字で出るか。"
+            + "★入力欄が 1 つで「20/2/19」と書く決まりが画面に無く、値を 1 つ書くと長さの空欄にだけ出た（2026-10-20・本番の通しチェック）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-bekki2-hose-row.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-bekki2-hose-row.mjs"], sentinel: "BEKKI2_HOSE_ROW_OK" },
+        ],
+    },
+    {
+        file: "check-choice-rows.mjs", stage: "静的",
+        why: "点検票の選択肢の欄（専用・兼用／一斉・区分…／設備方式）が画面で選べ、選択肢が紙の○の語（drawChoiceCircle）と様式・表・行・語まで"
+            + "一致するか。★以前はただの文字の欄で、合わない文字だと○が付かないまま PDF が出た（2026-10-20・本番の通しチェック）。"
+            + "画面と紙の定義が別の場所にあるので、片方だけ直すと「選んだのに○が付かない」になる",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-choice-rows.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-choice-rows.mjs"], sentinel: "CHOICE_ROWS_OK" },
+        ],
+    },
+    {
         file: "check-finalize-link.mjs", stage: "静的",
         why: "出力の画面で確定できるか（総括表の画面と同じ確定のボタン・空の必須なら押せない）。確定できて未確定のときだけ出し、"
             + "確定できないとき（解約・契約なし）・状態が分からないときは出さない。★以前は「確定してから」と言うだけで、確定の場所への道が無かった"

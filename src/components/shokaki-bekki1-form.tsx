@@ -24,6 +24,7 @@ import {
     normalizeBekkiWitnessForPayload,
     normalizeBekkiWitnessForState,
 } from "@/lib/bekki-form-normalization"
+import { bekkiWitnessInitial } from "@/lib/bekki-witness"
 import CameraInput from "@/components/camera-input"
 import { pdfRequestError, pdfErrorText } from "@/lib/pdf-request-error"
 import { soukatsuPdfGate } from "@/lib/pdf-gate-client"
@@ -87,6 +88,8 @@ interface Props {
         /** 総括表の点検期間。別記の期間の初期値にする（src/lib/bekki-period.ts） */
         inspection_period_start?: string | null
         inspection_period_end?: string | null
+        /** 総括表の設備の行から引き継いだ立会者（点検票に保存が無いときの初期値・src/lib/bekki-witness.ts） */
+        witness?: string | null
     }
     soukatsuId: string
     itiranId: string
@@ -234,7 +237,7 @@ export default function ShokakiBekki1Form({
 
     const [formName, setFormName] = useState(coerceString(saved.form_name, initial.building_name ?? ""))
     const [fireManager, setFireManager] = useState(coerceString(saved.fire_manager, initial.fire_manager_name ?? ""))
-    const [witness, setWitness] = useState(normalizeBekkiWitnessForState(coerceString(saved.witness)))
+    const [witness, setWitness] = useState(normalizeBekkiWitnessForState(bekkiWitnessInitial(saved.witness, initial.witness)))
     const [location, setLocation] = useState(coerceString(saved.location, initial.building_address ?? ""))
     const [periodStart, setPeriodStart] = useState(coerceString(saved.period_start, bekkiPeriodDefault(initial).start))
     const [periodEnd, setPeriodEnd] = useState(coerceString(saved.period_end, bekkiPeriodDefault(initial).end))

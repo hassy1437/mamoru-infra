@@ -307,9 +307,9 @@ export async function POST(req: NextRequest) {
 
             currentSize = Math.max(currentSize, minFontSize)
 
-            fonts.fit?.reportShrink(normalized, designSize, currentSize)
+            fonts.fit?.reportShrink(normalized, designSize, currentSize, options?.at)
 
-            reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth)
+            reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth, options?.at)
 
             const textToDraw = truncateToFitWidth(normalized, currentSize, maxWidth,
                 cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at))
@@ -443,7 +443,7 @@ export async function POST(req: NextRequest) {
         drawChoiceCircle(page1, p1Height, fonts, body.inspection_type || "機器・総合", [
             { label: "機器", cx: 134.58, cy: 171.25, rx: 18.76, ry: 8.03 },
             { label: "総合", cx: 200.22, cy: 171.25, rx: 18.76, ry: 7.78 },
-        ])
+        ], undefined, { column: "inspection_type" })
         const periodStart = formatDateText(body.period_start)
         const periodEnd = formatDateText(body.period_end)
         if (parseDateParts(body.period_start) || parseDateParts(body.period_end)) {
@@ -523,7 +523,7 @@ export async function POST(req: NextRequest) {
         drawChoiceCircle(page2, p2Height, fonts, p2Rows5[7]?.content ?? "", [
             { label: "専用", cx: 243.6, cy: 228.6, rx: 14, ry: 7 },
             { label: "兼用", cx: 285.7, cy: 228.73, rx: 14.04, ry: 7.28 },
-        ])
+        ], undefined, { rowsKey: "page2_rows", row: 7, column: "content" })
 
         // PAGE2 row 19「ポンプ / 性能」: 公式PDF刷り込みの MPa(x≈243.5) / L/min(x≈280.3) の間に値を分割描画
         // 新キー優先（content=吐出圧力MPa, flow_value=吐出量L/min）→ "/" 分割 → 単一content

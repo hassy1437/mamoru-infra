@@ -534,7 +534,12 @@ export default function SoukatsuForm({ property, previousData, copyFromId, sourc
             <Card>
                 <CardHeader>
                     <CardTitle>総合判定・備考</CardTitle>
-                    <CardDescription>{SOUKATSU_NOT_PRINTED_NOTE}</CardDescription>
+                    {/* ★知らせは目立つ枠で出す。カードの説明（小さな灰色の字）では読み飛ばされ、
+                        本番の通しチェックで「印字されないのに画面に何も無い」と誤認された（2026-10-20） */}
+                    <p role="note" className="mt-2 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm leading-relaxed text-amber-900">
+                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                        <span>{SOUKATSU_NOT_PRINTED_NOTE}</span>
+                    </p>
                 </CardHeader>
                 <CardContent className="space-y-6">
                     <div className="space-y-2">

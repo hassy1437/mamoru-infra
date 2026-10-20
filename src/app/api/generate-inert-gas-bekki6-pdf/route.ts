@@ -295,9 +295,9 @@ export async function POST(req: NextRequest) {
 
             currentSize = Math.max(currentSize, minFontSize)
 
-            fonts.fit?.reportShrink(normalized, designSize, currentSize)
+            fonts.fit?.reportShrink(normalized, designSize, currentSize, options?.at)
 
-            reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth)
+            reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth, options?.at)
 
             const textToDraw = truncateToFitWidth(normalized, currentSize, maxWidth,
                 cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at))
@@ -479,7 +479,7 @@ export async function POST(req: NextRequest) {
             { label: "全域", cx: 452.29, cy: 105.9, rx: 13.39, ry: 9.13 },
             { label: "局所", cx: 481.81, cy: 105.9, rx: 16.14, ry: 7.13 },
             { label: "移動", cx: 511.1, cy: 105.9, rx: 13.64, ry: 7.88 },
-        ])
+        ], undefined, { column: "equipment_system" })
         drawInCell(page1, p1Height, body.form_name, 113.33, 116.0, 266.0, 27.33, 8.8)
         drawInCell(page1, p1Height, body.fire_manager, 422.67, 116.0, 106.0, 27.33, 8.4)
         drawInCell(page1, p1Height, body.location, 113.33, 143.33, 266.0, 28.0, 8.5)
@@ -490,7 +490,7 @@ export async function POST(req: NextRequest) {
         drawChoiceCircle(page1, p1Height, fonts, body.inspection_type || "機器・総合", [
             { label: "機器", cx: 133.08, cy: 179.53, rx: 18.28, ry: 7.03 },
             { label: "総合", cx: 186.84, cy: 179.53, rx: 17.78, ry: 7.03 },
-        ])
+        ], undefined, { column: "inspection_type" })
         const start = formatDateText(body.period_start)
         const end = formatDateText(body.period_end)
         if (parseDateParts(body.period_start) || parseDateParts(body.period_end)) {
@@ -540,7 +540,7 @@ export async function POST(req: NextRequest) {
         drawChoiceCircle(page2, p2Height, fonts, body.page2_rows?.[17]?.content ?? "", [
             { label: "専用", cx: 252.45, cy: 337, rx: 14.09, ry: 6.28 },
             { label: "兼用", cx: 294.45, cy: 337, rx: 14.84, ry: 6.78 },
-        ])
+        ], undefined, { rowsKey: "page2_rows", row: 17, column: "content" })
 
         drawResultRows(page3, p3Height, body.page3_rows ?? [], P3_ROW_BOUNDS, {
             rowsKey: "page3_rows",

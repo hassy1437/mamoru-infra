@@ -290,9 +290,9 @@ export async function POST(req: NextRequest) {
 
             currentSize = Math.max(currentSize, minFontSize)
 
-            fonts.fit?.reportShrink(normalized, designSize, currentSize)
+            fonts.fit?.reportShrink(normalized, designSize, currentSize, options?.at)
 
-            reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth)
+            reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth, options?.at)
 
             const textToDraw = truncateToFitWidth(normalized, currentSize, maxWidth,
                 cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at))
@@ -475,7 +475,7 @@ export async function POST(req: NextRequest) {
             { label: "全域", cx: 374.58, cy: 101.65, rx: 13.0, ry: 7.28 },
             { label: "局所", cx: 406.08, cy: 101.65, rx: 13.06, ry: 7.28 },
             { label: "移動", cx: 437.64, cy: 101.65, rx: 13.06, ry: 7.28 },
-        ])
+        ], undefined, { column: "equipment_system" })
         // ★セル境界の実測値（2026-07-24）: 63.1 | 110.5 …ラベル | 375.6 …名称/所在の値
         //   | 377.0 | 412.8 …ラベル | 528.1 …防火管理者/立会者
         //   旧値は幅266で 379.3 まで伸びており、安全係数を外した途端に住所が罫線 375.6 を越えた。
@@ -490,7 +490,7 @@ export async function POST(req: NextRequest) {
         drawChoiceCircle(page1, p1Height, fonts, body.inspection_type || "機器・総合", [
             { label: "機器", cx: 131.1, cy: 167.05, rx: 17.56, ry: 8.03 },
             { label: "総合", cx: 189.77, cy: 167.05, rx: 17.56, ry: 7.78 },
-        ])
+        ], undefined, { column: "inspection_type" })
         const start = formatDateText(body.period_start)
         const end = formatDateText(body.period_end)
         if (parseDateParts(body.period_start) || parseDateParts(body.period_end)) {
@@ -539,7 +539,7 @@ export async function POST(req: NextRequest) {
         drawChoiceCircle(page2, p2Height, fonts, body.page2_rows?.[26]?.content ?? "", [
             { label: "専用", cx: 258, cy: 438.95, rx: 14.96, ry: 5.48 },
             { label: "兼用", cx: 297.95, cy: 438.9, rx: 14, ry: 7 },
-        ])
+        ], undefined, { rowsKey: "page2_rows", row: 26, column: "content" })
 
         drawResultRows(page3, p3Height, body.page3_rows ?? [], P3_ROW_BOUNDS, {
             rowsKey: "page3_rows",

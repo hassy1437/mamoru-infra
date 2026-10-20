@@ -26,6 +26,9 @@ function inspect(src) {
         const s = src(f)
         if (!s.includes('from "@/lib/soukatsu-not-printed"') || !s.includes("{SOUKATSU_NOT_PRINTED_NOTE}"))
             problems.push(`${f}: 「総合判定・備考は印字されません」の知らせを出していない`)
+        // ★目立つ枠（role="note"）で出す。カードの説明（小さな灰色の字）では読み飛ばされた（2026-10-20・本番の通しチェック）
+        else if (!/role="note"[^>]*>[\s\S]{0,300}\{SOUKATSU_NOT_PRINTED_NOTE\}/.test(s))
+            problems.push(`${f}: 「総合判定・備考は印字されません」が目立つ枠（role="note"）で出ていない`)
     }
     for (const r of [...routes(), "src/lib/build-merged-report.ts"]) {
         if (/overall_judgment/.test(src(r))) problems.push(`${r}: 総合判定（overall_judgment）を読んでいる＝印字するなら知らせの文言を直す`)
@@ -45,6 +48,7 @@ if (process.argv.includes("--self-test")) {
     }
     const mutants = [
         ["編集画面から知らせを外す", (p) => p === FORMS[1] ? read(p).replace("{SOUKATSU_NOT_PRINTED_NOTE}", "") : read(p), "soukatsu-edit-form.tsx: 「総合判定"],
+        ["新規の画面で知らせをカードの説明に戻す", (p) => p === FORMS[0] ? read(p).replace(/<p role="note"[^>]*>[\s\S]*?<\/p>/, "<CardDescription>{SOUKATSU_NOT_PRINTED_NOTE}</CardDescription>") : read(p), "目立つ枠（role=\"note\"）で出ていない"],
         ["総括表 route が総合判定を描く", (p) => p === SOUKATSU_ROUTES[0] ? read(p) + "\nconst j = body.overall_judgment\n" : read(p), "総合判定（overall_judgment）を読んでいる"],
         ["報告書 route が備考を描く", (p) => p === SOUKATSU_ROUTES[1] ? read(p) + "\nconst n = body.notes\n" : read(p), "総括表の備考（body.notes）"],
     ]

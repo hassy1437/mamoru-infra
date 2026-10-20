@@ -250,8 +250,8 @@ export async function POST(req: NextRequest) {
             const heightAtCurrent = fonts.jp.heightAtSize(currentSize, { descender: true })
             if (heightAtCurrent > maxHeight) currentSize *= maxHeight / heightAtCurrent
             currentSize = Math.max(currentSize, minFontSize)
-            fonts.fit?.reportShrink(normalized, designSize, currentSize)
-            reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth)
+            fonts.fit?.reportShrink(normalized, designSize, currentSize, options?.at)
+            reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth, options?.at)
 
             const textToDraw = truncateToFitWidth(normalized, currentSize, maxWidth,
                 cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at))
@@ -379,6 +379,14 @@ export async function POST(req: NextRequest) {
         }
 
         drawHeader(page1, p1Height)
+
+        // 点検設備名の帯（受信機・変流器の 製造者名／型式等）。★入力欄が無く、様式の欄がいつも空で出ていた
+        //   （2026-10-20・本番の通しチェック）。帯は 製造者名 y=239.04-255.96 / 型式等 y=255.96-273.0、
+        //   値は刷り込み「製造者名」「型式等」の右（x=224・429）から次の縦線（322.08・529.56）まで（テンプレート実測）
+        drawInCell(page1, p1Height, body.extra_fields?.receiver_maker, 224.0, 239.04, 98.08, 16.92, 6.8, { at: { column: "receiver_maker" } })
+        drawInCell(page1, p1Height, body.extra_fields?.receiver_model, 224.0, 255.96, 98.08, 17.04, 6.8, { at: { column: "receiver_model" } })
+        drawInCell(page1, p1Height, body.extra_fields?.ct_maker, 429.0, 239.04, 100.56, 16.92, 6.8, { at: { column: "ct_maker" } })
+        drawInCell(page1, p1Height, body.extra_fields?.ct_model, 429.0, 255.96, 100.56, 17.04, 6.8, { at: { column: "ct_model" } })
 
         drawResultRows(page1, p1Height, body.page1_rows ?? [], P1_ROW_BOUNDS, {
             rowsKey: "page1_rows",

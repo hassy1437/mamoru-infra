@@ -32,6 +32,7 @@ import {
     normalizeBekkiWitnessForPayload,
     normalizeBekkiWitnessForState,
 } from "@/lib/bekki-form-normalization"
+import { bekkiWitnessInitial } from "@/lib/bekki-witness"
 import { pdfRequestError, pdfErrorText } from "@/lib/pdf-request-error"
 
 import { createEmptyRow, coerceRow, hydrateRows, type BekkiRowState } from "@/lib/bekki-row-state"
@@ -40,6 +41,8 @@ import { applyBulkGood, bekkiFormNameOfApiRoute } from "@/lib/bekki-bulk-good"
 import { BekkiBulkGoodButton } from "@/components/bekki-bulk-good-button"
 import { defectPhraseListId } from "@/lib/defect-phrases"
 import { DefectPhraseDatalists } from "@/components/defect-phrase-datalists"
+import { BekkiChoiceCheckboxes } from "@/components/bekki-choice-checkboxes"
+import { choiceRowsOf, type ChoiceRow } from "@/lib/bekki-choice-rows"
 export type { BekkiRowState } from "@/lib/bekki-row-state"
 
 export type BekkiDeviceState = {
@@ -92,12 +95,11 @@ type SectionConfig = {
     splitTypeCapacity?: boolean    // 種別容量を避難口/通路/客席の3列入力にする（様式16）
     pumpPerfRowIndex?: number      // ポンプ性能行: 吐出圧力(content)/吐出量(flow_value) の2欄入力
     hoseRowIndexes?: readonly number[]  // ホース行: 長さ(content)/本数(hose_count)/口径(nozzle_dia) の3列入力
-    choiceRows?: Record<number, readonly { value: string; label: string }[]>  // 同一セル複数選択行: チェックボックス群（選択語を content にスペース区切りで保存）
     /**
      * その行を描画しない条件。★labels は絞らないこと。
      *   labels の配列位置がそのまま payload の行インデックスなので、配列を絞ると
      *   hydrateRows(labels.length) で末尾が切り捨てられ、idx がずれて
-     *   choiceRows / BEKKI_ROW_NOTES も別の行に付く（サイレントなデータ破壊）。
+     *   選択肢の欄 / BEKKI_ROW_NOTES も別の行に付く（サイレントなデータ破壊）。
      *   ＝ 行数と idx は従来どおりのまま、描画だけを飛ばす。
      *   未指定なら全行を描く（既存16様式の挙動は変わらない）。
      */
@@ -144,6 +146,8 @@ interface Props {
         /** 総括表の点検期間。別記の期間の初期値にする（src/lib/bekki-period.ts） */
         inspection_period_start?: string | null
         inspection_period_end?: string | null
+        /** 総括表の設備の行から引き継いだ立会者（点検票に保存が無いときの初期値・src/lib/bekki-witness.ts） */
+        witness?: string | null
         /** 総括表の点検種別。別記の既定にする（無ければ「機器・総合」）。src/lib/bekki-inspection-type.ts */
         inspection_type?: string | null
     }
@@ -214,7 +218,7 @@ export default function BekkiResultFormBase({
 
     const [formName, setFormName] = useState(coerceString(saved.form_name, initial.building_name ?? ""))
     const [fireManager, setFireManager] = useState(coerceString(saved.fire_manager, initial.fire_manager_name ?? ""))
-    const [witness, setWitness] = useState(normalizeBekkiWitnessForState(coerceString(saved.witness)))
+    const [witness, setWitness] = useState(normalizeBekkiWitnessForState(bekkiWitnessInitial(saved.witness, initial.witness)))
     const [location, setLocation] = useState(coerceString(saved.location, initial.building_address ?? ""))
     const [inspectionType, setInspectionType] = useState(coerceString(saved.inspection_type, bekkiInspectionTypeDefault(initial.inspection_type)))
     const [periodStart, setPeriodStart] = useState(coerceString(saved.period_start, bekkiPeriodDefault(initial).start))
@@ -539,52 +543,18 @@ export default function BekkiResultFormBase({
         }))
     }
 
-    // 同一セル複数選択(choiceRows)のトグル: content を語の集合として扱い、選択肢の定義順で再結合する。
-    // 既知の選択肢以外の語は捨てる（これらの行は PDF 非表示の keyword 専用列のため実害なし）。
-    const toggleChoiceValue = (
-        key: BekkiPageRowsKey,
-        index: number,
-        options: readonly { value: string; label: string }[],
-        value: string,
-    ) => {
-        setRowsByKey((prev) => ({
-            ...prev,
-            [key]: prev[key].map((row, i) => {
-                if (i !== index) return row
-                const tokens = new Set(row.content.split(/\s+/).filter(Boolean))
-                if (tokens.has(value)) tokens.delete(value)
-                else tokens.add(value)
-                const next = options.filter((o) => tokens.has(o.value)).map((o) => o.value).join(" ")
-                return { ...row, content: next }
-            }),
-        }))
-    }
-
-    // 同一セル複数選択行のチェックボックス群。選択語は content にスペース区切りで保存され、
-    // PDF 側の drawSelectionCircle(content.includes(keyword)) がそのまま○を描く（route 不変）。
-    // iOS 教訓によりコントロール自身に flex は付けない（input は h-4 w-4 のみ）。
-    const renderChoiceCheckboxes = (
-        section: SectionConfig,
-        idx: number,
-        options: readonly { value: string; label: string }[],
-    ) => {
-        const tokens = (rowsByKey[section.key]?.[idx]?.content ?? "").split(/\s+/).filter(Boolean)
-        return (
-            <div className="flex flex-wrap gap-x-3 gap-y-1">
-                {options.map((opt) => (
-                    <label key={opt.value} className="inline-flex items-center gap-1 text-sm cursor-pointer">
-                        <input
-                            type="checkbox"
-                            className="h-4 w-4"
-                            checked={tokens.includes(opt.value)}
-                            onChange={() => toggleChoiceValue(section.key, idx, options, opt.value)}
-                        />
-                        <span>{opt.label}</span>
-                    </label>
-                ))}
-            </div>
-        )
-    }
+    // 選択肢の欄（刷り込みの語を○で囲む行）。定義は src/lib/bekki-choice-rows.ts（ルートの label と突き合わせ済み）。
+    // 選択語は content に空白区切りで保存され、ルートの drawChoiceCircle（content.includes）がそのまま○を描く。
+    // ★以前は様式ごとに choiceRows を渡す形で、別記11の1 の感知器の行にしか無かった（2026-10-20）
+    const choiceRowAt = (key: BekkiPageRowsKey, idx: number) => choiceRowsOf(apiPath, key)?.[idx]
+    const renderChoiceCheckboxes = (section: SectionConfig, idx: number, row: ChoiceRow, label: string) => (
+        <BekkiChoiceCheckboxes
+            row={row}
+            value={rowsByKey[section.key]?.[idx]?.content ?? ""}
+            onChange={(next) => updateRowField(section.key, idx, "content", next)}
+            ariaLabel={`${label}（選択）`}
+        />
+    )
 
     // 「すべて良にする」: そのセクションの判定が空("")の行だけ "良" にする。
     // 既に "良"/"否" の行は触らない（不良の意図・既入力を上書きしない）。
@@ -665,8 +635,8 @@ export default function BekkiResultFormBase({
                                         )}
                                     </td>
                                     <td className="p-1 border">
-                                        {section.choiceRows?.[idx] ? (
-                                            renderChoiceCheckboxes(section, idx, section.choiceRows[idx])
+                                        {choiceRowAt(section.key, idx) ? (
+                                            renderChoiceCheckboxes(section, idx, choiceRowAt(section.key, idx)!, label)
                                         ) : section.hoseRowIndexes?.includes(idx) ? (
                                             <div className="flex gap-1 items-center">
                                                 <Input
@@ -793,8 +763,8 @@ export default function BekkiResultFormBase({
                             <div className="grid grid-cols-2 gap-2">
                                 <div className="space-y-1">
                                     <span className="text-xs text-slate-500">内容</span>
-                                    {section.choiceRows?.[idx] ? (
-                                        renderChoiceCheckboxes(section, idx, section.choiceRows[idx])
+                                    {choiceRowAt(section.key, idx) ? (
+                                        renderChoiceCheckboxes(section, idx, choiceRowAt(section.key, idx)!, label)
                                     ) : section.hoseRowIndexes?.includes(idx) ? (
                                         <div className="flex gap-1 items-center">
                                             <Input
@@ -946,7 +916,7 @@ export default function BekkiResultFormBase({
                     >
                         <span className="min-w-0">
                             <span className="block text-sm font-medium text-slate-800">
-                                基本情報（名称・所在地・点検種別・期間・点検者）
+                                基本情報（名称・所在地・立会者・点検種別・期間・点検者）
                             </span>
                             {basicInfoBlank.length > 0 ? (
                                 <span className="flex items-center gap-1 text-xs text-amber-700">
@@ -957,6 +927,8 @@ export default function BekkiResultFormBase({
                                 !basicInfoOpen && (
                                     <span className="block truncate text-xs text-slate-500">
                                         {formName} ／ {inspectionType} ／ {periodStart === periodEnd ? periodStart : `${periodStart}〜${periodEnd}`} ／ 点検者 {inspectorName}
+                                        {/* ★立会者も見せる。畳んだ中で空のまま気づかれず、23 様式すべて立会者の空欄で出た（2026-10-20） */}
+                                        {" "}／ 立会者 {witness.trim() || "未入力"}
                                     </span>
                                 )
                             )}

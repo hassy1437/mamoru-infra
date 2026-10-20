@@ -192,8 +192,8 @@ export async function POST(req: NextRequest) {
             const h = font.jp.heightAtSize(currentSize, { descender: true })
             if (h > maxHeight) currentSize = currentSize * (maxHeight / h)
             currentSize = Math.max(currentSize, options?.minFontSize ?? 3.5)
-            fonts.fit?.reportShrink(normalized, designSize, currentSize)
-            reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth)
+            fonts.fit?.reportShrink(normalized, designSize, currentSize, options?.at)
+            reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth, options?.at)
             // ★共有の truncateRunsToFitWidth に寄せた（8本目の複製だった）。
             //   自前版は cut が 0 まで落ちた場合の report(value, 0) を持たず、
             //   1文字も入らないときに情報が消えたまま 200 が返っていた。
@@ -268,7 +268,7 @@ export async function POST(req: NextRequest) {
             drawChoiceCircle(page1, p1Height, fonts, body.inspection_type || "機器・総合", [
                 { label: "機器", cx: 164.28, cy: 172.69, rx: 18.34, ry: 8.28 },
                 { label: "総合", cx: 206.34, cy: 172.69, rx: 18.28, ry: 8.03 },
-            ])
+            ], undefined, { column: "inspection_type" })
 
             const periodText = (() => {
                 const start = formatDateText(body.period_start)
@@ -406,7 +406,7 @@ export async function POST(req: NextRequest) {
             drawChoiceCircle(page2, p2Height, fonts, funcRow.content ?? "", [
                 { label: "専用", cx: 259, cy: 220.09, rx: 16.1, ry: 5.78 },
                 { label: "兼用", cx: 301, cy: 220.09, rx: 16.03, ry: 6.78 },
-            ], 0.8)
+            ], 0.8, { rowsKey: "page2_rows", row: 7, column: "content" })
         }
 
         // === P2 Row 18: 性能 (吐出圧力MPa / 吐出量L/min) ===

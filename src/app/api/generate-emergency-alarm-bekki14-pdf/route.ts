@@ -212,7 +212,7 @@ export async function POST(req: NextRequest) {
             drawChoiceCircle(page1, p1Height, fonts, body.inspection_type || "機器・総合", [
                 { label: "機器", cx: 137.16, cy: 174.52, rx: 18.90, ry: 6.50 },
                 { label: "総合", cx: 191.93, cy: 174.52, rx: 18.96, ry: 6.50 },
-            ])
+            ], undefined, { column: "inspection_type" })
             const periodText = (() => {
                 const start = formatDateText(body.period_start)
                 const end = formatDateText(body.period_end)
@@ -255,6 +255,15 @@ export async function POST(req: NextRequest) {
 
         drawHeader()
 
+        // 点検設備名の帯（操作部・複合装置／増幅器の 製造者名・型式等）。★入力欄が無く、様式の欄がいつも空で出ていた
+        //   （2026-10-20・本番の通しチェック）。帯は 製造者名 y=234.48-249.96 / 型式等 y=249.96-265.56、
+        //   値は刷り込み「製造者名」「型式等」の右（x=224・429）から次の縦線（334.2・529.8）まで（テンプレート実測。
+        //   ★headerShiftY は通さない: 実測の位置そのもの）
+        drawInCell(page1, p1Height, body.extra_fields?.operation_maker, 224.0, 234.48, 110.2, 15.48, 6.8, { at: { column: "operation_maker" } })
+        drawInCell(page1, p1Height, body.extra_fields?.operation_model, 224.0, 249.96, 110.2, 15.6, 6.8, { at: { column: "operation_model" } })
+        drawInCell(page1, p1Height, body.extra_fields?.amplifier_maker, 429.0, 234.48, 100.8, 15.48, 6.8, { at: { column: "amplifier_maker" } })
+        drawInCell(page1, p1Height, body.extra_fields?.amplifier_model, 429.0, 249.96, 100.8, 15.6, 6.8, { at: { column: "amplifier_model" } })
+
         drawResultRows(page1, p1Height, body.page1_rows ?? [], P1_ROW_BOUNDS, {
             rowsKey: "page1_rows",
             contentX: 221.16,
@@ -278,7 +287,7 @@ export async function POST(req: NextRequest) {
             { label: "区分", cx: 261.05, cy: 676.05, rx: 11.67, ry: 6.75 },
             { label: "相互", cx: 284.69, cy: 676.05, rx: 11.67, ry: 6.75 },
             { label: "再鳴動", cx: 313.01, cy: 676.05, rx: 17.72, ry: 6.75 },
-        ])
+        ], undefined, { rowsKey: "page1_rows", row: 23, column: "content" })
 
         drawResultRows(page2, p2Height, body.page2_rows ?? [], P2_ROW_BOUNDS, {
             rowsKey: "page2_rows",
@@ -300,7 +309,7 @@ export async function POST(req: NextRequest) {
             { label: "区分", cx: 258.36, cy: 601.39, rx: 11.50, ry: 6.87 },
             { label: "相互", cx: 280.68, cy: 601.39, rx: 11.50, ry: 6.87 },
             { label: "再鳴動", cx: 307.44, cy: 601.39, rx: 15.95, ry: 7.37 },
-        ])
+        ], undefined, { rowsKey: "page2_rows", row: 30, column: "content" })
 
         drawResultRows(page3, p3Height, body.page3_rows ?? [], P3_ROW_BOUNDS, {
             rowsKey: "page3_rows",

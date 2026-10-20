@@ -15,7 +15,7 @@ interface FloorSelectProps {
 }
 
 /**
- * 階数選択用のネイティブ select（min〜max の整数）。
+ * 階数選択用のネイティブ select（min〜max の整数。範囲の外の保存値はそのまま 1 つ足して出す）。
  * value/onChange は文字列（"1"〜"30" 等）。保存側の parseInt をそのまま通すため値は不変。
  *
  * 注: ネイティブ <select> に display:flex を当てると iOS WebKit でコントロールが
@@ -25,6 +25,11 @@ interface FloorSelectProps {
 export function FloorSelect({ id, value, onChange, min, max, required, className }: FloorSelectProps) {
     const options: number[] = []
     for (let n = min; n <= max; n += 1) options.push(n)
+    // ★範囲の外の保存値（以前の入力・複製元）も消さずに出す。出さないと「選択してください」に見え、
+    //   ほかの欄を直して保存したときに気づかないまま別の値を選び直してしまう（録音 102 の洗い出し・2026-10-20）
+    const n = Number(value)
+    if (value !== "" && Number.isInteger(n) && !options.includes(n)) options.push(n)
+    options.sort((a, b) => a - b)
 
     return (
         <select

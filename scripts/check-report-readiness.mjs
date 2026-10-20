@@ -26,7 +26,7 @@ const ROOT = process.cwd()
 const SELF_TEST = process.argv.includes("--self-test")
 // ★自己診断と本番で出力先を分ける（check-pdf-all は並列に走らせる）
 const OUT = path.join(ROOT, "tmp", SELF_TEST ? "report-readiness-selftest" : "report-readiness")
-const MODULES = ["report-readiness", "bekki-row-labels", "bekki-heading-row", "pdf-merge-config", "itiran-input-flow", "inspector-helpers", "bekki-default-good"]
+const MODULES = ["report-readiness", "bekki-row-labels", "bekki-heading-row", "pdf-merge-config", "itiran-input-flow", "inspector-helpers", "bekki-default-good", "inspector-sync", "bekki-form-normalization", "bekki-header-normalization"]
 const LIB = "src/lib/report-readiness.ts"
 const PAGE = "src/app/inspection/[id]/page.tsx"
 const OUTPUT = "src/app/inspection/[id]/itiran/[itiranId]/output/page.tsx"
@@ -60,7 +60,9 @@ const COMPLETE = {
 const ITIRAN_OK = { inspector1: { name: "点検太郎", phone: "06-1234-5678", shoubou_licenses: { class6: { license_number: "第123号" } } } }
 const STEP = "evacuation-equipment" // 別記15: その1 26 行・その2 27 行（23 が見出し「総合点検」）
 const rows = (n, f = () => ({ judgment: "良" })) => Array.from({ length: n }, (_, i) => f(i))
-const BEKKI_OK = { [STEP]: { page1_rows: rows(26), page2_rows: rows(27) } }
+// ★別記の頭の点検者は点検者一覧表の点検者 1 と同じにしておく（違うと bekki_inspector の注意が出る・録音 102）
+const HEAD = { inspector_name: "点検太郎", inspector_tel: "06-1234-5678" }
+const BEKKI_OK = { [STEP]: { ...HEAD, page1_rows: rows(26), page2_rows: rows(27) } }
 
 const ids = (list) => list.map((r) => r.id)
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b)
@@ -119,15 +121,15 @@ function behaviour({ lib, labels }) {
         else if (check) check(r)
     }
     const s15 = labels["別記様式第15"]
-    warnCase("別記の「否」で不良内容が空", { bekkiPayloads: { [STEP]: { page1_rows: rows(26, (i) => (i === 3 ? { judgment: "否", bad_content: " " } : { judgment: "良" })), page2_rows: rows(27) } } },
+    warnCase("別記の「否」で不良内容が空", { bekkiPayloads: { [STEP]: { ...HEAD, page1_rows: rows(26, (i) => (i === 3 ? { judgment: "否", bad_content: " " } : { judgment: "良" })), page2_rows: rows(27) } } },
         [`bekki_bad_content:${STEP}`], (r) => {
             const want = `その1「${s15.page1_rows[3]}」`
             if (r.warnings[0].details[0] !== want) problems.push(`別記の「否」で不良内容が空: 行の名前が ${JSON.stringify(r.warnings[0].details[0])}（期待 ${JSON.stringify(want)}）`)
             if (r.warnings[0].fix?.kind !== "bekki" || r.warnings[0].fix?.stepId !== STEP) problems.push("別記の「否」で不良内容が空: 直す画面がその様式でない")
         })
-    warnCase("別記の「否」で不良内容あり", { bekkiPayloads: { [STEP]: { page1_rows: rows(26, (i) => (i === 3 ? { judgment: "否", bad_content: "降下空間に障害物" } : { judgment: "良" })), page2_rows: rows(27) } } }, [])
-    warnCase("見出し行（総合点検）に「否」", { bekkiPayloads: { [STEP]: { page1_rows: rows(26), page2_rows: rows(27, (i) => (i === 23 ? { judgment: "否" } : { judgment: "良" })) } } }, [])
-    warnCase("「否」の行が多い", { bekkiPayloads: { [STEP]: { page1_rows: rows(26, () => ({ judgment: "否" })), page2_rows: rows(27) } } }, [`bekki_bad_content:${STEP}`], (r) => {
+    warnCase("別記の「否」で不良内容あり", { bekkiPayloads: { [STEP]: { ...HEAD, page1_rows: rows(26, (i) => (i === 3 ? { judgment: "否", bad_content: "降下空間に障害物" } : { judgment: "良" })), page2_rows: rows(27) } } }, [])
+    warnCase("見出し行（総合点検）に「否」", { bekkiPayloads: { [STEP]: { ...HEAD, page1_rows: rows(26), page2_rows: rows(27, (i) => (i === 23 ? { judgment: "否" } : { judgment: "良" })) } } }, [])
+    warnCase("「否」の行が多い", { bekkiPayloads: { [STEP]: { ...HEAD, page1_rows: rows(26, () => ({ judgment: "否" })), page2_rows: rows(27) } } }, [`bekki_bad_content:${STEP}`], (r) => {
         if (r.warnings[0].details.length !== 6 || !/^ほか 21 件$/.test(r.warnings[0].details[5])) problems.push(`「否」の行が多い: 先頭 5 行＋「ほか 21 件」のはずが ${JSON.stringify(r.warnings[0].details.slice(5))}`)
     })
     warnCase("総括表の「要改善」で不良内容が空", { soukatsu: { ...COMPLETE, equipment_results: [{ name: "消火器", result: "指摘なし" }, { name: "避難器具", result: "要改善", bad_detail: "  " }] } },
@@ -146,7 +148,7 @@ function behaviour({ lib, labels }) {
         if (r.warnings[0].urgent !== true) problems.push("報告年月日が空: 赤で目立たせていない（urgent）")
         if (r.warnings[0].fix?.kind !== "soukatsu" || r.warnings[0].fix?.anchor !== "reportDate") problems.push("報告年月日が空: 直す画面が総括表の報告年月日でない")
     })
-    warnCase("★赤で目立たせるのは決めた 4 つだけ（「否」の不良内容は黄色のまま）", { bekkiPayloads: { [STEP]: { page1_rows: rows(26, (i) => (i === 3 ? { judgment: "否" } : { judgment: "良" })), page2_rows: rows(27) } } }, [`bekki_bad_content:${STEP}`], (r) => {
+    warnCase("★赤で目立たせるのは決めた 4 つだけ（「否」の不良内容は黄色のまま）", { bekkiPayloads: { [STEP]: { ...HEAD, page1_rows: rows(26, (i) => (i === 3 ? { judgment: "否" } : { judgment: "良" })), page2_rows: rows(27) } } }, [`bekki_bad_content:${STEP}`], (r) => {
         if (r.warnings[0].urgent) problems.push("「否」の不良内容まで赤にしている（赤は点検者の氏名・資格・電話番号と報告年月日だけ）")
     })
     warnCase("★点検者一覧を渡さない（確定の前）", { itiran: undefined }, [])
@@ -157,6 +159,9 @@ function behaviour({ lib, labels }) {
     })
     warnCase("判定の初期値を確かめた", { bekkiPayloads: { [STEP]: { ...BEKKI_OK[STEP], judgments_defaulted: false } } }, [])
     warnCase("★印が文字の \"true\"（読み違えない）", { bekkiPayloads: { [STEP]: { ...BEKKI_OK[STEP], judgments_defaulted: "true" } } }, [])
+    // ★点検者一覧表をあとで直しても、保存済みの別記の点検者には届かない（src/lib/inspector-sync.ts）。黄色で知らせる（止めない）
+    warnCase("別記の点検者が点検者一覧表と違う", { bekkiPayloads: { [STEP]: { ...BEKKI_OK[STEP], inspector_name: "前の人" } } }, [`bekki_inspector:${STEP}`])
+    warnCase("点検者一覧表の空の欄とは比べない", { bekkiPayloads: { [STEP]: { ...BEKKI_OK[STEP], inspector_company: "前の会社" } } }, [])
     warnCase("★別記を渡さない（確定の前）", { bekkiPayloads: undefined, stepIds: undefined }, [])
     const beforeFinalize = f({ soukatsu: COMPLETE })
     if (!beforeFinalize.canFinalize || beforeFinalize.warnings.length) problems.push(`確定の前（総括表だけ）: 注意 0 件で確定できるはずが ${ids(beforeFinalize.warnings)}`)

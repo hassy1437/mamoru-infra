@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
 import FoamBekki5Form from "@/components/foam-bekki5-form"
 import { hasItiranInputStep, type ItiranInputStepId } from "@/lib/itiran-input-flow"
-import ItiranFormNav from "@/components/itiran-form-nav"
+import ItiranFormNav, { ItiranFormNavBottom } from "@/components/itiran-form-nav"
 import { bekkiInspectorInitial } from "@/lib/inspector-helpers"
 import { bekkiWitnessFromSoukatsu } from "@/lib/bekki-witness"
 
@@ -81,6 +81,13 @@ export default async function FoamBekki5Page({
                     propertyId={soukatsu.property_id}
                     savedPayload={(saved?.payload as Record<string, unknown> | null) ?? null}
                     savedUpdatedAt={saved?.updated_at ?? null}
+                />
+                {/* いちばん下にも「次へ」（録音 102） */}
+                <ItiranFormNavBottom
+                    soukatsuId={id}
+                    itiranId={itiranId}
+                    currentStepId={CURRENT_STEP_ID}
+                    equipmentTypes={property?.equipment_types}
                 />
             </div>
         </main>

@@ -49,6 +49,7 @@ import { choiceRowsOf, type ChoiceRow } from "@/lib/bekki-choice-rows"
 import { CODE_INPUT_PROPS } from "@/lib/code-input-props"
 import { useAutoSave } from "@/hooks/use-auto-save"
 import FormActionBar from "@/components/form-action-bar"
+import InspectorSyncNotice from "@/components/inspector-sync-notice"
 export type { BekkiRowState } from "@/lib/bekki-row-state"
 
 export type BekkiDeviceState = {
@@ -890,6 +891,17 @@ export default function BekkiResultFormBase({
 
     return (
         <div className="space-y-6" data-form-action-root>
+            {/* 点検者が点検者一覧表と違うときの知らせ（録音 102・src/components/inspector-sync-notice.tsx） */}
+            <InspectorSyncNotice
+                current={{ name: inspectorName, company: inspectorCompany, address: inspectorAddress, tel: inspectorTel }}
+                fromItiran={{ name: initial.inspector_name, company: initial.inspector_company, address: initial.inspector_address, tel: initial.inspector_tel }}
+                onApply={(next) => {
+                    if (next.name !== undefined) setInspectorName(next.name)
+                    if (next.company !== undefined) setInspectorCompany(next.company)
+                    if (next.address !== undefined) setInspectorAddress(next.address)
+                    if (next.tel !== undefined) setInspectorTel(next.tel)
+                }}
+            />
             {/* ★様式の頭に 1 つ。表ごとの「この表の空欄を良にする」は残す（#101） */}
             <BekkiBulkGoodButton
                 form={bekkiFormNameOfApiRoute(apiPath) ?? apiPath}

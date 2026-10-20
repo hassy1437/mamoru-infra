@@ -56,8 +56,7 @@ export default function FormActionBar({
 
     return (
         <>
-            {/* 帯の高さぶんの余白（最後の欄やボタンが帯に隠れないように） */}
-            <div aria-hidden className="h-24 md:hidden" />
+            {/* ★帯の高さぶんの余白は、ページのいちばん下の「次へ」（itiran-form-nav の ItiranFormNavBottom）が取る */}
             <div
                 role="region"
                 aria-label="保存とプレビュー"

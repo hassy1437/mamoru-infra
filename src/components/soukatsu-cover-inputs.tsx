@@ -34,8 +34,10 @@ export function SoukatsuCoverInputs({
     const printed = joinFireDepartment(name, title)
 
     const changeName = (next: string) => {
-        // ★名前を入れ始めたのに敬称が無ければ、いちばん多い「消防署長」を選んでおく（変えられる）
-        const t = title === "" && next.trim() !== "" ? FIRE_DEPARTMENT_TITLES[0] : title
+        // ★名前を入れ始めた（空 → 1 文字目）ときだけ、敬称が無ければいちばん多い「消防署長」を選んでおく（変えられる）。
+        //   以前は 1 文字打つたびに付け直していて、「敬称を選ぶ」（敬称なし）に戻しても次の 1 文字で消防署長に戻った
+        //   （「○○町長」など刷り込みに無い宛名を書けなかった・2026-10-20 の洗い出し）
+        const t = title === "" && name.trim() === "" && next.trim() !== "" ? FIRE_DEPARTMENT_TITLES[0] : title
         onFireDepartmentNameChange(joinFireDepartment(next, t))
     }
     const changeTitle = (next: FireDepartmentTitle | "") => onFireDepartmentNameChange(joinFireDepartment(name, next))

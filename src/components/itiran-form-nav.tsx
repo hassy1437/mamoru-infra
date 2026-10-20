@@ -11,6 +11,25 @@ import {
     type ItiranInputStepId,
 } from "@/lib/itiran-input-flow"
 
+type NavProps = {
+    soukatsuId: string
+    itiranId: string
+    currentStepId: ItiranInputStepId
+    equipmentTypes: unknown
+}
+
+/** 「次へ」の行き先（次の様式・無ければ結果出力）。上のナビと下のナビで同じものを使う */
+function forwardOf(soukatsuId: string, itiranId: string, currentStepId: ItiranInputStepId, equipmentTypes: unknown) {
+    const hubHref = `/inspection/${soukatsuId}/itiran/${itiranId}`
+    const nextStep = getNextItiranInputStep(currentStepId, equipmentTypes)
+    return {
+        hubHref,
+        isOutput: !nextStep,
+        forwardHref: nextStep ? buildItiranInputHref(nextStep, soukatsuId, itiranId) : `${hubHref}/output`,
+        forwardLabel: nextStep ? getItiranInputNextLabel(nextStep) : "結果出力へ",
+    }
+}
+
 // 23様式ページ共通ナビ（#4b）。個々のページのヘッダ（戻る/次へ/タイトル）を1箇所に集約する。
 //
 // ★Breadcrumb の hub ノードは必ず itiranId 付き `/inspection/[id]/itiran/[itiranId]`。
@@ -23,21 +42,9 @@ export default function ItiranFormNav({
     itiranId,
     currentStepId,
     equipmentTypes,
-}: {
-    soukatsuId: string
-    itiranId: string
-    currentStepId: ItiranInputStepId
-    equipmentTypes: unknown
-}) {
-    const hubHref = `/inspection/${soukatsuId}/itiran/${itiranId}`
+}: NavProps) {
+    const { hubHref, isOutput, forwardHref, forwardLabel } = forwardOf(soukatsuId, itiranId, currentStepId, equipmentTypes)
     const title = getItiranInputPageTitle(currentStepId)
-
-    const nextStep = getNextItiranInputStep(currentStepId, equipmentTypes)
-    const isOutput = !nextStep
-    const forwardHref = nextStep
-        ? buildItiranInputHref(nextStep, soukatsuId, itiranId)
-        : `${hubHref}/output`
-    const forwardLabel = nextStep ? getItiranInputNextLabel(nextStep) : "結果出力へ"
 
     return (
         <div className="mb-6">
@@ -64,5 +71,30 @@ export default function ItiranFormNav({
             </div>
             <h1 className="text-2xl font-bold text-slate-900 mt-4">{title}</h1>
         </div>
+    )
+}
+
+/**
+ * 点検票のいちばん下の「次へ」（録音 102・2026-10-20）。
+ * ★上のナビにしか無く、スマホでは長い点検票（第6 は約 41 画面）を最後まで入れたあと、上までスクロールし直していた。
+ * ★スマホの画面下の帯（form-action-bar）に隠れないよう、帯の高さぶんの余白はここで取る（このナビがページの最後）
+ */
+export function ItiranFormNavBottom({ soukatsuId, itiranId, currentStepId, equipmentTypes }: NavProps) {
+    const { hubHref, isOutput, forwardHref, forwardLabel } = forwardOf(soukatsuId, itiranId, currentStepId, equipmentTypes)
+    return (
+        <nav aria-label="次の様式へ" className="mt-8 flex flex-col gap-2 pb-24 sm:flex-row sm:items-center sm:justify-between md:pb-0">
+            <Link href={hubHref} className="inline-flex min-h-11 items-center text-blue-600 hover:underline text-sm">
+                &larr; 別記ハブに戻る
+            </Link>
+            <Link
+                href={forwardHref}
+                className={`inline-flex min-h-11 items-center justify-center gap-2 px-4 py-2 text-white text-sm font-medium rounded-lg transition-colors ${
+                    isOutput ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"
+                }`}
+            >
+                {forwardLabel}
+                <ArrowRight className="w-4 h-4" />
+            </Link>
+        </nav>
     )
 }

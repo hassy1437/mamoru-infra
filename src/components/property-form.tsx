@@ -336,7 +336,7 @@ export default function PropertyForm({ property }: PropertyFormProps) {
                             <FloorSelect
                                 id="floorAbove"
                                 min={1}
-                                max={30}
+                                max={80}
                                 value={floorAbove}
                                 onChange={setFloorAbove}
                             />
@@ -346,7 +346,7 @@ export default function PropertyForm({ property }: PropertyFormProps) {
                             <FloorSelect
                                 id="floorBelow"
                                 min={0}
-                                max={5}
+                                max={10}
                                 value={floorBelow}
                                 onChange={setFloorBelow}
                             />

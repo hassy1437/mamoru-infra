@@ -1,7 +1,8 @@
 import { BEKKI_ROW_LABELS } from "@/lib/bekki-row-labels"
 import { isBekkiHeadingLabel } from "@/lib/bekki-heading-row"
 import { PDF_MERGE_CONFIG } from "@/lib/pdf-merge-config"
-import { normalizeInspectorData } from "@/lib/inspector-helpers"
+import { bekkiInspectorInitial, normalizeInspectorData } from "@/lib/inspector-helpers"
+import { INSPECTOR_FIELD_LABELS, inspectorDiff, itiranInspectorFields } from "@/lib/inspector-sync"
 import { DEFAULT_GOOD_READINESS_MESSAGE, isJudgmentsDefaulted } from "@/lib/bekki-default-good"
 import { buildItiranInputHref, getItiranInputPageTitle, type ItiranInputStepId } from "@/lib/itiran-input-flow"
 
@@ -219,16 +220,26 @@ export function checkReportReadiness(input: ReadinessInput): ReportReadiness {
         }
         // ★電話番号（2026-10-20・録音 102）。別記の TEL の欄にも使う（inspector-helpers の inspector_tel）
         if (inspector.phone.trim() === "") {
-            warn("inspector1_phone", "点検者1の電話番号", "点検者一覧表に点検者1の電話番号が入っていません（別記の TEL の欄にも使います）", [], { kind: "itiran" }, true)
+            warn("inspector1_phone", "点検者1の電話番号", "点検者一覧表に点検者1の電話番号が入っていません（別記の TEL の欄の最初の値にもなります）", [], { kind: "itiran" }, true)
         }
     }
 
     // ★別記は stepIds を渡したときだけ（出力画面）
+    // ★点検者一覧表の点検者 1（別記の点検者の最初の値）。保存済みの別記には、あとで直しても届かない（録音 102・src/lib/inspector-sync.ts）
+    const itiranInspector = input.itiran ? itiranInspectorFields((({ inspector_name, inspector_company, inspector_address, inspector_tel }) =>
+        ({ name: inspector_name, company: inspector_company, address: inspector_address, tel: inspector_tel }))(bekkiInspectorInitial(input.itiran.inspector1))) : null
     for (const stepId of input.stepIds ?? []) {
         const payload = input.bekkiPayloads?.[stepId]
         if (!payload) {
             warn(`bekki_missing:${stepId}`, stepTitle(stepId), "まだ入力していません（入力済みの様式だけが PDF に入ります）", [], { kind: "bekki", stepId })
             continue
+        }
+        if (itiranInspector) {
+            const diff = inspectorDiff({ name: payload.inspector_name, company: payload.inspector_company, address: payload.inspector_address, tel: payload.inspector_tel }, itiranInspector)
+            if (diff.length) {
+                warn(`bekki_inspector:${stepId}`, stepTitle(stepId), "点検者の欄が点検者一覧表と違います（開いて「点検者一覧表の内容に合わせる」で直せます）",
+                    diff.map((k) => INSPECTOR_FIELD_LABELS[k]), { kind: "bekki", stepId })
+            }
         }
         const bad = badRowsWithoutContent(stepId, payload)
         if (bad.length) {

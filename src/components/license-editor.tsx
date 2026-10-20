@@ -24,6 +24,18 @@ const kensaFilled = (l: KensaLicense) => Boolean(
     l.expiry_year || l.expiry_month || l.expiry_day,
 )
 
+/**
+ * ★日付の形でない以前の保存（和暦・年月だけ・日が無い など）は日付の欄に出せず、空に見えていた（印字はそのまま出る）。
+ *   値をそのまま見せる。日付を選べば置き換わる（2026-10-20・録音 102 の洗い出し）
+ */
+function legacyDateNote(shown: string, year?: string, month?: string, day?: string) {
+    const parts = [year, month, day].map((p) => String(p ?? "").trim())
+    if (shown || parts.every((p) => p === "")) return null
+    const [y, m, d] = parts
+    const text = `${y}${y ? "年" : ""}${m}${m ? "月" : ""}${d}${d ? "日" : ""}`
+    return <p className="mt-1 text-[11px] leading-snug text-amber-700">保存の値「{text}」は日付の形でないため欄に出ません（印字はこのまま。選び直すと置き換わります）</p>
+}
+
 export type LicenseEditorValue = Pick<
     InspectorData,
     "shoubou_licenses" | "shoubou_notes" | "kensa_licenses"
@@ -154,6 +166,7 @@ export function LicenseEditor({ value, onChange }: LicenseEditorProps) {
                                                     const { year, month, day } = splitDateInputValue(e.target.value)
                                                     updateShoubouLicense(key, { issue_year: year, issue_month: month, issue_day: day })
                                                 }} />
+                                            {legacyDateNote(issueDate, lic.issue_year, lic.issue_month, lic.issue_day)}
                                         </td>
                                         {/* 交付番号 */}
                                         <td className="border border-gray-300 px-1 py-1">
@@ -172,6 +185,7 @@ export function LicenseEditor({ value, onChange }: LicenseEditorProps) {
                                                     const { year, month } = splitMonthInputValue(e.target.value)
                                                     updateShoubouLicense(key, { training_year: year, training_month: month })
                                                 }} />
+                                            {legacyDateNote(trainingMonth, lic.training_year, lic.training_month)}
                                         </td>
                                     </tr>
                                 )
@@ -196,6 +210,7 @@ export function LicenseEditor({ value, onChange }: LicenseEditorProps) {
                                             const { year, month, day } = splitDateInputValue(e.target.value)
                                             updateShoubouLicense(key, { issue_year: year, issue_month: month, issue_day: day })
                                         }} />
+                                    {legacyDateNote(issueDate, lic.issue_year, lic.issue_month, lic.issue_day)}
                                 </div>
                                 <div className="space-y-1 min-w-0">
                                     <span className="text-xs text-slate-500">交付番号</span>
@@ -214,6 +229,7 @@ export function LicenseEditor({ value, onChange }: LicenseEditorProps) {
                                             const { year, month } = splitMonthInputValue(e.target.value)
                                             updateShoubouLicense(key, { training_year: year, training_month: month })
                                         }} />
+                                    {legacyDateNote(trainingMonth, lic.training_year, lic.training_month)}
                                 </div>
                             </div>
                         )
@@ -261,6 +277,7 @@ export function LicenseEditor({ value, onChange }: LicenseEditorProps) {
                                                     const { year, month, day } = splitDateInputValue(e.target.value)
                                                     updateKensaLicense(key, { issue_year: year, issue_month: month, issue_day: day })
                                                 }} />
+                                            {legacyDateNote(issueDate, lic.issue_year, lic.issue_month, lic.issue_day)}
                                         </td>
                                         {/* 交付番号 */}
                                         <td className="border border-gray-300 px-1 py-1">
@@ -274,6 +291,7 @@ export function LicenseEditor({ value, onChange }: LicenseEditorProps) {
                                                     const { year, month, day } = splitDateInputValue(e.target.value)
                                                     updateKensaLicense(key, { expiry_year: year, expiry_month: month, expiry_day: day })
                                                 }} />
+                                            {legacyDateNote(expiryDate, lic.expiry_year, lic.expiry_month, lic.expiry_day)}
                                         </td>
                                     </tr>
                                 )
@@ -298,6 +316,7 @@ export function LicenseEditor({ value, onChange }: LicenseEditorProps) {
                                             const { year, month, day } = splitDateInputValue(e.target.value)
                                             updateKensaLicense(key, { issue_year: year, issue_month: month, issue_day: day })
                                         }} />
+                                    {legacyDateNote(issueDate, lic.issue_year, lic.issue_month, lic.issue_day)}
                                 </div>
                                 <div className="space-y-1 min-w-0">
                                     <span className="text-xs text-slate-500">交付番号</span>
@@ -311,6 +330,7 @@ export function LicenseEditor({ value, onChange }: LicenseEditorProps) {
                                             const { year, month, day } = splitDateInputValue(e.target.value)
                                             updateKensaLicense(key, { expiry_year: year, expiry_month: month, expiry_day: day })
                                         }} />
+                                    {legacyDateNote(expiryDate, lic.expiry_year, lic.expiry_month, lic.expiry_day)}
                                 </div>
                             </div>
                         )

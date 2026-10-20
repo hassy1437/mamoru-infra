@@ -14,6 +14,9 @@ import {
 } from "@/lib/bekki-device-table"
 import { CODE_INPUT_PROPS } from "@/lib/code-input-props"
 
+// ★日付の形でない以前の保存（和暦・年月だけなど）は日付の欄では空に見える（印字はそのまま出る）。文字の欄で見せて直せるようにする（2026-10-20）
+const isLegacyDate = (v: string) => v.trim() !== "" && toDateInputValue(v) === ""
+
 const filled = (row: DeviceTableRow | undefined) =>
     !!row && [row.name, row.model, row.calibrated_at, row.maker].some((v) => v.trim() !== "")
 
@@ -61,7 +64,7 @@ export default function DeviceTableInputs({
                                 <Input {...CODE_INPUT_PROPS} placeholder="型式" value={row.model} onChange={(e) => onChange(i, "model", e.target.value)} />
                                 <div className="space-y-1">
                                     <Label className="text-xs font-normal text-slate-500">校正年月日</Label>
-                                    <Input type="date" value={toDateInputValue(row.calibrated_at)} onChange={(e) => onChange(i, "calibrated_at", e.target.value)} />
+                                    <Input type={isLegacyDate(row.calibrated_at) ? "text" : "date"} value={isLegacyDate(row.calibrated_at) ? row.calibrated_at : toDateInputValue(row.calibrated_at)} onChange={(e) => onChange(i, "calibrated_at", e.target.value)} />
                                 </div>
                                 <Input placeholder="製造者名" value={row.maker} onChange={(e) => onChange(i, "maker", e.target.value)} />
                             </div>
@@ -88,7 +91,7 @@ export default function DeviceTableInputs({
                             <Input {...CODE_INPUT_PROPS} placeholder="型式" aria-label={`${label} 型式`} value={row.model} onChange={(e) => onChange(index, "model", e.target.value)} />
                             <div className="space-y-1">
                                 <Label className="text-xs font-normal text-slate-500">校正年月日</Label>
-                                <Input type="date" aria-label={`${label} 校正年月日`} value={toDateInputValue(row.calibrated_at)} onChange={(e) => onChange(index, "calibrated_at", e.target.value)} />
+                                <Input type={isLegacyDate(row.calibrated_at) ? "text" : "date"} aria-label={`${label} 校正年月日`} value={isLegacyDate(row.calibrated_at) ? row.calibrated_at : toDateInputValue(row.calibrated_at)} onChange={(e) => onChange(index, "calibrated_at", e.target.value)} />
                             </div>
                             <Input placeholder="製造者名" aria-label={`${label} 製造者名`} value={row.maker} onChange={(e) => onChange(index, "maker", e.target.value)} />
                         </div>

@@ -268,11 +268,11 @@ export default function SoukatsuEditForm({ soukatsu, isDelivered, isFinalized }:
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="floorAbove">地上階数</Label>
-                            <FloorSelect id="floorAbove" min={1} max={30} value={floorAbove} onChange={setFloorAbove} />
+                            <FloorSelect id="floorAbove" min={1} max={80} value={floorAbove} onChange={setFloorAbove} />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="floorBelow">地下階数</Label>
-                            <FloorSelect id="floorBelow" min={0} max={5} value={floorBelow} onChange={setFloorBelow} />
+                            <FloorSelect id="floorBelow" min={0} max={10} value={floorBelow} onChange={setFloorBelow} />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="totalFloorArea">延べ面積 (㎡)</Label>

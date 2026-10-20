@@ -32,13 +32,13 @@ export default async function InspectionDetailPage({ params }: { params: Promise
         return notFound()
     }
 
-    // 総括表の防火管理者欄=物件の防火管理者名。点検実施責任者(点検者氏名)はこの確認段階では未入力のため空。
+    // 総括表の防火管理者欄=物件の防火管理者名。点検実施責任者（点検者 1 の氏名）は点検者一覧表ができてから下で入れる。
     const { data: property } = report.property_id
         ? await supabase.from("properties").select("fire_manager_name, source_match_id, withdrawn_at").eq("id", report.property_id).single()
         : { data: null as { fire_manager_name: string | null; source_match_id: string | null; withdrawn_at: string | null } | null }
     // ★成約が取り消された物件（納品できない）。入力を始める前に分かるように出す（総点検 B3）
     const withdrawnAt = withdrawnAtOf(property)
-    const soukatsuData = { ...report, fire_manager: property?.fire_manager_name ?? "", inspector_responsible: "" }
+    const soukatsuDataBase = { ...report, fire_manager: property?.fire_manager_name ?? "" }
 
     // ★確定の状態。マイグレーション（20260811090000）が未適用なら available:false が返り、
     //   確定の導線そのものを出さない（押せるのにエラーになるボタンを作らない）。
@@ -68,6 +68,12 @@ export default async function InspectionDetailPage({ params }: { params: Promise
     const nextItiranHref = nextItiranId
         ? `/inspection/${id}/itiran/${nextItiranId}`
         : `/inspection/${id}/itiran`
+    // ★点検実施責任者＝点検者一覧表の点検者 1 の氏名（出力の画面の総括表と同じ・録音 102）。
+    //   以前はこの画面だけ常に空にしていて、点検者一覧表を入れたあとも、この画面の総括表 PDF（プレビュー・出力）では空欄だった
+    const { data: itiranForName } = nextItiranId
+        ? await supabase.from("inspection_itiran").select("inspector1").eq("id", nextItiranId).maybeSingle()
+        : { data: null as { inspector1: unknown } | null }
+    const soukatsuData = { ...soukatsuDataBase, inspector_responsible: (itiranForName?.inspector1 as { name?: string } | null)?.name ?? "" }
 
     // ★確定前の不備チェック（src/lib/report-readiness.ts・2026-10-19 打合せ #101）。
     //   見るのは総括表だけ（点検者一覧・別記は確定のあとに入れるのが普通なので、ここでは見ない・出力画面で見る）。
@@ -163,6 +169,18 @@ export default async function InspectionDetailPage({ params }: { params: Promise
                     />
                 </div>
             )}
+
+            {/* ★下にも PDF と「次へ」（録音 102。上にしか無く、プレビューと確定を見たあと上へ戻っていた） */}
+            <div className="max-w-[210mm] mx-auto mb-6 flex flex-wrap items-center justify-end gap-2">
+                <SoukatsuPdfButton data={soukatsuData} canDownload={canDownloadPdf(finalization)} gateMessage={pdfGateMessage(finalization)} />
+                <Link
+                    href={nextItiranHref}
+                    className="inline-flex min-h-11 items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors"
+                >
+                    {nextItiranId ? "次へ: 点検者一覧表を確認" : "次へ: 点検者一覧表を入力"}
+                    <ArrowRight className="w-4 h-4" />
+                </Link>
+            </div>
 
             {/* ★間違えて始めた点検を消す（2026-10-20）。いちばん下に置く（確定・出力の導線と取り違えない） */}
             <div className="max-w-[210mm] mx-auto mb-6">

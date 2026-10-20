@@ -8,6 +8,8 @@ import { OfflineIndicator } from "@/components/offline-indicator";
 import { Toaster } from "@/components/ui/toaster";
 import ChatbotHint from "@/components/chatbot-hint";
 import ChatbotPrivacyNotice from "@/components/chatbot-privacy-notice";
+import NavigationProgress from "@/components/navigation-progress";
+import { Suspense } from "react";
 
 export const metadata: Metadata = {
   title: "Mamoru Infra — 消防設備点検の報告書作成を効率化",
@@ -51,6 +53,10 @@ export default async function RootLayout({
           <Toaster />
           <OfflineIndicator />
           <ServiceWorkerRegistrar />
+          {/* 画面を移るときの「読み込み中」（録音 102）。useSearchParams を使うので Suspense で包む */}
+          <Suspense fallback={null}>
+            <NavigationProgress />
+          </Suspense>
           {children}
         </AuthProvider>
         <ChatbotHint />

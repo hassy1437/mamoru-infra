@@ -551,6 +551,16 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-rec102-followups.mjs", stage: "静的",
+        why: "録音 102 の残り: 画面を移るときの「読み込み中」・下にも「次へ」と PDF・点検者一覧表と違う点検票の知らせと出力前の確認・"
+            + "総括表の画面の点検実施責任者・一覧に無い用途・31 階以上・敬称なし・日付の形でない以前の日付。"
+            + "★どれも PDF の検査・画像の照合では出ない（点検者は古い値のまま正しく印字される）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-rec102-followups.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-rec102-followups.mjs"], sentinel: "REC102_FOLLOWUPS_OK" },
+        ],
+    },
+    {
         file: "check-iphone-input.mjs", stage: "静的",
         why: "iPhone での入力のしやすさ（2026-10-20 の iPhone 点検）: 入力欄 16px（押すたびの拡大を止める）・数字/電話のキーボード・"
             + "その5 の仕様の写し・第1 の種別のまとめ付け・画面下の帯・判定のボタン・自動保存（別のアプリに切り替えた瞬間も）・"

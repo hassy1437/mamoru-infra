@@ -40,7 +40,10 @@ const SOUKATSU = "src/components/soukatsu-form.tsx"
 const CHOICE = "src/components/bekki-choice-checkboxes.tsx"
 const NUMERIC_PLACEHOLDERS = ["吐出量(L/min)", "吐出圧力(MPa)", "電流(A)", "電圧(V)", "設定圧力(MPa)", "作動圧力(MPa)", "長さ(m)", "長さ", "口径(mm)", "口径",
     "空質量", "全質量", "ガス質量", "本数", "番号", "例: 67.2", "例: 14.7"]
-const ALL = [...new Set([...FORMS, CSS, JUDGE, BAR, AUTO, CAMERA, CRUMB, NAV, MEASURE, ITIRAN, DEVICE, LICENSE, SOUKATSU, CHOICE])]
+const FORM_PAGES = fs.readdirSync(path.join(ROOT, "src/app/inspection/[id]/itiran/[itiranId]"), { withFileTypes: true })
+    .filter((d) => d.isDirectory() && fs.existsSync(path.join(ROOT, "src/app/inspection/[id]/itiran/[itiranId]", d.name, "page.tsx")))
+    .map((d) => `src/app/inspection/[id]/itiran/[itiranId]/${d.name}/page.tsx`)
+const ALL = [...new Set([...FORMS, CSS, JUDGE, BAR, AUTO, CAMERA, CRUMB, NAV, MEASURE, ITIRAN, DEVICE, LICENSE, SOUKATSU, CHOICE, ...FORM_PAGES])]
 
 /** <Input ... /> を 1 つずつ（属性に => があるので正規表現の [^>] では切れない） */
 const inputsOf = (src) => {
@@ -100,11 +103,18 @@ function check(files) {
     if (!/document\.visibilityState === "hidden"/.test(auto)) problems.push(`${AUTO}: 画面に戻ったときにも保存してしまう（隠れたときだけ）`)
     const bar = files[BAR]
     if (!/className="fixed inset-x-0 bottom-0 [^"]*md:hidden"/.test(bar)) problems.push(`${BAR}: 帯が画面下に固定されていない（またはパソコンにも出る）`)
-    if (!/aria-hidden className="h-24 md:hidden"/.test(bar)) problems.push(`${BAR}: 帯の高さぶんの余白が無い（最後の欄が帯に隠れる）`)
+    // ★帯の高さぶんの余白は、ページのいちばん下の「次へ」（ItiranFormNavBottom）が取る（2026-10-20・録音 102）
+    if (!/export function ItiranFormNavBottom[\s\S]*?className="[^"]*\bpb-24\b[^"]*md:pb-0/.test(files[NAV])) problems.push(`${NAV}: いちばん下の「次へ」が帯の高さぶんの余白を取っていない（最後の欄・次へが帯に隠れる）`)
+    for (const [f, src] of Object.entries(files)) {
+        if (!f.startsWith("src/app/inspection/")) continue
+        if (/<ItiranFormNav\n/.test(src) && !/<ItiranFormNavBottom\n/.test(src)) problems.push(`${f}: いちばん下に「次へ」が無い（上にしか無い・帯の余白も無い）`)
+    }
     // 6・7
     if (!/<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">\n\s*<h3/.test(files[CAMERA])) problems.push(`${CAMERA}: 点検写真の見出しとボタンがスマホでも横並び（見出しが縦に折れる）`)
     if ((files[CRUMB].match(/min-h-11 md:min-h-0/g) ?? []).length < 2) problems.push(`${CRUMB}: パンくずが 44px 未満`)
-    if (!/<Link href=\{hubHref\} className="inline-flex min-h-11 items-center/.test(files[NAV])) problems.push(`${NAV}: 「← 別記ハブに戻る」が 44px 未満`)
+    // ★上と下の 2 か所（下は 2026-10-20 から）。どちらも 44px
+    const backLinks = [...files[NAV].matchAll(/<Link href=\{hubHref\} className="([^"]*)"/g)].map((m) => m[1])
+    if (backLinks.length < 2 || backLinks.some((c) => !/\bmin-h-11\b/.test(c))) problems.push(`${NAV}: 「← 別記ハブに戻る」が 44px 未満（上・下）`)
     if (!/className=\{`inline-flex min-h-11 md:min-h-0 items-center gap-1 px-3 py-1\.5 text-xs font-medium rounded-full/.test(files[SOUKATSU])) problems.push(`${SOUKATSU}: 総括表の「指摘なし・要改善」がスマホで 44px 未満`)
     if (!/<label key=\{opt\.value\} className="inline-flex min-h-11 md:min-h-8 /.test(files[CHOICE])) problems.push(`${CHOICE}: 選ぶ欄（専用・兼用など）がスマホで 44px 未満`)
     // 8. 英数字の欄
@@ -143,7 +153,8 @@ if (SELF_TEST) {
         ["判定の未入力に戻せない", mut(JUDGE, 'onChange(pressed ? "" : o.v)', "onChange(o.v)"), "値が今までと違う"],
         ["第3 の自動保存を外す", mut(FORMS[3], "useAutoSave(payload, () => persistDraftRef.current(false), ", "void (payload, () => persistDraftRef.current(false), "), "自動保存"],
         ["切り替えた瞬間の保存を外す", mut(AUTO, 'window.addEventListener("pagehide", flush)', ""), "切り替えた瞬間"],
-        ["帯の余白を外す", mut(BAR, 'aria-hidden className="h-24 md:hidden"', 'aria-hidden className="hidden"'), "余白が無い"],
+        ["帯の余白を外す", mut(NAV, "pb-24 sm:flex-row", "sm:flex-row"), "余白を取っていない"],
+        ["第6 の下の「次へ」を外す", mut(FORM_PAGES.find((f) => f.includes("/inert-gas/")), "<ItiranFormNavBottom\n", "<ItiranFormNavBottomX\n"), "いちばん下に「次へ」が無い"],
         ["写真の見出しを横並びに戻す", mut(CAMERA, '<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">', '<div className="flex items-center justify-between">'), "縦に折れる"],
         ["戻るリンクを小さく戻す", mut(NAV, 'className="inline-flex min-h-11 items-center text-blue-600', 'className="text-blue-600'), "別記ハブに戻る"],
         ["一番下の保存ボタンを小さく戻す", mut(FORMS[5], '<Button type="button" onClick={handleSave} disabled={busy} className="min-h-11 md:min-h-0 ', '<Button type="button" onClick={handleSave} disabled={busy} className="'), "一番下のボタン（handleSave）"],

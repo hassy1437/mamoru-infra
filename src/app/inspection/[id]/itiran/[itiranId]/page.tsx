@@ -175,6 +175,26 @@ export default async function ItiranDetailPage({
             <div className="max-w-[210mm] mx-auto">
                 <ItiranPdfPreviewCollapsible data={record} />
             </div>
+
+            {/* ★いちばん下にも主の CTA と点検者一覧の PDF（録音 102。上にしか無く、スマホでは一覧を見たあと上へ戻っていた） */}
+            <div className="max-w-[210mm] mx-auto mt-6 flex flex-col gap-3">
+                <Link
+                    href={primaryCta.href}
+                    className={`flex items-center justify-center gap-2 w-full px-6 py-4 rounded-xl text-white font-bold text-base shadow-sm transition-colors ${
+                        isComplete ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"
+                    }`}
+                >
+                    {isComplete && <FileDown className="w-5 h-5" />}
+                    {primaryCta.label}
+                    <ArrowRight className="w-5 h-5" />
+                </Link>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                    <Link href={`/inspection/${id}`} className="text-blue-600 hover:underline inline-flex min-h-11 items-center">
+                        &larr; 総括表に戻る
+                    </Link>
+                    <ItiranPdfButton data={record} buildingName={soukatsu?.building_name} canDownload={canDownloadPdf(finalization)} gateMessage={pdfGateMessage(finalization)} />
+                </div>
+            </div>
         </div>
     )
 }

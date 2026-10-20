@@ -511,6 +511,18 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-condense-min-size.mjs", stage: "挙動", needsPdfs: true,
+        // ★排他。自己診断が src/lib/pdf-form-helpers.ts を一時的に書き換えるので、ほかの PDF の検査と同時に走らせない
+        exclusive: true,
+        why: "背の低い行で 1 行のまま 5pt を割る値を、5pt のまま横を縮めて（長体・最大 15%）入れているか。収まっている値は縮めない／"
+            + "縮めても入らない値は今までどおり 5pt 未満の警告。★第6・第7 の不良内容（17〜18 字）が 4.6〜4.9pt まで縮んでいた"
+            + "（2026-10-20・本番の通しチェック。行の高さに 5pt の 2 行が入らない）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-condense-min-size.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-condense-min-size.mjs"], sentinel: "CONDENSE_MIN_SIZE_OK" },
+        ],
+    },
+    {
         file: "check-bekki2-hose-row.mjs", stage: "挙動", needsPdfs: true,
         why: "別記2 のホース・ノズルの行が長さ・本数・口径の 3 つの欄で入り、以前の \"/\" 区切りと同じ位置・同じ文字で出るか。"
             + "★入力欄が 1 つで「20/2/19」と書く決まりが画面に無く、値を 1 つ書くと長さの空欄にだけ出た（2026-10-20・本番の通しチェック）",

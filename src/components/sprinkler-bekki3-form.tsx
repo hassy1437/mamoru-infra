@@ -538,6 +538,7 @@ export default function SprinklerBekki3Form({
         setter: Dispatch<SetStateAction<RowState[]>>,
         currentValueRowIndex?: number,
         perfRowIndex?: number,
+        /** ホース・ノズルの行。長さ × 本数 本 ／ ノズル径 mm を 2 行で出す（1 行だと狭い欄で折り返して読みにくい・2026-10-20） */
         hoseRowIndex?: number,
         /**
          * 圧力スイッチ行。刷り込みが「設定圧力 ___ MPa ／ 作動圧力 ___ MPa」で
@@ -583,28 +584,36 @@ export default function SprinklerBekki3Form({
                                     <td className={`p-2 border ${WRAP_CLS}`}>{bindLabelBreaks(label)}</td>
                                     <td className="p-1 border">
                                         {idx === hoseRowIndex ? (
-                                            <div className="flex gap-1 items-center flex-wrap">
-                                                <Input
-                                                    value={rows[idx].content}
-                                                    onChange={(e) => updateRowField(setter, idx, "content", e.target.value)}
-                                                    placeholder="長さ(m)"
-                                                    className="w-16"
-                                                />
-                                                <span className="text-xs text-muted-foreground">m ×</span>
-                                                <Input
-                                                    value={rows[idx].hose_count}
-                                                    onChange={(e) => updateRowField(setter, idx, "hose_count", e.target.value)}
-                                                    placeholder="本数"
-                                                    className="w-14"
-                                                />
-                                                <span className="text-xs text-muted-foreground">本 /</span>
-                                                <Input
-                                                    value={rows[idx].nozzle_dia}
-                                                    onChange={(e) => updateRowField(setter, idx, "nozzle_dia", e.target.value)}
-                                                    placeholder="口径(mm)"
-                                                    className="w-16"
-                                                />
-                                                <span className="text-xs text-muted-foreground">mm</span>
+                                            <div className="space-y-1">
+                                                <div className="flex items-center gap-1">
+                                                    <Input
+                                                        value={rows[idx].content}
+                                                        onChange={(e) => updateRowField(setter, idx, "content", e.target.value)}
+                                                        placeholder="長さ"
+                                                        aria-label={`${label} ホースの長さ(m)`}
+                                                        className="w-16"
+                                                    />
+                                                    <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">m ×</span>
+                                                    <Input
+                                                        value={rows[idx].hose_count}
+                                                        onChange={(e) => updateRowField(setter, idx, "hose_count", e.target.value)}
+                                                        placeholder="本数"
+                                                        aria-label={`${label} 本数`}
+                                                        className="w-16"
+                                                    />
+                                                    <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">本</span>
+                                                </div>
+                                                <div className="flex items-center gap-1">
+                                                    <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">ノズル径</span>
+                                                    <Input
+                                                        value={rows[idx].nozzle_dia}
+                                                        onChange={(e) => updateRowField(setter, idx, "nozzle_dia", e.target.value)}
+                                                        placeholder="口径"
+                                                        aria-label={`${label} ノズル径(mm)`}
+                                                        className="w-16"
+                                                    />
+                                                    <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">mm</span>
+                                                </div>
                                             </div>
                                         ) : idx === perfRowIndex ? (
                                             <div className="flex gap-1 items-center">
@@ -716,28 +725,36 @@ export default function SprinklerBekki3Form({
                                 <div className="space-y-1">
                                     <span className="text-xs text-slate-500">内容</span>
                                     {idx === hoseRowIndex ? (
-                                        <div className="flex gap-1 items-center flex-wrap">
-                                            <Input
-                                                value={rows[idx].content}
-                                                onChange={(e) => updateRowField(setter, idx, "content", e.target.value)}
-                                                placeholder="長さ(m)"
-                                                className="h-9 w-16 text-sm"
-                                            />
-                                            <span className="text-xs text-muted-foreground">m ×</span>
-                                            <Input
-                                                value={rows[idx].hose_count}
-                                                onChange={(e) => updateRowField(setter, idx, "hose_count", e.target.value)}
-                                                placeholder="本数"
-                                                className="h-9 w-14 text-sm"
-                                            />
-                                            <span className="text-xs text-muted-foreground">本 /</span>
-                                            <Input
-                                                value={rows[idx].nozzle_dia}
-                                                onChange={(e) => updateRowField(setter, idx, "nozzle_dia", e.target.value)}
-                                                placeholder="口径(mm)"
-                                                className="h-9 w-16 text-sm"
-                                            />
-                                            <span className="text-xs text-muted-foreground">mm</span>
+                                        <div className="space-y-1">
+                                            <div className="flex items-center gap-1">
+                                                <Input
+                                                    value={rows[idx].content}
+                                                    onChange={(e) => updateRowField(setter, idx, "content", e.target.value)}
+                                                    placeholder="長さ"
+                                                    aria-label={`${label} ホースの長さ(m)`}
+                                                    className="h-9 w-12 px-2 text-sm"
+                                                />
+                                                <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">m ×</span>
+                                                <Input
+                                                    value={rows[idx].hose_count}
+                                                    onChange={(e) => updateRowField(setter, idx, "hose_count", e.target.value)}
+                                                    placeholder="本数"
+                                                    aria-label={`${label} 本数`}
+                                                    className="h-9 w-12 px-2 text-sm"
+                                                />
+                                                <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">本</span>
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                                <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">ノズル径</span>
+                                                <Input
+                                                    value={rows[idx].nozzle_dia}
+                                                    onChange={(e) => updateRowField(setter, idx, "nozzle_dia", e.target.value)}
+                                                    placeholder="口径"
+                                                    aria-label={`${label} ノズル径(mm)`}
+                                                    className="h-9 w-12 px-2 text-sm"
+                                                />
+                                                <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">mm</span>
+                                            </div>
                                         </div>
                                     ) : idx === perfRowIndex ? (
                                         <div className="flex gap-1 items-center flex-wrap">

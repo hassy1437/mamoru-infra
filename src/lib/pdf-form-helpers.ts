@@ -1,4 +1,4 @@
-import { PDFFont, PDFPage, rgb } from "pdf-lib"
+import { PDFFont, PDFPage, popGraphicsState, pushGraphicsState, rgb, setCharacterSqueeze } from "pdf-lib"
 import type { CellAt, CellRef, FitCollector } from "./pdf-fit-report"
 
 // ★描画位置の型はルート側でも使う（薄い包みの引数）。1か所から出す。
@@ -107,12 +107,17 @@ export const drawTextRuns = (
     x: number,
     y: number,
     size: number,
+    /** 長体（横の倍率・1 未満で横だけ縮める）。condenseToMinSize が決める。既定 1＝今までどおり */
+    condense = 1,
 ) => {
     let cursor = x
+    // ★Tz（文字の横の倍率）は描画状態に載るので、q…Q で囲んでこの文字列だけに効かせる
+    if (condense < 1) page.pushOperators(pushGraphicsState(), setCharacterSqueeze(condense * 100))
     for (const run of splitFontRuns(fonts, text)) {
         page.drawText(run.text, { x: cursor, y, size, font: run.font, color: rgb(0, 0, 0) })
-        cursor += run.font.widthOfTextAtSize(run.text, size)
+        cursor += run.font.widthOfTextAtSize(run.text, size) * condense
     }
+    if (condense < 1) page.pushOperators(popGraphicsState())
 }
 
 export type CellDrawOptions = {
@@ -385,6 +390,28 @@ export const READABLE_DESIGN_TARGET_PT = 8.0
 export const ABSOLUTE_MIN_FONT_SIZE = 5.0
 
 /**
+ * 長体（横だけ縮める）の下限。★折り返しても 1 行のまま 5pt を割る値は、5pt のまま横を最大 15% 縮めて入れる（2026-10-20）。
+ *
+ * ■ なぜ要るか（本番の通しチェック）
+ *   不活性ガス（第6）・ハロゲン化物（第7）の不良内容は、行の高さが 11〜13pt しかなく 5pt では 2 行が入らない。
+ *   17 字の不良内容が 1 行のまま 4.6〜4.9pt まで縮んでいた（判読しづらい）。
+ *   枠内収容の手順は 折返し → 縮小 → 字間 → 略称 で、縮小で 5pt を割るなら次は字間（ここでは長体）。
+ * ■ 決めたこと
+ *   - 1 行で 5pt を割り、5pt のまま横を 85% 以上に縮めれば入るときだけ使う。収まっている値の見た目は変わらない
+ *   - 縮めても入らない値は今までどおり（小さく描いて 5pt 未満の警告を出す）
+ */
+export const MIN_CONDENSE = 0.85
+
+/** 1 行で 5pt を割るとき、5pt のまま横を縮めて入るならその倍率（0.85〜1）。入らなければ null */
+export const condenseToMinSize = (fonts: ReportFonts, text: string, maxWidth: number, maxHeight: number): number | null => {
+    const width = measureRuns(fonts, text, ABSOLUTE_MIN_FONT_SIZE)
+    if (fonts.jp.heightAtSize(ABSOLUTE_MIN_FONT_SIZE, { descender: true }) > maxHeight) return null
+    if (width <= maxWidth) return 1
+    const ratio = Math.floor((maxWidth / width) * 1000) / 1000
+    return ratio >= MIN_CONDENSE ? ratio : null
+}
+
+/**
  * 下限より小さく描かれる場合に「収まらなかった」として報告する。
  * fits は下限サイズなら何文字入るかで、業者に「何文字まで」を示すために使う。
  */
@@ -625,10 +652,23 @@ export const drawWrappedTextInCell = ({
     // ★安全係数（旧 0.90）は撤廃した（経緯は wrappedFit の上）。
     const maxWidth = Math.max(1, cellW - paddingX * 2)
 
-    const { size: currentSize, ...wrapped } = wrappedFit({
+    const fit = wrappedFit({
         fonts, text: normalized, cellW, cellH, fontSize,
         paddingX, paddingY, minFontSize, maxFontSize: options?.maxFontSize, lineGap,
     })
+    let { size: currentSize } = fit
+    let wrapped: { lines: string[]; maxLines: number } = fit
+    // ★5pt を割るなら（1 行のままでも、背の低い行で 5pt 未満の 2 行に割れても）、1 行のまま 5pt で
+    //   横を縮めて入るかを先に見る（MIN_CONDENSE）。第6 の 18 字は 4.6pt の 2 行に割れていた
+    let condense = 1
+    if (currentSize < ABSOLUTE_MIN_FONT_SIZE) {
+        const c = condenseToMinSize(fonts, normalized, maxWidth, Math.max(1, cellH - paddingY * 2))
+        if (c !== null) {
+            condense = c
+            currentSize = ABSOLUTE_MIN_FONT_SIZE
+            wrapped = { lines: [normalized], maxLines: 1 }
+        }
+    }
     // 折り返しは縮小ループが別なので、ここでも設計値からの逸脱を記録する
     fonts.fit?.reportShrink(normalized, designSize, currentSize, options?.at)
     reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth, options?.at)
@@ -665,6 +705,7 @@ export const drawWrappedTextInCell = ({
             cellX + paddingX,
             getBaselineY(pageHeight, textHeight, top, lineHeight),
             currentSize,
+            condense,
         )
         top += lineHeight
     }

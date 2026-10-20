@@ -133,6 +133,10 @@ def drawn_circles():
                 g.update_stream(xr, b"".join(g.xref_stream(x) for x in keep))
                 pg.set_contents(xr)
                 for dr in pg.get_drawings():
+                    # ★白で塗るだけの矩形は○ではない（刷り込みを消す所。check-printed-overlap の
+                    #   KNOWN_ERASURES が名指しで見ている）。2026-10-20 に表紙の宛名で足した
+                    if cpo.is_white_fill(dr):
+                        continue
                     r = dr["rect"]
                     seen.setdefault((form, i + 1, round((r.x0 + r.x1) / 2),
                                      round((r.y0 + r.y1) / 2)), os.path.basename(p))

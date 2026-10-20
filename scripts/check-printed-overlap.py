@@ -102,6 +102,12 @@ def _mask(page, scale: float) -> np.ndarray:
     return a < DARK
 
 
+def is_white_fill(d) -> bool:
+    """線を引かず白で塗るだけの図形（＝刷り込みを消す白い矩形）"""
+    fill = d.get("fill")
+    return d.get("type") == "f" and fill is not None and all(c > 0.99 for c in fill)
+
+
 def app_only_masks(gen_path: Path, tpl_path: Path, scale: float):
     """アプリ由来のストリームだけを残したページのインクマスクを頁ごとに返す"""
     tpl = fitz.open(str(tpl_path))
@@ -118,7 +124,7 @@ def app_only_masks(gen_path: Path, tpl_path: Path, scale: float):
         pg = gen[i]
         keep = [x for x in pg.get_contents() if gen.xref_stream(x) not in tpl_streams]
         if not keep:
-            out.append((np.zeros_like(tpl_masks[min(i, len(tpl_masks) - 1)]), []))
+            out.append((np.zeros_like(tpl_masks[min(i, len(tpl_masks) - 1)]), [], []))
             continue
         merged = b"".join(gen.xref_stream(x) for x in keep)
         xr = gen.get_new_xref()
@@ -127,7 +133,12 @@ def app_only_masks(gen_path: Path, tpl_path: Path, scale: float):
         pg.set_contents(xr)
         # ★2つ目にアプリ層の図形を返す。○は文字ではなく図形（drawEllipse）なので、
         #   ★スパンだけを枠にしていると★数える枠がどこにも無く、原理的に0件になる。
-        out.append((_mask(pg, scale), [d["rect"] for d in pg.get_drawings()]))
+        # ★3つ目に「白で塗りつぶした矩形」（刷り込みを消す所）を分けて返す（2026-10-20）。
+        #   白い塗りはインクではないので○の枠にしない。代わりに、その下の刷り込みを見えないものとして扱う。
+        shapes, erasures = [], []
+        for d in pg.get_drawings():
+            (erasures if is_white_fill(d) else shapes).append(d["rect"])
+        out.append((_mask(pg, scale), shapes, erasures))
     gen.close()
     return out, tpl_masks
 
@@ -160,12 +171,27 @@ def overlaps(gen_path, scale: float = SCALE):
     tpl_spans = spans_of(tpl_path)
 
     hits = []
-    for i, (am, app_shapes) in enumerate(app_masks):
+    for i, (am, app_shapes, erasures) in enumerate(app_masks):
         if i >= len(tpl_masks):
             break
         tm = tpl_masks[i]
         if am.shape != tm.shape:
             continue
+        # ★白で消した刷り込みは見えない（2026-10-20・表紙の宛名）。名指しの登録に当たる白だけ認め、
+        #   その下の刷り込みのインクを外す。★登録に無い白は★それ自体を該当にする
+        #   （白で塗れば重ね書きを隠せてしまうので、黙って認めない）。
+        tm = tm.copy()
+        for er in erasures:
+            if is_known_erasure(gen_path.stem, i + 1, er.x0, er.y0):
+                ex0, ey0 = int(er.x0 * scale), int(er.y0 * scale)
+                ex1, ey1 = int(np.ceil(er.x1 * scale)), int(np.ceil(er.y1 * scale))
+                tm[max(0, ey0):ey1, max(0, ex0):ex1] = False
+            else:
+                hits.append({
+                    "page": i + 1, "app": "白い塗り（未登録の消し込み）", "printed": "刷り込みを消している",
+                    "px": 1, "px_text": 0, "px_other": 1,
+                    "x": round(er.x0, 1), "y": round(er.y0, 1), "mark": False,
+                })
         both = am & tm
         if not both.any():
             continue
@@ -268,6 +294,21 @@ KNOWN_TIGHT_REASON = (
     "★囲む語のすぐ外（0.6〜0.9pt）に罫線があり、語を囲みながら罫線に触れないことが"
     "物理的に成立しない欄（2026-08-25 に探索で確認）"
 )
+
+
+# ★刷り込みを白で消してよい所（2026-10-20・名指し）。位置は 0.5pt まで見る。
+#   ★増やすときは、消すのが様式として正しい理由を書くこと（重ね書きを隠す道具にしない）。
+KNOWN_ERASURES = {
+    # 表紙（様式第１）の宛名の刷り込み「消防長（消防署長）（市町村長）」。選んだ敬称を名前とつないで
+    #   その行に描き、刷り込みは白で消す（「殿」は残す）。録音 102・src/app/api/generate-pdf/route.ts の ADDRESSEE_PRINTED
+    ("houkoku", 1, 81.4, 105.8),
+}
+
+
+def is_known_erasure(form: str, page: int, x: float, y: float) -> bool:
+    base = form.replace("_test", "").split("__")[0]
+    return any(f == base and p == page and abs(kx - x) <= 0.5 and abs(ky - y) <= 0.5
+               for f, p, kx, ky in KNOWN_ERASURES)
 
 
 def is_known(form: str, page: int, x: float, y: float) -> bool:
@@ -407,12 +448,33 @@ def self_test() -> int:
             if bad_hits:
                 problems.append(f"隣の空白に置いただけで検出した（誤検出）: {bad_hits[:2]}")
 
+        # 白で消す（2026-10-20）: ★登録した所は、消した刷り込みの上に描いても該当にしない。
+        #   ★登録に無い所を白で塗ったら、それ自体を該当にする（重ね書きを白で隠せないこと）。
+        houkoku = TPL_DIR / "bekki_houkoku.pdf"
+        for registered in (True, False):
+            doc = fitz.open(str(houkoku))
+            page = doc[0]
+            fx, fy = (81.4, 105.8) if registered else (300.0, 105.8)
+            r = fitz.Rect(fx, fy, fx + 176.0, fy + 15.0)
+            page.draw_rect(r, color=None, fill=(1, 1, 1), width=0)
+            page.insert_font(fontname="notojp", fontfile=str(APP_FONT_FILE))
+            page.insert_text((r.x0 + 2, r.y1 - 3), "大阪市北消防署長", fontname="notojp", fontsize=12)
+            erased = Path(td) / "houkoku_test.pdf"
+            doc.save(str(erased), incremental=False)
+            doc.close()
+            hits_er = judge(overlaps(erased))
+            if registered and hits_er:
+                problems.append(f"登録した消し込みの上に描いたのに検出した: {hits_er[:2]}")
+            if not registered and not any("未登録の消し込み" in h["app"] for h in hits_er):
+                problems.append("登録に無い所を白で塗ったのに検出しない（重ね書きを白で隠せる）")
+
     if problems:
         print("SELF_TEST_FAILED")
         for p in problems:
             print(f"  - {p}")
         return 1
-    print("SELF_TEST_OK（描画ゼロ=0件 / 文字への重ね書き=検出 / 罫線への重ね書き=検出 / 隣接=検出しない）")
+    print("SELF_TEST_OK（描画ゼロ=0件 / 文字への重ね書き=検出 / 罫線への重ね書き=検出 / 隣接=検出しない"
+          " / 登録した消し込み=検出しない / 未登録の白=検出）")
     return 0
 
 

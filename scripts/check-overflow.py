@@ -39,9 +39,18 @@ def is_overlay(font_name: str) -> bool:
     return any(h in font_name for h in OVERLAY_FONT_HINTS)
 
 
+def is_white_fill(d) -> bool:
+    """線を引かず白で塗るだけの図形。目に見える線が無いので罫線ではない
+    （2026-10-20: 表紙の宛名で刷り込みを白で消す矩形の左端を、罫線として数えていた）"""
+    fill = d.get("fill")
+    return d.get("type") == "f" and fill is not None and all(c > 0.99 for c in fill)
+
+
 def vertical_rules(page):
     rules = []
     for d in page.get_drawings():
+        if is_white_fill(d):
+            continue
         for item in d.get("items", []):
             if item[0] == "l":
                 p1, p2 = item[1], item[2]

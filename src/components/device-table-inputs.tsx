@@ -12,6 +12,7 @@ import {
     type DeviceTableKind,
     type DeviceTableRow,
 } from "@/lib/bekki-device-table"
+import { CODE_INPUT_PROPS } from "@/lib/code-input-props"
 
 const filled = (row: DeviceTableRow | undefined) =>
     !!row && [row.name, row.model, row.calibrated_at, row.maker].some((v) => v.trim() !== "")
@@ -57,7 +58,7 @@ export default function DeviceTableInputs({
                                         onChange={(e) => onChange(i, "name", e.target.value)}
                                     />
                                 )}
-                                <Input placeholder="型式" value={row.model} onChange={(e) => onChange(i, "model", e.target.value)} />
+                                <Input {...CODE_INPUT_PROPS} placeholder="型式" value={row.model} onChange={(e) => onChange(i, "model", e.target.value)} />
                                 <div className="space-y-1">
                                     <Label className="text-xs font-normal text-slate-500">校正年月日</Label>
                                     <Input type="date" value={toDateInputValue(row.calibrated_at)} onChange={(e) => onChange(i, "calibrated_at", e.target.value)} />
@@ -84,7 +85,7 @@ export default function DeviceTableInputs({
                         <div key={index} role="group" aria-label={label} className="space-y-2">
                             <p className="font-medium text-sm">{label}</p>
                             <Input placeholder="機器名" aria-label={`${label} 機器名`} value={row.name} onChange={(e) => onChange(index, "name", e.target.value)} />
-                            <Input placeholder="型式" aria-label={`${label} 型式`} value={row.model} onChange={(e) => onChange(index, "model", e.target.value)} />
+                            <Input {...CODE_INPUT_PROPS} placeholder="型式" aria-label={`${label} 型式`} value={row.model} onChange={(e) => onChange(index, "model", e.target.value)} />
                             <div className="space-y-1">
                                 <Label className="text-xs font-normal text-slate-500">校正年月日</Label>
                                 <Input type="date" aria-label={`${label} 校正年月日`} value={toDateInputValue(row.calibrated_at)} onChange={(e) => onChange(index, "calibrated_at", e.target.value)} />

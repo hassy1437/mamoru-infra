@@ -26,10 +26,13 @@ import {
 } from "@/lib/bekki-form-normalization"
 import { bekkiWitnessInitial } from "@/lib/bekki-witness"
 import CameraInput from "@/components/camera-input"
+import JudgmentButtons from "@/components/judgment-buttons"
 import DeviceTableInputs from "@/components/device-table-inputs"
 import { resolveDeviceTable, type DeviceTableRow } from "@/lib/bekki-device-table"
 import { pdfRequestError, pdfErrorText } from "@/lib/pdf-request-error"
 import { soukatsuPdfGate } from "@/lib/pdf-gate-client"
+import { useAutoSave } from "@/hooks/use-auto-save"
+import FormActionBar from "@/components/form-action-bar"
 
 type MarkKey = "A" | "B" | "C" | "D" | "E" | "F"
 
@@ -103,6 +106,8 @@ interface Props {
 }
 
 const MARKS: MarkKey[] = ["A", "B", "C", "D", "E", "F"]
+/** その2 で種別（A〜F）の欄があるのはこの行の手前まで（簡易消火用具の 2 行＝外形・水量等には無い） */
+const P2_MARK_ROWS = 19
 
 // A〜F の器種名（テンプレ s50_kokuji14_bekki1.pdf 備考第2項に準拠）。
 // ★アルファベット順ではない（A=粉末 … F=水）。marks のキーは "A"〜"F" のまま、表示ラベルのみ。
@@ -446,20 +451,8 @@ export default function ShokakiBekki1Form({
         return () => { if (restoreReadyRef.current) persistDraftRef.current(false) }
     }, [])
 
-    // Debounced auto-save: 最終入力から5秒後に保存（base/他22様式と同間隔）
-    const isInitialMount = useRef(true)
-    useEffect(() => {
-        if (isInitialMount.current) {
-            isInitialMount.current = false
-            return
-        }
-        const timer = setTimeout(() => {
-            persistDraftRef.current(false).then((ok) => {
-                if (ok) setSaveMessage(`自動保存済み: ${new Date().toLocaleString("ja-JP")}`)
-            })
-        }, 5000)
-        return () => clearTimeout(timer)
-    }, [payload])
+    // 自動保存: 入力が止まって 5 秒後と、別のアプリに切り替えた瞬間（src/hooks/use-auto-save.ts）
+    useAutoSave(payload, () => persistDraftRef.current(false), () => setSaveMessage(`自動保存済み: ${new Date().toLocaleString("ja-JP")}`))
 
     // オフライン下書きの復元: ローカルがサーバー保存より新しければ復元（base と同優先ルール）。
     // 完了後に restoreReadyRef を立て、以降の自動保存を許可する。
@@ -509,6 +502,26 @@ export default function ShokakiBekki1Form({
         setter((prev) => prev.map((row, i) => (i === index ? { ...row, [field]: value } : row)))
     }
 
+    // ★種別（A〜F）をまとめて付ける（2026-10-20）。iPhone では行ごとに約 35 回タップしていた。
+    //   種別が 1 つも付いていない行だけに付ける（付いている行・見出しの行・種別の欄が無い行は変えない）
+    const [bulkMarks, setBulkMarks] = useState<Record<MarkKey, boolean>>({ A: false, B: false, C: false, D: false, E: false, F: false })
+    const [bulkMarksMessage, setBulkMarksMessage] = useState<string | null>(null)
+    const applyBulkMarks = () => {
+        const picked = MARKS.filter((k) => bulkMarks[k])
+        if (!picked.length) return
+        let count = 0
+        const fill = (labels: readonly string[], rows: RowState[], limit: number) => rows.map((row, i) => {
+            if (i >= limit || isBekkiHeadingLabel(labels[i] ?? "") || MARKS.some((k) => row.marks[k])) return row
+            count += 1
+            return { ...row, marks: { ...row.marks, ...Object.fromEntries(picked.map((k) => [k, true])) } }
+        })
+        const next1 = fill(PAGE1_ITEMS, page1Rows, PAGE1_ITEMS.length)
+        const next2 = fill(PAGE2_ITEMS, page2Rows, P2_MARK_ROWS)
+        setPage1Rows(next1)
+        setPage2Rows(next2)
+        setBulkMarksMessage(count ? `${count} 行に ${picked.join("・")} を付けました` : "種別が空欄の行はありませんでした")
+    }
+
     const toggleMark = (page: "p1" | "p2", index: number, key: MarkKey) => {
         const setter = page === "p1" ? setPage1Rows : setPage2Rows
         setter((prev) => prev.map((row, i) => (
@@ -535,7 +548,7 @@ export default function ShokakiBekki1Form({
                         <CardTitle>{title}</CardTitle>
                         <CardDescription>各行で種別(A〜F)、判定、不良内容、措置内容を入力してください。</CardDescription>
                     </div>
-                    <Button type="button" variant="outline" size="sm" onClick={markAllGood} className="shrink-0">
+                    <Button type="button" variant="outline" size="sm" onClick={markAllGood} className="shrink-0 min-h-11 md:min-h-0">
                         <CheckCheck className="w-4 h-4 mr-1.5" />この表の空欄を良にする
                     </Button>
                 </div>
@@ -653,15 +666,11 @@ export default function ShokakiBekki1Form({
 
                                 <div className="space-y-1">
                                     <span className="text-xs text-slate-500">判定</span>
-                                    <select
-                                        className="w-full h-9 border border-input rounded-md bg-background px-2 text-sm"
+                                    <JudgmentButtons
                                         value={row.judgment}
-                                        onChange={(e) => updateRowField(page, idx, "judgment", e.target.value)}
-                                    >
-                                        <option value="">未入力</option>
-                                        <option value="良">良</option>
-                                        <option value="否">否</option>
-                                    </select>
+                                        onChange={(v) => updateRowField(page, idx, "judgment", v)}
+                                        label={label}
+                                    />
                                     {/* 備考3: 不良時は不良個数を判定欄に記入。否のときのみ表示 */}
                                     {row.judgment === "否" && (
                                         <input
@@ -712,7 +721,7 @@ export default function ShokakiBekki1Form({
     const busy = saving || loadingPreview || loadingDownload
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6" data-form-action-root>
             {/* ★様式の頭に 1 つ。表ごとの「この表の空欄を良にする」は残す（#101）。消火器は点検種別の欄も総合点検の行も無い */}
             <BekkiBulkGoodButton
                 form="別記様式第1"
@@ -767,7 +776,7 @@ export default function ShokakiBekki1Form({
                         </div>
                         <div className="space-y-1">
                             <Label>TEL</Label>
-                            <Input value={inspectorTel} onChange={(e) => setInspectorTel(e.target.value)} />
+                            <Input type="tel" autoComplete="tel" value={inspectorTel} onChange={(e) => setInspectorTel(e.target.value)} />
                         </div>
                     </div>
 
@@ -784,10 +793,41 @@ export default function ShokakiBekki1Form({
                 </CardContent>
             </Card>
 
+            <Card>
+                <CardHeader>
+                    <CardTitle>種別（A〜F）をまとめて付ける</CardTitle>
+                    <CardDescription>
+                        この建物にある消火器の種別を選んで押すと、その1・その2 で種別が空欄の行にまとめて付けます。種別が付いている行は変えません。
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                    <div role="group" aria-label="まとめて付ける種別" className="flex flex-wrap gap-1.5">
+                        {MARK_TYPES.map(({ key, label: typeLabel }) => (
+                            <button
+                                key={key}
+                                type="button"
+                                aria-pressed={bulkMarks[key]}
+                                onClick={() => { setBulkMarks((m) => ({ ...m, [key]: !m[key] })); setBulkMarksMessage(null) }}
+                                className={`min-w-[44px] min-h-[44px] px-1.5 py-1 rounded-md border flex flex-col items-center justify-center leading-tight transition-colors ${bulkMarks[key] ? "bg-blue-600 border-blue-600 text-white" : "bg-white border-slate-300 text-slate-700"}`}
+                            >
+                                <span className="text-sm font-bold">{key}</span>
+                                <span className="text-[10px] whitespace-nowrap">{typeLabel}</span>
+                            </button>
+                        ))}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                        <Button type="button" variant="outline" className="min-h-11" onClick={applyBulkMarks} disabled={!MARKS.some((k) => bulkMarks[k])}>
+                            種別が空欄の行に付ける
+                        </Button>
+                        {bulkMarksMessage && <span role="status" className="text-sm text-slate-600">{bulkMarksMessage}</span>}
+                    </div>
+                </CardContent>
+            </Card>
+
             {renderItemTable("（その1）点検結果", "p1", PAGE1_ITEMS, page1Rows)}
             {/* ★種別（A〜F）が無いのは簡易消火用具の 2 行（外形・水量等・19〜）だけ。以前は 18 にしていて、
                 「消火器の耐圧性能」の行でも種別を付けられなかった（雛形にはその行の A〜F の欄がある・2026-10-20 の記入漏れ点検） */}
-            {renderItemTable("（その2）点検結果", "p2", PAGE2_ITEMS, page2Rows, 19)}
+            {renderItemTable("（その2）点検結果", "p2", PAGE2_ITEMS, page2Rows, P2_MARK_ROWS)}
 
             <Card>
                 <CardHeader>
@@ -893,7 +933,8 @@ export default function ShokakiBekki1Form({
 
             {error && <p className="text-sm text-red-600">{error}</p>}
 
-
+            {/* スマホの画面下の帯（保存・プレビュー・表へ移動・保存の状態） */}
+            <FormActionBar onSave={handleSave} onPreview={handlePreview} busy={busy} saving={saving} previewing={loadingPreview} message={saveMessage} error={error} />
         </div>
     )
 }

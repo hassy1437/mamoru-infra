@@ -11,6 +11,7 @@ import {
     toMonthInputValueFromParts,
     splitMonthInputValue,
 } from "@/lib/date-utils"
+import { CODE_INPUT_PROPS } from "@/lib/code-input-props"
 
 // その分類に値が1つでも入っているか（モバイルの初期タブ選択に使う）。
 // itiran-form の isInspectorFilled と同型。保有フラグは持たず値の有無で判定する。
@@ -156,7 +157,7 @@ export function LicenseEditor({ value, onChange }: LicenseEditorProps) {
                                         </td>
                                         {/* 交付番号 */}
                                         <td className="border border-gray-300 px-1 py-1">
-                                            <Input className="h-9 w-full min-w-0 text-sm px-1" placeholder="交付番号" value={lic.license_number}
+                                            <Input {...CODE_INPUT_PROPS} className="h-9 w-full min-w-0 text-sm px-1" placeholder="交付番号" value={lic.license_number}
                                                 onChange={e => updateShoubouLicense(key, { license_number: e.target.value })} />
                                         </td>
                                         {/* 交付知事 */}
@@ -198,7 +199,7 @@ export function LicenseEditor({ value, onChange }: LicenseEditorProps) {
                                 </div>
                                 <div className="space-y-1 min-w-0">
                                     <span className="text-xs text-slate-500">交付番号</span>
-                                    <Input className="h-9 w-full min-w-0 text-sm" placeholder="交付番号" value={lic.license_number}
+                                    <Input {...CODE_INPUT_PROPS} className="h-9 w-full min-w-0 text-sm" placeholder="交付番号" value={lic.license_number}
                                         onChange={e => updateShoubouLicense(key, { license_number: e.target.value })} />
                                 </div>
                                 <div className="space-y-1 min-w-0">
@@ -263,7 +264,7 @@ export function LicenseEditor({ value, onChange }: LicenseEditorProps) {
                                         </td>
                                         {/* 交付番号 */}
                                         <td className="border border-gray-300 px-1 py-1">
-                                            <Input className="h-9 w-full min-w-0 text-sm px-1" placeholder="交付番号" value={lic.license_number}
+                                            <Input {...CODE_INPUT_PROPS} className="h-9 w-full min-w-0 text-sm px-1" placeholder="交付番号" value={lic.license_number}
                                                 onChange={e => updateKensaLicense(key, { license_number: e.target.value })} />
                                         </td>
                                         {/* 有効期限 (colSpan=3) */}
@@ -300,7 +301,7 @@ export function LicenseEditor({ value, onChange }: LicenseEditorProps) {
                                 </div>
                                 <div className="space-y-1 min-w-0">
                                     <span className="text-xs text-slate-500">交付番号</span>
-                                    <Input className="h-9 w-full min-w-0 text-sm" placeholder="交付番号" value={lic.license_number}
+                                    <Input {...CODE_INPUT_PROPS} className="h-9 w-full min-w-0 text-sm" placeholder="交付番号" value={lic.license_number}
                                         onChange={e => updateKensaLicense(key, { license_number: e.target.value })} />
                                 </div>
                                 <div className="space-y-1 min-w-0">

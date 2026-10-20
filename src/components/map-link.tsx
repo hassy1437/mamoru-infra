@@ -15,7 +15,7 @@ export default function MapLink(parts: AddressParts & { className?: string }) {
             href={href}
             target="_blank"
             rel="noopener noreferrer"
-            className={`inline-flex items-center gap-1 text-sm font-medium text-blue-600 underline underline-offset-2 hover:no-underline ${parts.className ?? ""}`}
+            className={`inline-flex min-h-11 items-center gap-1 text-sm font-medium text-blue-600 underline underline-offset-2 hover:no-underline ${parts.className ?? ""}`}
         >
             地図で開く
             <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />

@@ -22,7 +22,7 @@ export default async function ReportsPage() {
                     { label: "報告書一覧" },
                 ]} />
                 <div className="mb-6">
-                    <Link href="/tool" className="text-sm text-blue-600 hover:underline mb-2 block">
+                    <Link href="/tool" className="text-sm text-blue-600 hover:underline mb-2 flex w-fit min-h-11 items-center">
                         ← ツール選択に戻る
                     </Link>
                     <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">

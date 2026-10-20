@@ -105,7 +105,7 @@ export default async function ToolPage() {
                 <Clock className="w-4 h-4 text-slate-400" />
                 <span className="text-sm font-semibold text-slate-500">最近の点検</span>
               </div>
-              <Link href="/reports" className="text-xs font-medium text-blue-600 hover:underline shrink-0">
+              <Link href="/reports" className="inline-flex min-h-11 items-center text-xs font-medium text-blue-600 hover:underline shrink-0">
                 すべての報告書を見る →
               </Link>
             </div>

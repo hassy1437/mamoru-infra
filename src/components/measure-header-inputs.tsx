@@ -2,6 +2,7 @@
 
 import { Input } from "@/components/ui/input"
 import type { MeasureHeader } from "@/lib/measure-headers"
+import { toDateInputValue } from "@/lib/date-utils"
 
 /**
  * その5（容器ごとの点検結果）の、測定の列の見出しの入力（src/lib/measure-headers.ts）。
@@ -31,14 +32,24 @@ export default function MeasureHeaderInputs({
                 {headers.map((h, m) => (
                     <div key={m} className="min-w-0 space-y-1 rounded-md border border-slate-200 bg-white p-2">
                         <span className="text-xs font-medium text-slate-600">測定{m + 1}</span>
-                        <Input
-                            value={h.date}
-                            onChange={(e) => set(m, "date", e.target.value)}
-                            // ★例は最初の欄だけ（全部に出すと、入れていない欄も入っているように見える）
-                            placeholder={m === 0 ? "例: 2026/10/14" : "年/月/日"}
-                            aria-label={`測定${m + 1} 点検年月日`}
-                            className="h-9 text-sm"
-                        />
+                        {h.date && !toDateInputValue(h.date) ? (
+                            // ★日付の形でない以前の入力（「令和8年…」など）は消さずに文字のまま見せて直せるようにする
+                            <Input
+                                value={h.date}
+                                onChange={(e) => set(m, "date", e.target.value)}
+                                aria-label={`測定${m + 1} 点検年月日`}
+                                className="h-9 text-sm"
+                            />
+                        ) : (
+                            // ★日付は選ぶ（iPhone で「/」を打たなくてよい・2026-10-20）。保存は 2026-10-14 の形（印字は measureHeaderDateParts が読む）
+                            <Input
+                                type="date"
+                                value={toDateInputValue(h.date)}
+                                onChange={(e) => set(m, "date", e.target.value)}
+                                aria-label={`測定${m + 1} 点検年月日`}
+                                className="h-9 text-sm"
+                            />
+                        )}
                         {withTemp && (
                             <div className="flex items-center gap-1">
                                 <Input

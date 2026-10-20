@@ -26,6 +26,7 @@ import {
     type DeviceTableRow,
 } from "@/lib/bekki-device-table"
 import CameraInput from "@/components/camera-input"
+import JudgmentButtons from "@/components/judgment-buttons"
 import DeviceTableInputs from "@/components/device-table-inputs"
 import {
     normalizeBekkiInspectorNameForPayload,
@@ -44,6 +45,9 @@ import { defectPhraseListId } from "@/lib/defect-phrases"
 import { DefectPhraseDatalists } from "@/components/defect-phrase-datalists"
 import { BekkiChoiceCheckboxes } from "@/components/bekki-choice-checkboxes"
 import { choiceRowsOf, type ChoiceRow } from "@/lib/bekki-choice-rows"
+import { CODE_INPUT_PROPS } from "@/lib/code-input-props"
+import { useAutoSave } from "@/hooks/use-auto-save"
+import FormActionBar from "@/components/form-action-bar"
 export type { BekkiRowState } from "@/lib/bekki-row-state"
 
 export type BekkiDeviceState = {
@@ -449,22 +453,8 @@ export default function BekkiResultFormBase({
     const persistDraftRef = useRef(persistDraft)
     useEffect(() => { persistDraftRef.current = persistDraft }, [persistDraft])
 
-    // Track whether this is the initial render (skip auto-save on mount)
-    const isInitialMount = useRef(true)
-
-    // Debounced auto-save: save 5 seconds after last payload change
-    useEffect(() => {
-        if (isInitialMount.current) {
-            isInitialMount.current = false
-            return
-        }
-        const timer = setTimeout(() => {
-            persistDraftRef.current(false).then((ok) => {
-                if (ok) setSaveMessage(`自動保存済み: ${new Date().toLocaleString("ja-JP")}`)
-            })
-        }, 5000)
-        return () => clearTimeout(timer)
-    }, [payload])
+    // 自動保存: 入力が止まって 5 秒後と、別のアプリに切り替えた瞬間（src/hooks/use-auto-save.ts）
+    useAutoSave(payload, () => persistDraftRef.current(false), () => setSaveMessage(`自動保存済み: ${new Date().toLocaleString("ja-JP")}`))
 
     // 復元完了フラグ: 復元前の自動保存（StrictMode の擬似アンマウントや復元前の離脱）で
     // 新しいローカル下書きをサーバー初期値で上書きしないためのガード。
@@ -563,6 +553,12 @@ export default function BekkiResultFormBase({
         })
     }
 
+    // ★内容の欄が 2〜3 個に分かれる行（ホース・ポンプ性能・避難口/通路/客席・電圧/電流）と選ぶ欄の行は、
+    //   スマホでは内容と判定をそれぞれ横幅いっぱいに置く（半分の幅に 3 つ並べると 1 欄 40px ほどで読めなかった・2026-10-20）
+    const isWideContentRow = (section: SectionConfig, idx: number) =>
+        Boolean(choiceRowAt(section.key, idx)) || Boolean(section.hoseRowIndexes?.includes(idx)) || idx === section.pumpPerfRowIndex
+        || Boolean(section.splitTypeCapacity) || idx === section.currentValueRowIndex
+
     const renderItemTable = (section: SectionConfig) => (
         <Card key={section.key}>
             <CardHeader>
@@ -577,7 +573,7 @@ export default function BekkiResultFormBase({
                         variant="outline"
                         size="sm"
                         onClick={() => markAllGoodInSection(section.key)}
-                        className="shrink-0"
+                        className="shrink-0 min-h-11 md:min-h-0"
                     >
                         <CheckCheck className="w-4 h-4 mr-1.5" />
                         この表の空欄を良にする
@@ -627,18 +623,21 @@ export default function BekkiResultFormBase({
                                                     value={rowsByKey[section.key]?.[idx]?.content ?? ""}
                                                     onChange={(e) => updateRowField(section.key, idx, "content", e.target.value)}
                                                     placeholder="長さ(m)"
+                                                    inputMode="decimal"
                                                     className="w-16"
                                                 />
                                                 <Input
                                                     value={rowsByKey[section.key]?.[idx]?.hose_count ?? ""}
                                                     onChange={(e) => updateRowField(section.key, idx, "hose_count", e.target.value)}
                                                     placeholder="本数"
+                                                    inputMode="numeric"
                                                     className="w-14"
                                                 />
                                                 <Input
                                                     value={rowsByKey[section.key]?.[idx]?.nozzle_dia ?? ""}
                                                     onChange={(e) => updateRowField(section.key, idx, "nozzle_dia", e.target.value)}
                                                     placeholder="口径(mm)"
+                                                    inputMode="decimal"
                                                     className="w-16"
                                                 />
                                             </div>
@@ -648,12 +647,14 @@ export default function BekkiResultFormBase({
                                                     value={rowsByKey[section.key]?.[idx]?.content ?? ""}
                                                     onChange={(e) => updateRowField(section.key, idx, "content", e.target.value)}
                                                     placeholder="吐出圧力(MPa)"
+                                                    inputMode="decimal"
                                                     className="w-24"
                                                 />
                                                 <Input
                                                     value={rowsByKey[section.key]?.[idx]?.flow_value ?? ""}
                                                     onChange={(e) => updateRowField(section.key, idx, "flow_value", e.target.value)}
                                                     placeholder="吐出量(L/min)"
+                                                    inputMode="decimal"
                                                     className="w-24"
                                                 />
                                             </div>
@@ -684,6 +685,7 @@ export default function BekkiResultFormBase({
                                                     value={rowsByKey[section.key]?.[idx]?.content ?? ""}
                                                     onChange={(e) => updateRowField(section.key, idx, "content", e.target.value)}
                                                     placeholder={section.currentValueFields?.first ?? "電圧(V)"}
+                                                    inputMode="decimal"
                                                     className="w-20"
                                                 />
                                                 <span className="text-xs text-muted-foreground">{section.currentValueFields?.firstUnit ?? "V"}</span>
@@ -691,6 +693,7 @@ export default function BekkiResultFormBase({
                                                     value={rowsByKey[section.key]?.[idx]?.current_value ?? ""}
                                                     onChange={(e) => updateRowField(section.key, idx, "current_value", e.target.value)}
                                                     placeholder={section.currentValueFields?.second ?? "電流(A)"}
+                                                    inputMode="decimal"
                                                     className="w-20"
                                                 />
                                                 <span className="text-xs text-muted-foreground">{section.currentValueFields?.secondUnit ?? "A"}</span>
@@ -745,7 +748,7 @@ export default function BekkiResultFormBase({
                                 <RowNote text={BEKKI_ROW_NOTES[apiPath][section.key][idx]} />
                             )}
                             <div className="grid grid-cols-2 gap-2">
-                                <div className="space-y-1">
+                                <div className={`space-y-1 min-w-0 ${isWideContentRow(section, idx) ? "col-span-2" : ""}`}>
                                     <span className="text-xs text-slate-500">内容</span>
                                     {choiceRowAt(section.key, idx) ? (
                                         renderChoiceCheckboxes(section, idx, choiceRowAt(section.key, idx)!, label)
@@ -755,18 +758,21 @@ export default function BekkiResultFormBase({
                                                 value={rowsByKey[section.key]?.[idx]?.content ?? ""}
                                                 onChange={(e) => updateRowField(section.key, idx, "content", e.target.value)}
                                                 placeholder="長さ(m)"
+                                                inputMode="decimal"
                                                 className="h-9 text-sm"
                                             />
                                             <Input
                                                 value={rowsByKey[section.key]?.[idx]?.hose_count ?? ""}
                                                 onChange={(e) => updateRowField(section.key, idx, "hose_count", e.target.value)}
                                                 placeholder="本数"
+                                                inputMode="numeric"
                                                 className="h-9 text-sm"
                                             />
                                             <Input
                                                 value={rowsByKey[section.key]?.[idx]?.nozzle_dia ?? ""}
                                                 onChange={(e) => updateRowField(section.key, idx, "nozzle_dia", e.target.value)}
                                                 placeholder="口径(mm)"
+                                                inputMode="decimal"
                                                 className="h-9 text-sm"
                                             />
                                         </div>
@@ -776,12 +782,14 @@ export default function BekkiResultFormBase({
                                                 value={rowsByKey[section.key]?.[idx]?.content ?? ""}
                                                 onChange={(e) => updateRowField(section.key, idx, "content", e.target.value)}
                                                 placeholder="吐出圧力(MPa)"
+                                                inputMode="decimal"
                                                 className="h-9 text-sm"
                                             />
                                             <Input
                                                 value={rowsByKey[section.key]?.[idx]?.flow_value ?? ""}
                                                 onChange={(e) => updateRowField(section.key, idx, "flow_value", e.target.value)}
                                                 placeholder="吐出量(L/min)"
+                                                inputMode="decimal"
                                                 className="h-9 text-sm"
                                             />
                                         </div>
@@ -812,12 +820,14 @@ export default function BekkiResultFormBase({
                                                 value={rowsByKey[section.key]?.[idx]?.content ?? ""}
                                                 onChange={(e) => updateRowField(section.key, idx, "content", e.target.value)}
                                                 placeholder={section.currentValueFields?.firstUnit ?? "V"}
+                                                inputMode="decimal"
                                                 className="h-9 text-sm"
                                             />
                                             <Input
                                                 value={rowsByKey[section.key]?.[idx]?.current_value ?? ""}
                                                 onChange={(e) => updateRowField(section.key, idx, "current_value", e.target.value)}
                                                 placeholder={section.currentValueFields?.secondUnit ?? "A"}
+                                                inputMode="decimal"
                                                 className="h-9 text-sm"
                                             />
                                         </div>
@@ -829,17 +839,13 @@ export default function BekkiResultFormBase({
                                         />
                                     )}
                                 </div>
-                                <div className="space-y-1">
+                                <div className={`space-y-1 min-w-0 ${isWideContentRow(section, idx) ? "col-span-2" : ""}`}>
                                     <span className="text-xs text-slate-500">判定</span>
-                                    <select
-                                        className="w-full h-9 border border-input rounded-md bg-background px-2 text-sm"
+                                    <JudgmentButtons
                                         value={rowsByKey[section.key]?.[idx]?.judgment ?? ""}
-                                        onChange={(e) => updateRowField(section.key, idx, "judgment", e.target.value)}
-                                    >
-                                        <option value="">-</option>
-                                        <option value="良">&#10003; 良</option>
-                                        <option value="否">&#10007; 否</option>
-                                    </select>
+                                        onChange={(v) => updateRowField(section.key, idx, "judgment", v)}
+                                        label={label}
+                                    />
                                 </div>
                             </div>
                             {(rowsByKey[section.key]?.[idx]?.judgment === "否" || rowsByKey[section.key]?.[idx]?.bad_content || rowsByKey[section.key]?.[idx]?.action_content) && (
@@ -875,7 +881,7 @@ export default function BekkiResultFormBase({
     const extraColumnsClass = extraFields.length >= 5 ? "md:grid-cols-5" : extraFields.length >= 4 ? "md:grid-cols-4" : "md:grid-cols-3"
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6" data-form-action-root>
             {/* ★様式の頭に 1 つ。表ごとの「この表の空欄を良にする」は残す（#101） */}
             <BekkiBulkGoodButton
                 form={bekkiFormNameOfApiRoute(apiPath) ?? apiPath}
@@ -958,7 +964,7 @@ export default function BekkiResultFormBase({
                         </div>
                         <div className="space-y-1">
                             <Label>TEL</Label>
-                            <Input value={inspectorTel} onChange={(e) => setInspectorTel(e.target.value)} />
+                            <Input type="tel" autoComplete="tel" value={inspectorTel} onChange={(e) => setInspectorTel(e.target.value)} />
                         </div>
                     </div>
 
@@ -1007,6 +1013,7 @@ export default function BekkiResultFormBase({
                                         <div key={field.key} className="space-y-1">
                                             <Label>{field.label}</Label>
                                             <Input
+                                                {...(field.key.endsWith("_model") ? CODE_INPUT_PROPS : {})}
                                                 placeholder={field.placeholder}
                                                 value={extraFieldValues[field.key] ?? ""}
                                                 onChange={(e) => setExtraFieldValues((prev) => ({ ...prev, [field.key]: e.target.value }))}
@@ -1066,7 +1073,8 @@ export default function BekkiResultFormBase({
 
             {error && <p className="text-sm text-red-600">{error}</p>}
 
-
+            {/* スマホの画面下の帯（保存・プレビュー・表へ移動・保存の状態） */}
+            <FormActionBar onSave={handleSave} onPreview={handlePreview} busy={busy} saving={saving} previewing={loadingPreview} message={saveMessage} error={error} />
         </div>
     )
 }

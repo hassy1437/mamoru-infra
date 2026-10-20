@@ -232,12 +232,13 @@ function loadSources() {
 
 function wiring({ lib }, { forms, base, button }) {
     const problems = []
-    const RET = 'return (\n        <div className="space-y-6">\n'
+    // ★2026-10-20 から画面の頭に data-form-action-root（画面下の帯の「表へ移動」が見出しを探す範囲）が付く
+    const RET = /return \(\n        <div className="space-y-6"(?: data-form-action-root)?>\n/
     const atTop = (name, src) => {
         const lf = src.replace(/\r\n/g, "\n")
-        const at = lf.indexOf(RET)
-        if (at < 0) return problems.push(`${name}: 画面の頭（<div className="space-y-6">）が見つからない`)
-        const head = lf.slice(at + RET.length)
+        const m = lf.match(RET)
+        if (!m) return problems.push(`${name}: 画面の頭（<div className="space-y-6">）が見つからない`)
+        const head = lf.slice(m.index + m[0].length)
         const b = head.indexOf("<BekkiBulkGoodButton")
         const c = head.indexOf("<Card")
         if (b < 0 || (c >= 0 && c < b)) problems.push(`${name}: 「この様式の空欄をすべて良にする」が様式の頭（最初のカードより前）に無い`)

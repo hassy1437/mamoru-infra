@@ -77,7 +77,7 @@ export default async function ItiranDetailPage({
                 <WithdrawnMatchNotice withdrawnAt={withdrawnAt} className="mt-4" />
             </div>
             <div className="max-w-[210mm] mx-auto mb-6 flex justify-between items-center gap-3 flex-wrap">
-                <Link href={`/inspection/${id}`} className="text-blue-600 hover:underline">
+                <Link href={`/inspection/${id}`} className="text-blue-600 hover:underline inline-flex min-h-11 items-center">
                     &larr; 総括表に戻る
                 </Link>
                 {/* 補助アクション（小・弱く）。主動作は下の進捗カード上の主CTA1つに集約。 */}
@@ -119,7 +119,7 @@ export default async function ItiranDetailPage({
                 </Link>
                 {!isComplete && (
                     <div className="mt-2 text-center">
-                        <Link href={outputHref} className="text-sm text-slate-500 hover:text-slate-700 hover:underline">
+                        <Link href={outputHref} className="inline-flex min-h-11 items-center text-sm text-slate-500 hover:text-slate-700 hover:underline">
                             先に結果出力を確認する →
                         </Link>
                     </div>

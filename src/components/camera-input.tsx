@@ -73,15 +73,16 @@ export default function CameraInput({ itiranId }: CameraInputProps) {
 
     return (
         <div className="space-y-3">
-            <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium text-slate-700 flex items-center gap-1.5">
+            {/* ★スマホでは見出しとボタンを縦に並べる（横に並べると見出しが 1 文字ずつ縦に折れていた・2026-10-20 の iPhone 点検） */}
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <h3 className="text-sm font-medium text-slate-700 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
                     <Camera className="w-4 h-4" />
                     点検写真
                     {/* ★写真は IndexedDB（この端末）にしか入らない。報告書 PDF にも納品にも他端末にも出ない。
                         ★文言は scripts/check-photo-notice.mjs が見張る（写真が報告書に付く仕組みを作ったら、そちらが先に落ちる） */}
                     <span className="text-xs font-normal text-slate-500">— 端末内の控えです。報告書には付きません</span>
                 </h3>
-                <div className="flex gap-2">
+                <div className="flex gap-2 sm:shrink-0">
                     <Button
                         type="button"
                         variant="outline"
@@ -92,7 +93,7 @@ export default function CameraInput({ itiranId }: CameraInputProps) {
                                 fileInputRef.current.click()
                             }
                         }}
-                        className="text-xs"
+                        className="h-11 flex-1 text-sm sm:h-9 sm:flex-none sm:text-xs"
                     >
                         <Camera className="w-3.5 h-3.5 mr-1" />
                         写真を撮影
@@ -107,7 +108,7 @@ export default function CameraInput({ itiranId }: CameraInputProps) {
                                 fileInputRef.current.click()
                             }
                         }}
-                        className="text-xs"
+                        className="h-11 flex-1 text-sm sm:h-9 sm:flex-none sm:text-xs"
                     >
                         <ImagePlus className="w-3.5 h-3.5 mr-1" />
                         ファイル選択
@@ -154,7 +155,7 @@ export default function CameraInput({ itiranId }: CameraInputProps) {
                                     <button
                                         type="button"
                                         onClick={() => handleDeletePhoto(photo.id)}
-                                        className="flex items-center gap-0.5 text-[11px] text-red-500 hover:text-red-700 px-1"
+                                        className="flex min-h-11 items-center gap-0.5 px-2 text-xs text-red-500 hover:text-red-700"
                                     >
                                         <Trash2 className="w-3 h-3" />
                                         削除

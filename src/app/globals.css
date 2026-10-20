@@ -130,3 +130,29 @@ input[type="week"] {
   max-width: 100%;
   box-sizing: border-box;
 }
+
+/* ------------------------------------------------------------------
+ * iPhone で入力欄を押すたびに画面が拡大されないようにする（2026-10-20）
+ *
+ * ■ なぜ要るか
+ *   iPhone の Safari は、文字の大きさが 16px 未満の入力欄（input / select / textarea）を押すと
+ *   画面を拡大し、入力が終わっても自動では戻さない。iPhone 幅で全 40 画面を測ると、
+ *   入力欄 約 4,250 個のうち 16px 以上は 33 個だけだった（共通の Input が text-sm＝14px、
+ *   容器番号などは text-xs＝12px）。業者は欄ごとに指で縮める必要があった。
+ *
+ * ■ タッチ端末（pointer: coarse）だけ 16px にする
+ *   パソコン（マウス）の見た目は今までどおり。
+ *   ★viewport の maximum-scale=1 では止めない（Android では指での拡大もできなくなる）。
+ *
+ * ■ ★レイヤーの外に書く
+ *   Tailwind 4 のユーティリティ（text-sm・text-xs）は @layer utilities の中にある。
+ *   レイヤーの外の指定は詳細度に関係なくレイヤーの中に勝つので、個々の欄の text-sm を
+ *   1 つずつ外さなくても全部に効く（scripts/check-iphone-input.mjs）。
+ * ------------------------------------------------------------------ */
+@media (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}

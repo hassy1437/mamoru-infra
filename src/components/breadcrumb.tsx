@@ -12,6 +12,7 @@ interface BreadcrumbProps {
     items: BreadcrumbItem[]
 }
 
+// ★スマホでは押せる所を高さ 44px にする（文字のままだと 24px 未満で押し間違えた・2026-10-20 の iPhone 点検）
 export default function Breadcrumb({ items }: BreadcrumbProps) {
     return (
         <nav aria-label="パンくずリスト" className="mb-4">
@@ -20,7 +21,7 @@ export default function Breadcrumb({ items }: BreadcrumbProps) {
                     <Link
                         href="/tool"
                         aria-label="ホーム"
-                        className="flex items-center gap-1 text-slate-500 hover:text-blue-600 hover:bg-slate-50 rounded px-1.5 py-1 transition-colors"
+                        className="flex min-h-11 md:min-h-0 items-center gap-1 text-slate-500 hover:text-blue-600 hover:bg-slate-50 rounded px-1.5 py-1 transition-colors"
                     >
                         <Home className="w-4 h-4 shrink-0" />
                         <span>ホーム</span>
@@ -32,9 +33,9 @@ export default function Breadcrumb({ items }: BreadcrumbProps) {
                         {item.href ? (
                             <Link
                                 href={item.href}
-                                className="text-slate-500 hover:text-blue-600 transition-colors truncate max-w-[160px]"
+                                className="inline-flex min-h-11 md:min-h-0 items-center px-2 text-slate-500 hover:text-blue-600 transition-colors max-w-[160px]"
                             >
-                                {item.label}
+                                <span className="truncate">{item.label}</span>
                             </Link>
                         ) : (
                             <span className="text-slate-800 font-medium truncate max-w-[200px]">

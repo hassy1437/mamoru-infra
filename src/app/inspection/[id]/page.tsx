@@ -99,7 +99,7 @@ export default async function InspectionDetailPage({ params }: { params: Promise
                 <WithdrawnMatchNotice withdrawnAt={withdrawnAt} className="mt-4" />
             </div>
             <div className="max-w-[210mm] mx-auto mb-6 flex justify-between items-center gap-3 flex-wrap">
-                <Link href="/inspection" className="text-blue-600 hover:underline">
+                <Link href="/inspection" className="text-blue-600 hover:underline inline-flex min-h-11 items-center">
                     &larr; 物件選択に戻る
                 </Link>
                 <div className="flex gap-2 flex-wrap">

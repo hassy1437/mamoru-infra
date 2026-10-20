@@ -25,9 +25,13 @@ function check(form, route) {
     const pressure = labels.indexOf("消火器の耐圧性能")
     const firstSimple = labels.indexOf("外形", pressure + 1)
     if (pressure < 0 || firstSimple !== pressure + 1) problems.push(`${FORM}: その2 の「消火器の耐圧性能」の次が簡易消火用具の「外形」になっていない（${pressure} / ${firstSimple}）`)
-    const ui = form.match(/renderItemTable\("（その2）点検結果", "p2", PAGE2_ITEMS, page2Rows, (\d+)\)/)
-    if (!ui) problems.push(`${FORM}: その2 の表の種別を省く行が読めない`)
-    else if (Number(ui[1]) !== firstSimple) problems.push(`${FORM}: 画面が ${ui[1]} 行目から種別を省いている（簡易消火用具の「外形」= ${firstSimple} 行目から）`)
+    // ★2026-10-20 から定数 P2_MARK_ROWS（種別をまとめて付ける処理と同じ値を使う）
+    const konst = form.match(/\nconst P2_MARK_ROWS = (\d+)\n/)
+    const ui = form.match(/renderItemTable\("（その2）点検結果", "p2", PAGE2_ITEMS, page2Rows, (\d+|P2_MARK_ROWS)\)/)
+    const uiRows = ui ? (ui[1] === "P2_MARK_ROWS" ? konst?.[1] : ui[1]) : undefined
+    if (!uiRows) problems.push(`${FORM}: その2 の表の種別を省く行が読めない`)
+    else if (Number(uiRows) !== firstSimple) problems.push(`${FORM}: 画面が ${uiRows} 行目から種別を省いている（簡易消火用具の「外形」= ${firstSimple} 行目から）`)
+    if (konst && !/const next2 = fill\(PAGE2_ITEMS, page2Rows, P2_MARK_ROWS\)/.test(form)) problems.push(`${FORM}: 種別をまとめて付ける処理が、その2 の種別の欄の無い行にも付ける`)
     const rt = route.match(/\n\s*if \(i >= (\d+)\) return\n/)
     if (!rt) problems.push(`${ROUTE}: その2 の種別を省く行が読めない`)
     else if (Number(rt[1]) !== firstSimple) problems.push(`${ROUTE}: PDF が ${rt[1]} 行目から種別を省いている（簡易消火用具の「外形」= ${firstSimple} 行目から）`)
@@ -44,7 +48,8 @@ if (SELF_TEST) {
         process.exit(1)
     }
     const mutants = [
-        ["画面を 18 に戻す", form.replace("PAGE2_ITEMS, page2Rows, 19)", "PAGE2_ITEMS, page2Rows, 18)"), route, "画面が 18 行目から"],
+        ["画面を 18 に戻す", form.replace("const P2_MARK_ROWS = 19", "const P2_MARK_ROWS = 18"), route, "画面が 18 行目から"],
+        ["まとめて付けるときに行数を見ない", form.replace("fill(PAGE2_ITEMS, page2Rows, P2_MARK_ROWS)", "fill(PAGE2_ITEMS, page2Rows, PAGE2_ITEMS.length)"), route, "種別の欄の無い行にも付ける"],
         ["PDF を 18 に戻す", form, route.replace("if (i >= 19) return", "if (i >= 18) return"), "PDF が 18 行目から"],
     ]
     for (const [label, f, r, expect] of mutants) {

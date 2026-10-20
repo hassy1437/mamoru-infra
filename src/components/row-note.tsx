@@ -45,7 +45,8 @@ export function RowNote({ text, className = "" }: { text: string; className?: st
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="ml-1 underline underline-offset-2 hover:no-underline"
+        // ★文の中の小さなボタン。行の高さは変えずに、押せる範囲だけ周りに広げる（iPhone で押しにくかった・2026-10-20）
+        className="relative ml-1 underline underline-offset-2 hover:no-underline before:absolute before:-inset-3 before:content-['']"
         aria-expanded={open}
       >
         {open ? "閉じる" : "全文"}

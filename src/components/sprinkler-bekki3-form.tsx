@@ -29,10 +29,14 @@ import {
 } from "@/lib/bekki-form-normalization"
 import { bekkiWitnessInitial } from "@/lib/bekki-witness"
 import CameraInput from "@/components/camera-input"
+import JudgmentButtons from "@/components/judgment-buttons"
 import DeviceTableInputs from "@/components/device-table-inputs"
 import { resolveDeviceTable, type DeviceTableRow } from "@/lib/bekki-device-table"
 import { pdfRequestError, pdfErrorText } from "@/lib/pdf-request-error"
 import { soukatsuPdfGate } from "@/lib/pdf-gate-client"
+import { CODE_INPUT_PROPS } from "@/lib/code-input-props"
+import { useAutoSave } from "@/hooks/use-auto-save"
+import FormActionBar from "@/components/form-action-bar"
 
 type RowState = {
     content: string
@@ -517,6 +521,8 @@ export default function SprinklerBekki3Form({
     useEffect(() => {
         return () => { persistDraftRef.current(false) }
     }, [])
+    // 自動保存: 入力が止まって 5 秒後と、別のアプリに切り替えた瞬間（src/hooks/use-auto-save.ts）
+    useAutoSave(payload, () => persistDraftRef.current(false), () => setSaveMessage(`自動保存済み: ${new Date().toLocaleString("ja-JP")}`))
 
 
 
@@ -556,7 +562,7 @@ export default function SprinklerBekki3Form({
                         <CardTitle>{title}</CardTitle>
                         <CardDescription>種別・容量等の内容、判定、不良内容、措置内容を入力してください。</CardDescription>
                     </div>
-                    <Button type="button" variant="outline" size="sm" onClick={markAllGood} className="shrink-0">
+                    <Button type="button" variant="outline" size="sm" onClick={markAllGood} className="shrink-0 min-h-11 md:min-h-0">
                         <CheckCheck className="w-4 h-4 mr-1.5" />この表の空欄を良にする
                     </Button>
                 </div>
@@ -588,6 +594,7 @@ export default function SprinklerBekki3Form({
                                                         value={rows[idx].content}
                                                         onChange={(e) => updateRowField(setter, idx, "content", e.target.value)}
                                                         placeholder="長さ"
+                                                        inputMode="decimal"
                                                         aria-label={`${label} ホースの長さ(m)`}
                                                         className="w-16"
                                                     />
@@ -596,6 +603,7 @@ export default function SprinklerBekki3Form({
                                                         value={rows[idx].hose_count}
                                                         onChange={(e) => updateRowField(setter, idx, "hose_count", e.target.value)}
                                                         placeholder="本数"
+                                                        inputMode="numeric"
                                                         aria-label={`${label} 本数`}
                                                         className="w-16"
                                                     />
@@ -607,6 +615,7 @@ export default function SprinklerBekki3Form({
                                                         value={rows[idx].nozzle_dia}
                                                         onChange={(e) => updateRowField(setter, idx, "nozzle_dia", e.target.value)}
                                                         placeholder="口径"
+                                                        inputMode="decimal"
                                                         aria-label={`${label} ノズル径(mm)`}
                                                         className="w-16"
                                                     />
@@ -619,6 +628,7 @@ export default function SprinklerBekki3Form({
                                                     value={rows[idx].content}
                                                     onChange={(e) => updateRowField(setter, idx, "content", e.target.value)}
                                                     placeholder="吐出圧力(MPa)"
+                                                    inputMode="decimal"
                                                     className="w-24"
                                                 />
                                                 <span className="text-xs text-muted-foreground">MPa</span>
@@ -626,6 +636,7 @@ export default function SprinklerBekki3Form({
                                                     value={rows[idx].flow_value}
                                                     onChange={(e) => updateRowField(setter, idx, "flow_value", e.target.value)}
                                                     placeholder="吐出量(L/min)"
+                                                    inputMode="decimal"
                                                     className="w-24"
                                                 />
                                                 <span className="text-xs text-muted-foreground">L/min</span>
@@ -636,6 +647,7 @@ export default function SprinklerBekki3Form({
                                                     value={rows[idx].content}
                                                     onChange={(e) => updateRowField(setter, idx, "content", e.target.value)}
                                                     placeholder="設定圧力(MPa)"
+                                                    inputMode="decimal"
                                                     className="w-24"
                                                 />
                                                 <span className="text-xs text-muted-foreground">MPa</span>
@@ -643,6 +655,7 @@ export default function SprinklerBekki3Form({
                                                     value={rows[idx].current_value}
                                                     onChange={(e) => updateRowField(setter, idx, "current_value", e.target.value)}
                                                     placeholder="作動圧力(MPa)"
+                                                    inputMode="decimal"
                                                     className="w-24"
                                                 />
                                                 <span className="text-xs text-muted-foreground">MPa</span>
@@ -653,6 +666,7 @@ export default function SprinklerBekki3Form({
                                                     value={rows[idx].content}
                                                     onChange={(e) => updateRowField(setter, idx, "content", e.target.value)}
                                                     placeholder="電圧(V)"
+                                                    inputMode="decimal"
                                                     className="w-20"
                                                 />
                                                 <span className="text-xs text-muted-foreground">V</span>
@@ -660,6 +674,7 @@ export default function SprinklerBekki3Form({
                                                     value={rows[idx].current_value}
                                                     onChange={(e) => updateRowField(setter, idx, "current_value", e.target.value)}
                                                     placeholder="電流(A)"
+                                                    inputMode="decimal"
                                                     className="w-20"
                                                 />
                                                 <span className="text-xs text-muted-foreground">A</span>
@@ -719,8 +734,9 @@ export default function SprinklerBekki3Form({
                     ) : (
                         <div key={`${title}-${label}-mobile`} className="border rounded-lg p-3 space-y-2 bg-white">
                             <div className={`font-medium text-sm text-slate-800 ${WRAP_CLS}`}>{bindLabelBreaks(label)}</div>
+                            {/* ★内容の欄が分かれる行・選ぶ欄の行は、スマホでは内容と判定をそれぞれ横幅いっぱいに置く（2026-10-20） */}
                             <div className="grid grid-cols-2 gap-2">
-                                <div className="space-y-1">
+                                <div className={`space-y-1 min-w-0 ${idx === hoseRowIndex || idx === perfRowIndex || idx === pressureSwitchRowIndex || idx === currentValueRowIndex || Boolean(choiceRows?.[idx]) ? "col-span-2" : ""}`}>
                                     <span className="text-xs text-slate-500">内容</span>
                                     {idx === hoseRowIndex ? (
                                         <div className="space-y-1">
@@ -729,6 +745,7 @@ export default function SprinklerBekki3Form({
                                                     value={rows[idx].content}
                                                     onChange={(e) => updateRowField(setter, idx, "content", e.target.value)}
                                                     placeholder="長さ"
+                                                    inputMode="decimal"
                                                     aria-label={`${label} ホースの長さ(m)`}
                                                     className="h-9 w-12 px-2 text-sm"
                                                 />
@@ -737,6 +754,7 @@ export default function SprinklerBekki3Form({
                                                     value={rows[idx].hose_count}
                                                     onChange={(e) => updateRowField(setter, idx, "hose_count", e.target.value)}
                                                     placeholder="本数"
+                                                    inputMode="numeric"
                                                     aria-label={`${label} 本数`}
                                                     className="h-9 w-12 px-2 text-sm"
                                                 />
@@ -748,6 +766,7 @@ export default function SprinklerBekki3Form({
                                                     value={rows[idx].nozzle_dia}
                                                     onChange={(e) => updateRowField(setter, idx, "nozzle_dia", e.target.value)}
                                                     placeholder="口径"
+                                                    inputMode="decimal"
                                                     aria-label={`${label} ノズル径(mm)`}
                                                     className="h-9 w-12 px-2 text-sm"
                                                 />
@@ -760,6 +779,7 @@ export default function SprinklerBekki3Form({
                                                 value={rows[idx].content}
                                                 onChange={(e) => updateRowField(setter, idx, "content", e.target.value)}
                                                 placeholder="吐出圧力(MPa)"
+                                                inputMode="decimal"
                                                 className="h-9 w-24 text-sm"
                                             />
                                             <span className="text-xs text-muted-foreground">MPa</span>
@@ -767,6 +787,7 @@ export default function SprinklerBekki3Form({
                                                 value={rows[idx].flow_value}
                                                 onChange={(e) => updateRowField(setter, idx, "flow_value", e.target.value)}
                                                 placeholder="吐出量(L/min)"
+                                                inputMode="decimal"
                                                 className="h-9 w-24 text-sm"
                                             />
                                             <span className="text-xs text-muted-foreground">L/min</span>
@@ -777,6 +798,7 @@ export default function SprinklerBekki3Form({
                                                 value={rows[idx].content}
                                                 onChange={(e) => updateRowField(setter, idx, "content", e.target.value)}
                                                 placeholder="設定圧力(MPa)"
+                                                inputMode="decimal"
                                                 className="h-9 w-24 text-sm"
                                             />
                                             <span className="text-xs text-muted-foreground">MPa</span>
@@ -784,6 +806,7 @@ export default function SprinklerBekki3Form({
                                                 value={rows[idx].current_value}
                                                 onChange={(e) => updateRowField(setter, idx, "current_value", e.target.value)}
                                                 placeholder="作動圧力(MPa)"
+                                                inputMode="decimal"
                                                 className="h-9 w-24 text-sm"
                                             />
                                             <span className="text-xs text-muted-foreground">MPa</span>
@@ -794,6 +817,7 @@ export default function SprinklerBekki3Form({
                                                 value={rows[idx].content}
                                                 onChange={(e) => updateRowField(setter, idx, "content", e.target.value)}
                                                 placeholder="電圧(V)"
+                                                inputMode="decimal"
                                                 className="h-9 w-20 text-sm"
                                             />
                                             <span className="text-xs text-muted-foreground">V</span>
@@ -801,6 +825,7 @@ export default function SprinklerBekki3Form({
                                                 value={rows[idx].current_value}
                                                 onChange={(e) => updateRowField(setter, idx, "current_value", e.target.value)}
                                                 placeholder="電流(A)"
+                                                inputMode="decimal"
                                                 className="h-9 w-20 text-sm"
                                             />
                                             <span className="text-xs text-muted-foreground">A</span>
@@ -821,17 +846,13 @@ export default function SprinklerBekki3Form({
                                         />
                                     )}
                                 </div>
-                                <div className="space-y-1">
+                                <div className={`space-y-1 min-w-0 ${idx === hoseRowIndex || idx === perfRowIndex || idx === pressureSwitchRowIndex || idx === currentValueRowIndex || Boolean(choiceRows?.[idx]) ? "col-span-2" : ""}`}>
                                     <span className="text-xs text-slate-500">判定</span>
-                                    <select
-                                        className="w-full h-9 border border-input rounded-md bg-background px-2 text-sm"
+                                    <JudgmentButtons
                                         value={rows[idx].judgment}
-                                        onChange={(e) => updateRowField(setter, idx, "judgment", e.target.value)}
-                                    >
-                                        <option value="">未入力</option>
-                                        <option value="良">良</option>
-                                        <option value="否">否</option>
-                                    </select>
+                                        onChange={(v) => updateRowField(setter, idx, "judgment", v)}
+                                        label={label}
+                                    />
                                 </div>
                             </div>
                             {(rows[idx].judgment === "否" || rows[idx].bad_content || rows[idx].action_content) && (
@@ -869,7 +890,7 @@ export default function SprinklerBekki3Form({
     const busy = saving || loadingPreview || loadingDownload
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6" data-form-action-root>
             {/* ★様式の頭に 1 つ。表ごとの「この表の空欄を良にする」は残す（#101）。機器点検だけのときは総合点検の行に入れない */}
             <BekkiBulkGoodButton
                 form="別記様式第3"
@@ -931,7 +952,7 @@ export default function SprinklerBekki3Form({
                         </div>
                         <div className="space-y-1">
                             <Label>TEL</Label>
-                            <Input value={inspectorTel} onChange={(e) => setInspectorTel(e.target.value)} />
+                            <Input type="tel" autoComplete="tel" value={inspectorTel} onChange={(e) => setInspectorTel(e.target.value)} />
                         </div>
                     </div>
 
@@ -959,7 +980,7 @@ export default function SprinklerBekki3Form({
                         </div>
                         <div className="space-y-1">
                             <Label>ポンプ 型式等</Label>
-                            <Input value={pumpModel} onChange={(e) => setPumpModel(e.target.value)} />
+                            <Input {...CODE_INPUT_PROPS} value={pumpModel} onChange={(e) => setPumpModel(e.target.value)} />
                         </div>
                         <div className="space-y-1">
                             <Label>電動機・内燃機関 製造者名</Label>
@@ -967,7 +988,7 @@ export default function SprinklerBekki3Form({
                         </div>
                         <div className="space-y-1">
                             <Label>電動機・内燃機関 型式等</Label>
-                            <Input value={motorModel} onChange={(e) => setMotorModel(e.target.value)} />
+                            <Input {...CODE_INPUT_PROPS} value={motorModel} onChange={(e) => setMotorModel(e.target.value)} />
                         </div>
                     </div>
                 </CardContent>
@@ -1019,7 +1040,8 @@ export default function SprinklerBekki3Form({
 
             {error && <p className="text-sm text-red-600">{error}</p>}
 
-
+            {/* スマホの画面下の帯（保存・プレビュー・表へ移動・保存の状態） */}
+            <FormActionBar onSave={handleSave} onPreview={handlePreview} busy={busy} saving={saving} previewing={loadingPreview} message={saveMessage} error={error} />
         </div>
     )
 }

@@ -49,12 +49,12 @@ export default function ItiranFormNav({
             ]} />
             <StepIndicator steps={[...INSPECTION_STEPS]} currentStep={3} />
             <div className="flex items-center justify-between gap-3 flex-wrap mt-2">
-                <Link href={hubHref} className="text-blue-600 hover:underline text-sm">
+                <Link href={hubHref} className="inline-flex min-h-11 items-center text-blue-600 hover:underline text-sm">
                     &larr; 別記ハブに戻る
                 </Link>
                 <Link
                     href={forwardHref}
-                    className={`inline-flex items-center gap-2 px-4 py-2 text-white text-sm font-medium rounded-lg transition-colors ${
+                    className={`inline-flex min-h-11 items-center gap-2 px-4 py-2 text-white text-sm font-medium rounded-lg transition-colors ${
                         isOutput ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"
                     }`}
                 >

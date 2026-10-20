@@ -253,6 +253,7 @@ export default function ItiranForm({ soukatsuId, masters, initial, itiranId }: P
                             value={inspectors[idx].phone}
                             onChange={e => updateInspector(idx, "phone", e.target.value)}
                             placeholder="電話番号を入力"
+                            type="tel"
                         />
                     </div>
                     <div className="space-y-1 md:col-span-2">

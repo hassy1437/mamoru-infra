@@ -343,7 +343,7 @@ export default async function OutputPage({
                         <div className="pt-2 border-t border-slate-100">
                             <Link
                                 href={`/inspection/new?propertyId=${clonePropertyId}&copyFrom=${id}&sourceItiran=${itiranId}`}
-                                className="inline-flex items-center gap-2 text-sm text-teal-700 hover:text-teal-900 hover:underline"
+                                className="inline-flex min-h-11 items-center gap-2 text-sm text-teal-700 hover:text-teal-900 hover:underline"
                             >
                                 <Copy className="w-4 h-4" />
                                 この報告書を複製して次回点検を作成

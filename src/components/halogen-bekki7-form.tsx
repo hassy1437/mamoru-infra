@@ -33,10 +33,14 @@ import {
 } from "@/lib/bekki-form-normalization"
 import { bekkiWitnessInitial } from "@/lib/bekki-witness"
 import CameraInput from "@/components/camera-input"
+import JudgmentButtons from "@/components/judgment-buttons"
 import DeviceTableInputs from "@/components/device-table-inputs"
 import { resolveDeviceTable, type DeviceTableRow } from "@/lib/bekki-device-table"
 import { pdfRequestError, pdfErrorText } from "@/lib/pdf-request-error"
 import { soukatsuPdfGate } from "@/lib/pdf-gate-client"
+import { CODE_INPUT_PROPS } from "@/lib/code-input-props"
+import { useAutoSave } from "@/hooks/use-auto-save"
+import FormActionBar from "@/components/form-action-bar"
 
 type RowState = {
     content: string
@@ -589,6 +593,8 @@ export default function HalogenBekki7Form({
     useEffect(() => {
         return () => { persistDraftRef.current(false) }
     }, [])
+    // 自動保存: 入力が止まって 5 秒後と、別のアプリに切り替えた瞬間（src/hooks/use-auto-save.ts）
+    useAutoSave(payload, () => persistDraftRef.current(false), () => setSaveMessage(`自動保存済み: ${new Date().toLocaleString("ja-JP")}`))
 
 
 
@@ -603,6 +609,13 @@ export default function HalogenBekki7Form({
 
     const updateCylinderField = (index: number, field: keyof CylinderRowState, value: string) => {
         setPage5Rows((prev) => prev.map((row, i) => (i === index ? { ...row, [field]: value } : row)))
+    }
+    // ★同じ型の容器は仕様が同じ。iPhone で容器ごとに打ち直していたので、前の容器の仕様を 1 タップで写す（2026-10-20）
+    const SPEC_KEYS = ["spec1", "spec2", "spec3"] as const
+    const copySpecFromPrevious = (index: number) => {
+        setPage5Rows((prev) => prev.map((row, i) => (
+            i === index && i > 0 ? { ...row, ...Object.fromEntries(SPEC_KEYS.map((k) => [k, prev[i - 1][k]])) } : row
+        )))
     }
 
     const renderItemTable = (
@@ -625,7 +638,7 @@ export default function HalogenBekki7Form({
                         <CardTitle>{title}</CardTitle>
                         <CardDescription>種別・容量等の内容、判定、不良内容、措置内容を入力してください。</CardDescription>
                     </div>
-                    <Button type="button" variant="outline" size="sm" onClick={markAllGood} className="shrink-0">
+                    <Button type="button" variant="outline" size="sm" onClick={markAllGood} className="shrink-0 min-h-11 md:min-h-0">
                         <CheckCheck className="w-4 h-4 mr-1.5" />この表の空欄を良にする
                     </Button>
                 </div>
@@ -736,15 +749,11 @@ export default function HalogenBekki7Form({
                                 </div>
                                 <div className="space-y-1">
                                     <span className="text-xs text-slate-500">判定</span>
-                                    <select
-                                        className="w-full h-9 border border-input rounded-md bg-background px-2 text-sm"
+                                    <JudgmentButtons
                                         value={rows[idx]?.judgment ?? ""}
-                                        onChange={(e) => updateRowField(setter, idx, "judgment", e.target.value)}
-                                    >
-                                        <option value="">未選択</option>
-                                        <option value="良">良</option>
-                                        <option value="否">否</option>
-                                    </select>
+                                        onChange={(v) => updateRowField(setter, idx, "judgment", v)}
+                                        label={label}
+                                    />
                                 </div>
                             </div>
                             {(rows[idx]?.judgment === "否" || rows[idx]?.bad_content || rows[idx]?.action_content) && (
@@ -780,7 +789,7 @@ export default function HalogenBekki7Form({
     const busy = saving || loadingPreview || loadingDownload
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6" data-form-action-root>
             {/* ★様式の頭に 1 つ。表ごとの「この表の空欄を良にする」は残す（#101）。機器点検だけのときは総合点検の行に入れない */}
             <BekkiBulkGoodButton
                 form="別記様式第7"
@@ -860,7 +869,7 @@ export default function HalogenBekki7Form({
                         </div>
                         <div className="space-y-1">
                             <Label>TEL</Label>
-                            <Input value={inspectorTel} onChange={(e) => setInspectorTel(e.target.value)} />
+                            <Input type="tel" autoComplete="tel" value={inspectorTel} onChange={(e) => setInspectorTel(e.target.value)} />
                         </div>
                     </div>
 
@@ -930,16 +939,16 @@ export default function HalogenBekki7Form({
                                             <Input value={row.no} onChange={(e) => updateCylinderField(idx, "no", e.target.value)} />
                                         </td>
                                         <td className="p-1 border">
-                                            <Input value={row.cylinder_no} onChange={(e) => updateCylinderField(idx, "cylinder_no", e.target.value)} />
+                                            <Input {...CODE_INPUT_PROPS} value={row.cylinder_no} onChange={(e) => updateCylinderField(idx, "cylinder_no", e.target.value)} />
                                         </td>
                                         <td className="p-1 border">
-                                            <Input value={row.spec1} onChange={(e) => updateCylinderField(idx, "spec1", e.target.value)} placeholder="全質量" />
+                                            <Input value={row.spec1} onChange={(e) => updateCylinderField(idx, "spec1", e.target.value)} placeholder="全質量" inputMode="decimal" />
                                         </td>
                                         <td className="p-1 border">
-                                            <Input value={row.spec2} onChange={(e) => updateCylinderField(idx, "spec2", e.target.value)} placeholder="空質量" />
+                                            <Input value={row.spec2} onChange={(e) => updateCylinderField(idx, "spec2", e.target.value)} placeholder="空質量" inputMode="decimal" />
                                         </td>
                                         <td className="p-1 border">
-                                            <Input value={row.spec3} onChange={(e) => updateCylinderField(idx, "spec3", e.target.value)} placeholder="ガス質量" />
+                                            <Input value={row.spec3} onChange={(e) => updateCylinderField(idx, "spec3", e.target.value)} placeholder="ガス質量" inputMode="decimal" />
                                         </td>
                                         {([1, 2, 3, 4, 5, 6] as const).map((n) => {
                                             const dateKey = `measure${n}_date` as const
@@ -961,6 +970,7 @@ export default function HalogenBekki7Form({
                                                             value={row[valueKey]}
                                                             onChange={(e) => updateCylinderField(idx, valueKey, e.target.value)}
                                                             placeholder={n === 1 ? "41.0" : "値"}
+                                                            inputMode="decimal"
                                                             className="h-8 text-xs"
                                                         />
                                                     </div>
@@ -984,9 +994,11 @@ export default function HalogenBekki7Form({
                                         value={row.no}
                                         onChange={(e) => updateCylinderField(idx, "no", e.target.value)}
                                         placeholder="番号"
+                                        inputMode="numeric"
                                         className="h-8 w-16 text-xs"
                                     />
                                     <Input
+                                        {...CODE_INPUT_PROPS}
                                         value={row.cylinder_no}
                                         onChange={(e) => updateCylinderField(idx, "cylinder_no", e.target.value)}
                                         placeholder="容器番号"
@@ -996,56 +1008,66 @@ export default function HalogenBekki7Form({
 
                                 {/* 仕様 (spec1-3) */}
                                 <div>
-                                    <div className="text-xs text-slate-500 mb-1">仕様</div>
+                                    <div className="mb-1 flex items-center justify-between gap-2">
+                                        <span className="text-xs text-slate-500">仕様</span>
+                                        {idx > 0 && (
+                                            <Button type="button" variant="outline" size="sm" className="h-11" onClick={() => copySpecFromPrevious(idx)}>
+                                                前の容器と同じ仕様
+                                            </Button>
+                                        )}
+                                    </div>
                                     <div className="grid grid-cols-2 gap-2">
                                         <div className="space-y-1 min-w-0">
                                             <span className="text-xs text-slate-500">全質量(kg)</span>
-                                            <Input value={row.spec1} onChange={(e) => updateCylinderField(idx, "spec1", e.target.value)} placeholder="全質量" className="h-9 text-sm" />
+                                            <Input value={row.spec1} onChange={(e) => updateCylinderField(idx, "spec1", e.target.value)} placeholder="全質量" inputMode="decimal" className="h-9 text-sm" />
                                         </div>
                                         <div className="space-y-1 min-w-0">
                                             <span className="text-xs text-slate-500">空質量(kg)</span>
-                                            <Input value={row.spec2} onChange={(e) => updateCylinderField(idx, "spec2", e.target.value)} placeholder="空質量" className="h-9 text-sm" />
+                                            <Input value={row.spec2} onChange={(e) => updateCylinderField(idx, "spec2", e.target.value)} placeholder="空質量" inputMode="decimal" className="h-9 text-sm" />
                                         </div>
                                         <div className="space-y-1 min-w-0 col-span-2">
                                             <span className="text-xs text-slate-500">ガス質量(kg)</span>
-                                            <Input value={row.spec3} onChange={(e) => updateCylinderField(idx, "spec3", e.target.value)} placeholder="ガス質量" className="h-9 text-sm" />
+                                            <Input value={row.spec3} onChange={(e) => updateCylinderField(idx, "spec3", e.target.value)} placeholder="ガス質量" inputMode="decimal" className="h-9 text-sm" />
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* 測定 1-6 (温度なし) */}
-                                {([1, 2, 3, 4, 5, 6] as const).map((n) => {
-                                    const dateKey = `measure${n}_date` as const
-                                    const valueKey = `measure${n}_value` as const
-                                    // ★日付は見出しに書く。この容器だけ違う値が保存にあるときだけ行に出す
-                                    const own = rowOwnMeasure(row, n, measureHeaders[n - 1])
-                                    return (
-                                        <div key={`m${n}-mobile`}>
-                                            <div className="text-xs text-slate-500 mb-1">測定 {n}</div>
-                                            <div className="space-y-2">
-                                                {own.date && (
+                                {/* 測定 1-6 (温度なし)（2 列に並べる・iPhone で縦に長くならないように・2026-10-20） */}
+                                <div className="grid grid-cols-2 gap-x-2 gap-y-3">
+                                    {([1, 2, 3, 4, 5, 6] as const).map((n) => {
+                                        const dateKey = `measure${n}_date` as const
+                                        const valueKey = `measure${n}_value` as const
+                                        // ★日付は見出しに書く。この容器だけ違う値が保存にあるときだけ行に出す
+                                        const own = rowOwnMeasure(row, n, measureHeaders[n - 1])
+                                        return (
+                                            <div key={`m${n}-mobile`} className="min-w-0">
+                                                <div className="text-xs text-slate-500 mb-1">測定 {n}</div>
+                                                <div className="space-y-2">
+                                                    {own.date && (
+                                                        <div className="space-y-1 min-w-0">
+                                                            <span className="text-xs text-slate-500">この容器だけの点検年月日</span>
+                                                            <Input
+                                                                value={row[dateKey]}
+                                                                onChange={(e) => updateCylinderField(idx, dateKey, e.target.value)}
+                                                                className="h-9 text-sm"
+                                                            />
+                                                        </div>
+                                                    )}
                                                     <div className="space-y-1 min-w-0">
-                                                        <span className="text-xs text-slate-500">この容器だけの点検年月日</span>
                                                         <Input
-                                                            value={row[dateKey]}
-                                                            onChange={(e) => updateCylinderField(idx, dateKey, e.target.value)}
+                                                            value={row[valueKey]}
+                                                            onChange={(e) => updateCylinderField(idx, valueKey, e.target.value)}
+                                                            placeholder={n === 1 ? "41.0" : "値"}
+                                                            aria-label={`容器${idx + 1} 測定${n} の値`}
+                                                            inputMode="decimal"
                                                             className="h-9 text-sm"
                                                         />
                                                     </div>
-                                                )}
-                                                <div className="space-y-1 min-w-0">
-                                                    <span className="text-xs text-slate-500">値</span>
-                                                    <Input
-                                                        value={row[valueKey]}
-                                                        onChange={(e) => updateCylinderField(idx, valueKey, e.target.value)}
-                                                        placeholder={n === 1 ? "41.0" : "値"}
-                                                        className="h-9 text-sm"
-                                                    />
                                                 </div>
                                             </div>
-                                        </div>
-                                    )
-                                })}
+                                        )
+                                    })}
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -1077,9 +1099,8 @@ export default function HalogenBekki7Form({
 
             {error && <p className="text-sm text-red-600">{error}</p>}
 
-
+            {/* スマホの画面下の帯（保存・プレビュー・表へ移動・保存の状態） */}
+            <FormActionBar onSave={handleSave} onPreview={handlePreview} busy={busy} saving={saving} previewing={loadingPreview} message={saveMessage} error={error} />
         </div>
     )
 }
-
-

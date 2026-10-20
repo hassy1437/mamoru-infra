@@ -551,6 +551,16 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-iphone-input.mjs", stage: "静的",
+        why: "iPhone での入力のしやすさ（2026-10-20 の iPhone 点検）: 入力欄 16px（押すたびの拡大を止める）・数字/電話のキーボード・"
+            + "その5 の仕様の写し・第1 の種別のまとめ付け・画面下の帯・判定のボタン・自動保存（別のアプリに切り替えた瞬間も）・"
+            + "写真の見出し・タップの大きさ・英数字の欄。★どれも PDF にも画像の照合にも出ず、1 か所戻すと黙って元に戻る",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-iphone-input.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-iphone-input.mjs"], sentinel: "IPHONE_INPUT_OK" },
+        ],
+    },
+    {
         file: "check-output-gate-note.mjs", stage: "静的",
         why: "出力の画面で、確定できない理由（承認前・解約日を迎えた）を PDF のボタンの前に出してボタンを押せなくし、結合する PDF の一覧を綴じる順に並べるか。"
             + "★以前は押せるように見えて理由は押したあとにしか出ず、一覧は入力の順だった（2026-10-20・本番の通しチェック）。PDF とは無関係だが scripts/check-* はここに載せる決まり",

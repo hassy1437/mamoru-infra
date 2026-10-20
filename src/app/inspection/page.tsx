@@ -20,7 +20,7 @@ export default async function InspectionPage() {
                 {/* ヘッダー */}
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
                     <div className="min-w-0">
-                        <Link href="/tool" className="text-sm text-blue-600 hover:underline mb-2 block">
+                        <Link href="/tool" className="text-sm text-blue-600 hover:underline mb-2 flex w-fit min-h-11 items-center">
                             ← ツール選択に戻る
                         </Link>
                         <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">

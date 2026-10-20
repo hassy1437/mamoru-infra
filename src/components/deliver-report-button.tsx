@@ -6,6 +6,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { findBlankJudgmentSections } from "@/lib/blank-judgment-sections"
+import { formatJstYmd } from "@/lib/date-utils"
 import { findInspectionTypeMismatches } from "@/lib/inspection-type-consistency"
 import {
     ALL_PDF_FAILED,
@@ -73,8 +74,8 @@ function isDuplicateError(message: string | undefined): boolean {
 }
 
 function formatDate(iso: string): string {
-    // 表示用に日付部分だけ（タイムゾーン変換はしない・素朴表示）
-    return iso.slice(0, 10)
+    // ★日本時間の日付（src/lib/date-utils.ts）。以前は iso.slice(0, 10) で、朝 9 時より前の納品が前日の日付になっていた
+    return formatJstYmd(iso)
 }
 
 /** 種別ごとの「最新（superseded_at is null）」納品を引く。 */

@@ -483,6 +483,15 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-jst-dates.mjs", stage: "静的",
+        why: "画面に出す日付が日本時間か（納品済みの日付・総括表を作るときの点検年月日の初期値）。★iso.slice(0, 10)・toISOString は"
+            + "世界標準時の日付で、日本時間の朝 9 時より前は前日になる（2026-10-20・本番で 10/20 朝の納品が 10/19 と出た）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-jst-dates.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-jst-dates.mjs"], sentinel: "JST_DATES_OK" },
+        ],
+    },
+    {
         file: "check-finalize-link.mjs", stage: "静的",
         why: "出力の画面で確定できるか（総括表の画面と同じ確定のボタン・空の必須なら押せない）。確定できて未確定のときだけ出し、"
             + "確定できないとき（解約・契約なし）・状態が分からないときは出さない。★以前は「確定してから」と言うだけで、確定の場所への道が無かった"

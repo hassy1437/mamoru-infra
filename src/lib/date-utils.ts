@@ -94,3 +94,26 @@ export function splitMonthInputValue(value: unknown): { year: string; month: str
     if (!m) return { year: "", month: "" }
     return { year: m[1], month: String(Number(m[2])) }
 }
+
+/**
+ * ★日本時間の日付（yyyy-MM-dd）。2026-10-20・本番の通しチェック（2 回目）。
+ *
+ * ■ なぜ要るか
+ *   `iso.slice(0, 10)` や `new Date().toISOString().split("T")[0]` は★世界標準時の日付になる。
+ *   日本時間の 0〜9 時は前日になり、納品済みの日付（deliver-report-button）と、
+ *   総括表を新しく作るときの点検年月日の初期値（soukatsu-form）が前日にずれていた。
+ * ■ ★サーバ（UTC）とブラウザで同じ値になるよう、時間帯を Asia/Tokyo に決め打ちする（描画の食い違いを起こさない）。
+ */
+const JST_YMD = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" })
+
+/** 日時（ISO 文字列・Date）を日本時間の yyyy-MM-dd に。読めなければ空 */
+export function formatJstYmd(at: string | number | Date): string {
+    const d = new Date(at)
+    if (Number.isNaN(d.getTime())) return ""
+    return JST_YMD.format(d)
+}
+
+/** 日本時間の今日（yyyy-MM-dd） */
+export function jstTodayYmd(now: Date = new Date()): string {
+    return formatJstYmd(now)
+}

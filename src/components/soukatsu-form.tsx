@@ -19,7 +19,7 @@ import type { Property } from "@/types/database"
 import { ALL_EQUIPMENT_TYPES } from "@/lib/equipment-config"
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes"
 import FormProgress from "@/components/form-progress"
-import { toDateInputValue } from "@/lib/date-utils"
+import { jstTodayYmd, toDateInputValue } from "@/lib/date-utils"
 import { cleanEquipmentItem, type DetailField, type SoukatsuEquipmentItem } from "@/lib/soukatsu-equipment"
 import { EquipmentDetailInputs, WitnessFillAll } from "@/components/soukatsu-equipment-details"
 import { SoukatsuCoverInputs } from "@/components/soukatsu-cover-inputs"
@@ -56,7 +56,8 @@ export default function SoukatsuForm({ property, previousData, copyFromId, sourc
     const src = (k: string) => (previousData?.[k] != null ? String(previousData[k]) : "")
 
     // 基本情報
-    const initialInspectionDate = new Date().toISOString().split('T')[0]
+    // ★日本時間の今日（以前は toISOString で、朝 9 時より前に作ると前日になっていた・src/lib/date-utils.ts）
+    const initialInspectionDate = jstTodayYmd()
     const [inspectionDate, setInspectionDate] = useState(initialInspectionDate)
     const [inspectionType, setInspectionType] = useState<string>(
         (previousData?.inspection_type as string) || "機器点検"

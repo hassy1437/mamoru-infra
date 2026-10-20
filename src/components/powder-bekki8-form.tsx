@@ -10,6 +10,7 @@ import { RowNote } from "@/components/row-note"
 import { Button } from "@/components/ui/button"
 import { applyBulkGood } from "@/lib/bekki-bulk-good"
 import { BekkiBulkGoodButton } from "@/components/bekki-bulk-good-button"
+import { isJudgmentsDefaulted } from "@/lib/bekki-default-good"
 import { defectPhraseListId } from "@/lib/defect-phrases"
 import { DefectPhraseDatalists } from "@/components/defect-phrase-datalists"
 import { Input } from "@/components/ui/input"
@@ -85,6 +86,8 @@ type CylinderRowState = {
 }
 
 type PowderBekki8Payload = {
+    /** ★判定が初期値（良）のままか（2026-10-20・録音 102・src/lib/bekki-default-good.ts） */
+    judgments_defaulted?: boolean
     zone_name: string
     equipment_system: string
     form_name: string
@@ -408,6 +411,8 @@ export default function PowderBekki8Form({
     const [page5Rows, setPage5Rows] = useState<CylinderRowState[]>(() =>
         stripRowsCoveredByHeaders(hydrateCylinders(PAGE5_ROW_COUNT, saved.page5_rows), measureHeaders))
 
+    // ★判定の初期値「良」（2026-10-20・録音 102）。新しい様式は開いたときにボタンの部品が入れ、印を立てる
+    const [judgmentsDefaulted, setJudgmentsDefaulted] = useState(() => isJudgmentsDefaulted(saved))
     const [saving, setSaving] = useState(false)
     const [loadingPreview, setLoadingPreview] = useState(false)
     const [loadingDownload, setLoadingDownload] = useState(false)
@@ -418,6 +423,7 @@ export default function PowderBekki8Form({
 
 
     const payload = useMemo<PowderBekki8Payload>(() => ({
+        judgments_defaulted: judgmentsDefaulted,
         zone_name: zoneName,
         equipment_system: equipmentSystem,
         form_name: formName,
@@ -443,6 +449,7 @@ export default function PowderBekki8Form({
         page5_rows: stripRowsCoveredByHeaders(page5Rows, measureHeaders),
         measure_headers: measureHeaders,
     }), [
+        judgmentsDefaulted,
         zoneName,
         equipmentSystem,
         formName,
@@ -790,6 +797,9 @@ export default function PowderBekki8Form({
         <div className="space-y-6" data-form-action-root>
             {/* ★様式の頭に 1 つ。表ごとの「この表の空欄を良にする」は残す（#101）。機器点検だけのときは総合点検の行に入れない */}
             <BekkiBulkGoodButton
+                fresh={savedPayload == null}
+                defaulted={judgmentsDefaulted}
+                onDefaultedChange={setJudgmentsDefaulted}
                 form="別記様式第8"
                 inspectionType={inspectionType}
                 sections={[

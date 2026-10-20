@@ -8,6 +8,7 @@ import { WRAP_CLS, bindLabelBreaks } from "@/components/row-label"
 import { Button } from "@/components/ui/button"
 import { applyBulkGood } from "@/lib/bekki-bulk-good"
 import { BekkiBulkGoodButton } from "@/components/bekki-bulk-good-button"
+import { isJudgmentsDefaulted } from "@/lib/bekki-default-good"
 import { defectPhraseListId } from "@/lib/defect-phrases"
 import { DefectPhraseDatalists } from "@/components/defect-phrase-datalists"
 import { Input } from "@/components/ui/input"
@@ -57,6 +58,8 @@ type DeviceState = {
 }
 
 type SprinklerBekki3Payload = {
+    /** ★判定が初期値（良）のままか（2026-10-20・録音 102・src/lib/bekki-default-good.ts） */
+    judgments_defaulted?: boolean
     form_name: string
     fire_manager: string
     witness: string
@@ -334,6 +337,8 @@ export default function SprinklerBekki3Form({
     const [page4Rows, setPage4Rows] = useState<RowState[]>(() => hydrateRows(PAGE4_ITEMS.length, saved.page4_rows))
     const [page5Rows, setPage5Rows] = useState<RowState[]>(() => hydrateRows(PAGE5_ITEMS.length, saved.page5_rows))
 
+    // ★判定の初期値「良」（2026-10-20・録音 102）。新しい様式は開いたときにボタンの部品が入れ、印を立てる
+    const [judgmentsDefaulted, setJudgmentsDefaulted] = useState(() => isJudgmentsDefaulted(saved))
     const [saving, setSaving] = useState(false)
     const [loadingPreview, setLoadingPreview] = useState(false)
     const [loadingDownload, setLoadingDownload] = useState(false)
@@ -344,6 +349,7 @@ export default function SprinklerBekki3Form({
 
 
     const payload = useMemo<SprinklerBekki3Payload>(() => ({
+        judgments_defaulted: judgmentsDefaulted,
         form_name: formName,
         fire_manager: fireManager,
         witness: normalizeBekkiWitnessForPayload(witness),
@@ -371,6 +377,7 @@ export default function SprinklerBekki3Form({
         device2: createEmptyDevice(),
         device_table: deviceTableRows,
     }), [
+        judgmentsDefaulted,
         formName,
         fireManager,
         witness,
@@ -893,6 +900,9 @@ export default function SprinklerBekki3Form({
         <div className="space-y-6" data-form-action-root>
             {/* ★様式の頭に 1 つ。表ごとの「この表の空欄を良にする」は残す（#101）。機器点検だけのときは総合点検の行に入れない */}
             <BekkiBulkGoodButton
+                fresh={savedPayload == null}
+                defaulted={judgmentsDefaulted}
+                onDefaultedChange={setJudgmentsDefaulted}
                 form="別記様式第3"
                 inspectionType={inspectionType}
                 sections={[

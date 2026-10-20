@@ -822,6 +822,16 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-bekki-default-good.mjs", stage: "静的",
+        why: "判定の初期値「良」（まだ保存していない様式を開いたら 1 回だけ「すべて良」と同じ処理）が 23 様式すべてで、"
+            + "新しい様式だけに入り・印（judgments_defaulted）を保存し・「確かめました」で印を下ろし・出力前の確認が「初期値のまま」と知らせるか。"
+            + "★保存済みの様式に入れ直すと、していない点検に○が付く。見ていない行が良のまま出るおそれは確認で知らせる（2026-10-20・録音 102）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-bekki-default-good.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-bekki-default-good.mjs"], sentinel: "BEKKI_DEFAULT_GOOD_OK" },
+        ],
+    },
+    {
         file: "check-defect-phrases.mjs", stage: "生成PDF", needsPdfs: true,
         why: "不良内容・措置内容の候補（src/lib/defect-phrases.ts）が 10 字以内で、別記 23 様式（PC・スマホ）と総括表の入力欄の全部に添えてあり、"
             + "一番長い候補を全行に入れても PDF が 200 で返り・縮まず・1 行で載るか。"

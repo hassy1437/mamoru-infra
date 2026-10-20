@@ -26,7 +26,7 @@ const ROOT = process.cwd()
 const SELF_TEST = process.argv.includes("--self-test")
 // ★自己診断と本番で出力先を分ける（check-pdf-all は並列に走らせる）
 const OUT = path.join(ROOT, "tmp", SELF_TEST ? "report-readiness-selftest" : "report-readiness")
-const MODULES = ["report-readiness", "bekki-row-labels", "bekki-heading-row", "pdf-merge-config", "itiran-input-flow", "inspector-helpers"]
+const MODULES = ["report-readiness", "bekki-row-labels", "bekki-heading-row", "pdf-merge-config", "itiran-input-flow", "inspector-helpers", "bekki-default-good"]
 const LIB = "src/lib/report-readiness.ts"
 const PAGE = "src/app/inspection/[id]/page.tsx"
 const OUTPUT = "src/app/inspection/[id]/itiran/[itiranId]/output/page.tsx"
@@ -139,6 +139,12 @@ function behaviour({ lib, labels }) {
     warnCase("点検者1の資格は点検資格者の免状", { itiran: { inspector1: { name: "点検太郎", kensa_licenses: { class1: { issue_year: "2020" } } } } }, [])
     warnCase("★点検者一覧を渡さない（確定の前）", { itiran: undefined }, [])
     warnCase("未入力の様式", { bekkiPayloads: {} }, [`bekki_missing:${STEP}`])
+    // ★判定の初期値「良」（2026-10-20・録音 102）: 確かめるまで知らせる・止めない・確かめたら消える
+    warnCase("判定が初期値のまま", { bekkiPayloads: { [STEP]: { ...BEKKI_OK[STEP], judgments_defaulted: true } } }, [`bekki_defaulted:${STEP}`], (r) => {
+        if (r.warnings[0].fix?.kind !== "bekki" || r.warnings[0].fix?.stepId !== STEP) problems.push("判定が初期値のまま: 直す画面がその様式でない")
+    })
+    warnCase("判定の初期値を確かめた", { bekkiPayloads: { [STEP]: { ...BEKKI_OK[STEP], judgments_defaulted: false } } }, [])
+    warnCase("★印が文字の \"true\"（読み違えない）", { bekkiPayloads: { [STEP]: { ...BEKKI_OK[STEP], judgments_defaulted: "true" } } }, [])
     warnCase("★別記を渡さない（確定の前）", { bekkiPayloads: undefined, stepIds: undefined }, [])
     const beforeFinalize = f({ soukatsu: COMPLETE })
     if (!beforeFinalize.canFinalize || beforeFinalize.warnings.length) problems.push(`確定の前（総括表だけ）: 注意 0 件で確定できるはずが ${ids(beforeFinalize.warnings)}`)

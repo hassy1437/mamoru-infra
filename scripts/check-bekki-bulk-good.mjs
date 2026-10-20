@@ -295,7 +295,8 @@ if (SELF_TEST) {
         for (const p of neg) console.log("   ", p)
         process.exit(1)
     }
-    const lib = (name, s, from, to) => (name === "bekki-bulk-good" ? s.replace(from, to) : s)
+    // ★改行をそろえてから差し替える（Windows の取り出しは CRLF。改行を含む注入が空振りして「検出できない」になっていた・2026-10-20）
+    const lib = (name, s, from, to) => (name === "bekki-bulk-good" ? s.replace(/\r\n/g, "\n").replace(from, to) : s)
     const mutants = [
         ["機器点検だけでも総合点検の行に入れる", (n, s) => lib(n, s, "if (kikiOnly && sogo.has(i)) {", "if (false) {"), "別記様式第2: 機器点検だけで"],
         ["別記7 その4 を総合点検と見ない（SOGO_FROM_INDEX から外す）", (n, s) => lib(n, s, '"別記様式第7": { page4_rows: 0 },', ""), "別記様式第7: 総合点検の行が"],
@@ -328,11 +329,12 @@ if (SELF_TEST) {
         ["共通ベースが畳んだ行を渡さない", BASE, ", hiddenRow: s.hiddenRow", "", "共通ベース: 畳んだ行"],
     ]
     for (const [label, file, from, to, expect] of wmut) {
-        const src = file === BASE ? sources.base : sources.forms.find(([n]) => n === file)?.[1]
+        // ★改行をそろえてから差し替える（上の lib と同じ・Windows の取り出しは CRLF）
+        const src = (file === BASE ? sources.base : sources.forms.find(([n]) => n === file)?.[1])?.replace(/\r\n/g, "\n")
         if (!src || !src.includes(from)) { console.log(`自己診断: 注入先が無い（${label}）`); process.exit(1) }
         const mutated = file === BASE
             ? { ...sources, base: src.replace(from, to) }
-            : { ...sources, forms: sources.forms.map(([n, s]) => [n, n === file ? s.replace(from, to) : s]) }
+            : { ...sources, forms: sources.forms.map(([n, s]) => [n, n === file ? src.replace(from, to) : s]) }
         if (!wiring(mod, mutated).some((p) => p.startsWith(expect))) { console.log(`自己診断: ${label} → 検出できない`); process.exit(1) }
         console.log(`  陽性対照: ${label} → 検出`)
     }

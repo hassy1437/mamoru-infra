@@ -41,6 +41,7 @@ import { createEmptyRow, coerceRow, hydrateRows, type BekkiRowState } from "@/li
 import { soukatsuPdfGate } from "@/lib/pdf-gate-client"
 import { applyBulkGood, bekkiFormNameOfApiRoute } from "@/lib/bekki-bulk-good"
 import { BekkiBulkGoodButton } from "@/components/bekki-bulk-good-button"
+import { isJudgmentsDefaulted } from "@/lib/bekki-default-good"
 import { defectPhraseListId } from "@/lib/defect-phrases"
 import { DefectPhraseDatalists } from "@/components/defect-phrase-datalists"
 import { BekkiChoiceCheckboxes } from "@/components/bekki-choice-checkboxes"
@@ -60,6 +61,8 @@ export type BekkiDeviceState = {
 export type BekkiPageRowsKey = "page1_rows" | "page2_rows" | "page3_rows" | "page4_rows"
 
 export type BekkiBasePayload = {
+    /** ★判定が初期値（良）のままか（2026-10-20・録音 102・src/lib/bekki-default-good.ts） */
+    judgments_defaulted?: boolean
     form_name: string
     fire_manager: string
     witness: string
@@ -258,6 +261,9 @@ export default function BekkiResultFormBase({
     ] as const).filter(([, v]) => v.trim() === "").map(([label]) => label)
     const [basicInfoOpen, setBasicInfoOpen] = useState(() => basicInfoBlank.length > 0)
 
+    // ★判定の初期値「良」（2026-10-20・録音 102）。新しい様式は開いたときにボタンの部品が入れ、印を立てる
+    const [judgmentsDefaulted, setJudgmentsDefaulted] = useState(() => isJudgmentsDefaulted(saved))
+
     const [saving, setSaving] = useState(false)
     const [loadingPreview, setLoadingPreview] = useState(false)
     const [loadingDownload, setLoadingDownload] = useState(false)
@@ -268,6 +274,7 @@ export default function BekkiResultFormBase({
 
 
     const payload = useMemo<BekkiBasePayload>(() => ({
+        judgments_defaulted: judgmentsDefaulted,
         form_name: formName,
         fire_manager: fireManager,
         witness: normalizeBekkiWitnessForPayload(witness),
@@ -299,6 +306,7 @@ export default function BekkiResultFormBase({
         inspectorCompany,
         inspectorName,
         inspectorTel,
+        judgmentsDefaulted,
         location,
         notes,
         periodEnd,
@@ -888,6 +896,9 @@ export default function BekkiResultFormBase({
                 inspectionType={inspectionType}
                 sections={sections.map((s) => ({ key: s.key, labels: s.labels, rows: rowsByKey[s.key], hiddenRow: s.hiddenRow }))}
                 onApply={applyBulkGoodToSections}
+                fresh={savedPayload == null}
+                defaulted={judgmentsDefaulted}
+                onDefaultedChange={setJudgmentsDefaulted}
             />
             {/* 不良内容・措置内容の候補（自由入力のまま・src/lib/defect-phrases.ts） */}
             <DefectPhraseDatalists />

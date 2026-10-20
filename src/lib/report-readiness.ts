@@ -2,6 +2,7 @@ import { BEKKI_ROW_LABELS } from "@/lib/bekki-row-labels"
 import { isBekkiHeadingLabel } from "@/lib/bekki-heading-row"
 import { PDF_MERGE_CONFIG } from "@/lib/pdf-merge-config"
 import { normalizeInspectorData } from "@/lib/inspector-helpers"
+import { DEFAULT_GOOD_READINESS_MESSAGE, isJudgmentsDefaulted } from "@/lib/bekki-default-good"
 import { buildItiranInputHref, getItiranInputPageTitle, type ItiranInputStepId } from "@/lib/itiran-input-flow"
 
 /**
@@ -22,6 +23,7 @@ import { buildItiranInputHref, getItiranInputPageTitle, type ItiranInputStepId }
  *     - 点検者1の氏名・資格（免状）が無い ★itiran を渡したときだけ（確定の前は点検者一覧がまだ無いのが普通）
  *     - 別記で「否」なのに不良内容（bad_content）が空 ★stepIds を渡したときだけ
  *     - 様式が未入力 ★同上
+ *     - ★判定が初期値（良）のまま（2026-10-20・録音 102・src/lib/bekki-default-good.ts）★同上。止めない
  *   ・関数は純粋（DB を読まない）。画面は読んだ行を渡すだけ ＝ scripts/check-report-readiness.mjs が直接動かせる
  */
 
@@ -215,6 +217,10 @@ export function checkReportReadiness(input: ReadinessInput): ReportReadiness {
         const bad = badRowsWithoutContent(stepId, payload)
         if (bad.length) {
             warn(`bekki_bad_content:${stepId}`, stepTitle(stepId), "「否」の行に不良内容が入っていません", bad, { kind: "bekki", stepId })
+        }
+        // ★初期値の「良」を入れたまま「確かめました」を押していない（見ていない行が良のまま出るおそれ）
+        if (isJudgmentsDefaulted(payload)) {
+            warn(`bekki_defaulted:${stepId}`, stepTitle(stepId), DEFAULT_GOOD_READINESS_MESSAGE, [], { kind: "bekki", stepId })
         }
     }
 

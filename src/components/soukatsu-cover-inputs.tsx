@@ -82,7 +82,12 @@ export function SoukatsuCoverInputs({
                     </select>
                 </div>
                 <p className="text-sm text-slate-700" aria-live="polite">
-                    表紙の印字：{printed ? `${printed}　殿` : "（刷り込みのまま・手書き用）"}
+                    表紙の印字：
+                    {!printed
+                        ? "（刷り込みのまま・手書き用）"
+                        : title
+                          ? `${printed}　殿`
+                          : `上の行に「${printed}」（敬称は刷り込みのまま）`}
                 </p>
                 <p id="fireDepartmentName-note" className="text-xs text-slate-500">{COVER_FIRE_DEPARTMENT_NOTE}</p>
             </div>

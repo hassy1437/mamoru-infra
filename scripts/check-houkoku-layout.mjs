@@ -12,6 +12,7 @@
 //   2. 所在地・名称・用途: 値のかたまりの縦の中心が、欄（上下の横罫線）の中心から 2pt 以内（1 行・2 行の両方）
 //   3. 宛名（2026-10-19・★2026-10-20 に刷り込みの行へ移した・録音 102）: 刷り込み「消防長（消防署長）（市町村長）」を
 //      白で覆い、その行に描く。右端が「殿」の左端より 2pt 以上手前・7pt 以上の大きさ。★宛名が空なら覆わない（手書き用）
+//      ★末尾に敬称の無い宛名は覆わず、上の行に名前だけ（右端が日付の年の左端より 4pt 以上手前・7pt 以上）
 //      画面の上限（lib/soukatsu-cover.ts の FIRE_DEPARTMENT_NAME_MAX）いっぱいの全角で描いて測る
 //
 // 使い方: node scripts/check-houkoku-layout.mjs [--self-test]
@@ -48,11 +49,14 @@ const CASES = [
         notifier_phone: "06-1234-5678（内線2040）／携帯090-1234-5678（夜間・休日）",
         building_address: "大阪府大阪市北区梅田三丁目一番一号グランフロント大阪タワーＡ二十階から三十階まで全部",
         building_name: "グランフロント大阪タワーＡ北館・南館・うめきた広場",
-        // ★画面で入れられるいちばん長い宛名（全角）
-        fire_department_name: "消".repeat(NAME_MAX),
+        // ★画面で入れられるいちばん長い宛名（全角・敬称を含めて上限いっぱい）
+        fire_department_name: "消".repeat(NAME_MAX - "消防署長".length) + "消防署長",
     }],
     // ★宛名が空（刷り込みのまま・手書き用）
     ["宛名なし", { ...BASE, notifier_address: "大阪市北区梅田1-1-1", notifier_name: "検証防災株式会社", building_address: "大阪市北区梅田1-1-1", building_name: "検証ビル", fire_department_name: "" }],
+    // ★末尾に敬称の無い宛名（10/20 より前の自由入力・敬称を選ばなかった）: 刷り込みは覆わず、上の行に名前だけ。
+    //   長さは以前の画面の上限（全角 30 字）
+    ["敬称なし", { ...BASE, notifier_address: "大阪市北区梅田1-1-1", notifier_name: "検証防災株式会社", building_address: "大阪市北区梅田1-1-1", building_name: "検証ビル", fire_department_name: "消".repeat(30) }],
 ]
 
 const MEASURE = String.raw`
@@ -86,6 +90,14 @@ res["name"] = {"right": round(max((s["bbox"][2] for s in line), default=0), 2),
                "size": round(min((s["size"] for s in line), default=0), 2),
                "text": "".join(s["text"] for s in line)[:12]}
 res["tonoLeft"] = tono_left
+# 敬称の無い宛名を描く上の行（表題と刷り込みの行の間）と、日付の年の数字（右上・年の刷り込みの左）
+head = [s for s in spans if 78 < (s["bbox"][1] + s["bbox"][3]) / 2 < 104]
+upper = [s for s in head if s["bbox"][0] < 300]
+year = [s for s in head if 330 < s["bbox"][0] < 405]
+res["upper"] = {"right": round(max((s["bbox"][2] for s in upper), default=0), 2),
+                "size": round(min((s["size"] for s in upper), default=0), 2),
+                "text": "".join(s["text"] for s in upper)[:12]}
+res["yearLeft"] = round(min((s["bbox"][0] for s in year), default=0), 2)
 # 白で覆っているか（塗りが白の矩形が刷り込みの文字の範囲をすべて含む）
 covered = False
 if pb:
@@ -138,11 +150,22 @@ async function measure(routePath) {
         else if (label === "宛名なし") {
             if (m.covered) problems.push("宛名が空なのに刷り込みを白で覆っている（手書きできない）")
             if (m.name.right) problems.push(`宛名が空なのに宛名の行に何か描いている「${m.name.text}」`)
+            if (m.upper.right) problems.push(`宛名が空なのに上の行に何か描いている「${m.upper.text}」`)
+        } else if (label === "敬称なし") {
+            if (m.covered) problems.push("敬称なし: 刷り込みを白で覆っている（敬称が全部消える）")
+            if (m.name.right) problems.push(`敬称なし: 刷り込みの行に描いている「${m.name.text}」`)
+            if (!m.upper.right) problems.push("敬称なし: 宛名が描かれていない（上の行）")
+            else if (!m.yearLeft) problems.push("敬称なし: 日付（年）が描かれていない")
+            else {
+                if (m.upper.right > m.yearLeft - 4) problems.push(`敬称なし: 宛名の右端 ${m.upper.right} が日付（年）の左端 ${m.yearLeft} に重なる・近すぎる「${m.upper.text}」`)
+                if (m.upper.size < 7) problems.push(`敬称なし: 宛名が ${m.upper.size}pt まで縮んでいる（下限 7pt）「${m.upper.text}」`)
+            }
         } else if (!m.name.right) problems.push(`${label}: 宛名が描かれていない`)
         else {
             if (!m.covered) problems.push(`${label}: 刷り込み「消防長（消防署長）（市町村長）」を白で覆っていない（宛名と重なる）`)
             if (m.name.right > m.tonoLeft - 2) problems.push(`${label}: 宛名の右端 ${m.name.right} が「殿」の左端 ${m.tonoLeft} に重なる・近すぎる「${m.name.text}」`)
             if (m.name.size < 7) problems.push(`${label}: 宛名が ${m.name.size}pt まで縮んでいる（下限 7pt）「${m.name.text}」`)
+            if (m.upper.right) problems.push(`${label}: 敬称のある宛名なのに上の行にも描いている「${m.upper.text}」`)
         }
         if (label === "長い値" && m.cells[0]?.lines !== 2) problems.push(`長い値: 所在地が 2 行に折り返されていない（${m.cells[0]?.lines} 行）＝ 2 行の中央寄せを見られていない`)
     }
@@ -170,7 +193,10 @@ if (SELF_TEST) {
         ["届出者の住所を右の縦罫線まで描く（直す前の幅）", "drawNotifier(toText(body.notifier_address), 151.7, 513.48)", "drawNotifier(toText(body.notifier_address), 151.7, 531.0)", "届出者の住所が下線の右端"],
         ["宛名の幅を決めない（「殿」まで描く）", "draw(fireDepartment, 70.4, ADDRESSEE_BASELINE, 12, FIRE_DEPARTMENT_RIGHT_X - 70.4)", "draw(fireDepartment, 70.4, ADDRESSEE_BASELINE, 12)", "宛名の右端"],
         ["刷り込みを白で覆わない（直す前）", "firstPage.drawRectangle({", "void ({", "白で覆っていない"],
-        ["宛名が空でも覆う（手書きできない）", "if (fireDepartment) {", "if (true) {", "宛名が空なのに刷り込みを白で覆っている"],
+        ["宛名が空でも覆う（手書きできない）", "if (fireDepartment && splitFireDepartment(fireDepartment).title) {", "if (true) {", "宛名が空なのに刷り込みを白で覆っている"],
+        ["敬称が無くても覆う（敬称が全部消える）", "if (fireDepartment && splitFireDepartment(fireDepartment).title) {", "if (fireDepartment) {", "敬称なし: 刷り込みを白で覆っている"],
+        ["敬称の無い宛名の幅を決めない", "draw(fireDepartment, 70.4, 95, 12, FIRE_DEPARTMENT_NAME_ONLY_RIGHT_X - 70.4)", "draw(fireDepartment, 70.4, 95, 12)", "敬称なし: 宛名の右端"],
+        ["敬称の無い宛名を描かない", "draw(fireDepartment, 70.4, 95, 12, FIRE_DEPARTMENT_NAME_ONLY_RIGHT_X - 70.4)", "void 0", "敬称なし: 宛名が描かれていない"],
         ["所在地・名称・用途を上寄せに戻す", 'verticalAlign: "center" | "top" = "center"', 'verticalAlign: "center" | "top" = "top"', "所在地（1 行）の縦の中心"],
     ]
     for (const [label, from, to, expect] of mutants) {
@@ -182,13 +208,13 @@ if (SELF_TEST) {
         }
         console.log(`  陽性対照: ${label} → 検出`)
     }
-    console.log("  陰性対照: 短い値・長い値の両方で、届出者は下線の内側・所在地等は欄の中央・宛名は刷り込みを覆って「殿」の手前・宛名なしは刷り込みのまま")
+    console.log("  陰性対照: 短い値・長い値の両方で、届出者は下線の内側・所在地等は欄の中央・宛名は刷り込みを覆って「殿」の手前・宛名なしは刷り込みのまま・敬称なしは上の行で日付の手前")
     console.log("SELF_TEST_OK")
     process.exit(0)
 }
 
 const problems = await measure(ROUTE)
-console.log(`報告書の値の置き場所を検査: 届出者 3 行（下線の右端）・所在地/名称/用途（縦の中央）・宛名（刷り込みを覆い「殿」の手前・全角 ${NAME_MAX} 字・空なら覆わない）× 短い値・長い値・宛名なし`)
+console.log(`報告書の値の置き場所を検査: 届出者 3 行（下線の右端）・所在地/名称/用途（縦の中央）・宛名（刷り込みを覆い「殿」の手前・全角 ${NAME_MAX} 字・空なら覆わない・敬称なしは上の行）× 短い値・長い値・宛名なし・敬称なし`)
 if (problems.length) {
     console.log("★NG:")
     for (const p of problems) console.log("   ", p)

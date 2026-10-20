@@ -15,6 +15,7 @@ import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
 import { formatUsageShort } from "@/lib/usage-categories"
+import { splitFireDepartment } from "@/lib/soukatsu-cover"
 
 type GeneratePdfBody = {
     report_date?: string
@@ -41,6 +42,8 @@ const ADDRESSEE_PRINTED = { x0: 82.4, y0: 107.3, x1: 256.4, y1: 119.3 }
 const ADDRESSEE_BASELINE = 117.58
 /** 宛名の右端（「殿」の左端 268.4 の 4pt 手前） */
 const FIRE_DEPARTMENT_RIGHT_X = 264
+/** 敬称の無い宛名を描く上の行（y=95）の右端（日付の年の数字・左端 約 379 の手前） */
+const FIRE_DEPARTMENT_NAME_ONLY_RIGHT_X = 370
 
 const toText = (value: unknown) => {
     if (value === null || value === undefined) return undefined
@@ -174,8 +177,10 @@ export async function POST(req: NextRequest) {
         //   （lib/soukatsu-cover.ts）、刷り込み「消防長（消防署長）（市町村長）」を白で覆って、その行に「〇〇消防署長」を描く。
         //   「殿」の刷り込みは残す。以前は表題の下の別の行（y=95）に名前だけを描き、刷り込みが全部残っていた。
         //   ★宛名が空なら覆わない（刷り込みのまま・手書き用）。
+        //   ★末尾に敬称の無い宛名（10/20 より前の自由入力・敬称を選ばなかった）は覆わず、以前と同じ上の行（y=95）に
+        //     名前だけを描く。覆うと刷り込みの敬称が全部消え、敬称の無い宛名になる（手で○を付けることもできなくなる）。
         const fireDepartment = toText(body.fire_department_name)
-        if (fireDepartment) {
+        if (fireDepartment && splitFireDepartment(fireDepartment).title) {
             firstPage.drawRectangle({
                 x: ADDRESSEE_PRINTED.x0 - 1,
                 y: height - (ADDRESSEE_PRINTED.y1 + 1.5),
@@ -184,6 +189,8 @@ export async function POST(req: NextRequest) {
                 color: rgb(1, 1, 1),
             })
             draw(fireDepartment, 70.4, ADDRESSEE_BASELINE, 12, FIRE_DEPARTMENT_RIGHT_X - 70.4)
+        } else if (fireDepartment) {
+            draw(fireDepartment, 70.4, 95, 12, FIRE_DEPARTMENT_NAME_ONLY_RIGHT_X - 70.4)
         }
 
         // ★右端は各行の記入用の下線の右端（テンプレート実測・2026-10-07）。

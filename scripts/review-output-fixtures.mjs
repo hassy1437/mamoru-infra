@@ -887,6 +887,11 @@ export const createReviewJobs = () => {
       title: "別記15 避難器具点検票",
       routePath: "src/app/api/generate-evacuation-equipment-bekki15-pdf/route.ts",
       componentPath: "src/components/evacuation-equipment-bekki15-form.tsx",
+      extraFields: {
+        install_floor: "3〜8階",
+        install_place: "各階 東側バルコニー",
+      },
+      extraFieldKeys: ["install_floor", "install_place"],
     }),
     createCommonBekkiJob({
       key: "bekki16",

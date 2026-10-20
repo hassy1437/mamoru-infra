@@ -532,6 +532,34 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-measure-headers.mjs", stage: "静的",
+        why: "別記6・7・8 の その5 で、点検年月日（別記6 は容器表面温度も）を測定の列の見出しに 1 回だけ書き、容器の行は値だけにするか"
+            + "（以前に行ごとに入れた日付は、見出しと違うときだけ行に残す）。あわせて別記7・8 の容器の行が雛形の 1 行目から始まるか。"
+            + "★以前は見出しが空欄で行ごとに日付を描き、別記7・8 は見出しのすぐ下の 1 行目を一度も使っていなかった（2026-10-20・本番の通しチェックと記入漏れの総点検）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-measure-headers.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-measure-headers.mjs"], sentinel: "MEASURE_HEADERS_OK" },
+        ],
+    },
+    {
+        file: "check-bekki1-pressure-marks.mjs", stage: "静的",
+        why: "別記1 の「消火器の耐圧性能」の行で種別（A〜F）を付けられ、PDF にも描くか（種別が無いのは簡易消火用具の 2 行だけ）。"
+            + "★画面もルートも耐圧性能の行から省いていた（2026-10-20・記入漏れの総点検）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-bekki1-pressure-marks.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-bekki1-pressure-marks.mjs"], sentinel: "BEKKI1_PRESSURE_MARKS_OK" },
+        ],
+    },
+    {
+        file: "check-output-gate-note.mjs", stage: "静的",
+        why: "出力の画面で、確定できない理由（承認前・解約日を迎えた）を PDF のボタンの前に出してボタンを押せなくし、結合する PDF の一覧を綴じる順に並べるか。"
+            + "★以前は押せるように見えて理由は押したあとにしか出ず、一覧は入力の順だった（2026-10-20・本番の通しチェック）。PDF とは無関係だが scripts/check-* はここに載せる決まり",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-output-gate-note.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-output-gate-note.mjs"], sentinel: "OUTPUT_GATE_NOTE_OK" },
+        ],
+    },
+    {
         file: "check-soukatsu-delete.mjs", stage: "静的",
         why: "総括表（点検）の削除ボタンが、確定・納品していない点検にだけ出て、確認の窓で何が消えるかを言い、消えた件数を確かめるか。"
             + "★以前は点検を消す手段が無く、物件を消しても総括表・点検者一覧・別記が残った（2026-10-20）。"

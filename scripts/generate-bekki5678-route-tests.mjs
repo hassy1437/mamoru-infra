@@ -141,7 +141,12 @@ const jobs = [
       ),
       page3_rows: makeRows(36, "B6-P3"),
       page4_rows: makeRows(12, "B6-P4"),
-      page5_rows: makeCylinderRows(29, 4, true, false, true),
+      // ★2026-10-20: 点検年月日・容器表面温度は測定の列の見出しに 1 回（src/lib/measure-headers.ts）。
+      //   行は値だけ。4 行目だけ見出しと違う日付・温度を残す（以前の保存＝行ごとの日付も描けること）
+      page5_rows: makeCylinderRows(29, 4, true, false, true).map((row, i) =>
+        i === 3 ? row : Object.fromEntries(Object.entries(row).filter(([k]) => !/^measure\d_(date|temp)$/.test(k)))
+      ),
+      measure_headers: [1, 2, 3, 4].map((n) => ({ date: `2026/0${n}/1${n}`, temp: `${15 + n}` })),
     },
   },
   {
@@ -160,7 +165,11 @@ const jobs = [
       ),
       page3_rows: makeRows(27, "B7-P3"),
       page4_rows: makeRows(11, "B7-P4"),
-      page5_rows: makeCylinderRows(19, 6, false, true),
+      // ★2026-10-20: 19 → 20 行（雛形は 20 行・以前は 1 行目を使っていなかった）。点検年月日は見出しに 1 回・行は値だけ
+      page5_rows: makeCylinderRows(20, 6, false, true).map((row) =>
+        Object.fromEntries(Object.entries(row).filter(([k]) => !/^measure\d_date$/.test(k)))
+      ),
+      measure_headers: [1, 2, 3, 4, 5, 6].map((n) => ({ date: `2026/1${n % 3}/2${n}`, temp: "" })),
     },
   },
   {
@@ -179,7 +188,8 @@ const jobs = [
       ),
       page3_rows: makeRows(25, "B8-P3"),
       page4_rows: makeRows(11, "B8-P4"),
-      page5_rows: makeCylinderRows(19, 6, false, true),
+      // ★2026-10-20: 19 → 20 行。様式8 は見出しを入れず、行ごとの日付（以前の保存の形）のまま描けることを見る
+      page5_rows: makeCylinderRows(20, 6, false, true),
     },
   },
 ];

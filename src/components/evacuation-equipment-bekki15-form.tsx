@@ -99,6 +99,12 @@ export default function EvacuationEquipmentBekki15Form(props: Props) {
             apiPath="/api/generate-evacuation-equipment-bekki15-pdf"
             dbTable="inspection_evacuation_equipment_bekki15"
             downloadFilenamePrefix="避難器具点検票"
+            // ★様式の見出しにある「設置階」「設置場所」（2026-10-20）。以前は入力欄も印字も無く、いつも空欄で出ていた
+            extraFieldsTitle="設置階・設置場所"
+            extraFields={[
+                { key: "install_floor", label: "設置階", placeholder: "例: 3〜8階" },
+                { key: "install_place", label: "設置場所", placeholder: "例: 各階 東側バルコニー" },
+            ]}
             sections={[
                 { key: "page1_rows", title: "その1 点検項目", labels: PAGE1_ITEMS },
                 { key: "page2_rows", title: "その2 点検項目", labels: PAGE2_ITEMS },

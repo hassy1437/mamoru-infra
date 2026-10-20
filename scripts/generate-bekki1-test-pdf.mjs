@@ -399,7 +399,7 @@ for (let i = 0; i < Math.min(testBody.page2_rows.length, P2_ROW_BOUNDS.length - 
 
   MARK_KEYS.forEach((k, colIndex) => {
     if (!row?.marks?.[k]) return;
-    if (i >= 18) return; // 簡易消化用具行（外形・水量等）はマーク列なし
+    if (i >= 19) return; // 簡易消火用具行（外形・水量等＝19〜）はマーク列なし（18＝耐圧性能には A〜F がある）
     const col = P2_TYPE_COLS[colIndex];
     drawMark(page2, p2Height, "○", col.x, top, col.w, h);
   });

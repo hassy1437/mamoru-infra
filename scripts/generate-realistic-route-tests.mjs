@@ -66,6 +66,9 @@ const REALISTIC = {
     license_number: "東京 第12345号",
     // ★長文化の対象キーは必ずここに現実値が要る（assertRealisticCoverage が強制する）。
     notifier_address: "東京都千代田区丸の内1-1-1",
+    // 別記15 の見出し（2026-10-20）
+    install_floor: "3〜8階",
+    install_place: "各階 東側バルコニー",
 }
 
 // 点検項目の内容欄に入る典型的な文言

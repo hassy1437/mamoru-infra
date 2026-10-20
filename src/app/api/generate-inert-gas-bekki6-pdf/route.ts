@@ -8,6 +8,7 @@ import {
     systemFitFailures,
 } from "@/lib/pdf-fit-report"
 import fontkit from "@pdf-lib/fontkit"
+import { coerceMeasureHeaders, measureHeaderDateParts, normalizeTemp, rowOwnMeasure } from "@/lib/measure-headers"
 import fs from "fs"
 import path from "path"
 import {
@@ -116,6 +117,8 @@ type Bekki6Payload = {
     device1?: DeviceRow
     device2?: DeviceRow
     page5_rows?: CylinderRow[]
+    /** その5 の測定の列の見出し（点検年月日・容器表面温度）。src/lib/measure-headers.ts */
+    measure_headers?: { date?: string; temp?: string }[]
 }
 
 type DrawOptions = {
@@ -401,6 +404,27 @@ export async function POST(req: NextRequest) {
 
         
 
+        // ★測定の列の見出し（点検年月日・容器表面温度）は列ごとに 1 回（src/lib/measure-headers.ts・2026-10-20）
+        const measureHeaders = coerceMeasureHeaders(body.measure_headers, 4)
+        // 雛形の実測: 刷り込みの「年」の左端（列ごと）・「年」「月」「日」「℃」の行（上端・高さ）
+        const HEADER_KANJI_X = [353.04, 407.76, 462.48, 516.96]
+        const HEADER_LINES = { year: [101.05, 10.56], month: [111.61, 10.56], day: [122.17, 10.56], temp: [139.69, 10.56] } as const
+        const drawMeasureHeaders = (page: PDFPage, pageHeight: number) => {
+            measureHeaders.forEach((h, m) => {
+                const right = HEADER_KANJI_X[m] - 0.8
+                const parts = measureHeaderDateParts(h.date)
+                if (parts) {
+                    drawRightAt(page, pageHeight, parts.year, right, HEADER_LINES.year[0], HEADER_LINES.year[1], 7.2)
+                    drawRightAt(page, pageHeight, parts.month, right, HEADER_LINES.month[0], HEADER_LINES.month[1], 7.2)
+                    drawRightAt(page, pageHeight, parts.day, right, HEADER_LINES.day[0], HEADER_LINES.day[1], 7.2)
+                } else if (h.date) {
+                    // 読めない書き方は、年・月・日の左の空き（列の左端〜刷り込み）に 1 行で
+                    drawTextInCell({ page, pageHeight, fonts, text: h.date, cellX: P5_COLS[7 + m], cellTopFromTop: 101.05, cellW: right - P5_COLS[7 + m], cellH: 31.68, fontSize: 6.5, options: { paddingX: 1, paddingY: 0.5, minFontSize: 3.5 } })
+                }
+                drawRightAt(page, pageHeight, normalizeTemp(h.temp), right, HEADER_LINES.temp[0], HEADER_LINES.temp[1], 7.2)
+            })
+        }
+
         const drawCylinderRows = (
             page: PDFPage,
             pageHeight: number,
@@ -425,9 +449,11 @@ export async function POST(req: NextRequest) {
                 //   下半分: temp（左半分） / value（右半分）
                 // セル寸法: ~54.7pt × 20pt → 上下 10pt 高 → drawTextInCell auto-shrink で ~6.2pt 想定
                 // PR2/3 の drawCellSubRegions（vertical 等分割）ではなく、Plan B 用にインライン 3 呼び出し
+                // ★日付・温度は見出しと違うときだけ行に描く（同じなら見出しにある・src/lib/measure-headers.ts）
                 const legacy = [row.measure1, row.measure2, row.measure3, row.measure4]
-                const dates = [row.measure1_date, row.measure2_date, row.measure3_date, row.measure4_date]
-                const temps = [row.measure1_temp, row.measure2_temp, row.measure3_temp, row.measure4_temp]
+                const own = [1, 2, 3, 4].map((n) => rowOwnMeasure(row as Record<string, unknown>, n, measureHeaders[n - 1]))
+                const dates = own.map((o) => o.date)
+                const temps = own.map((o) => o.temp)
                 const values = [row.measure1_value, row.measure2_value, row.measure3_value, row.measure4_value]
                 const subOpts = { paddingX: 1.0, paddingY: 0.5, minFontSize: 3.5, align: "center" as const }
                 for (let m = 0; m < 4; m += 1) {
@@ -440,6 +466,15 @@ export async function POST(req: NextRequest) {
                     const date = dates[m] ?? ""
                     const temp = temps[m] ?? ""
                     const value = (values[m] && values[m] !== "") ? values[m] : (legacy[m] ?? "")
+                    if (!date && !temp) {
+                        // 値だけ: セルいっぱい（中央）に
+                        drawTextInCell({
+                            page, pageHeight, fonts, text: value,
+                            cellX: x, cellTopFromTop: top, cellW: w, cellH: h,
+                            fontSize: 7, options: subOpts,
+                        })
+                        continue
+                    }
 
                     // 上半分: date（全幅）
                     drawTextInCell({
@@ -600,6 +635,7 @@ export async function POST(req: NextRequest) {
         drawInCell(page4, p4Height, formatJapaneseDateText(device2.calibrated_at), 426.48, 639.33, 51.84, 20.67, 7.0)
         drawMaker(page4, p4Height, device2.maker, 478.32, 639.33, 51.84, 20.67, 7.0)
 
+        drawMeasureHeaders(page5, p5Height)
         drawCylinderRows(page5, p5Height, body.page5_rows ?? [])
 
         // ⑧ 枠に収まらなかった項目があればPDFを返さずに一覧を返す。

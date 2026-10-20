@@ -789,7 +789,9 @@ export default function ShokakiBekki1Form({
             </Card>
 
             {renderItemTable("（その1）点検結果", "p1", PAGE1_ITEMS, page1Rows)}
-            {renderItemTable("（その2）点検結果", "p2", PAGE2_ITEMS, page2Rows, 18)}
+            {/* ★種別（A〜F）が無いのは簡易消火用具の 2 行（外形・水量等・19〜）だけ。以前は 18 にしていて、
+                「消火器の耐圧性能」の行でも種別を付けられなかった（雛形にはその行の A〜F の欄がある・2026-10-20 の記入漏れ点検） */}
+            {renderItemTable("（その2）点検結果", "p2", PAGE2_ITEMS, page2Rows, 19)}
 
             <Card>
                 <CardHeader>

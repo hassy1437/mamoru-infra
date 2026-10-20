@@ -23,6 +23,11 @@ interface CombinedPdfButtonProps {
     canDownload?: boolean
     /** 確定前に押したときの案内（解約日を迎えた業者には「確定してから」と言わない・pdfGateMessage） */
     gateMessage?: string
+    /**
+     * ★確定できない理由を、呼び出し側がボタンの上に先に出しているときの、その要素の id（2026-10-20）。
+     *   渡されたらボタンは押せなくし（押しても同じ文が下にもう一度出るだけ）、理由の文とつなぐ（aria-describedby）
+     */
+    gateNoteId?: string
 }
 
 export default function CombinedPdfButton({
@@ -34,6 +39,7 @@ export default function CombinedPdfButton({
     equipmentTypes,
     canDownload = true,
     gateMessage = PDF_GATE_MESSAGE,
+    gateNoteId,
 }: CombinedPdfButtonProps) {
     const [loading, setLoading] = useState(false)
     const [progress, setProgress] = useState({ done: 0, total: 0 })
@@ -144,7 +150,8 @@ export default function CombinedPdfButton({
         <div>
         <Button
             onClick={handleDownload}
-            disabled={loading || taskCount === 0}
+            disabled={loading || taskCount === 0 || (!canDownload && !!gateNoteId)}
+            aria-describedby={!canDownload && gateNoteId ? gateNoteId : undefined}
             className="bg-blue-600 hover:bg-blue-700 text-white"
         >
             {loading ? (

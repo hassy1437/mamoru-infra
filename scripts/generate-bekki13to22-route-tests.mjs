@@ -86,6 +86,11 @@ const jobs = [
     outPdfPath: "tmp/pdf-test-bekki13to22/bekki15_test.pdf",
     payload: {
       ...shared,
+      // 見出しの「設置階」「設置場所」。2026-10-20 に入力欄と描画を足した
+      extra_fields: {
+        install_floor: "地上3階から地上8階まで（各階の東側・西側の両方）",
+        install_place: "各階 東側バルコニー（避難器具用ハッチ内蔵型）および西側共用廊下端部の窓際（固定式）",
+      },
       page1_rows: makeRows(40, "B15-P1"),
       // ★2026-10-07: 20 → 30。その2 は格納状況・見出し「総合点検」・総合点検 3 行を足して 27 行になった（route の P2_ROW_BOUNDS）。
       //   20 のままだと足した行が一度も描かれず、見出し行の検査（check-banner-rows）も入力の有無を判定できなかった

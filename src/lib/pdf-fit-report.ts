@@ -116,6 +116,11 @@ export const FIELD_LABELS: Record<string, string> = {
     ct_model: "変流器 型式等",
     operation_maker: "操作部・複合装置 製造者名",
     operation_model: "操作部・複合装置 型式等",
+    // 別記1 の集計の表（2026-10-20・以前は警告が「kind（2行目）」と英語のまま出ていた）
+    kind: "器種名",
+    // 別記15 の見出しの欄（2026-10-20）
+    install_floor: "設置階",
+    install_place: "設置場所",
     // 測定機器の機器名。★payload のキーは "name" だが、総括表の設備名も "name" なので、
     //   表記を引くキーを分けている（CellRef.labelKey）。入力欄は placeholder だけ（check-field-labels.py で除外）
     device_name: "測定機器 機器名",

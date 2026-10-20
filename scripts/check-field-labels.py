@@ -52,6 +52,10 @@ EXEMPT = {"content", "bad_content", "action_content", "equipment_name", "notes",
           # 点検設備名の欄（別記11の1・11の2・12・14・22）。同じく設定の一覧（extraFields）から {field.label} で描く
           "amplifier_model", "receiver_maker", "receiver_model", "repeater_maker", "repeater_model",
           "ct_maker", "ct_model", "operation_maker", "operation_model",
+          # 別記15 の見出しの欄（設置階・設置場所）。同じく extraFields から {field.label} で描く
+          "install_floor", "install_place",
+          # 別記1 の集計の表の器種名。入力画面では表の見出し（<th>器種名</th>）で、<Label> ではない
+          "kind",
           # 測定機器の機器名。payload のキーは "name"（表記を引くキーだけ device_name・CellRef.labelKey）。入力欄は placeholder だけ
           "device_name"}
 

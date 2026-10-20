@@ -338,6 +338,9 @@ export async function POST(req: NextRequest) {
         }
 
         drawHeader(page1, p1Height)
+        // 設置階・設置場所（その1 の見出しの下・雛形の実測: 値の欄 x 159.8〜529.6 / 設置階 y 234.0〜259.8 / 設置場所 y 260.28〜285.96）
+        drawInCell(page1, p1Height, body.extra_fields?.install_floor, 159.8, 234.0, 369.8, 25.8, 8.0, { at: { column: "install_floor" } })
+        drawInCell(page1, p1Height, body.extra_fields?.install_place, 159.8, 260.28, 369.8, 25.68, 8.0, { at: { column: "install_place" } })
 
         drawResultRows(page1, p1Height, body.page1_rows ?? [], P1_ROW_BOUNDS, {
             rowsKey: "page1_rows",

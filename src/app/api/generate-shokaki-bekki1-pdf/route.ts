@@ -384,7 +384,9 @@ export async function POST(req: NextRequest) {
 
             MARK_KEYS.forEach((k, colIndex) => {
                 if (!row?.marks?.[k]) return
-                if (i >= 18) return // 簡易消化用具行（外形・水量等）はマーク列なし
+                // 簡易消火用具の行（外形・水量等＝19〜）はマーク列なし。★18（消火器の耐圧性能）には A〜F の欄がある
+                //   （以前は 18 から省いていて、耐圧性能の種別が描けなかった・2026-10-20 の記入漏れ点検）
+                if (i >= 19) return
                 const col = P2_TYPE_COLS[colIndex]
                 drawMark(page2, p2Height, "\u25CB", col.x, top, col.w, h)
             })
@@ -434,7 +436,14 @@ export async function POST(req: NextRequest) {
             const row = summaryRows[i]
             const top = summaryBounds[i]
             const h = summaryBounds[i + 1] - summaryBounds[i]
-            drawInCell(page2, p2Height, row.kind,          65.5, top, 76.8, h, 7.4, { align: "center" })
+            // ★器種名は欄が狭い（76.8pt）。1 行で 5pt を割るときだけ 2 行にする（2026-10-20 の本番の通しチェック:
+            //   「粉末(ABC)蓄圧式 50型（車載式）」が 4.7pt になった。drawOrWrapWhenTiny は測定機器の機器名と同じ部品）
+            const kindAt = { rowsKey: "summary_rows", row: i, column: "kind" }
+            drawOrWrapWhenTiny({
+                page: page2, pageHeight: p2Height, fonts, text: row.kind, cellX: 65.5, cellTopFromTop: top, cellW: 76.8, cellH: h, fontSize: 7.4,
+                single: { paddingX: 3, paddingY: 2, minFontSize: 3.5 }, at: kindAt,
+                drawSingle: () => drawInCell(page2, p2Height, row.kind, 65.5, top, 76.8, h, 7.4, { align: "center", at: kindAt }),
+            })
             drawInCell(page2, p2Height, row.installed,    142.3, top, 77.5, h, 7.4, { align: "center" })
             drawInCell(page2, p2Height, row.inspected,    219.8, top, 77.6, h, 7.4, { align: "center" })
             drawInCell(page2, p2Height, row.passed,       297.4, top, 77.4, h, 7.4, { align: "center" })

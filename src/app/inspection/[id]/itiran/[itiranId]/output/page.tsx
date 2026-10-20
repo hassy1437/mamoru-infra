@@ -124,7 +124,9 @@ export default async function OutputPage({
         { label: "報告書（様式第１）", ready: true, attention: readiness.missing.length > 0 },
         { label: "総括表", ready: true, attention: readiness.missing.length > 0 || flagged.has("soukatsu_bad_detail") },
         { label: "点検者一覧表", ready: true, attention: flagged.has("inspector1_name") || flagged.has("inspector1_license") },
-        ...applicableSteps.map((step) => ({
+        // ★綴じる順（様式番号の順・src/lib/build-merged-report.ts と同じ）に並べる。
+        //   以前は入力の順（1→12〜22→2〜11）のままで、一覧と実際の PDF の順が違っていた（2026-10-20 の本番の通しチェック）
+        ...[...applicableSteps].sort((a, b) => PDF_MERGE_CONFIG[a.id].formNo - PDF_MERGE_CONFIG[b.id].formNo).map((step) => ({
             label: step.title,
             ready: !!bekkiPayloads[step.id],
             attention: flagged.has(`bekki_bad_content:${step.id}`),
@@ -283,10 +285,20 @@ export default async function OutputPage({
                         </div>
                     )}
 
+                    {/* ★確定できない（業者登録の承認前・解約日を迎えた など）ときは、押す前に理由を出す。
+                        以前は押せるように見えて、理由は押したあとにしか出なかった（2026-10-20 の本番の通しチェック） */}
+                    {!canDownloadPdf(finalization) && !needsFinalizeOnOutput(finalization) && (
+                        <p id="pdf-gate-note" role="note" className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm leading-relaxed text-amber-900">
+                            <Lock className="mt-0.5 h-4 w-4 shrink-0" />
+                            <span>{pdfGateMessage(finalization)}</span>
+                        </p>
+                    )}
+
                     <div className="pt-2">
                         <CombinedPdfButton
                             canDownload={canDownloadPdf(finalization)}
                             gateMessage={pdfGateMessage(finalization)}
+                            gateNoteId={!canDownloadPdf(finalization) && !needsFinalizeOnOutput(finalization) ? "pdf-gate-note" : undefined}
                             soukatsuData={sanitizedSoukatsu}
                             itiranData={sanitizedItiran}
                             bekkiPayloads={sanitizedBekkiPayloads}

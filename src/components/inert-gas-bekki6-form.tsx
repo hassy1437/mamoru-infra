@@ -13,6 +13,8 @@ import { BekkiBulkGoodButton } from "@/components/bekki-bulk-good-button"
 import { defectPhraseListId } from "@/lib/defect-phrases"
 import { DefectPhraseDatalists } from "@/components/defect-phrase-datalists"
 import { Input } from "@/components/ui/input"
+import MeasureHeaderInputs from "@/components/measure-header-inputs"
+import { initialMeasureHeaders, rowOwnMeasure, stripRowsCoveredByHeaders, type MeasureHeader } from "@/lib/measure-headers"
 import { BekkiInspectionTypeInput } from "@/components/bekki-inspection-type-input"
 import { BekkiChoiceCheckboxes } from "@/components/bekki-choice-checkboxes"
 import { EQUIPMENT_SYSTEM_CHOICES, choiceRowsOf } from "@/lib/bekki-choice-rows"
@@ -98,6 +100,8 @@ type InertGasBekki6Payload = {
     device1: DeviceState
     device2: DeviceState
     page5_rows: CylinderRowState[]
+    /** その5 の測定の列の見出し（src/lib/measure-headers.ts） */
+    measure_headers: MeasureHeader[]
 }
 
 interface Props {
@@ -398,7 +402,11 @@ export default function InertGasBekki6Form({
     const [page2Rows, setPage2Rows] = useState<RowState[]>(() => hydrateRows(PAGE2_ITEMS.length, saved.page2_rows))
     const [page3Rows, setPage3Rows] = useState<RowState[]>(() => hydrateRows(PAGE3_ITEMS.length, saved.page3_rows))
     const [page4Rows, setPage4Rows] = useState<RowState[]>(() => hydrateRows(PAGE4_ITEMS.length, saved.page4_rows))
-    const [page5Rows, setPage5Rows] = useState<CylinderRowState[]>(() => hydrateCylinders(PAGE5_ROW_COUNT, saved.page5_rows))
+    // ★測定の列の見出し（点検年月日・容器表面温度）。保存に無ければ、行の日付がそろっている測定はそれを初期値にする
+    const [measureHeaders, setMeasureHeaders] = useState<MeasureHeader[]>(() =>
+        initialMeasureHeaders(saved.measure_headers, (saved.page5_rows ?? []) as Record<string, unknown>[], 4))
+    const [page5Rows, setPage5Rows] = useState<CylinderRowState[]>(() =>
+        stripRowsCoveredByHeaders(hydrateCylinders(PAGE5_ROW_COUNT, saved.page5_rows), measureHeaders))
 
     const [saving, setSaving] = useState(false)
     const [loadingPreview, setLoadingPreview] = useState(false)
@@ -430,7 +438,8 @@ export default function InertGasBekki6Form({
         notes,
         device1,
         device2,
-        page5_rows: page5Rows,
+        page5_rows: stripRowsCoveredByHeaders(page5Rows, measureHeaders),
+        measure_headers: measureHeaders,
     }), [
         zoneName,
         equipmentSystem,
@@ -453,6 +462,7 @@ export default function InertGasBekki6Form({
         device1,
         device2,
         page5Rows,
+        measureHeaders,
     ])
 
     const persistDraft = useCallback(async (clearMessage = true) => {
@@ -912,10 +922,11 @@ export default function InertGasBekki6Form({
                 <CardHeader>
                     <CardTitle>（その5）容器ごとの点検結果</CardTitle>
                     <CardDescription>
-                        仕様1〜5（全質量/空質量/消火剤量kg/消火剤量m³/充てん圧力MPa）と測定1〜4 を入力してください。各測定セルは上段に点検年月日、下段に容器表面温度・点検時の消火剤量(kg)または容器内圧力(MPa)を横並びで描画します。
+                        仕様1〜5（全質量/空質量/消火剤量kg/消火剤量m³/充てん圧力MPa）と、測定1〜4 の値（点検時の消火剤量(kg)または容器内圧力(MPa)）を容器ごとに入力してください。点検年月日・容器表面温度は上の見出しに測定ごとに 1 回だけ入れます。
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
+                    <MeasureHeaderInputs headers={measureHeaders} onChange={setMeasureHeaders} withTemp={true} />
                     {/* Desktop: table layout */}
                     <div className="hidden md:block overflow-x-auto border rounded-lg">
                         <table className="w-full text-sm">
@@ -928,10 +939,10 @@ export default function InertGasBekki6Form({
                                     <th className="p-2 border w-24">消火剤量(kg)</th>
                                     <th className="p-2 border w-24">消火剤量(m³)</th>
                                     <th className="p-2 border w-28">充てん圧力(MPa)</th>
-                                    <th className="p-2 border w-44">測定1<br /><span className="text-xs font-normal text-slate-500">日付 / 温度・値</span></th>
-                                    <th className="p-2 border w-44">測定2<br /><span className="text-xs font-normal text-slate-500">日付 / 温度・値</span></th>
-                                    <th className="p-2 border w-44">測定3<br /><span className="text-xs font-normal text-slate-500">日付 / 温度・値</span></th>
-                                    <th className="p-2 border w-44">測定4<br /><span className="text-xs font-normal text-slate-500">日付 / 温度・値</span></th>
+                                    <th className="p-2 border w-44">測定1<br /><span className="text-xs font-normal text-slate-500">値</span></th>
+                                    <th className="p-2 border w-44">測定2<br /><span className="text-xs font-normal text-slate-500">値</span></th>
+                                    <th className="p-2 border w-44">測定3<br /><span className="text-xs font-normal text-slate-500">値</span></th>
+                                    <th className="p-2 border w-44">測定4<br /><span className="text-xs font-normal text-slate-500">値</span></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -962,22 +973,28 @@ export default function InertGasBekki6Form({
                                             const dateKey = `measure${n}_date` as const
                                             const tempKey = `measure${n}_temp` as const
                                             const valueKey = `measure${n}_value` as const
+                                            // ★日付・温度は見出しに書く。この容器だけ違う値が保存にあるときだけ行に出す
+                                            const own = rowOwnMeasure(row, n, measureHeaders[n - 1])
                                             return (
                                                 <td key={`m${n}`} className="p-1 border">
                                                     <div className="space-y-1">
-                                                        <Input
-                                                            value={row[dateKey]}
-                                                            onChange={(e) => updateCylinderField(idx, dateKey, e.target.value)}
-                                                            placeholder={n === 1 ? "2026/02/22" : "日付"}
-                                                            className="h-8 text-xs"
-                                                        />
-                                                        <div className="grid grid-cols-2 gap-1">
+                                                        {own.date && (
                                                             <Input
-                                                                value={row[tempKey]}
-                                                                onChange={(e) => updateCylinderField(idx, tempKey, e.target.value)}
-                                                                placeholder={n === 1 ? "18℃" : "温度"}
+                                                                value={row[dateKey]}
+                                                                onChange={(e) => updateCylinderField(idx, dateKey, e.target.value)}
+                                                                aria-label={`容器${idx + 1} 測定${n} この容器だけの点検年月日`}
                                                                 className="h-8 text-xs"
                                                             />
+                                                        )}
+                                                        <div className={own.temp ? "grid grid-cols-2 gap-1" : ""}>
+                                                            {own.temp && (
+                                                                <Input
+                                                                    value={row[tempKey]}
+                                                                    onChange={(e) => updateCylinderField(idx, tempKey, e.target.value)}
+                                                                    aria-label={`容器${idx + 1} 測定${n} この容器だけの容器表面温度`}
+                                                                    className="h-8 text-xs"
+                                                                />
+                                                            )}
                                                             <Input
                                                                 value={row[valueKey]}
                                                                 onChange={(e) => updateCylinderField(idx, valueKey, e.target.value)}
@@ -1048,29 +1065,33 @@ export default function InertGasBekki6Form({
                                     const dateKey = `measure${n}_date` as const
                                     const tempKey = `measure${n}_temp` as const
                                     const valueKey = `measure${n}_value` as const
+                                    // ★日付・温度は見出しに書く。この容器だけ違う値が保存にあるときだけ行に出す
+                                    const own = rowOwnMeasure(row, n, measureHeaders[n - 1])
                                     return (
                                         <div key={`m${n}-mobile`}>
                                             <div className="text-xs text-slate-500 mb-1">測定 {n}</div>
                                             <div className="space-y-2">
-                                                <div className="space-y-1 min-w-0">
-                                                    <span className="text-xs text-slate-500">日付</span>
-                                                    <Input
-                                                        value={row[dateKey]}
-                                                        onChange={(e) => updateCylinderField(idx, dateKey, e.target.value)}
-                                                        placeholder={n === 1 ? "2026/02/22" : "日付"}
-                                                        className="h-9 text-sm"
-                                                    />
-                                                </div>
-                                                <div className="grid grid-cols-2 gap-2">
+                                                {own.date && (
                                                     <div className="space-y-1 min-w-0">
-                                                        <span className="text-xs text-slate-500">温度</span>
+                                                        <span className="text-xs text-slate-500">この容器だけの点検年月日</span>
                                                         <Input
-                                                            value={row[tempKey]}
-                                                            onChange={(e) => updateCylinderField(idx, tempKey, e.target.value)}
-                                                            placeholder={n === 1 ? "18℃" : "温度"}
+                                                            value={row[dateKey]}
+                                                            onChange={(e) => updateCylinderField(idx, dateKey, e.target.value)}
                                                             className="h-9 text-sm"
                                                         />
                                                     </div>
+                                                )}
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    {own.temp && (
+                                                        <div className="space-y-1 min-w-0">
+                                                            <span className="text-xs text-slate-500">この容器だけの容器表面温度</span>
+                                                            <Input
+                                                                value={row[tempKey]}
+                                                                onChange={(e) => updateCylinderField(idx, tempKey, e.target.value)}
+                                                                className="h-9 text-sm"
+                                                            />
+                                                        </div>
+                                                    )}
                                                     <div className="space-y-1 min-w-0">
                                                         <span className="text-xs text-slate-500">値</span>
                                                         <Input

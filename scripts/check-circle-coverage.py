@@ -71,7 +71,9 @@ EXPECTED_DRAW_SITES = 6
 # ★2026-10-06（#19）: 72 → 88。点検種別の○を描き始めた 8 様式（2・3・4・7・11の1・14・15・20）×
 #   「機器・総合」の 2 つ＝16 個。生成PDFの一覧で 16 個とも 1 ページ目の点検種別の位置にあることを確かめた。
 #   ★重なりは check-printed-overlap が見る（11の1・14・15 の 6 つは名指しの例外）。
-EXPECTED_UNCOVERED = 88
+# ★2026-10-20: 88 → 89。総括表の「総合点検」の○（scripts/fixtures/extra/soukatu_test__sougou）。
+#   それまで総合点検の総括表はどちらのセットにも無く、この○は一度も描かれていなかった
+EXPECTED_UNCOVERED = 89
 
 SET_DIRS = ["tmp/pdf-test-bekki234", "tmp/pdf-test-bekki5678", "tmp/pdf-test-bekki9to12",
             "tmp/pdf-test-bekki13to22", "tmp/pdf-test-extra", "tmp/pdf-realistic"]

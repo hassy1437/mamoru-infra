@@ -8,6 +8,7 @@ import {
     systemFitFailures,
 } from "@/lib/pdf-fit-report"
 import fontkit from "@pdf-lib/fontkit"
+import { coerceMeasureHeaders, measureHeaderDateText, rowOwnMeasure } from "@/lib/measure-headers"
 import fs from "fs"
 import path from "path"
 import {
@@ -115,6 +116,8 @@ type Bekki8Payload = {
     device1?: DeviceRow
     device2?: DeviceRow
     page5_rows?: CylinderRow[]
+    /** その5 の測定の列の見出し（点検年月日）。src/lib/measure-headers.ts */
+    measure_headers?: { date?: string; temp?: string }[]
 }
 
 type DrawOptions = {
@@ -167,10 +170,14 @@ const P4_ROW_BOUNDS = [
     324.33, 345.0,
 ]
 
+// ★その5 の容器の行は雛形の罫線の実測（2026-10-20）。以前は 167.67 から始まっていて、
+//   見出しのすぐ下の 1 行目（136.92〜167.4）を一度も使わず、容器 1 が雛形の 2 行目に描かれていた（20 行のうち 19 行だけ）。
 const P5_ROW_BOUNDS = [
-    167.67, 198.33, 228.33, 259.0, 289.67, 320.33, 350.67, 381.0, 411.67, 442.0,
-    472.67, 503.0, 533.67, 564.33, 594.33, 625.0, 655.67, 686.33, 716.67, 747.33,
+    136.92, 167.4, 197.88, 228.36, 258.84, 289.44, 319.92, 350.4, 380.88, 411.36, 441.84,
+    472.44, 502.92, 533.4, 563.88, 594.36, 624.84, 655.44, 685.92, 716.4, 746.88,
 ]
+/** その5 の「点検年月日」の見出しの欄（測定の列ごと・雛形の実測） */
+const P5_HEADER_DATE = { top: 97.3, h: 19.6 }
 
 const P5_COLS = [64.67, 106.33, 164.33, 211.33, 258.67, 327.0, 359.0, 391.33, 423.67, 455.0, 497.0, 529.33]
 
@@ -424,6 +431,16 @@ export async function POST(req: NextRequest) {
             }
         }
 
+        // ★測定の列の見出し（点検年月日）は列ごとに 1 回（src/lib/measure-headers.ts・2026-10-20）
+        const measureHeaders = coerceMeasureHeaders(body.measure_headers, 6)
+        const drawMeasureHeaders = (page: PDFPage, pageHeight: number) => {
+            measureHeaders.forEach((h, m) => {
+                const x = P5_COLS[5 + m]
+                const w = P5_COLS[6 + m] - x
+                drawInCell(page, pageHeight, measureHeaderDateText(h.date), x, P5_HEADER_DATE.top, w, P5_HEADER_DATE.h, 6.6, { align: "center", paddingX: 1, paddingY: 1, at: { rowsKey: "measure_headers", row: m, column: "date" } })
+            })
+        }
+
         const drawCylinderRows = (
             page: PDFPage,
             pageHeight: number,
@@ -446,7 +463,8 @@ export async function POST(req: NextRequest) {
                 // 測定域 (cols 5-10): 1セル=(date, value) 上下2段
                 // 新キー _date/_value を優先、無ければ旧 measure{N} を value にフォールバック
                 const legacy = [row.measure1, row.measure2, row.measure3, row.measure4, row.measure5, row.measure6]
-                const dates = [row.measure1_date, row.measure2_date, row.measure3_date, row.measure4_date, row.measure5_date, row.measure6_date]
+                // ★日付は見出しと違うときだけ行に描く（同じなら見出しにある・src/lib/measure-headers.ts）
+                const dates = [1, 2, 3, 4, 5, 6].map((n) => rowOwnMeasure(row as Record<string, unknown>, n, measureHeaders[n - 1]).date)
                 const values = [row.measure1_value, row.measure2_value, row.measure3_value, row.measure4_value, row.measure5_value, row.measure6_value]
                 for (let m = 0; m < 6; m += 1) {
                     const c = 5 + m
@@ -454,7 +472,9 @@ export async function POST(req: NextRequest) {
                     const w = P5_COLS[c + 1] - P5_COLS[c]
                     const date = dates[m] ?? ""
                     const value = (values[m] && values[m] !== "") ? values[m] : (legacy[m] ?? "")
-                    drawCellSubRegions(page, pageHeight, [date, value], x, top, w, h, 6.0)
+                    // 値だけならセルいっぱいに、行に日付があれば上下 2 段（以前の保存）
+                    if (date) drawCellSubRegions(page, pageHeight, [date, value], x, top, w, h, 6.0)
+                    else drawWrappedInCell(page, pageHeight, value, x, top, w, h, 6.6)
                 }
             }
         }
@@ -594,6 +614,7 @@ export async function POST(req: NextRequest) {
         drawInCell(page4, p4Height, formatJapaneseDateText(device2.calibrated_at), 417.7, 660.4, 53.8, 20.5, 7.0)
         drawMaker(page4, p4Height, device2.maker, 471.5, 660.4, 57.6, 20.5, 7.0)
 
+        drawMeasureHeaders(page5, p5Height)
         drawCylinderRows(page5, p5Height, body.page5_rows ?? [])
 
         // ⑧ 枠に収まらなかった項目があればPDFを返さずに一覧を返す。

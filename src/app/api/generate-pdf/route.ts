@@ -31,8 +31,16 @@ type GeneratePdfBody = {
     equipment_types?: string[] | null
 }
 
-/** 宛名の右端（日付の年の数字の手前）。scripts/check-houkoku-layout.mjs が実際に描いて重ならないことを確かめる */
-const FIRE_DEPARTMENT_RIGHT_X = 370
+/**
+ * 宛名の行（2026-10-20・録音 102）。★雛形 public/PDF/bekki_houkoku.pdf から実測した刷り込みの位置（上からの pt）:
+ *   「消防長（消防署長）（市町村長）」x 82.4–256.4・y 107.3–119.3 ／「殿」x 268.4–280.4（同じ行）
+ *   ★日付の行（年の数字のベースライン 100.68・上端 90.4）と同じ字の大きさなので、ベースラインは上端 + 10.28。
+ * scripts/check-houkoku-layout.mjs が実際に描いて、刷り込みを白で覆うこと・「殿」に重ならないこと・7pt 以上を確かめる
+ */
+const ADDRESSEE_PRINTED = { x0: 82.4, y0: 107.3, x1: 256.4, y1: 119.3 }
+const ADDRESSEE_BASELINE = 117.58
+/** 宛名の右端（「殿」の左端 268.4 の 4pt 手前） */
+const FIRE_DEPARTMENT_RIGHT_X = 264
 
 const toText = (value: unknown) => {
     if (value === null || value === undefined) return undefined
@@ -161,7 +169,22 @@ export async function POST(req: NextRequest) {
         // ★幅は日付（年の数字・左端 約 379）の手前 370 まで（2026-10-19）。宛名は総括表の欄から入るようになり
         //   （lib/soukatsu-cover.ts）、幅を決めていなかったので、長い宛名が日付に重なり右の罫線の先まで出ていた
         //   （全角 60 字で右端 598・実測）。入らないときは縮める。画面の上限（全角 30 字）なら 10pt で収まる。
-        draw(toText(body.fire_department_name), 70.4, 95, 12, FIRE_DEPARTMENT_RIGHT_X - 70.4)
+        //
+        // ★2026-10-20（録音 102・橋本さんの決定）: 宛名は「名前＋敬称（消防署長・消防長・市町村長から選ぶ）」になり
+        //   （lib/soukatsu-cover.ts）、刷り込み「消防長（消防署長）（市町村長）」を白で覆って、その行に「〇〇消防署長」を描く。
+        //   「殿」の刷り込みは残す。以前は表題の下の別の行（y=95）に名前だけを描き、刷り込みが全部残っていた。
+        //   ★宛名が空なら覆わない（刷り込みのまま・手書き用）。
+        const fireDepartment = toText(body.fire_department_name)
+        if (fireDepartment) {
+            firstPage.drawRectangle({
+                x: ADDRESSEE_PRINTED.x0 - 1,
+                y: height - (ADDRESSEE_PRINTED.y1 + 1.5),
+                width: ADDRESSEE_PRINTED.x1 - ADDRESSEE_PRINTED.x0 + 2,
+                height: ADDRESSEE_PRINTED.y1 - ADDRESSEE_PRINTED.y0 + 3,
+                color: rgb(1, 1, 1),
+            })
+            draw(fireDepartment, 70.4, ADDRESSEE_BASELINE, 12, FIRE_DEPARTMENT_RIGHT_X - 70.4)
+        }
 
         // ★右端は各行の記入用の下線の右端（テンプレート実測・2026-10-07）。
         //   住所 261.48–513.48 / 氏名 262.38–512.58 / 電話番号 261.48–513.48（いずれも y≈153〜188 の細い矩形）。

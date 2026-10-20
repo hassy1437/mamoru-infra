@@ -10,8 +10,8 @@
 // ■ 検査すること（罫線・下線は雛形 public/PDF/bekki_houkoku.pdf から毎回測る。数値の写しは持たない）
 //   1. 届出者の住所・氏名・電話番号: 描いた文字の右端が、その行の下線の右端を越えない（長い値で満杯にして見る）
 //   2. 所在地・名称・用途: 値のかたまりの縦の中心が、欄（上下の横罫線）の中心から 2pt 以内（1 行・2 行の両方）
-//   3. 宛名（2026-10-19）: 右端が日付（年の数字）の左端より 4pt 以上手前・7pt 以上の大きさ
-//      ★宛名は総括表の欄から入るようになり、幅を決めていなかったので、長い宛名が日付に重なり罫線の先まで出ていた。
+//   3. 宛名（2026-10-19・★2026-10-20 に刷り込みの行へ移した・録音 102）: 刷り込み「消防長（消防署長）（市町村長）」を
+//      白で覆い、その行に描く。右端が「殿」の左端より 2pt 以上手前・7pt 以上の大きさ。★宛名が空なら覆わない（手書き用）
 //      画面の上限（lib/soukatsu-cover.ts の FIRE_DEPARTMENT_NAME_MAX）いっぱいの全角で描いて測る
 //
 // 使い方: node scripts/check-houkoku-layout.mjs [--self-test]
@@ -30,7 +30,8 @@ if (!NAME_MAX) throw new Error(`${COVER_LIB} に FIRE_DEPARTMENT_NAME_MAX が見
 
 const BASE = {
     report_date: "2026-10-07",
-    fire_department_name: "大阪市消防局",
+    // ★名前＋敬称（2026-10-20・録音 102・lib/soukatsu-cover.ts）
+    fire_department_name: "大阪市北消防署長",
     notifier_phone: "06-1234-5678（内線204）",
     building_usage: "(1)イ",
     floor_above: "10",
@@ -50,6 +51,8 @@ const CASES = [
         // ★画面で入れられるいちばん長い宛名（全角）
         fire_department_name: "消".repeat(NAME_MAX),
     }],
+    // ★宛名が空（刷り込みのまま・手書き用）
+    ["宛名なし", { ...BASE, notifier_address: "大阪市北区梅田1-1-1", notifier_name: "検証防災株式会社", building_address: "大阪市北区梅田1-1-1", building_name: "検証ビル", fire_department_name: "" }],
 ]
 
 const MEASURE = String.raw`
@@ -72,14 +75,28 @@ def lines_of(cell):
     ys = sorted(s["bbox"][1] for s in cell)
     return 1 + sum(1 for a, b in zip(ys, ys[1:]) if b - a > 4)
 res = {"underlines": [], "cells": []}
-# 宛名（左端 70.4・表題と「消防長…殿」の間）と、日付の年の数字（右上・年の刷り込みの左）
-head = [s for s in spans if 78 < (s["bbox"][1] + s["bbox"][3]) / 2 < 104]
-name = [s for s in head if s["bbox"][0] < 300]
-year = [s for s in head if 330 < s["bbox"][0] < 405]
-res["name"] = {"right": round(max((s["bbox"][2] for s in name), default=0), 2),
-               "size": round(min((s["size"] for s in name), default=0), 2),
-               "text": "".join(s["text"] for s in name)[:12]}
-res["yearLeft"] = round(min((s["bbox"][0] for s in year), default=0), 2)
+# 宛名（2026-10-20・録音 102）: 刷り込み「消防長（消防署長）（市町村長）」の行に描き、刷り込みは白で覆う。「殿」は残す
+# ★雛形の文字は取り出すと化ける（ToUnicode が無い）ので、文字ではなく位置で見つける: 宛名の行の刷り込みの左＝敬称、右＝「殿」
+#   ★span は行ひとまとまり（先頭の空白から「殿」まで）なので、語（words）で分ける
+tline = sorted([w for w in tpl.get_text("words") if 104 < (w[1] + w[3]) / 2 < 124 and w[0] < 300], key=lambda w: w[0])
+pb = tuple(tline[0][:4]) if len(tline) >= 2 else None
+tono_left = round(tline[-1][0], 2) if len(tline) >= 2 else 0
+line = [s for s in spans if 104 < (s["bbox"][1] + s["bbox"][3]) / 2 < 124 and s["bbox"][0] < 268]
+res["name"] = {"right": round(max((s["bbox"][2] for s in line), default=0), 2),
+               "size": round(min((s["size"] for s in line), default=0), 2),
+               "text": "".join(s["text"] for s in line)[:12]}
+res["tonoLeft"] = tono_left
+# 白で覆っているか（塗りが白の矩形が刷り込みの文字の範囲をすべて含む）
+covered = False
+if pb:
+    for dr in out.get_drawings():
+        fill = dr.get("fill")
+        if fill and all(c > 0.99 for c in fill):
+            r = dr["rect"]
+            if r.x0 <= pb[0] + 0.5 and r.y0 <= pb[1] + 0.5 and r.x1 >= pb[2] - 0.5 and r.y1 >= pb[3] - 0.5:
+                covered = True
+res["covered"] = covered
+res["printedFound"] = bool(pb)
 for u in underlines:
     row = [s for s in spans if s["bbox"][0] > 311 and u.y0 - 16 < s["bbox"][3] < u.y0 + 3]
     res["underlines"].append({"y": round(u.y0, 2), "end": round(u.x1, 2),
@@ -117,10 +134,14 @@ async function measure(routePath) {
             const mid = (c.top + c.bottom) / 2
             if (Math.abs(c.center - mid) > 2) problems.push(`${label}: ${cellNames[i]}（${c.lines} 行）の縦の中心 ${c.center} が欄の中心 ${mid.toFixed(2)} から ${(c.center - mid).toFixed(2)}pt ずれている「${c.text}」`)
         })
-        if (!m.name.right) problems.push(`${label}: 宛名が描かれていない`)
-        else if (!m.yearLeft) problems.push(`${label}: 日付（年）が描かれていない`)
+        if (!m.printedFound || !m.tonoLeft) problems.push(`${label}: 雛形の宛名の刷り込み（敬称・殿）が見つからない`)
+        else if (label === "宛名なし") {
+            if (m.covered) problems.push("宛名が空なのに刷り込みを白で覆っている（手書きできない）")
+            if (m.name.right) problems.push(`宛名が空なのに宛名の行に何か描いている「${m.name.text}」`)
+        } else if (!m.name.right) problems.push(`${label}: 宛名が描かれていない`)
         else {
-            if (m.name.right > m.yearLeft - 4) problems.push(`${label}: 宛名の右端 ${m.name.right} が日付（年）の左端 ${m.yearLeft} に重なる・近すぎる「${m.name.text}」`)
+            if (!m.covered) problems.push(`${label}: 刷り込み「消防長（消防署長）（市町村長）」を白で覆っていない（宛名と重なる）`)
+            if (m.name.right > m.tonoLeft - 2) problems.push(`${label}: 宛名の右端 ${m.name.right} が「殿」の左端 ${m.tonoLeft} に重なる・近すぎる「${m.name.text}」`)
             if (m.name.size < 7) problems.push(`${label}: 宛名が ${m.name.size}pt まで縮んでいる（下限 7pt）「${m.name.text}」`)
         }
         if (label === "長い値" && m.cells[0]?.lines !== 2) problems.push(`長い値: 所在地が 2 行に折り返されていない（${m.cells[0]?.lines} 行）＝ 2 行の中央寄せを見られていない`)
@@ -147,7 +168,9 @@ if (SELF_TEST) {
     }
     const mutants = [
         ["届出者の住所を右の縦罫線まで描く（直す前の幅）", "drawNotifier(toText(body.notifier_address), 151.7, 513.48)", "drawNotifier(toText(body.notifier_address), 151.7, 531.0)", "届出者の住所が下線の右端"],
-        ["宛名の幅を決めない（直す前）", "draw(toText(body.fire_department_name), 70.4, 95, 12, FIRE_DEPARTMENT_RIGHT_X - 70.4)", "draw(toText(body.fire_department_name), 70.4, 95, 12)", "宛名の右端"],
+        ["宛名の幅を決めない（「殿」まで描く）", "draw(fireDepartment, 70.4, ADDRESSEE_BASELINE, 12, FIRE_DEPARTMENT_RIGHT_X - 70.4)", "draw(fireDepartment, 70.4, ADDRESSEE_BASELINE, 12)", "宛名の右端"],
+        ["刷り込みを白で覆わない（直す前）", "firstPage.drawRectangle({", "void ({", "白で覆っていない"],
+        ["宛名が空でも覆う（手書きできない）", "if (fireDepartment) {", "if (true) {", "宛名が空なのに刷り込みを白で覆っている"],
         ["所在地・名称・用途を上寄せに戻す", 'verticalAlign: "center" | "top" = "center"', 'verticalAlign: "center" | "top" = "top"', "所在地（1 行）の縦の中心"],
     ]
     for (const [label, from, to, expect] of mutants) {
@@ -159,13 +182,13 @@ if (SELF_TEST) {
         }
         console.log(`  陽性対照: ${label} → 検出`)
     }
-    console.log("  陰性対照: 短い値・長い値の両方で、届出者は下線の内側・所在地等は欄の中央・宛名は日付の手前")
+    console.log("  陰性対照: 短い値・長い値の両方で、届出者は下線の内側・所在地等は欄の中央・宛名は刷り込みを覆って「殿」の手前・宛名なしは刷り込みのまま")
     console.log("SELF_TEST_OK")
     process.exit(0)
 }
 
 const problems = await measure(ROUTE)
-console.log(`報告書の値の置き場所を検査: 届出者 3 行（下線の右端）・所在地/名称/用途（縦の中央）・宛名（日付の手前・全角 ${NAME_MAX} 字）× 短い値・長い値`)
+console.log(`報告書の値の置き場所を検査: 届出者 3 行（下線の右端）・所在地/名称/用途（縦の中央）・宛名（刷り込みを覆い「殿」の手前・全角 ${NAME_MAX} 字・空なら覆わない）× 短い値・長い値・宛名なし`)
 if (problems.length) {
     console.log("★NG:")
     for (const p of problems) console.log("   ", p)

@@ -9,7 +9,7 @@
 // ■ 検査すること
 //   1. 表紙へ渡す値（build-merged-report.ts）: report_date は総括表の report_date・宛名を渡す・点検日を渡さない
 //   2. 作る画面・直す画面の両方: 欄を出し、保存に入れる
-//   3. 作る画面: 報告年月日を空で始める（点検日や今日で埋めない）
+//   3. 作る画面: 報告年月日を★今日（日本時間）で始める（2026-10-20・録音 102 で「空で始める」から変えた）。★点検日では始めない
 //
 // 使い方: node scripts/check-soukatsu-cover.mjs [--self-test]
 import fs from "fs"
@@ -35,8 +35,9 @@ const judge = (files) => {
         if (!/\.\.\.coverFieldsForSave\(reportDate, fireDepartmentName\)/.test(src))
             problems.push(`${f}: 保存に報告年月日・宛名（coverFieldsForSave）を入れていない`)
     }
-    if (!/const \[reportDate, setReportDate\] = useState\(""\)/.test(files[NEW_FORM]))
-        problems.push(`${NEW_FORM}: 報告年月日を空で始めていない（点検日や今日で埋めない）`)
+    // ★2026-10-20（録音 102・橋本さんの決定）: 今日（日本時間）で始める。点検日で始めると、点検日を印字していた元の誤りに戻る
+    if (!/const \[reportDate, setReportDate\] = useState\(\(\) => jstTodayYmd\(\)\)/.test(files[NEW_FORM]))
+        problems.push(`${NEW_FORM}: 報告年月日を今日（日本時間・jstTodayYmd）で始めていない（点検日では始めない）`)
     return problems
 }
 
@@ -54,7 +55,8 @@ if (process.argv.includes("--self-test")) {
         ["作る画面で保存しない", NEW_FORM, "...coverFieldsForSave(reportDate, fireDepartmentName),", "", `${NEW_FORM}: 保存に`],
         ["直す画面で保存しない", EDIT_FORM, "...coverFieldsForSave(reportDate, fireDepartmentName),", "", `${EDIT_FORM}: 保存に`],
         ["直す画面で欄を出さない", EDIT_FORM, "<SoukatsuCoverInputs", "<div", `${EDIT_FORM}: 表紙の欄`],
-        ["報告年月日を点検日で始める", NEW_FORM, 'const [reportDate, setReportDate] = useState("")', "const [reportDate, setReportDate] = useState(initialInspectionDate)", "空で始めていない"],
+        ["報告年月日を点検日で始める", NEW_FORM, "const [reportDate, setReportDate] = useState(() => jstTodayYmd())", "const [reportDate, setReportDate] = useState(initialInspectionDate)", "今日（日本時間・jstTodayYmd）で始めていない"],
+        ["報告年月日を空で始める（録音 101 の決定に戻る）", NEW_FORM, "const [reportDate, setReportDate] = useState(() => jstTodayYmd())", 'const [reportDate, setReportDate] = useState("")', "今日（日本時間・jstTodayYmd）で始めていない"],
     ]
     for (const [label, file, from, to, expect] of mutants) {
         if (!files[file].includes(from)) {

@@ -74,7 +74,8 @@ export default function SoukatsuForm({ property, previousData, copyFromId, sourc
     const [endManuallyEdited, setEndManuallyEdited] = useState(isClone)
     // ★表紙（lib/soukatsu-cover.ts）。報告年月日は点検ごとに違うので、前回からも写さず空で始める。
     //   宛名（管轄の消防署）は建物で決まるので、前回の報告書があればそこから写す。
-    const [reportDate, setReportDate] = useState("")
+    // ★報告年月日は最初から今日（日本時間）を入れる（2026-10-20・録音 102）。消せば空欄で印字（手書き用）
+    const [reportDate, setReportDate] = useState(() => jstTodayYmd())
     const [fireDepartmentName, setFireDepartmentName] = useState(src("fire_department_name"))
 
     // 届出者情報（複製時は複製元 soukatsu、通常は物件マスターから初期化）

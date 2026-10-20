@@ -29,6 +29,8 @@ import {
 } from "@/lib/bekki-form-normalization"
 import { bekkiWitnessInitial } from "@/lib/bekki-witness"
 import CameraInput from "@/components/camera-input"
+import DeviceTableInputs from "@/components/device-table-inputs"
+import { resolveDeviceTable, type DeviceTableRow } from "@/lib/bekki-device-table"
 import { pdfRequestError, pdfErrorText } from "@/lib/pdf-request-error"
 import { soukatsuPdfGate } from "@/lib/pdf-gate-client"
 
@@ -73,6 +75,8 @@ type ShokasenBekki2Payload = {
     notes: string
     device1: DeviceState
     device2: DeviceState
+    /** 測定機器の 3 行 × 左右（6 台・lib/bekki-device-table.ts）。device1/device2 は古い保存の形（いまは空で保存する） */
+    device_table: DeviceTableRow[]
 }
 
 interface Props {
@@ -242,16 +246,6 @@ const splitLegacyHoseRow = (row: RowState): RowState => {
     return { ...row, content: len, hose_count: count, nozzle_dia: dia }
 }
 
-const coerceDevice = (value: unknown): DeviceState => {
-    const source = (value ?? {}) as Partial<DeviceState>
-    return {
-        name: coerceString(source.name),
-        model: coerceString(source.model),
-        calibrated_at: coerceString(source.calibrated_at),
-        maker: coerceString(source.maker),
-    }
-}
-
 const hydrateRows = (count: number, source?: unknown[]): RowState[] => {
     return Array.from({ length: count }, (_, i) => coerceRow(source?.[i] ?? createEmptyRow()))
 }
@@ -292,8 +286,10 @@ export default function ShokasenBekki2Form({
     const [motorModel, setMotorModel] = useState(coerceString(saved.motor_model))
     const [notes, setNotes] = useState(coerceString(saved.notes))
 
-    const [device1, setDevice1] = useState<DeviceState>(coerceDevice(saved.device1 ?? createEmptyDevice()))
-    const [device2, setDevice2] = useState<DeviceState>(coerceDevice(saved.device2 ?? createEmptyDevice()))
+    // ★測定機器は紙の 3 行 × 左右（6 台）。古い保存（device1/device2）は 1 行目の左右に読む（ルートと同じ関数）
+    const [deviceTableRows, setDeviceTableRows] = useState<DeviceTableRow[]>(() => resolveDeviceTable(saved, "plain"))
+    const updateDeviceTableRow = (index: number, field: keyof DeviceTableRow, value: string) =>
+        setDeviceTableRows((rows) => rows.map((r, i) => (i === index ? { ...r, [field]: value } : r)))
 
     const [page1Rows, setPage1Rows] = useState<RowState[]>(() => hydrateRows(PAGE1_ITEMS.length, saved.page1_rows))
     const [page2Rows, setPage2Rows] = useState<RowState[]>(() => hydrateRows(PAGE2_ITEMS.length, saved.page2_rows))
@@ -330,8 +326,10 @@ export default function ShokasenBekki2Form({
         page2_rows: page2Rows,
         page3_rows: page3Rows,
         notes,
-        device1,
-        device2,
+        // ★古い2行は空にして保存する（同じ機器を二重に持たない・ルートは device_table を読む）
+        device1: createEmptyDevice(),
+        device2: createEmptyDevice(),
+        device_table: deviceTableRows,
     }), [
         formName,
         fireManager,
@@ -353,8 +351,7 @@ export default function ShokasenBekki2Form({
         page2Rows,
         page3Rows,
         notes,
-        device1,
-        device2,
+        deviceTableRows,
     ])
 
     const persistDraft = useCallback(async (clearMessage = true) => {
@@ -912,28 +909,7 @@ export default function ShokasenBekki2Form({
                         <Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
                     </div>
 
-                    <div className="grid md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <p className="font-medium text-sm">測定機器 1</p>
-                            <Input placeholder="機器名" value={device1.name} onChange={(e) => setDevice1((p) => ({ ...p, name: e.target.value }))} />
-                            <Input placeholder="型式" value={device1.model} onChange={(e) => setDevice1((p) => ({ ...p, model: e.target.value }))} />
-                            <div className="space-y-1">
-                                <Label className="text-xs font-normal text-slate-500">校正年月日</Label>
-                                <Input type="date" value={toDateInputValue(device1.calibrated_at)} onChange={(e) => setDevice1((p) => ({ ...p, calibrated_at: e.target.value }))} />
-                            </div>
-                            <Input placeholder="製造者名" value={device1.maker} onChange={(e) => setDevice1((p) => ({ ...p, maker: e.target.value }))} />
-                        </div>
-                        <div className="space-y-2">
-                            <p className="font-medium text-sm">測定機器 2</p>
-                            <Input placeholder="機器名" value={device2.name} onChange={(e) => setDevice2((p) => ({ ...p, name: e.target.value }))} />
-                            <Input placeholder="型式" value={device2.model} onChange={(e) => setDevice2((p) => ({ ...p, model: e.target.value }))} />
-                            <div className="space-y-1">
-                                <Label className="text-xs font-normal text-slate-500">校正年月日</Label>
-                                <Input type="date" value={toDateInputValue(device2.calibrated_at)} onChange={(e) => setDevice2((p) => ({ ...p, calibrated_at: e.target.value }))} />
-                            </div>
-                            <Input placeholder="製造者名" value={device2.maker} onChange={(e) => setDevice2((p) => ({ ...p, maker: e.target.value }))} />
-                        </div>
-                    </div>
+                    <DeviceTableInputs kind="plain" rows={deviceTableRows} onChange={updateDeviceTableRow} />
                 </CardContent>
             </Card>
 

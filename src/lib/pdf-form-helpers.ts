@@ -1,4 +1,4 @@
-import { PDFFont, PDFPage, popGraphicsState, pushGraphicsState, rgb, setCharacterSqueeze } from "pdf-lib"
+import { PDFFont, PDFPage, concatTransformationMatrix, popGraphicsState, pushGraphicsState, rgb, setCharacterSqueeze } from "pdf-lib"
 import type { CellAt, CellRef, FitCollector } from "./pdf-fit-report"
 
 // ★描画位置の型はルート側でも使う（薄い包みの引数）。1か所から出す。
@@ -893,6 +893,28 @@ export const drawOrWrapWhenTiny = (args: {
         return
     }
     args.drawSingle()
+}
+
+/**
+ * fn で描くものを dy pt だけ下へずらして描く（2026-10-20）。
+ * 同じ形の行が続く表（測定機器の 3 行など）で、1 行目の描き方（座標・大きさ・折り返し）をそのまま 2 行目以降に使う。
+ * ★q … Q の中で座標系を動かすだけ。fn の中の座標は 1 行目のまま書く
+ * ★fit を渡すと、収まらなかった報告の位置もずらす（報告は位置で重複を畳むので、ずらさないと 2・3 行目が 1 行目と同じ欄として消える）
+ */
+export const drawShiftedDown = (page: PDFPage, dy: number, fn: () => void, fit?: FitCollector) => {
+    if (!dy) {
+        fn()
+        return
+    }
+    const report = fit?.report
+    if (fit && report) fit.report = (text, fits, at) => report(text, fits, at && { ...at, cellTopFromTop: at.cellTopFromTop + dy })
+    page.pushOperators(pushGraphicsState(), concatTransformationMatrix(1, 0, 0, 1, 0, -dy))
+    try {
+        fn()
+    } finally {
+        page.pushOperators(popGraphicsState())
+        if (fit && report) fit.report = report
+    }
 }
 
 export const drawRightAt = ({

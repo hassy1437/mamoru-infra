@@ -1,5 +1,5 @@
 /**
- * 測定機器の表を「紙の表どおり」に扱う（様式11の1・11の2・#23・2026-10-06）。
+ * 測定機器の表を「紙の表どおり」に扱う（様式11の1・11の2・#23・2026-10-06。ほかの 21 様式も 2026-10-20 から＝plain）。
  *
  * ■ なぜ要るか
  *   この2様式は測定機器の表に機器名が刷り込んである（11の1 は 7 種・11の2 は加ガス試験器）。
@@ -8,7 +8,7 @@
  *   行に載り、残りの機器は入力する手段が無かった（2026-10-05 の通し確認で実測）。
  *
  * ■ 形
- *   device_table: 表の行を「左列の上から → 右列の上から」並べた配列（11の1・11の2 とも 5 行 × 2 列）。
+ *   device_table: 表の行を「左列の上から → 右列の上から」並べた配列（11の1・11の2 とも 5 行 × 2 列・plain は 3 行 × 2 列）。
  *   刷り込みの行の name は刷り込みの機器名、空欄の行は業者が機器名を書く。
  *   ★キーを device_*rows* にしない（"_rows" で終わるキーは点検項目の行として扱われる・pdf-fit-report の collectStrings）。
  *
@@ -29,12 +29,21 @@ export const DEVICE_TABLE_PRINTED = {
         "加ガス試験器", null, null, null, null,
         null, null, null, null, null,
     ],
+    // ★ほかの 21 様式（2026-10-20）: 刷り込みの機器名は無く、3 行 × 左右（6 台）。以前は 1 行目の左右（2 台）しか使えなかった
+    //   （記入漏れの総点検。行の位置は各ルートの DEVICE_ROW_SHIFTS＝雛形の罫線の実測）
+    plain: [
+        null, null, null,
+        null, null, null,
+    ],
 } as const satisfies Record<string, readonly (string | null)[]>
 
 export type DeviceTableKind = keyof typeof DEVICE_TABLE_PRINTED
 
-/** 1列の行数（左右とも 5 行） */
+/** 1列の行数（11の1・11の2 は左右とも 5 行） */
 export const DEVICE_TABLE_COLUMN_ROWS = 5
+
+/** 表の種類ごとの 1 列の行数 */
+export const DEVICE_TABLE_ROWS_PER_COLUMN: Record<DeviceTableKind, number> = { bekki11_1: 5, bekki11_2: 5, plain: 3 }
 
 const text = (v: unknown) => (typeof v === "string" ? v : v == null ? "" : String(v))
 const sameName = (a: string, b: string) =>
@@ -67,19 +76,21 @@ export function resolveDeviceTable(payload: unknown, kind: DeviceTableKind): Dev
     }
 
     const used = new Set<number>()
-    const legacy: [unknown, number][] = [[p.device1, 0], [p.device2, DEVICE_TABLE_COLUMN_ROWS]]
+    const legacy: [unknown, number][] = [[p.device1, 0], [p.device2, DEVICE_TABLE_ROWS_PER_COLUMN[kind]]]
+    // ★刷り込みの機器名が無い表（plain）は、名前に関係なく以前と同じ行（device1 は左列の先頭・device2 は右列の先頭）
+    const anyPrinted = printed.some((n) => n !== null)
     for (const [raw, fallback] of legacy) {
         const d = (raw ?? {}) as Partial<Record<keyof DeviceTableRow, unknown>>
         if (!hasValue(d)) continue
         const name = text(d.name).trim()
         let at = -1
-        if (name) {
+        if (name && anyPrinted) {
             at = printed.findIndex((n, i) => n !== null && !used.has(i) && sameName(n, name))
             if (at < 0) at = printed.findIndex((n, i) => n === null && !used.has(i))
         } else if (!used.has(fallback)) {
             at = fallback
         }
-        // ★空欄の行は 11の1 で 3・11の2 で 9 あり、古い保存は 2 台までなので -1 にはならない
+        // ★空欄の行は 11の1 で 3・11の2 で 9・plain で 6 あり、古い保存は 2 台までなので -1 にはならない
         if (at < 0) throw new Error(`測定機器の表に置く行が無い（${kind}・${name || "機器名なし"}）`)
         used.add(at)
         rows[at] = {

@@ -8,6 +8,7 @@ import {
     systemFitFailures,
 } from "@/lib/pdf-fit-report"
 import fontkit from "@pdf-lib/fontkit"
+import { DEVICE_TABLE_ROWS_PER_COLUMN, resolveDeviceTable } from "@/lib/bekki-device-table"
 import fs from "fs"
 import path from "path"
 import {
@@ -32,6 +33,7 @@ FIT_EPSILON,
     type CellRef,
     type CellAt,
     drawOrWrapWhenTiny,
+    drawShiftedDown,
 } from "@/lib/pdf-form-helpers"
 
 /**
@@ -101,6 +103,8 @@ type Bekki5Payload = {
     notes?: string
     device1?: DeviceRow
     device2?: DeviceRow
+    /** 測定機器の 3 行 × 左右（6 台）。device1/device2 は古い保存の形（読み方は lib/bekki-device-table.ts） */
+    device_table?: unknown
 }
 
 type DrawOptions = {
@@ -631,37 +635,44 @@ export async function POST(req: NextRequest) {
 
         drawWrappedInCell(page4, p4Height, body.notes, 85, 566, 444, 63, 7.3)
 
-        const device1 = body.device1 ?? {}
-        const device2 = body.device2 ?? {}
-        // ★測定機器の機器名も、1 行では 5pt を割るときだけ 2 行にする（2026-10-07・drawOrWrapWhenTiny。10 字「煙感知器用感度試験器」で 4.2〜5.4pt、16 字で 19 様式が 422 だった）
-        const DEVICE_NAME_AT = { column: "name", labelKey: "device_name" }
-        const drawDeviceName = (page: PDFPage, pageHeight: number, text: unknown, cellX: number, cellTop: number, cellW: number, cellH: number, fontSize: number, options?: Parameters<typeof drawInCell>[8]) =>
-            drawOrWrapWhenTiny({
-                page, pageHeight, fonts, text, cellX, cellTopFromTop: cellTop, cellW, cellH, fontSize,
-                single: { paddingX: options?.paddingX ?? BEKKI5_SINGLE_FIT.paddingX, paddingY: options?.paddingY ?? BEKKI5_SINGLE_FIT.paddingY, minFontSize: 3.5 }, at: DEVICE_NAME_AT,
-                drawSingle: () => drawInCell(page, pageHeight, text, cellX, cellTop, cellW, cellH, fontSize, { ...options, at: DEVICE_NAME_AT }),
-            })
-        drawDeviceName(page4, p4Height, device1.name, 85, 650, 56, 21, 7.2)
-        drawInCell(page4, p4Height, device1.model, 141, 650, 55, 21, 7.2, { at: { column: "model" } })
-        drawInCell(page4, p4Height, formatJapaneseDateText(device1.calibrated_at), 196, 650, 56, 21, 7.2)
-        // ★測定機器の製造者名は、1 行では 5pt を割るときだけ 2 行にする（2026-10-07・drawOrWrapWhenTiny。15 字で 3.5pt まで縮み、様式によっては 422 で PDF が出なかった）
-        const drawMaker = (page: PDFPage, pageHeight: number, text: unknown, cellX: number, cellTop: number, cellW: number, cellH: number, fontSize: number) =>
-            drawOrWrapWhenTiny({
-                page, pageHeight, fonts, text, cellX, cellTopFromTop: cellTop, cellW, cellH, fontSize,
-                single: BEKKI5_SINGLE_FIT, at: { column: "maker" },
-                drawSingle: () => drawInCell(page, pageHeight, text, cellX, cellTop, cellW, cellH, fontSize, { at: { column: "maker" } }),
-            })
-        drawMaker(page4, p4Height, device1.maker, 252, 650, 55, 21, 7.2)
+        // ★測定機器は雛形の 3 行 × 左右（6 台・2026-10-20 の記入漏れの総点検。以前は 1 行目の左右の 2 台だけ）。
+        //   表は device_table（左の列の上から → 右の列の上から・古い device1/device2 は 1 行目の左右・lib/bekki-device-table.ts）。
+        //   1 行目の描き方をそのまま使い、2・3 行目は雛形の罫線の実測（データ行の上端 650.28 / 671.28 / 692.28）ぶん下へずらす
+        const deviceTable = resolveDeviceTable(body, "plain")
+        const DEVICE_ROW_SHIFTS = [0, 21.0, 42.0]
+        DEVICE_ROW_SHIFTS.forEach((shift, r) => drawShiftedDown(page4, shift, () => {
+            const device1 = deviceTable[r]
+            const device2 = deviceTable[DEVICE_TABLE_ROWS_PER_COLUMN.plain + r]
+            // ★測定機器の機器名も、1 行では 5pt を割るときだけ 2 行にする（2026-10-07・drawOrWrapWhenTiny。10 字「煙感知器用感度試験器」で 4.2〜5.4pt、16 字で 19 様式が 422 だった）
+            const DEVICE_NAME_AT = { column: "name", labelKey: "device_name" }
+            const drawDeviceName = (page: PDFPage, pageHeight: number, text: unknown, cellX: number, cellTop: number, cellW: number, cellH: number, fontSize: number, options?: Parameters<typeof drawInCell>[8]) =>
+                drawOrWrapWhenTiny({
+                    page, pageHeight, fonts, text, cellX, cellTopFromTop: cellTop, cellW, cellH, fontSize,
+                    single: { paddingX: options?.paddingX ?? BEKKI5_SINGLE_FIT.paddingX, paddingY: options?.paddingY ?? BEKKI5_SINGLE_FIT.paddingY, minFontSize: 3.5 }, at: DEVICE_NAME_AT,
+                    drawSingle: () => drawInCell(page, pageHeight, text, cellX, cellTop, cellW, cellH, fontSize, { ...options, at: DEVICE_NAME_AT }),
+                })
+            drawDeviceName(page4, p4Height, device1.name, 85, 650, 56, 21, 7.2)
+            drawInCell(page4, p4Height, device1.model, 141, 650, 55, 21, 7.2, { at: { column: "model" } })
+            drawInCell(page4, p4Height, formatJapaneseDateText(device1.calibrated_at), 196, 650, 56, 21, 7.2)
+            // ★測定機器の製造者名は、1 行では 5pt を割るときだけ 2 行にする（2026-10-07・drawOrWrapWhenTiny。15 字で 3.5pt まで縮み、様式によっては 422 で PDF が出なかった）
+            const drawMaker = (page: PDFPage, pageHeight: number, text: unknown, cellX: number, cellTop: number, cellW: number, cellH: number, fontSize: number) =>
+                drawOrWrapWhenTiny({
+                    page, pageHeight, fonts, text, cellX, cellTopFromTop: cellTop, cellW, cellH, fontSize,
+                    single: BEKKI5_SINGLE_FIT, at: { column: "maker" },
+                    drawSingle: () => drawInCell(page, pageHeight, text, cellX, cellTop, cellW, cellH, fontSize, { at: { column: "maker" } }),
+                })
+            drawMaker(page4, p4Height, device1.maker, 252, 650, 55, 21, 7.2)
 
-        // ★2台目の機器名だけセル定義が左罫線から離れていた（定義313 / 左罫線308.52）。
-        //   実描画は罫線から 7.48pt で、他7セルの 1.96〜2.40pt に対し3倍以上内側だった
-        //   （実機報告の「寄っているものと寄っていないものが混在」の正体）。
-        //   テンプレート実測: この欄の左罫線 308.52（307.56 との二重線は表の区切り）。
-        //   他セルと同じ「罫線 −1.0」に合わせる → 描画は罫線から 2.00pt。右端は 363 のまま。
-        drawDeviceName(page4, p4Height, device2.name, 307.52, 650, 55.48, 21, 7.2)
-        drawInCell(page4, p4Height, device2.model, 363, 650, 55, 21, 7.2, { at: { column: "model" } })
-        drawInCell(page4, p4Height, formatJapaneseDateText(device2.calibrated_at), 418, 650, 56, 21, 7.2)
-        drawMaker(page4, p4Height, device2.maker, 474, 650, 55, 21, 7.2)
+            // ★2台目の機器名だけセル定義が左罫線から離れていた（定義313 / 左罫線308.52）。
+            //   実描画は罫線から 7.48pt で、他7セルの 1.96〜2.40pt に対し3倍以上内側だった
+            //   （実機報告の「寄っているものと寄っていないものが混在」の正体）。
+            //   テンプレート実測: この欄の左罫線 308.52（307.56 との二重線は表の区切り）。
+            //   他セルと同じ「罫線 −1.0」に合わせる → 描画は罫線から 2.00pt。右端は 363 のまま。
+            drawDeviceName(page4, p4Height, device2.name, 307.52, 650, 55.48, 21, 7.2)
+            drawInCell(page4, p4Height, device2.model, 363, 650, 55, 21, 7.2, { at: { column: "model" } })
+            drawInCell(page4, p4Height, formatJapaneseDateText(device2.calibrated_at), 418, 650, 56, 21, 7.2)
+            drawMaker(page4, p4Height, device2.maker, 474, 650, 55, 21, 7.2)
+        }, fonts.fit))
 
         // ⑧ 枠に収まらなかった項目があればPDFを返さずに一覧を返す。
         //   黙って "..." で切り詰めると、法定書類から情報が静かに欠落するため。

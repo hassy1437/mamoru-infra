@@ -8,6 +8,7 @@ import {
     systemFitFailures,
 } from "@/lib/pdf-fit-report"
 import fontkit from "@pdf-lib/fontkit"
+import { DEVICE_TABLE_ROWS_PER_COLUMN, resolveDeviceTable } from "@/lib/bekki-device-table"
 import fs from "fs"
 import path from "path"
 import {
@@ -28,6 +29,7 @@ FIT_EPSILON,
     type CellRef,
     type CellAt,
     drawOrWrapWhenTiny,
+    drawShiftedDown,
 } from "@/lib/pdf-form-helpers"
 
 /**
@@ -90,6 +92,8 @@ type Bekki2Payload = {
     notes?: string
     device1?: DeviceRow
     device2?: DeviceRow
+    /** 測定機器の 3 行 × 左右（6 台）。device1/device2 は古い保存の形（読み方は lib/bekki-device-table.ts） */
+    device_table?: unknown
 }
 
 type DrawOptions = {
@@ -581,59 +585,66 @@ export async function POST(req: NextRequest) {
 
         drawWrappedInCell(page3, p3Height, body.notes, 83, 589, 446, 43, 7.3)
 
-        const device1 = body.device1 ?? {}
-        const device2 = body.device2 ?? {}
-        // ★セルの左端が縦罫線の上に乗っていた欄は x を罫線の右へ寄せ、右端は据え置く
-        //   （w を同じだけ減らす）。paddingX は他の欄と共通なので触らない。
-        //   描画域＝x+paddingX。罫線の右端から 0.10pt 外に出す位置を実測から算出した。
-        //     device1.model 罫線 138.72〜139.20 / date 194.64〜195.12 / device2.name 306.96〜307.44
-        const devOpts: DrawOptions = { paddingX: 1 }
-        // ★測定機器の行は雛形の罫線の実測 649.92〜663.60（高さ 13.68）。以前の 649／14 は上の罫線（649.44〜649.92）に
-        //   かかっていた。長い名前を 2 行に折り返すと 1 行目が上の罫線に触れた（2026-10-09 の本番の印字テストで見つけた）
-        const DEV_ROW = { top: 649.92, h: 13.68 }
-        // ★測定機器の機器名も、1 行では 5pt を割るときだけ 2 行にする（2026-10-07・drawOrWrapWhenTiny。10 字「煙感知器用感度試験器」で 4.2〜5.4pt、16 字で 19 様式が 422 だった）
-        const DEVICE_NAME_AT = { column: "name", labelKey: "device_name" }
-        const drawDeviceName = (page: PDFPage, pageHeight: number, text: unknown, cellX: number, cellTop: number, cellW: number, cellH: number, fontSize: number, options?: Parameters<typeof drawInCell>[8]) =>
-            drawOrWrapWhenTiny({
-                page, pageHeight, fonts, text, cellX, cellTopFromTop: cellTop, cellW, cellH, fontSize,
-                single: { paddingX: options?.paddingX ?? 3, paddingY: options?.paddingY ?? 2, minFontSize: 3.5 }, at: DEVICE_NAME_AT,
-                drawSingle: () => drawInCell(page, pageHeight, text, cellX, cellTop, cellW, cellH, fontSize, { ...options, at: DEVICE_NAME_AT }),
-            })
-        drawDeviceName(page3, p3Height, device1.name, 83, DEV_ROW.top, 55, DEV_ROW.h, 7.2, devOpts)
-        drawInCellWithFont(page3, p3Height, fonts, device1.model, 138.31, DEV_ROW.top, 55.69, DEV_ROW.h, 7.2, devOpts)
-        drawInCell(page3, p3Height, formatJapaneseDateText(device1.calibrated_at), 194.22, DEV_ROW.top, 55.78, DEV_ROW.h, 7.2, devOpts)
-        // 製造者名は長い社名が多いため、0.85安全マージンなしで描画
-        const drawDeviceMakerSingle = (text: unknown, cellX: number, cellW: number) => {
-            const norm = normalizeText(text)
-            if (!norm) return
-            const padX = 1
-            const availW = cellW - padX * 2
-            let sz = 7.2
-            const w = measureRuns(fonts, String(norm ?? ""), sz)
-            // 0.98 の余白は撤廃（2026-07-24 実測: はみ出し・切り詰め・フォントサイズ分布のどれも変化なし。
-            // 丸め防御を名乗るには2%は大きすぎ、0.85/0.90 と同じ「症状を隠す係数」の系統だった）
-            if (w > availW) sz = sz * (availW / w)
-            sz = Math.max(sz, 3.5)
-            const drawn = truncateToFitWidth(norm, sz, availW)
-            if (!drawn) return
-            const th = fonts.jp.heightAtSize(sz, { descender: true })
-            const textTop = DEV_ROW.top + (DEV_ROW.h - th) / 2
-            drawTextRuns(page3, fonts, String(drawn ?? ""), cellX + padX, p3Height - (textTop + th * 0.78), sz)
-        }
-        // ★測定機器の製造者名は、1 行では 5pt を割るときだけ 2 行にする（2026-10-07・drawOrWrapWhenTiny。15 字で 3.5pt まで縮み、様式によっては 422 で PDF が出なかった）
-        const drawDeviceMaker = (text: unknown, cellX: number, cellW: number) =>
-            drawOrWrapWhenTiny({
-                page: page3, pageHeight: p3Height, fonts, text, cellX, cellTopFromTop: DEV_ROW.top, cellW, cellH: DEV_ROW.h, fontSize: 7.2,
-                single: { paddingX: 1, paddingY: 0, minFontSize: 3.5 }, at: { column: "maker" },
-                drawSingle: () => drawDeviceMakerSingle(text, cellX, cellW),
-            })
-        // ★製造者名1も罫線（250.56〜251.04）の右へ寄せる。250 のままだと描き始め 251.0 が罫線に乗っていた（2026-10-07）
-        drawDeviceMaker(device1.maker, 250.14, 55.86)
+        // ★測定機器は雛形の 3 行 × 左右（6 台・2026-10-20 の記入漏れの総点検。以前は 1 行目の左右の 2 台だけ）。
+        //   表は device_table（左の列の上から → 右の列の上から・古い device1/device2 は 1 行目の左右・lib/bekki-device-table.ts）。
+        //   1 行目の描き方をそのまま使い、2・3 行目は雛形の罫線の実測（データ行の上端 649.68 / 663.84 / 677.88）ぶん下へずらす
+        const deviceTable = resolveDeviceTable(body, "plain")
+        const DEVICE_ROW_SHIFTS = [0, 14.16, 28.2]
+        DEVICE_ROW_SHIFTS.forEach((shift, r) => drawShiftedDown(page3, shift, () => {
+            const device1 = deviceTable[r]
+            const device2 = deviceTable[DEVICE_TABLE_ROWS_PER_COLUMN.plain + r]
+            // ★セルの左端が縦罫線の上に乗っていた欄は x を罫線の右へ寄せ、右端は据え置く
+            //   （w を同じだけ減らす）。paddingX は他の欄と共通なので触らない。
+            //   描画域＝x+paddingX。罫線の右端から 0.10pt 外に出す位置を実測から算出した。
+            //     device1.model 罫線 138.72〜139.20 / date 194.64〜195.12 / device2.name 306.96〜307.44
+            const devOpts: DrawOptions = { paddingX: 1 }
+            // ★測定機器の行は雛形の罫線の実測 649.92〜663.60（高さ 13.68）。以前の 649／14 は上の罫線（649.44〜649.92）に
+            //   かかっていた。長い名前を 2 行に折り返すと 1 行目が上の罫線に触れた（2026-10-09 の本番の印字テストで見つけた）
+            const DEV_ROW = { top: 649.92, h: 13.68 }
+            // ★測定機器の機器名も、1 行では 5pt を割るときだけ 2 行にする（2026-10-07・drawOrWrapWhenTiny。10 字「煙感知器用感度試験器」で 4.2〜5.4pt、16 字で 19 様式が 422 だった）
+            const DEVICE_NAME_AT = { column: "name", labelKey: "device_name" }
+            const drawDeviceName = (page: PDFPage, pageHeight: number, text: unknown, cellX: number, cellTop: number, cellW: number, cellH: number, fontSize: number, options?: Parameters<typeof drawInCell>[8]) =>
+                drawOrWrapWhenTiny({
+                    page, pageHeight, fonts, text, cellX, cellTopFromTop: cellTop, cellW, cellH, fontSize,
+                    single: { paddingX: options?.paddingX ?? 3, paddingY: options?.paddingY ?? 2, minFontSize: 3.5 }, at: DEVICE_NAME_AT,
+                    drawSingle: () => drawInCell(page, pageHeight, text, cellX, cellTop, cellW, cellH, fontSize, { ...options, at: DEVICE_NAME_AT }),
+                })
+            drawDeviceName(page3, p3Height, device1.name, 83, DEV_ROW.top, 55, DEV_ROW.h, 7.2, devOpts)
+            drawInCellWithFont(page3, p3Height, fonts, device1.model, 138.31, DEV_ROW.top, 55.69, DEV_ROW.h, 7.2, devOpts)
+            drawInCell(page3, p3Height, formatJapaneseDateText(device1.calibrated_at), 194.22, DEV_ROW.top, 55.78, DEV_ROW.h, 7.2, devOpts)
+            // 製造者名は長い社名が多いため、0.85安全マージンなしで描画
+            const drawDeviceMakerSingle = (text: unknown, cellX: number, cellW: number) => {
+                const norm = normalizeText(text)
+                if (!norm) return
+                const padX = 1
+                const availW = cellW - padX * 2
+                let sz = 7.2
+                const w = measureRuns(fonts, String(norm ?? ""), sz)
+                // 0.98 の余白は撤廃（2026-07-24 実測: はみ出し・切り詰め・フォントサイズ分布のどれも変化なし。
+                // 丸め防御を名乗るには2%は大きすぎ、0.85/0.90 と同じ「症状を隠す係数」の系統だった）
+                if (w > availW) sz = sz * (availW / w)
+                sz = Math.max(sz, 3.5)
+                const drawn = truncateToFitWidth(norm, sz, availW)
+                if (!drawn) return
+                const th = fonts.jp.heightAtSize(sz, { descender: true })
+                const textTop = DEV_ROW.top + (DEV_ROW.h - th) / 2
+                drawTextRuns(page3, fonts, String(drawn ?? ""), cellX + padX, p3Height - (textTop + th * 0.78), sz)
+            }
+            // ★測定機器の製造者名は、1 行では 5pt を割るときだけ 2 行にする（2026-10-07・drawOrWrapWhenTiny。15 字で 3.5pt まで縮み、様式によっては 422 で PDF が出なかった）
+            const drawDeviceMaker = (text: unknown, cellX: number, cellW: number) =>
+                drawOrWrapWhenTiny({
+                    page: page3, pageHeight: p3Height, fonts, text, cellX, cellTopFromTop: DEV_ROW.top, cellW, cellH: DEV_ROW.h, fontSize: 7.2,
+                    single: { paddingX: 1, paddingY: 0, minFontSize: 3.5 }, at: { column: "maker" },
+                    drawSingle: () => drawDeviceMakerSingle(text, cellX, cellW),
+                })
+            // ★製造者名1も罫線（250.56〜251.04）の右へ寄せる。250 のままだと描き始め 251.0 が罫線に乗っていた（2026-10-07）
+            drawDeviceMaker(device1.maker, 250.14, 55.86)
 
-        drawDeviceName(page3, p3Height, device2.name, 306.55, DEV_ROW.top, 55.45, DEV_ROW.h, 7.2, devOpts)
-        drawInCellWithFont(page3, p3Height, fonts, device2.model, 362, DEV_ROW.top, 56, DEV_ROW.h, 7.2, devOpts)
-        drawInCell(page3, p3Height, formatJapaneseDateText(device2.calibrated_at), 418, DEV_ROW.top, 56, DEV_ROW.h, 7.2, devOpts)
-        drawDeviceMaker(device2.maker, 474, 55)
+            drawDeviceName(page3, p3Height, device2.name, 306.55, DEV_ROW.top, 55.45, DEV_ROW.h, 7.2, devOpts)
+            drawInCellWithFont(page3, p3Height, fonts, device2.model, 362, DEV_ROW.top, 56, DEV_ROW.h, 7.2, devOpts)
+            drawInCell(page3, p3Height, formatJapaneseDateText(device2.calibrated_at), 418, DEV_ROW.top, 56, DEV_ROW.h, 7.2, devOpts)
+            drawDeviceMaker(device2.maker, 474, 55)
+        }, fonts.fit))
 
         // ⑧ 枠に収まらなかった項目があればPDFを返さずに一覧を返す。
         //   黙って "..." で切り詰めると、法定書類から情報が静かに欠落するため。

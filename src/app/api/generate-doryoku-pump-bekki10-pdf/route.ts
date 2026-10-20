@@ -8,6 +8,7 @@ import {
     systemFitFailures,
 } from "@/lib/pdf-fit-report"
 import fontkit from "@pdf-lib/fontkit"
+import { DEVICE_TABLE_ROWS_PER_COLUMN, resolveDeviceTable } from "@/lib/bekki-device-table"
 import fs from "fs"
 import path from "path"
 import {
@@ -29,6 +30,7 @@ FIT_EPSILON,
     type CellRef,
     type CellAt,
     drawOrWrapWhenTiny,
+    drawShiftedDown,
 } from "@/lib/pdf-form-helpers"
 
 /**
@@ -70,6 +72,8 @@ type Bekki10Payload = {
     notes?: string
     device1?: DeviceRow
     device2?: DeviceRow
+    /** 測定機器の 3 行 × 左右（6 台）。device1/device2 は古い保存の形（読み方は lib/bekki-device-table.ts） */
+    device_table?: unknown
 }
 
 type DrawOptions = {
@@ -387,34 +391,41 @@ export async function POST(req: NextRequest) {
 
         drawWrappedInCell(page2, p2Height, body.notes, 82.67, 358.0, 446.66, 266.0, 7.0)
 
-        const device1 = body.device1 ?? {}
-        const device2 = body.device2 ?? {}
-        // page2 bottom measurement table (approx.)
-        const deviceTableTop = 644.8
-        const deviceTableRowH = 20.8
-        // ★測定機器の機器名も、1 行では 5pt を割るときだけ 2 行にする（2026-10-07・drawOrWrapWhenTiny。10 字「煙感知器用感度試験器」で 4.2〜5.4pt、16 字で 19 様式が 422 だった）
-        const DEVICE_NAME_AT = { column: "name", labelKey: "device_name" }
-        const drawDeviceName = (page: PDFPage, pageHeight: number, text: unknown, cellX: number, cellTop: number, cellW: number, cellH: number, fontSize: number, options?: Parameters<typeof drawInCell>[8]) =>
-            drawOrWrapWhenTiny({
-                page, pageHeight, fonts, text, cellX, cellTopFromTop: cellTop, cellW, cellH, fontSize,
-                single: { paddingX: options?.paddingX ?? 2.5, paddingY: options?.paddingY ?? 1.8, minFontSize: 3.5 }, at: DEVICE_NAME_AT,
-                drawSingle: () => drawInCell(page, pageHeight, text, cellX, cellTop, cellW, cellH, fontSize, { ...options, at: DEVICE_NAME_AT }),
-            })
-        drawDeviceName(page2, p2Height, device1.name, 82.8, deviceTableTop, 55.6, deviceTableRowH, 7.0)
-        drawInCell(page2, p2Height, device1.model, 138.4, deviceTableTop, 56.0, deviceTableRowH, 7.0)
-        drawInCell(page2, p2Height, formatJapaneseDateText(device1.calibrated_at), 194.4, deviceTableTop, 56.0, deviceTableRowH, 7.0)
-        // ★測定機器の製造者名は、1 行では 5pt を割るときだけ 2 行にする（2026-10-07・drawOrWrapWhenTiny。15 字で 3.5pt まで縮み、様式によっては 422 で PDF が出なかった）
-        const drawMaker = (page: PDFPage, pageHeight: number, text: unknown, cellX: number, cellTop: number, cellW: number, cellH: number, fontSize: number) =>
-            drawOrWrapWhenTiny({
-                page, pageHeight, fonts, text, cellX, cellTopFromTop: cellTop, cellW, cellH, fontSize,
-                single: { paddingX: 2.5, paddingY: 1.8, minFontSize: 3.5 }, at: { column: "maker" },
-                drawSingle: () => drawInCell(page, pageHeight, text, cellX, cellTop, cellW, cellH, fontSize),
-            })
-        drawMaker(page2, p2Height, device1.maker, 250.4, deviceTableTop, 55.6, deviceTableRowH, 7.0)
-        drawDeviceName(page2, p2Height, device2.name, 306.0, deviceTableTop, 56.0, deviceTableRowH, 7.0)
-        drawInCell(page2, p2Height, device2.model, 362.0, deviceTableTop, 56.0, deviceTableRowH, 7.0)
-        drawInCell(page2, p2Height, formatJapaneseDateText(device2.calibrated_at), 418.0, deviceTableTop, 55.6, deviceTableRowH, 7.0)
-        drawMaker(page2, p2Height, device2.maker, 473.6, deviceTableTop, 56.0, deviceTableRowH, 7.0)
+        // ★測定機器は雛形の 3 行 × 左右（6 台・2026-10-20 の記入漏れの総点検。以前は 1 行目の左右の 2 台だけ）。
+        //   表は device_table（左の列の上から → 右の列の上から・古い device1/device2 は 1 行目の左右・lib/bekki-device-table.ts）。
+        //   1 行目の描き方をそのまま使い、2・3 行目は雛形の罫線の実測（データ行の上端 645.24 / 666.24 / 687.24）ぶん下へずらす
+        const deviceTable = resolveDeviceTable(body, "plain")
+        const DEVICE_ROW_SHIFTS = [0, 21.0, 42.0]
+        DEVICE_ROW_SHIFTS.forEach((shift, r) => drawShiftedDown(page2, shift, () => {
+            const device1 = deviceTable[r]
+            const device2 = deviceTable[DEVICE_TABLE_ROWS_PER_COLUMN.plain + r]
+            // page2 bottom measurement table (approx.)
+            const deviceTableTop = 644.8
+            const deviceTableRowH = 20.8
+            // ★測定機器の機器名も、1 行では 5pt を割るときだけ 2 行にする（2026-10-07・drawOrWrapWhenTiny。10 字「煙感知器用感度試験器」で 4.2〜5.4pt、16 字で 19 様式が 422 だった）
+            const DEVICE_NAME_AT = { column: "name", labelKey: "device_name" }
+            const drawDeviceName = (page: PDFPage, pageHeight: number, text: unknown, cellX: number, cellTop: number, cellW: number, cellH: number, fontSize: number, options?: Parameters<typeof drawInCell>[8]) =>
+                drawOrWrapWhenTiny({
+                    page, pageHeight, fonts, text, cellX, cellTopFromTop: cellTop, cellW, cellH, fontSize,
+                    single: { paddingX: options?.paddingX ?? 2.5, paddingY: options?.paddingY ?? 1.8, minFontSize: 3.5 }, at: DEVICE_NAME_AT,
+                    drawSingle: () => drawInCell(page, pageHeight, text, cellX, cellTop, cellW, cellH, fontSize, { ...options, at: DEVICE_NAME_AT }),
+                })
+            drawDeviceName(page2, p2Height, device1.name, 82.8, deviceTableTop, 55.6, deviceTableRowH, 7.0)
+            drawInCell(page2, p2Height, device1.model, 138.4, deviceTableTop, 56.0, deviceTableRowH, 7.0)
+            drawInCell(page2, p2Height, formatJapaneseDateText(device1.calibrated_at), 194.4, deviceTableTop, 56.0, deviceTableRowH, 7.0)
+            // ★測定機器の製造者名は、1 行では 5pt を割るときだけ 2 行にする（2026-10-07・drawOrWrapWhenTiny。15 字で 3.5pt まで縮み、様式によっては 422 で PDF が出なかった）
+            const drawMaker = (page: PDFPage, pageHeight: number, text: unknown, cellX: number, cellTop: number, cellW: number, cellH: number, fontSize: number) =>
+                drawOrWrapWhenTiny({
+                    page, pageHeight, fonts, text, cellX, cellTopFromTop: cellTop, cellW, cellH, fontSize,
+                    single: { paddingX: 2.5, paddingY: 1.8, minFontSize: 3.5 }, at: { column: "maker" },
+                    drawSingle: () => drawInCell(page, pageHeight, text, cellX, cellTop, cellW, cellH, fontSize),
+                })
+            drawMaker(page2, p2Height, device1.maker, 250.4, deviceTableTop, 55.6, deviceTableRowH, 7.0)
+            drawDeviceName(page2, p2Height, device2.name, 306.0, deviceTableTop, 56.0, deviceTableRowH, 7.0)
+            drawInCell(page2, p2Height, device2.model, 362.0, deviceTableTop, 56.0, deviceTableRowH, 7.0)
+            drawInCell(page2, p2Height, formatJapaneseDateText(device2.calibrated_at), 418.0, deviceTableTop, 55.6, deviceTableRowH, 7.0)
+            drawMaker(page2, p2Height, device2.maker, 473.6, deviceTableTop, 56.0, deviceTableRowH, 7.0)
+        }, fonts.fit))
 
         // ⑧ 枠に収まらなかった項目があればPDFを返さずに一覧を返す。
         //   黙って "..." で切り詰めると、法定書類から情報が静かに欠落するため。

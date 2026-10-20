@@ -680,6 +680,16 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-device-rows.mjs", stage: "生成PDF", needsPdfs: true,
+        why: "ほかの 21 様式の測定機器 6 台（紙の 3 行 × 左右）が、PDF の罫線で区切られた 1〜3 行目に左右そろって載り、"
+            + "長い値でも 422 にならず 5pt 以上で行の中に収まり、2・3 行目のあふれも 422 に載るか（行は PDF の罫線から測る）。"
+            + "★以前は 1 行目の左右の 2 台しか書けず、空のままの 2・3 行目は画像でも他の検査でも出ない（2026-10-20 の記入漏れの総点検）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-device-rows.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-device-rows.mjs"], sentinel: "DEVICE_ROWS_OK" },
+        ],
+    },
+    {
         file: "check-device-maker-wrap.mjs", stage: "生成PDF", needsPdfs: true,
         why: "測定機器の製造者名・機器名（と別記11/22 の点検設備の製造者名）が、ありそうな長さ（15〜16 字）で PDF を止めず全文載り、"
             + "測定機器は 5pt 以上か。短い値は 1 行のまま。★15 字で 7 様式が 422、8 様式が 3.5〜4pt だった（2026-10-07）。"

@@ -639,6 +639,23 @@ export default function ShokakiBekki1Form({
 
                 {/* Mobile: card layout（md 未満） */}
                 <div className="md:hidden space-y-3">
+                    {/*
+                      ★種別の凡例は上に固定し、各行は記号（A〜F）だけを横一列に（2026-10-20・録音 102）。
+                        以前は行ごとに「記号＋器種名」の 2 段のボタンで、器種名の長さで幅が広がり 2〜3 段に折り返していた（スクロールが長い）。
+                    */}
+                    {(noMarkFromIndex === undefined || noMarkFromIndex > 0) && (
+                        <div className="sticky top-0 z-20 rounded-lg border border-slate-300 bg-white/95 px-2 py-1.5 shadow-sm backdrop-blur" aria-label="種別の凡例">
+                            <span className="text-[11px] text-slate-500">種別の凡例（該当する消火器の記号をタップ）</span>
+                            <div className="mt-0.5 grid grid-cols-6 gap-1 text-center text-[11px] leading-tight text-slate-700">
+                                {MARK_TYPES.map(({ key, label: typeLabel }) => (
+                                    <span key={key}>
+                                        <span className="block text-sm font-bold text-slate-900">{key}</span>
+                                        {typeLabel}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                     {labels.map((label, idx) => {
                         if (isBekkiHeadingLabel(label)) return <BekkiHeadingCard key={`${title}-heading-${idx}-mobile`} label={label} />
                         const row = rows[idx]
@@ -649,25 +666,23 @@ export default function ShokakiBekki1Form({
                                 <div className={`font-medium text-sm text-slate-800 ${WRAP_CLS}`}>{bindLabelBreaks(label)}</div>
 
                                 {showMarks && (
-                                    <div className="space-y-1">
-                                        <span className="text-xs text-slate-500">種別（該当する消火器をタップ）</span>
-                                        <div className="flex flex-wrap gap-1.5">
-                                            {MARK_TYPES.map(({ key, label: typeLabel }) => {
-                                                const active = row.marks[key]
-                                                return (
-                                                    <button
-                                                        key={key}
-                                                        type="button"
-                                                        aria-pressed={active}
-                                                        onClick={() => toggleMark(page, idx, key)}
-                                                        className={`min-w-[44px] min-h-[44px] px-1.5 py-1 rounded-md border flex flex-col items-center justify-center leading-tight transition-colors ${active ? "bg-blue-600 border-blue-600 text-white" : "bg-white border-slate-300 text-slate-700"}`}
-                                                    >
-                                                        <span className="text-sm font-bold">{key}</span>
-                                                        <span className="text-[10px] whitespace-nowrap">{typeLabel}</span>
-                                                    </button>
-                                                )
-                                            })}
-                                        </div>
+                                    // ★記号だけを横一列（6 等分・高さ 44px）。器種名は上の凡例と、読み上げ（aria-label）に
+                                    <div className="grid grid-cols-6 gap-1" role="group" aria-label="種別">
+                                        {MARK_TYPES.map(({ key, label: typeLabel }) => {
+                                            const active = row.marks[key]
+                                            return (
+                                                <button
+                                                    key={key}
+                                                    type="button"
+                                                    aria-pressed={active}
+                                                    aria-label={`${key} ${typeLabel}`}
+                                                    onClick={() => toggleMark(page, idx, key)}
+                                                    className={`min-h-11 rounded-md border text-base font-bold transition-colors ${active ? "bg-blue-600 border-blue-600 text-white" : "bg-white border-slate-300 text-slate-700"}`}
+                                                >
+                                                    {key}
+                                                </button>
+                                            )
+                                        })}
                                     </div>
                                 )}
 

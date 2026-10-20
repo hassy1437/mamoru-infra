@@ -532,6 +532,16 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-soukatsu-delete.mjs", stage: "静的",
+        why: "総括表（点検）の削除ボタンが、確定・納品していない点検にだけ出て、確認の窓で何が消えるかを言い、消えた件数を確かめるか。"
+            + "★以前は点検を消す手段が無く、物件を消しても総括表・点検者一覧・別記が残った（2026-10-20）。"
+            + "確定・納品の記録は外部キーで止まるので、押せば落ちるボタンを作らない。PDF とは無関係だが scripts/check-* はここに載せる決まり",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-soukatsu-delete.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-soukatsu-delete.mjs"], sentinel: "SOUKATSU_DELETE_OK" },
+        ],
+    },
+    {
         file: "check-choice-rows.mjs", stage: "静的",
         why: "点検票の選択肢の欄（専用・兼用／一斉・区分…／設備方式）が画面で選べ、選択肢が紙の○の語（drawChoiceCircle）と様式・表・行・語まで"
             + "一致するか。★以前はただの文字の欄で、合わない文字だと○が付かないまま PDF が出た（2026-10-20・本番の通しチェック）。"

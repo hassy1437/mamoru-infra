@@ -13,6 +13,9 @@ import WithdrawnMatchNotice from "@/components/withdrawn-match-notice"
 import { withdrawnAtOf } from "@/lib/match-withdrawn"
 import { checkReportReadiness } from "@/lib/report-readiness"
 import ReportReadinessBox from "@/components/report-readiness-box"
+import DeleteSoukatsuButton from "@/components/delete-soukatsu-button"
+import { soukatsuDeleteBlock } from "@/lib/soukatsu-delete"
+import type { ReportSummary } from "@/components/report-list"
 
 export default async function InspectionDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { supabase, user } = await getAuthenticatedClient()
@@ -70,6 +73,14 @@ export default async function InspectionDetailPage({ params }: { params: Promise
     //   見るのは総括表だけ（点検者一覧・別記は確定のあとに入れるのが普通なので、ここでは見ない・出力画面で見る）。
     //   ★空の必須があると確定のボタンを押せない。止めるのは画面だけで DB は止めない。
     const readiness = checkReportReadiness({ soukatsu: report })
+    // ★削除できるか（src/lib/soukatsu-delete.ts）。確定・納品した点検は DB が止めるので、先にボタンを出さず理由を出す。
+    //   納品の状態は報告書一覧と同じ get_report_summaries から読む（public.report_deliveries はこのクライアントから直接読めない）
+    const { data: summaries } = await supabase.rpc("get_report_summaries")
+    const delivered = !!((summaries ?? []) as ReportSummary[]).find((s) => s.id === id)?.delivered_at
+    const deleteBlock = soukatsuDeleteBlock({
+        finalizedCount: finalization.available ? finalization.finalized.length : 0,
+        delivered,
+    })
     // 確定のボタンが出る状態か（確定済み・解約・契約なしならボタンの代わりに別の表示になる）
     const finalizeButtonShown = finalization.available
         && finalization.finalized.length === 0
@@ -152,6 +163,11 @@ export default async function InspectionDetailPage({ params }: { params: Promise
                     />
                 </div>
             )}
+
+            {/* ★間違えて始めた点検を消す（2026-10-20）。いちばん下に置く（確定・出力の導線と取り違えない） */}
+            <div className="max-w-[210mm] mx-auto mb-6">
+                <DeleteSoukatsuButton soukatsuId={id} buildingName={report.building_name ?? null} block={deleteBlock} />
+            </div>
         </div>
     )
 }

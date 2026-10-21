@@ -314,14 +314,19 @@ export default function ItiranForm({ soukatsuId, masters, initial, itiranId }: P
                 </Button>
             )}
 
-            <div className="flex justify-end pb-8">
-                <Button type="submit" disabled={loading} size="lg" className="px-12">
+            {/* ★押したあとに着く画面の名前にする（2026-10-21）。以前は「保存してプレビューへ」で、実際は点検票（別記）の一覧に着き、
+                 プレビューはその画面のいちばん下に畳まれていた。どちらも保存したあと点検票の一覧へ移る */}
+            <div className="flex flex-col items-end gap-1 pb-8">
+                <Button type="submit" disabled={loading} size="lg" className="min-h-11 px-12">
                     {loading ? (
                         <><Loader2 className="w-4 h-4 mr-2 animate-spin" />保存中...</>
+                    ) : isEditMode ? (
+                        "保存して点検票の一覧へ戻る"
                     ) : (
-                        "保存してプレビューへ"
+                        "保存して点検票の入力へ"
                     )}
                 </Button>
+                {!isEditMode && <p className="text-xs text-slate-500">次は、設備ごとの点検票（別記様式）を入れます</p>}
             </div>
         </form>
     )

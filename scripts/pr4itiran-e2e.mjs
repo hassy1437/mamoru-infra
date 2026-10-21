@@ -67,7 +67,7 @@ async function main() {
   const masterSelect = (n) => card(n).locator("select")
   const addBtn = () => page.getByRole("button", { name: "点検者を追加" })
   const removeBtn = (n) => card(n).getByRole("button", { name: "削除" })
-  const saveBtn = () => page.getByRole("button", { name: "保存してプレビューへ" })
+  const saveBtn = () => page.getByRole("button", { name: /^保存して点検票の(入力へ|一覧へ戻る)$/ })
 
   async function gotoItiran() {
     await page.goto(ITIRAN_URL, { waitUntil: "domcontentloaded", timeout: 60000 })

@@ -163,15 +163,19 @@ export default async function OutputPage({
                 <Breadcrumb items={[
                     { label: "点検", href: "/inspection" },
                     { label: "総括表", href: `/inspection/${id}` },
-                    { label: "別記", href: `/inspection/${id}/itiran/${itiranId}` },
-                    { label: "PDF出力" },
+                    { label: "点検票の入力", href: `/inspection/${id}/itiran/${itiranId}` },
+                    { label: "結果出力" },
                 ]} />
                 <StepIndicator steps={[...INSPECTION_STEPS]} currentStep={4} />
+                {/* ★戻る先を見える所に（2026-10-21）。以前はパンくずの「別記」だけだった */}
+                <Link href={`/inspection/${id}/itiran/${itiranId}`} className="inline-flex min-h-11 items-center text-sm text-blue-600 hover:underline">
+                    &larr; 点検票の一覧に戻る
+                </Link>
 
                 <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
                     <h1 className="text-xl font-bold">結果出力</h1>
                     <p className="text-sm text-slate-600">
-                        以下のPDFを結合して一括ダウンロードします。
+                        ここで、確定・PDF の一括出力・納品をします。下の PDF を 1 つに綴じて出力します。
                     </p>
 
                     {/* 複製バッジ＋未確認様式一覧（納品ゲートの案内。最終確認チェックは納品セクション内） */}

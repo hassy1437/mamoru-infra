@@ -51,13 +51,14 @@ export default function ItiranFormNav({
             <Breadcrumb items={[
                 { label: "点検", href: "/inspection" },
                 { label: "総括表", href: `/inspection/${soukatsuId}` },
-                { label: "点検者", href: hubHref },
+                // ★点検票の一覧（2026-10-21）。以前はここが「点検者」、戻るリンクが「別記ハブ」、結果出力が「別記」と、同じ画面を 3 つの名前で呼んでいた
+                { label: "点検票の入力", href: hubHref },
                 { label: title },
             ]} />
             <StepIndicator steps={[...INSPECTION_STEPS]} currentStep={3} />
             <div className="flex items-center justify-between gap-3 flex-wrap mt-2">
                 <Link href={hubHref} className="inline-flex min-h-11 items-center text-blue-600 hover:underline text-sm">
-                    &larr; 別記ハブに戻る
+                    &larr; 点検票の一覧に戻る
                 </Link>
                 <Link
                     href={forwardHref}
@@ -84,7 +85,7 @@ export function ItiranFormNavBottom({ soukatsuId, itiranId, currentStepId, equip
     return (
         <nav aria-label="次の様式へ" className="mt-8 flex flex-col gap-2 pb-24 sm:flex-row sm:items-center sm:justify-between md:pb-0">
             <Link href={hubHref} className="inline-flex min-h-11 items-center text-blue-600 hover:underline text-sm">
-                &larr; 別記ハブに戻る
+                &larr; 点検票の一覧に戻る
             </Link>
             <Link
                 href={forwardHref}

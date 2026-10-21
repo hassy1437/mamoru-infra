@@ -3,6 +3,7 @@ import { notFound } from "next/navigation"
 import Link from "next/link"
 import {
     AlertTriangle,
+    ArrowRight,
     Building2,
     Calendar,
     CheckCircle2,
@@ -18,6 +19,7 @@ import Breadcrumb from "@/components/breadcrumb"
 import MapLink from "@/components/map-link"
 import WithdrawnMatchNotice from "@/components/withdrawn-match-notice"
 import { withdrawnAtOf, type MatchLink } from "@/lib/match-withdrawn"
+import { loadItiranIds, resumeTarget } from "@/lib/report-resume"
 
 export default async function PropertyDetailPage({
     params,
@@ -49,6 +51,8 @@ export default async function PropertyDetailPage({
 
     const history = inspections ?? []
     const latestInspectionId = history.length > 0 ? history[0].id : null
+    // ★点検履歴は、総括表の確認画面ではなく「続き」へ（点検者一覧表があれば点検票の一覧・src/lib/report-resume.ts）
+    const itiranIds = await loadItiranIds(supabase, history.map((h) => h.id as string))
 
     return (
         <main className="min-h-screen bg-gray-50 py-10">
@@ -82,7 +86,7 @@ export default async function PropertyDetailPage({
                         <div className="flex gap-2 shrink-0 w-full sm:w-auto">
                             <Link
                                 href={`/properties/${id}/edit`}
-                                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
+                                className="flex-1 sm:flex-none inline-flex min-h-11 items-center justify-center gap-1.5 px-4 py-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
                             >
                                 <Pencil className="w-4 h-4" />
                                 編集
@@ -95,6 +99,47 @@ export default async function PropertyDetailPage({
                                 複製
                             </Link>
                         </div>
+                    </div>
+                </div>
+
+                {/* ★次にやること（点検を始める・作りかけの続き）を物件情報より上に（2026-10-21・次に進む方法の洗い出し）。
+                     以前は物件情報の下（iPhone で 2 画面目）にあり、上には「編集」「複製」しか見えなかった */}
+                <div className="space-y-3">
+                    {history.length > 0 && (() => {
+                        const t = resumeTarget(history[0].id as string, itiranIds.get(history[0].id as string))
+                        return (
+                            <Link
+                                href={t.href}
+                                className="flex min-h-11 items-center justify-between gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800 transition-colors hover:bg-blue-100"
+                            >
+                                <span className="min-w-0">
+                                    <span className="block font-semibold">いちばん新しい報告書（点検日 {history[0].inspection_date ?? "未入力"}）</span>
+                                    <span className="block text-xs text-blue-700">{t.stage}</span>
+                                </span>
+                                <span className="inline-flex shrink-0 items-center gap-1 font-medium">
+                                    {t.action}
+                                    <ArrowRight className="h-4 w-4" />
+                                </span>
+                            </Link>
+                        )
+                    })()}
+                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                        <Link
+                            href={`/inspection/new?propertyId=${id}`}
+                            className="inline-flex min-h-11 items-center justify-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition-colors"
+                        >
+                            <Plus className="w-4 h-4" />
+                            新しい点検を始める
+                        </Link>
+                        {latestInspectionId && (
+                            <Link
+                                href={`/inspection/new?propertyId=${id}&copyFrom=${latestInspectionId}`}
+                                className="inline-flex min-h-11 items-center justify-center gap-2 px-5 py-2.5 border border-blue-300 bg-white hover:bg-blue-50 text-blue-700 font-medium rounded-lg transition-colors"
+                            >
+                                <Copy className="w-4 h-4" />
+                                前回の点検からコピーして始める
+                            </Link>
+                        )}
                     </div>
                 </div>
 
@@ -141,26 +186,6 @@ export default async function PropertyDetailPage({
                     </div>
                 </div>
 
-                {/* 点検アクション */}
-                <div className="flex gap-3 flex-wrap">
-                    <Link
-                        href={`/inspection/new?propertyId=${id}`}
-                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors"
-                    >
-                        <Plus className="w-4 h-4" />
-                        新規点検を開始
-                    </Link>
-                    {latestInspectionId && (
-                        <Link
-                            href={`/inspection/new?propertyId=${id}&copyFrom=${latestInspectionId}`}
-                            className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
-                        >
-                            <Copy className="w-4 h-4" />
-                            前回の点検からコピーして開始
-                        </Link>
-                    )}
-                </div>
-
                 {/* 点検履歴 */}
                 <div className="bg-white rounded-xl border border-slate-200 p-6">
                     <h2 className="text-lg font-bold text-slate-800 mb-4">
@@ -182,7 +207,7 @@ export default async function PropertyDetailPage({
                             {history.map((inspection) => (
                                 <Link
                                     key={inspection.id}
-                                    href={`/inspection/${inspection.id}`}
+                                    href={resumeTarget(inspection.id as string, itiranIds.get(inspection.id as string)).href}
                                     className="flex items-center justify-between gap-4 p-4 rounded-lg border border-slate-100 hover:bg-slate-50 transition-colors"
                                 >
                                     <div className="flex items-center gap-3">

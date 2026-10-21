@@ -7,7 +7,7 @@ import ItiranPdfPreviewCollapsible from "@/components/itiran-pdf-preview-collaps
 import StepIndicator from "@/components/step-indicator"
 import { INSPECTION_STEPS } from "@/lib/inspection-steps"
 import Breadcrumb from "@/components/breadcrumb"
-import { ArrowRight, CheckCircle2, Circle, FileDown, Pencil } from "lucide-react"
+import { ArrowRight, CheckCircle2, Circle, CircleDot, FileDown, Pencil } from "lucide-react"
 import { getEquipmentProgress } from "@/lib/inspection-progress"
 import WithdrawnMatchNotice from "@/components/withdrawn-match-notice"
 import { withdrawnAtOf } from "@/lib/match-withdrawn"
@@ -53,13 +53,15 @@ export default async function ItiranDetailPage({
     //   要確認バッジと同じ first-unconfirmed を指すので整合）。無ければ完了→結果出力を主に。
     //   getNextItiranInputStep(null,…) は進捗を見ず常に先頭を返すので主CTAには使わない。
     const outputHref = `/inspection/${id}/itiran/${itiranId}/output`
-    const nextAction = progressSteps.find((s) => !s.ready || s.unconfirmed)
+    //   ★判定が初期値の「良」のまま（開いただけ）も「次の作業」に数える（2026-10-21）。以前は開いて閉じただけの様式が
+    //     ✓ になり、主CTA が飛ばしていた（確定前の確認で「判定が初期値のまま」と言われて初めて気づく）
+    const nextAction = progressSteps.find((s) => !s.ready || s.unconfirmed || s.defaulted)
     const isComplete = !nextAction
     const primaryCta = nextAction
         ? {
             href: nextAction.href,
             label: nextAction.ready
-                ? `次の様式を確認: ${nextAction.title}`   // ready かつ未確認（複製）
+                ? `次の様式を確認: ${nextAction.title}`   // ready かつ未確認（複製）・判定が初期値のまま
                 : `次の様式を入力: ${nextAction.title}`,  // 未入力（通常）
         }
         : { href: outputHref, label: "結果出力へ" }
@@ -70,11 +72,17 @@ export default async function ItiranDetailPage({
                 <Breadcrumb items={[
                     { label: "点検", href: "/inspection" },
                     { label: "総括表", href: `/inspection/${id}` },
-                    { label: "点検者", href: `/inspection/${id}/itiran/${itiranId}` },
-                    { label: "別記入力" },
+                    { label: "点検者一覧表", href: `/inspection/${id}/itiran/${itiranId}/edit` },
+                    { label: "点検票の入力" },
                 ]} />
                 <StepIndicator steps={[...INSPECTION_STEPS]} currentStep={3} />
                 <WithdrawnMatchNotice withdrawnAt={withdrawnAt} className="mt-4" />
+                {/* ★この画面の名前と、ここでやること（2026-10-21）。以前は見出しが無く、ほかの画面からは
+                     「別記ハブ」「点検者」「別記」と別々の名前で呼ばれていた */}
+                <h1 className="mt-4 text-2xl font-bold text-slate-900">点検票（別記様式）の入力</h1>
+                <p className="mt-1 text-sm text-slate-600">
+                    {soukatsu?.building_name ? `${soukatsu.building_name}・` : ""}設備ごとの点検票を入れます。全部入れたら「結果出力」で確定・PDF 出力・納品をします。
+                </p>
             </div>
             <div className="max-w-[210mm] mx-auto mb-6 flex justify-between items-center gap-3 flex-wrap">
                 <Link href={`/inspection/${id}`} className="text-blue-600 hover:underline inline-flex min-h-11 items-center">
@@ -130,7 +138,7 @@ export default async function ItiranDetailPage({
             {totalCount > 0 && (
                 <div className="max-w-[210mm] mx-auto mb-6 bg-white rounded-xl border border-slate-200 p-6 space-y-4">
                     <div className="flex items-center justify-between">
-                        <h2 className="text-lg font-bold text-slate-800">設備入力の進捗</h2>
+                        <h2 className="text-lg font-bold text-slate-800">点検票の進み具合</h2>
                         <span className="text-sm font-medium text-slate-600">
                             {completedCount} / {totalCount} 完了
                         </span>
@@ -144,6 +152,10 @@ export default async function ItiranDetailPage({
                         />
                     </div>
 
+                    <p className="text-xs leading-relaxed text-slate-500">
+                        ✓ 入れ終えた・<span className="text-amber-700">◉ 開いたが判定が初期値の「良」のまま（開いて確かめ、「確かめました」を押す）</span>・○ 未入力
+                    </p>
+
                     {/* 設備一覧 */}
                     <div className="space-y-1">
                         {progressSteps.map((step) => (
@@ -152,23 +164,48 @@ export default async function ItiranDetailPage({
                                 href={step.href}
                                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 transition-colors group"
                             >
-                                {step.ready ? (
+                                {step.ready && !step.defaulted && !step.unconfirmed ? (
                                     <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                                ) : step.ready ? (
+                                    <CircleDot className="w-5 h-5 text-amber-500 shrink-0" />
                                 ) : (
                                     <Circle className="w-5 h-5 text-slate-300 shrink-0" />
                                 )}
                                 <span className={`text-sm flex-1 ${step.ready ? "text-slate-700" : "text-slate-500"}`}>
                                     {step.title}
                                 </span>
-                                {step.unconfirmed && (
+                                {step.unconfirmed ? (
                                     <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
                                         要確認
                                     </span>
-                                )}
+                                ) : step.defaulted ? (
+                                    <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                                        初期値のまま
+                                    </span>
+                                ) : !step.ready ? (
+                                    <span className="shrink-0 text-xs text-slate-400">未入力</span>
+                                ) : null}
                                 <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 shrink-0" />
                             </Link>
                         ))}
                     </div>
+                </div>
+            )}
+
+            {/* ★点検票の対象が 0 件（物件の設備が未登録・別記の無い設備だけ）。以前は何も出ず「結果出力へ」だけが見えた */}
+            {totalCount === 0 && (
+                <div className="max-w-[210mm] mx-auto mb-6 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+                    <p className="font-semibold">この報告書には、入れる点検票（別記様式）がありません。</p>
+                    <p className="mt-1 text-amber-800">
+                        物件の「設置設備」が登録されていないか、別記様式の無い設備だけです。
+                        {soukatsu?.property_id ? (
+                            <>
+                                {" "}設備を足すときは{" "}
+                                <Link href={`/properties/${soukatsu.property_id}/edit`} className="font-medium underline">物件の編集</Link>
+                                {" "}から。点検票が要らなければ、このまま「結果出力へ」進めます。
+                            </>
+                        ) : " 点検票が要らなければ、このまま「結果出力へ」進めます。"}
+                    </p>
                 </div>
             )}
 

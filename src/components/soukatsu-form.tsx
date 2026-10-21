@@ -574,11 +574,18 @@ export default function SoukatsuForm({ property, previousData, copyFromId, sourc
                 </CardContent>
             </Card>
 
-            <div className="flex justify-end pt-4">
-                <Button type="submit" size="lg" disabled={loading} className="w-full md:w-auto">
+            {/* ★押したあとにどこへ行くかを書く（2026-10-21）。以前は「点検結果を保存する」で、総括表を作る画面なのに
+                 「点検結果」と読め、保存したあと次に何をするかも出ていなかった */}
+            <div className="flex flex-col items-stretch gap-1 pt-4 md:items-end">
+                <Button type="submit" size="lg" disabled={loading} className="min-h-11 w-full md:w-auto">
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {loading ? "保存中..." : "点検結果を保存する"}
+                    {loading ? "保存中..." : "総括表を保存して次へ"}
                 </Button>
+                <p className="text-xs text-slate-500 md:text-right">
+                    {isClone
+                        ? "保存すると、前回の内容を写した点検票（別記様式）の一覧へ移ります"
+                        : "保存すると総括表の確認（プレビュー）へ移ります。その次は点検者一覧表です"}
+                </p>
             </div>
         </form>
     )

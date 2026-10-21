@@ -1,6 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
+import { MATCHING_VENDOR_HOME_URL } from "@/lib/matching-site"
 import { CheckCircle2, Loader2, MinusCircle, Send } from "lucide-react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
@@ -424,6 +425,15 @@ export default function DeliverReportButton({
                 >
                     {message}
                 </p>
+            )}
+            {/* ★納品のあとの次の一歩（2026-10-21）。完了の報告はマッチングサイトの業者ホームで行う */}
+            {phase === "done" && (
+                <a
+                    href={MATCHING_VENDOR_HOME_URL}
+                    className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-blue-600 underline"
+                >
+                    次は、マッチングサイトの業者ホームで「結果を報告する」→
+                </a>
             )}
         </div>
     )

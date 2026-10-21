@@ -561,6 +561,16 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-next-step-clarity.mjs", stage: "静的",
+        why: "次に進む方法の分かりにくい所（2026-10-21）: ホームのはじめのボタンと「続きから」・物件の保存のあと物件へ・"
+            + "点検開始を上に・止まった所へ行く一覧・点検者一覧表の二重作成・保存ボタンの名前・点検票の一覧の見出しと名前・"
+            + "開いただけの点検票を完了に数えない・いつ確定するか・確定の知らせ・納品のあとマッチングサイトへ。★どれも PDF の検査・画像の照合では出ない",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-next-step-clarity.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-next-step-clarity.mjs"], sentinel: "NEXT_STEP_CLARITY_OK" },
+        ],
+    },
+    {
         file: "check-iphone-input.mjs", stage: "静的",
         why: "iPhone での入力のしやすさ（2026-10-20 の iPhone 点検）: 入力欄 16px（押すたびの拡大を止める）・数字/電話のキーボード・"
             + "その5 の仕様の写し・第1 の種別のまとめ付け・画面下の帯・判定のボタン・自動保存（別のアプリに切り替えた瞬間も）・"

@@ -3,6 +3,7 @@ import Link from "next/link"
 import { Building2, ClipboardCheck, Plus } from "lucide-react"
 import type { Property } from "@/types/database"
 import PropertySearch from "@/components/property-search"
+import ResumeReports from "@/components/resume-reports"
 
 export default async function InspectionPage() {
     const { supabase, user } = await getAuthenticatedClient()
@@ -21,14 +22,14 @@ export default async function InspectionPage() {
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
                     <div className="min-w-0">
                         <Link href="/tool" className="text-sm text-blue-600 hover:underline mb-2 flex w-fit min-h-11 items-center">
-                            ← ツール選択に戻る
+                            ← ホームに戻る
                         </Link>
                         <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
                             <ClipboardCheck className="w-7 h-7 text-emerald-600 shrink-0" />
-                            消防設備点検スタート
+                            点検を始める
                         </h1>
                         <p className="text-slate-500 mt-1 text-sm">
-                            点検する物件を選択してください。届出者情報・建物情報が自動入力されます。
+                            点検する物件を選ぶと、新しい報告書（総括表）を作ります。届出者情報・建物情報は物件から自動で入ります。
                         </p>
                     </div>
                     <Link
@@ -58,9 +59,18 @@ export default async function InspectionPage() {
                     </div>
                 )}
 
+                {/* ★作りかけの報告書の続き（2026-10-21）。以前はこの画面に出ず、続きのつもりで「この物件で点検開始」を押して
+                     同じ物件の報告書を 2 つ作ってしまうことがあった */}
+                <div className="mb-6">
+                    <ResumeReports limit={3} />
+                </div>
+
                 {/* 物件一覧（検索付き） */}
                 {list.length > 0 && (
-                    <PropertySearch items={list} mode="inspection" />
+                    <>
+                        <h2 className="mb-2 text-sm font-semibold text-slate-600">新しく始める物件を選ぶ</h2>
+                        <PropertySearch items={list} mode="inspection" />
+                    </>
                 )}
             </div>
         </main>

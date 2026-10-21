@@ -1,58 +1,25 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { ArrowRight, Building, ClipboardCheck, Settings, Wrench, Clock, FileText, Users } from "lucide-react"
+import { ArrowRight, Building, ClipboardCheck, Settings, Wrench, FileText, Users } from "lucide-react"
 import LogoutButton from "@/components/logout-button"
 import { InstallPrompt } from "@/components/install-prompt"
 import { createClient } from "@/lib/supabase/server"
-
-type RecentInspection = {
-  id: string
-  buildingName: string
-  inspectionDate: string | null
-  inspectionType: string | null
-  isClone: boolean
-}
+import ResumeReports from "@/components/resume-reports"
 
 export default async function ToolPage() {
-  let recentInspections: RecentInspection[] = []
   let propertyCount = 0
   let inspectionCount = 0
 
   try {
     const supabase = await createClient()
 
-    // 報告書の幹は inspection_soukatsu（旧 v1 の "inspections" テーブルは現行スキーマに存在しない）。
-    // building_name は soukatsu の NOT NULL 列なので properties への join は不要（property_id は null 可）。
     // RLS(user_id=auth.uid()) で自分の物件/報告書だけが数えられる＝ダッシュボードとして正しい。
-    //
-    // ★並びは created_at 降順。限界: inspection_soukatsu に updated_at は無く、created_at は
-    //   「着手した順」であって「最後に触った順」ではない。実作業は23の様式テーブル側で進み、そちらに
-    //   updated_at がある。「7/1着手→7/20再開」の報告書はここで上位に来ない。真の「最終更新順」は
-    //   様式 updated_at の集約が必要で、横断的な報告書一覧(#3)で本格対応する。
-    // ★申し送り(#2 編集画面): soukatsu を編集可能にするなら inspection_soukatsu に updated_at 列を
-    //   追加すること（「いつ直したか」＝監査要件＋この並びの精度向上）。今 updated_at が無いのは
-    //   「幹は編集されない」前提の名残。
-    const [inspRes, propCountRes, inspCountRes] = await Promise.all([
-      supabase
-        .from("inspection_soukatsu")
-        // 複製判定は cloned_at に寄せる（deliver_report ゲートと同じ列＝将来のドリフト防止。
-        // RPC が cloned_from/cloned_at を同一Txで立てるので実質同値だが、判定列は1つに統一する）。
-        .select("id, building_name, inspection_date, inspection_type, created_at, cloned_at")
-        .order("created_at", { ascending: false })
-        .limit(3),
+    // ★最近の報告書は「続きから」（components/resume-reports.tsx）が引く（2026-10-21）
+    const [propCountRes, inspCountRes] = await Promise.all([
       supabase.from("properties").select("id", { count: "exact", head: true }),
       supabase.from("inspection_soukatsu").select("id", { count: "exact", head: true }),
     ])
 
-    if (inspRes.data) {
-      recentInspections = (inspRes.data as Record<string, unknown>[]).map((d) => ({
-        id: d.id as string,
-        buildingName: (d.building_name as string) || "無題の報告書",
-        inspectionDate: (d.inspection_date as string | null) ?? null,
-        inspectionType: (d.inspection_type as string | null) ?? null,
-        isClone: !!d.cloned_at,
-      }))
-    }
     propertyCount = propCountRes.count ?? 0
     inspectionCount = inspCountRes.count ?? 0
   } catch {
@@ -60,23 +27,63 @@ export default async function ToolPage() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-6 bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100">
-      <div className="relative max-w-2xl w-full bg-white rounded-2xl shadow-xl border border-slate-100 p-10 md:p-16 text-center space-y-10 overflow-hidden">
+    <main className="flex min-h-screen flex-col items-center justify-center p-4 md:p-6 bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100">
+      <div className="relative max-w-2xl w-full bg-white rounded-2xl shadow-xl border border-slate-100 p-6 md:p-16 text-center space-y-6 md:space-y-10 overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-indigo-600"></div>
 
         <div className="flex justify-center relative z-10">
-          <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-5 rounded-xl shadow-lg shadow-blue-200/50 transform -rotate-6 hover:rotate-0 transition-transform duration-300">
-            <Wrench className="w-14 h-14 text-white" strokeWidth={1.5} />
+          <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-3 md:p-5 rounded-xl shadow-lg shadow-blue-200/50 transform -rotate-6 hover:rotate-0 transition-transform duration-300">
+            <Wrench className="w-8 h-8 md:w-14 md:h-14 text-white" strokeWidth={1.5} />
           </div>
         </div>
 
-        <div className="space-y-5 relative z-10">
-          <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-slate-900 leading-tight">
+        <div className="space-y-2 md:space-y-5 relative z-10">
+          <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight text-slate-900 leading-tight">
             Mamoru Infra
-            <span className="block text-xl md:text-2xl mt-2 text-blue-600 font-bold">
+            <span className="block text-base md:text-2xl mt-1 md:mt-2 text-blue-600 font-bold">
               消防設備点検・報告書作成ツール
             </span>
           </h1>
+        </div>
+
+        {/* ★はじめに押すものを上に（2026-10-21・次に進む方法の洗い出し）。以前は件数と最近の点検の下にあり、
+             iPhone では「物件基本情報の入力」「消防設備点検スタート」が最初の画面に入らなかった。
+             名前も「物件基本情報の入力」（実際は物件の一覧）・「スタート」（実際は物件を選ぶ画面）で、何をする所か分かりにくかった */}
+        <div className="relative z-10 flex flex-col gap-3">
+          <Link href="/properties" className="w-full group">
+            <Button size="lg" className="h-auto w-full justify-between gap-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-4 text-left font-bold shadow-md transition-all duration-300 hover:from-blue-700 hover:to-indigo-700 hover:shadow-lg">
+              <span className="flex min-w-0 items-center gap-3">
+                <Building className="h-6 w-6 shrink-0" />
+                <span className="min-w-0">
+                  <span className="block text-lg">① 物件を登録する</span>
+                  <span className="block whitespace-normal text-xs font-normal text-blue-100">建物の情報を入れる・登録した物件を見る</span>
+                </span>
+              </span>
+              <ArrowRight className="h-5 w-5 shrink-0 transition-transform group-hover:translate-x-1" />
+            </Button>
+          </Link>
+
+          <Link href="/inspection" className="w-full group">
+            <Button size="lg" className="h-auto w-full justify-between gap-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-4 text-left font-bold shadow-md transition-all duration-300 hover:from-emerald-700 hover:to-teal-700 hover:shadow-lg">
+              <span className="flex min-w-0 items-center gap-3">
+                <ClipboardCheck className="h-6 w-6 shrink-0" />
+                <span className="min-w-0">
+                  <span className="block text-lg">② 点検を始める</span>
+                  <span className="block whitespace-normal text-xs font-normal text-emerald-50">物件を選んで、新しい報告書を作る</span>
+                </span>
+              </span>
+              <ArrowRight className="h-5 w-5 shrink-0 transition-transform group-hover:translate-x-1" />
+            </Button>
+          </Link>
+
+          {/* 報告書ができるまでの順番（各画面の上の 1〜5 と同じ） */}
+          <p className="text-left text-xs leading-relaxed text-slate-500">
+            点検の順番: 総括表 → 点検者一覧表 → 点検票（別記様式）→ 結果出力（確定・PDF・納品）
+          </p>
+        </div>
+
+        <div className="relative z-10">
+          <ResumeReports />
         </div>
 
         {/* Summary Cards */}
@@ -97,71 +104,9 @@ export default async function ToolPage() {
           </div>
         </div>
 
-        {/* Recent Inspections */}
-        {recentInspections.length > 0 && (
-          <div className="relative z-10 text-left">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-slate-400" />
-                <span className="text-sm font-semibold text-slate-500">最近の点検</span>
-              </div>
-              <Link href="/reports" className="inline-flex min-h-11 items-center text-xs font-medium text-blue-600 hover:underline shrink-0">
-                すべての報告書を見る →
-              </Link>
-            </div>
-            <div className="space-y-2">
-              {recentInspections.map((insp) => (
-                <Link
-                  key={insp.id}
-                  // リンク先は総括表プレビュー(/inspection/[id])。詳細の「次へ」は既存 itiran があれば
-                  // ハブへ寄る(判断1修正済み)ので実質2クリック。itiran 直行の1クリック化は #3 で検討。
-                  href={`/inspection/${insp.id}`}
-                  className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-4 py-3 text-sm transition-all hover:bg-blue-50 hover:border-blue-200 group"
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-slate-700 group-hover:text-blue-700 truncate">
-                        {insp.buildingName}
-                      </span>
-                      {insp.isClone && (
-                        <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">
-                          複製
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-400">
-                      {insp.inspectionType && <span>{insp.inspectionType}</span>}
-                      {insp.inspectionDate && (
-                        <span>{new Date(insp.inspectionDate).toLocaleDateString("ja-JP")}</span>
-                      )}
-                    </div>
-                  </div>
-                  <ArrowRight className="w-4 h-4 shrink-0 text-slate-300 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all" />
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="flex flex-col gap-5 justify-center items-center relative z-10 pt-4">
-          <Link href="/properties" className="w-full group">
-            <Button size="lg" className="w-full text-lg px-10 py-7 gap-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 rounded-xl font-bold">
-              <Building className="w-6 h-6" />
-              物件基本情報の入力
-              <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
-            </Button>
-          </Link>
-
-          <Link href="/inspection" className="w-full group">
-            <Button size="lg" className="w-full text-lg px-10 py-7 gap-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 rounded-xl font-bold">
-              <ClipboardCheck className="w-6 h-6" />
-              消防設備点検スタート
-              <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
-            </Button>
-          </Link>
-
+        <div className="relative z-10 flex flex-col gap-3">
           <Link href="/reports" className="w-full group">
-            <Button size="lg" variant="outline" className="w-full text-base px-10 py-6 gap-3 border-slate-300 hover:bg-slate-50 hover:-translate-y-0.5 transition-all duration-300 rounded-xl font-medium text-slate-600">
+            <Button size="lg" variant="outline" className="w-full text-base px-6 py-6 gap-3 border-slate-300 hover:bg-slate-50 transition-all duration-300 rounded-xl font-medium text-slate-600">
               <FileText className="w-5 h-5" />
               点検報告書一覧
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -169,7 +114,7 @@ export default async function ToolPage() {
           </Link>
 
           <Link href="/tool/equipment-settings" className="w-full group">
-            <Button size="lg" variant="outline" className="w-full text-base px-10 py-6 gap-3 border-slate-300 hover:bg-slate-50 hover:-translate-y-0.5 transition-all duration-300 rounded-xl font-medium text-slate-600">
+            <Button size="lg" variant="outline" className="w-full text-base px-6 py-6 gap-3 border-slate-300 hover:bg-slate-50 transition-all duration-300 rounded-xl font-medium text-slate-600">
               <Settings className="w-5 h-5" />
               設備出力設定
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -177,7 +122,7 @@ export default async function ToolPage() {
           </Link>
 
           <Link href="/inspectors" className="w-full group">
-            <Button size="lg" variant="outline" className="w-full text-base px-10 py-6 gap-3 border-slate-300 hover:bg-slate-50 hover:-translate-y-0.5 transition-all duration-300 rounded-xl font-medium text-slate-600">
+            <Button size="lg" variant="outline" className="w-full text-base px-6 py-6 gap-3 border-slate-300 hover:bg-slate-50 transition-all duration-300 rounded-xl font-medium text-slate-600">
               <Users className="w-5 h-5" />
               点検者マスタ
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />

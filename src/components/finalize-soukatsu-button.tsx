@@ -1,6 +1,8 @@
 "use client"
 
 import { useState } from "react"
+import { toast } from "sonner"
+import { MATCHING_VENDOR_HOME_URL } from "@/lib/matching-site"
 import { useRouter } from "next/navigation"
 import { AlertTriangle, CheckCircle2, Ban, Lock } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -74,7 +76,16 @@ export default function FinalizeSoukatsuButton({
             className="flex items-start gap-2 rounded-lg border border-slate-300 bg-slate-50 p-4 text-sm leading-relaxed text-slate-700"
         >
             <Ban className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
-            <span>{noticeText}</span>
+            <span>
+                {noticeText}
+                {/* ★承認・契約の状況はマッチングサイトで見る（2026-10-21）。以前はサイトの名前だけでリンクが無かった */}
+                {notContracted && (
+                    <>
+                        {" "}
+                        <a href={MATCHING_VENDOR_HOME_URL} className="font-medium text-blue-600 underline">マッチングサイトの業者ホームを開く</a>
+                    </>
+                )}
+            </span>
         </p>
     ) : null
 
@@ -105,6 +116,8 @@ export default function FinalizeSoukatsuButton({
         }
         setOpen(false)
         setConfirmingDup(false)
+        // ★確定したことと次にやることを知らせる（2026-10-21）。以前は画面を読み直すだけで、確定のボタンが消えたことしか分からなかった
+        toast.success("確定しました。PDF の出力と納品ができるようになりました")
         router.refresh()
     }
 

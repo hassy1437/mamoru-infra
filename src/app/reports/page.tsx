@@ -17,13 +17,13 @@ export default async function ReportsPage() {
     return (
         <main className="min-h-screen bg-gray-50 py-10">
             <div className="max-w-4xl mx-auto px-4">
+                {/* ★「ホーム」と「ツール」が同じ画面（/tool）だった。1 つにまとめる（2026-10-21） */}
                 <Breadcrumb items={[
-                    { label: "ツール", href: "/tool" },
                     { label: "報告書一覧" },
                 ]} />
                 <div className="mb-6">
                     <Link href="/tool" className="text-sm text-blue-600 hover:underline mb-2 flex w-fit min-h-11 items-center">
-                        ← ツール選択に戻る
+                        ← ホームに戻る
                     </Link>
                     <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
                         <FileText className="w-7 h-7 text-emerald-600 shrink-0" />
@@ -31,7 +31,7 @@ export default async function ReportsPage() {
                         <span className="text-sm font-normal text-slate-400">{reports.length}件</span>
                     </h1>
                     <p className="text-slate-500 mt-1 text-sm">
-                        すべての報告書を最終更新順に表示します。未完成の報告書もここから確認できます。
+                        すべての報告書を最終更新順に表示します。押すと、止まった所（点検者一覧表・点検票の一覧）から続けられます。
                     </p>
                 </div>
                 <ReportList reports={reports} />

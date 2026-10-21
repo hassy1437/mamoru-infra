@@ -129,6 +129,9 @@ export default function PropertyForm({ property }: PropertyFormProps) {
                 updated_at: new Date().toISOString(),
             }
 
+            // ★保存したあとは、その物件の画面へ（2026-10-21・次に進む方法の洗い出し）。以前は物件一覧に戻り、
+            //   登録したばかりの物件を一覧から探して「点検開始」を押す必要があった（次にやることが見えない）
+            let savedId = property?.id ?? null
             if (property?.id) {
                 const { error: updateError } = await supabase
                     .from("properties")
@@ -136,15 +139,18 @@ export default function PropertyForm({ property }: PropertyFormProps) {
                     .eq("id", property.id)
                 if (updateError) throw updateError
             } else {
-                const { error: insertError } = await supabase
+                const { data: inserted, error: insertError } = await supabase
                     .from("properties")
                     .insert({ ...payload, user_id: user?.id })
+                    .select("id")
+                    .single()
                 if (insertError) throw insertError
+                savedId = (inserted as { id: string } | null)?.id ?? null
             }
 
             markClean()
-            toast.success(property ? "物件情報を更新しました" : "物件情報を登録しました")
-            router.push("/properties")
+            toast.success(property ? "物件情報を更新しました" : "物件情報を登録しました。次は「点検を始める」です")
+            router.push(savedId ? `/properties/${savedId}` : "/properties")
         } catch (err: unknown) {
             console.error(err)
             const msg = friendlyError(err)

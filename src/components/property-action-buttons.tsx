@@ -52,27 +52,31 @@ export default function PropertyActionButtons({
 
     return (
         <div className="flex flex-col gap-2 shrink-0">
-            <Link
-                href={`/properties/${propertyId}/edit`}
-                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
-            >
-                <Pencil className="w-4 h-4" />
-                編集
-            </Link>
-            <Link
-                href={`/properties/new?copyFrom=${propertyId}`}
-                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
-            >
-                <Copy className="w-4 h-4" />
-                複製
-            </Link>
+            {/* ★次にやることは「点検開始」。いちばん上に・いちばん目立つ色で（2026-10-21・次に進む方法の洗い出し）。
+                 以前は 編集（濃い灰）→ 複製 → 点検開始 → 削除（赤）の順で、赤い削除がいちばん目立っていた */}
             <Link
                 href={`/inspection/new?propertyId=${propertyId}`}
-                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
+                className="inline-flex min-h-11 items-center justify-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-lg transition-colors whitespace-nowrap"
             >
                 <ClipboardCheck className="w-4 h-4" />
                 点検開始
             </Link>
+            <div className="grid grid-cols-2 gap-2">
+                <Link
+                    href={`/properties/${propertyId}/edit`}
+                    className="inline-flex min-h-11 items-center justify-center gap-1.5 px-3 py-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
+                >
+                    <Pencil className="w-4 h-4" />
+                    編集
+                </Link>
+                <Link
+                    href={`/properties/new?copyFrom=${propertyId}`}
+                    className="inline-flex min-h-11 items-center justify-center gap-1.5 px-3 py-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
+                >
+                    <Copy className="w-4 h-4" />
+                    複製
+                </Link>
+            </div>
             {fromActiveMatch ? (
                 <p className="max-w-[10rem] text-xs leading-relaxed text-slate-500">
                     成約から作った物件は削除できません（消すと報告書を納品できなくなります）
@@ -82,7 +86,7 @@ export default function PropertyActionButtons({
                     type="button"
                     onClick={handleDelete}
                     disabled={deleting}
-                    className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
+                    className="inline-flex min-h-11 items-center justify-center gap-1.5 px-4 py-2 border border-red-200 bg-white hover:bg-red-50 disabled:opacity-50 text-red-600 text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
                 >
                     {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                     {deleting ? "削除中..." : "削除"}

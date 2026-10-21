@@ -10,6 +10,11 @@ export type EquipmentProgress = {
     ready: boolean
     /** 複製後まだ開いて保存(=確認)していない様式。deliver_report ゲートと同じ判定を1箇所(RPC)から取る。 */
     unconfirmed: boolean
+    /**
+     * 判定が初期値の「良」のまま（「確かめました」を押していない・lib/bekki-default-good.ts）。
+     * ★様式は開くだけで初期値つきで自動保存されるので、行があるだけでは「入れ終えた」と言えない（2026-10-21）
+     */
+    defaulted: boolean
     href: string
 }
 
@@ -38,10 +43,12 @@ export async function getEquipmentProgress(
             const config = PDF_MERGE_CONFIG[step.id as ItiranInputStepId]
             const { data } = await supabase
                 .from(config.dbTable)
-                .select("id")
+                .select("id, defaulted:payload->judgments_defaulted")
                 .eq("itiran_id", itiranId)
                 .maybeSingle()
-            return !!data
+            const row = data as { id: string; defaulted?: unknown } | null
+            // ★isJudgmentsDefaulted と同じく true（真偽値）だけを「初期値のまま」と読む
+            return { ready: !!row, defaulted: row?.defaulted === true }
         })
     )
 
@@ -50,12 +57,14 @@ export async function getEquipmentProgress(
         return {
             stepId: step.id,
             title: step.title,
-            ready: results[i].status === "fulfilled" ? results[i].value : false,
+            ready: results[i].status === "fulfilled" ? results[i].value.ready : false,
             unconfirmed: unconfirmedTables.has(config.dbTable),
+            defaulted: results[i].status === "fulfilled" ? results[i].value.defaulted : false,
             href: `/inspection/${soukatsuId}/itiran/${itiranId}/${step.routeSegment}`,
         }
     })
 
-    const completedCount = progressSteps.filter((s) => s.ready).length
+    // ★「完了」は入れ終えたもの（行があり・初期値のままでなく・複製の未確認でない）
+    const completedCount = progressSteps.filter((s) => s.ready && !s.defaulted && !s.unconfirmed).length
     return { steps: progressSteps, completedCount, totalCount: progressSteps.length }
 }

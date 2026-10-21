@@ -6,6 +6,7 @@ import {
     Search, Calendar, Copy, Unlink, CheckCircle2, AlertTriangle, ClipboardCheck, ArrowRight, Send,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { resumeTarget } from "@/lib/report-resume"
 
 // get_report_summaries() の返り14列（invoker RPC・DB が唯一の真実源）。
 export type ReportSummary = {
@@ -83,6 +84,12 @@ export default function ReportList({ reports }: { reports: ReportSummary[] }) {
                 <ClipboardCheck className="w-16 h-16 text-slate-300 mx-auto mb-4" />
                 <p className="text-slate-500 text-lg font-medium mb-1">まだ報告書がありません</p>
                 <p className="text-slate-400 text-sm">物件を選んで点検を開始すると、ここに一覧されます。</p>
+                <Link
+                    href="/inspection"
+                    className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2.5 font-medium text-white transition-colors hover:bg-emerald-700"
+                >
+                    点検を始める
+                </Link>
             </div>
         )
     }
@@ -138,7 +145,8 @@ export default function ReportList({ reports }: { reports: ReportSummary[] }) {
                     return (
                         <Link
                             key={r.id}
-                            href={`/inspection/${r.id}`}
+                            // ★止まった所へ（点検者一覧表があれば点検票の一覧・2026-10-21）。以前は必ず総括表の確認画面だった
+                            href={resumeTarget(r.id, r.itiran_id).href}
                             className="block bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md hover:border-blue-200 transition-all group"
                         >
                             <div className="flex items-start justify-between gap-4">

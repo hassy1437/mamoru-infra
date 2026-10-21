@@ -55,7 +55,8 @@ export default function SoukatsuPdfButton({
 
     return (
         <div>
-            <Button onClick={handleDownload} disabled={loading} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+            {/* ★控えめな見た目（2026-10-21）。以前は「次へ」と同じ緑で並び、どちらが次にやることか分からなかった */}
+            <Button onClick={handleDownload} disabled={loading} variant="outline" className="min-h-11 gap-0">
                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
                 総括表PDF出力
             </Button>

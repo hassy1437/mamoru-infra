@@ -149,7 +149,8 @@ export default function PropertyForm({ property }: PropertyFormProps) {
             }
 
             markClean()
-            toast.success(property ? "物件情報を更新しました" : "物件情報を登録しました。次は「点検を始める」です")
+            // ★複製（property はあるが id が無い）は新しい登録（2026-10-21）。以前は「更新しました」と出ていた
+            toast.success(property?.id ? "物件情報を更新しました" : "物件情報を登録しました。次は「点検を始める」です")
             router.push(savedId ? `/properties/${savedId}` : "/properties")
         } catch (err: unknown) {
             console.error(err)
@@ -456,7 +457,7 @@ export default function PropertyForm({ property }: PropertyFormProps) {
                 </Button>
                 <Button type="submit" size="lg" disabled={loading} className="w-full md:w-auto">
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {loading ? "保存中..." : property ? "物件情報を更新する" : "物件情報を登録する"}
+                    {loading ? "保存中..." : property?.id ? "物件情報を更新する" : "物件情報を登録する"}
                 </Button>
             </div>
         </form>

@@ -22,6 +22,7 @@ import {
     systemFitFailures,
 } from "@/lib/pdf-fit-report"
 ;
+import { isGoodResult } from "@/lib/soukatsu-equipment";
 import fs from "fs";
 import path from "path";
 
@@ -125,16 +126,6 @@ const parseDate = (value: unknown) => {
     if (!value) return null;
     const d = new Date(String(value));
     return Number.isNaN(d.getTime()) ? null : d;
-};
-
-const isGoodResult = (value: unknown) => {
-    const text = normalizeText(value);
-    if (!text) return true;
-    return (
-        text.includes("指摘なし") ||
-        text.includes("良") ||
-        text.toLowerCase() === "good"
-    );
 };
 
 const isGeneralInspectionType = (value: unknown) => {

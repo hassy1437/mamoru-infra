@@ -7,6 +7,7 @@
 //      総括表の画面の PDF だけ、点検実施責任者が常に空だった
 //   4. 選ぶだけの欄: 一覧に無い用途の保存値で物件・総括表を保存できない／31 階以上・地下 6 階以上が選べず消える／
 //      宛名の敬称を「敬称なし」にしても 1 文字打つたびに消防署長に戻る／日付の形でない以前の日付が空に見える
+//   5. 総括表 PDF の判定欄: 「不良」も「良」の字を含むので、古いデータ・自由入力の「不良」が「良」に○を打っていた（2026-10-21）
 //
 // ■ 検査すること
 //   ・src/lib/inspector-sync.ts と report-readiness を実際に動かす（比べ方・出力前の確認の注意）
@@ -31,6 +32,7 @@ const F = {
     usage: "src/components/usage-select.tsx", floor: "src/components/floor-select.tsx", cover: "src/components/soukatsu-cover-inputs.tsx",
     license: "src/components/license-editor.tsx", device: "src/components/device-table-inputs.tsx",
     property: "src/components/property-form.tsx", sForm: "src/components/soukatsu-form.tsx", sEdit: "src/components/soukatsu-edit-form.tsx",
+    equip: "src/lib/soukatsu-equipment.ts", soukatuRoute: "src/app/api/generate-soukatu-pdf/route.ts",
 }
 
 // ── src のモジュールを ts から動かす（@/ と相対の import をたどって一時ファイルに書く）
@@ -82,6 +84,10 @@ async function behaviour(overrides) {
     const w = rr.checkReportReadiness(base).warnings.filter((x) => x.id.startsWith("bekki_inspector:"))
     eq(w.map((x) => x.id), ["bekki_inspector:fire-water"], "出力前の確認: 点検者一覧表と違う点検票だけに注意")
     eq(w[0]?.details, ["所属会社"], "出力前の確認: 違う欄の名前")
+    // 5. 総括表 PDF の判定欄（良に○を打つか）
+    const equip = await load(F.equip, overrides)
+    const cases = { "": true, "指摘なし": true, "良": true, "good": true, "要改善": false, "不良": false, "不良あり": false, "指摘あり": false, "否": false }
+    eq(Object.fromEntries(Object.keys(cases).map((k) => [k, equip.isGoodResult(k)])), cases, "総括表の判定: 「不良」を「良」に数えない")
     return problems
 }
 
@@ -115,6 +121,9 @@ function wiring(files) {
     has(F.cover, /const t = title === "" && name\.trim\(\) === "" && next\.trim\(\) !== "" \? FIRE_DEPARTMENT_TITLES\[0\] : title/, "宛名の敬称を「敬称なし」にしても 1 文字ごとに消防署長に戻る")
     if ((files[F.license].match(/\{legacyDateNote\((issueDate|expiryDate|trainingMonth), /g) ?? []).length !== 8) problems.push(`${F.license}: 免状の日付 8 か所で、日付の形でない保存値を見せていない`)
     if ((files[F.device].match(/type=\{isLegacyDate\(row\.calibrated_at\) \? "text" : "date"\}/g) ?? []).length !== 2) problems.push(`${F.device}: 校正年月日で、日付の形でない保存値を見せていない`)
+    // 5. 総括表 PDF の判定欄は lib の判定を使う（ルートの中に「良」の字だけを見る判定を戻さない）
+    has(F.soukatuRoute, /import \{ isGoodResult \} from "@\/lib\/soukatsu-equipment";/, "総括表の判定欄が lib の判定（「不良」を良に数えない）を使っていない")
+    if (/includes\("良"\)/.test(files[F.soukatuRoute])) problems.push(`${F.soukatuRoute}: 「良」の字だけで判定している（「不良」も良になる）`)
     return problems
 }
 
@@ -142,6 +151,7 @@ if (SELF_TEST) {
         ["範囲の外の階数を消す", mut(F.floor, "!options.includes(n)) options.push(n)", "!options.includes(n)) void n"), "範囲の外"],
         ["敬称を 1 文字ごとに付け直す", mut(F.cover, 'title === "" && name.trim() === "" && next.trim() !== ""', 'title === "" && next.trim() !== ""'), "消防署長に戻る"],
         ["校正年月日の文字の欄を外す", mut(F.device, 'type={isLegacyDate(row.calibrated_at) ? "text" : "date"}', 'type="date"'), "校正年月日"],
+        ["総括表のルートに「良」だけの判定を戻す", mut(F.soukatuRoute, "drawJudgeCircle(page, pageHeight, isGoodResult(item.result),", 'drawJudgeCircle(page, pageHeight, String(item.result ?? "").includes("良"),'), "「良」の字だけで判定"],
     ]
     for (const [label, m, expect] of wm) {
         if (!wiring(m).some((x) => x.includes(expect))) { console.log(`自己診断: ${label} → 検出できない`); process.exit(1) }
@@ -153,19 +163,20 @@ if (SELF_TEST) {
         ["空白の違いを違いとみなす", { [F.sync]: syncSrc.replace('.replace(/\\s+/g, "")', "") }, "空白・全角半角"],
         ["点検者一覧表が空の欄も比べる", { [F.sync]: syncSrc.replace('.filter((k) => fromItiran[k] !== "" && ', ".filter((k) => ") }, "空の欄は比べない"],
         ["出力前の確認から外す", { [F.readiness]: files[F.readiness].replace("if (itiranInspector) {", "if (false) {") }, "点検者一覧表と違う点検票だけ"],
+        ["「不良」を先に見ない", { [F.equip]: files[F.equip].replace("if (BAD_RESULT_WORDS.some((w) => t.includes(w))) return false", "") }, "「不良」を「良」に数えない"],
     ]
     for (const [label, ov, expect] of bm) {
         if (Object.entries(ov).some(([k, v]) => v === files[k])) { console.log(`自己診断: 書き換えられない: ${label}`); process.exit(1) }
         if (!(await behaviour(ov)).some((x) => x.includes(expect))) { console.log(`自己診断: ${label} → 検出できない`); process.exit(1) }
         console.log(`  陽性対照: ${label} → 検出`)
     }
-    console.log("  陰性対照: 読み込み中・下のボタン・点検者の知らせと確認・総括表の点検実施責任者・用途・階数・敬称・以前の日付")
+    console.log("  陰性対照: 読み込み中・下のボタン・点検者の知らせと確認・総括表の点検実施責任者・用途・階数・敬称・以前の日付・総括表の判定欄")
     console.log("SELF_TEST_OK")
     process.exit(0)
 }
 
 const problems = [...await behaviour(), ...wiring(files)]
-console.log("録音 102 の残りを検査: 読み込み中・下のボタン・点検者の知らせ・選ぶだけの欄")
+console.log("録音 102 の残りを検査: 読み込み中・下のボタン・点検者の知らせ・選ぶだけの欄・総括表の判定欄")
 if (problems.length) {
     console.log("★NG:")
     for (const p of problems) console.log("   ", p)

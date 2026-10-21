@@ -62,3 +62,18 @@ export function mergeEquipmentDetails(
         return merged as SoukatsuEquipmentItem
     })
 }
+
+/*
+ * 総括表 PDF の判定欄で「良」に○を打つか（generate-soukatu-pdf）。空は「良」。
+ * ★「不良」も「良」の字を含むので、先に悪いほうの言葉を見る（2026-10-21・録音 102 の洗い出し）。
+ *   以前は includes("良") だけで、古いデータや自由入力の「不良」「不良あり」が「良」に○を打っていた。
+ *   いまの画面の値は 指摘なし／要改善／該当なし（該当なしの行はルートが描かない）
+ */
+const BAD_RESULT_WORDS = ["不良", "要改善", "指摘あり", "否"]
+
+export function isGoodResult(value: unknown): boolean {
+    const t = String(value ?? "").replace(/\s+/g, " ").trim()
+    if (!t) return true
+    if (BAD_RESULT_WORDS.some((w) => t.includes(w))) return false
+    return t.includes("指摘なし") || t.includes("良") || t.toLowerCase() === "good"
+}

@@ -31,6 +31,7 @@ export function AuthProvider({
 
             return () => subscription.unsubscribe()
         } catch {
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- Supabase の初期化に失敗したときだけ、読み込み中を解く（外の失敗を画面へ伝える）
             setLoading(false)
         }
     }, [])

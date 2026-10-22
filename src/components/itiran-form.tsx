@@ -84,6 +84,7 @@ export default function ItiranForm({ soukatsuId, masters, initial, itiranId }: P
         if (!isEditMode && masters.length > 0) {
             // ★マスタの形が欠けていても落ちない。normalizeInspectorData は各階層を作り直すので
             //   structuredClone と同じくマスタと state を共有しない。
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- マスタからの自動入力は新規作成のマウント時に 1 回だけ（dirty にしない）
             setInspectors(prev => [normalizeInspectorData(masters[0].inspector_data), prev[1]])
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps

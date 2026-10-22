@@ -82,6 +82,7 @@ export default function PropertyForm({ property }: PropertyFormProps) {
     const [selectedEquipment, setSelectedEquipment] = useState<string[]>(property?.equipment_types ?? [])
     const [enabledTypes, setEnabledTypes] = useState<string[]>([...ALL_EQUIPMENT_TYPES])
     const [equipmentSearch, setEquipmentSearch] = useState("")
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 使う設備の設定は localStorage にあるので、マウント後に読む（サーバの描画とずらさない）
     useEffect(() => { setEnabledTypes(getEnabledEquipmentTypes()) }, [])
 
     const toggleEquipment = (name: string) => {

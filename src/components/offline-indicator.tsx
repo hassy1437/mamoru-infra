@@ -10,6 +10,7 @@ export function OfflineIndicator() {
         const goOffline = () => setOffline(true)
         const goOnline = () => setOffline(false)
 
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- navigator.onLine はブラウザにしか無いので、マウント後に読む
         setOffline(!navigator.onLine)
         window.addEventListener("offline", goOffline)
         window.addEventListener("online", goOnline)

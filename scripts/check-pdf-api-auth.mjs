@@ -10,7 +10,7 @@
 //   ①src/app/api の口が全部、止める接頭辞（/api/generate-）に入っている（★外れた口は素通り）
 //   ②middleware の matcher が /api/generate-… を拾う（除外パターンに食われていない）
 //   ③updateSession: 未ログインで 401 ／ 環境変数なしで 503 ／ getUser の例外で 401（この口だけ fail-closed）
-//   ④src/middleware.ts: 例外のときも、この口は 401（fail-open の next() に落とさない）
+//   ④src/proxy.ts（旧 src/middleware.ts）: 例外のときも、この口は 401（fail-open の next() に落とさない）
 //   ⑤ルートの中では止めていない（★検査が POST を関数として直に呼ぶので、中で止めると検査が全部落ちる）
 //
 // 使い方: node scripts/check-pdf-api-auth.mjs [--self-test]
@@ -24,7 +24,7 @@ const ROOT = process.cwd()
 const API = path.join(ROOT, "src", "app", "api")
 const GUARD = path.join(ROOT, "src", "lib", "pdf-api-guard.ts")
 const UPDATE = path.join(ROOT, "src", "lib", "supabase", "middleware.ts")
-const MW = path.join(ROOT, "src", "middleware.ts")
+const MW = path.join(ROOT, "src", "proxy.ts")
 
 const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1")
 
@@ -58,7 +58,7 @@ function check(guard, f) {
     if (f.apiDirs.length < 25) problems.push(`口の数が想定より少ない（${f.apiDirs.length}）。走査が空振りしていないか`)
     // ② matcher が拾う
     const m = f.mw.match(/matcher:\s*\[\s*'([^']+)'/)
-    if (!m) problems.push("src/middleware.ts: matcher を読み取れない")
+    if (!m) problems.push("src/proxy.ts: matcher を読み取れない")
     else {
         const re = new RegExp("^" + m[1].replace(/\\\\/g, "\\") + "$")
         for (const d of f.apiDirs.slice(0, 3)) if (!re.test(`/api/${d}`)) problems.push(`matcher が /api/${d} を拾わない（middleware を通らない）`)
@@ -71,7 +71,7 @@ function check(guard, f) {
     if (!/\} catch \{[\s\S]*?if \(pdfApi\) return NextResponse\.json\(PDF_API_UNAUTHORIZED_BODY, \{ status: 401 \}\)/.test(u)) problems.push("updateSession: getUser の例外のとき、PDF 生成の口を通している")
     // ④ middleware の例外
     const w = strip(f.mw)
-    if (!/catch \{[\s\S]*?isPdfApiPath\(request\.nextUrl\.pathname\)[\s\S]*?status: 401[\s\S]*?return NextResponse\.next\(\)/.test(w)) problems.push("src/middleware.ts: 例外のとき、PDF 生成の口を next() で通している")
+    if (!/catch \{[\s\S]*?isPdfApiPath\(request\.nextUrl\.pathname\)[\s\S]*?status: 401[\s\S]*?return NextResponse\.next\(\)/.test(w)) problems.push("src/proxy.ts: 例外のとき、PDF 生成の口を next() で通している")
     // ⑤ ルートの中では止めていない
     for (const [d, src] of Object.entries(f.routes)) {
         if (/auth\.getUser\(\)|getAuthenticatedClient\(/.test(strip(src))) problems.push(`src/app/api/${d}: ルートの中で認証している（PDF の検査が POST を直に呼ぶので全部落ちる）`)

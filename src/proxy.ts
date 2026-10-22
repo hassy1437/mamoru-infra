@@ -2,7 +2,9 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 import { isPdfApiPath, PDF_API_UNAUTHORIZED_BODY } from '@/lib/pdf-api-guard'
 
-export async function middleware(request: NextRequest) {
+// ★Next.js 16 の Proxy（旧 middleware）。2026-10-22 に src/middleware.ts から改名した（中身は同じ）。
+//   Proxy は Node.js で動く（旧 middleware の既定は Edge）。
+export async function proxy(request: NextRequest) {
     try {
         const { updateSession } = await import('@/lib/supabase/middleware')
         return await updateSession(request)

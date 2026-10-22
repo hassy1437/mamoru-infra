@@ -7,7 +7,7 @@
  *   他人のデータは読めない（DB に触らない）が、★誰でも何度でも生成できる。点検アプリは Vercel にあり、
  *   使用量の上限に当たると先行利用の業者ごと止まりうる。
  *
- * ■ ★どこで止めるか … middleware（src/lib/supabase/middleware.ts・src/middleware.ts）
+ * ■ ★どこで止めるか … middleware（src/lib/supabase/middleware.ts・src/proxy.ts＝旧 src/middleware.ts）
  *   ルートの中で止めると、PDF の検査（scripts/run-route-pdf.mjs が POST を関数として直に呼ぶ）が
  *   全部落ちる。middleware はブラウザからの HTTP だけを通るので、検査に影響しない。
  *   画面は同じオリジンの fetch（クッキー付き）で叩いているので、ログイン中はそのまま通る。

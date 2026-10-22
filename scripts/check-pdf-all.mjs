@@ -903,6 +903,16 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-protected-routes.mjs", stage: "静的",
+        why: "画面がログインの確認の対象か公開のどちらかに入っているか（2026-10-22）。"
+            + "★/inspectors が抜けていて、未ログインでも点検者の登録画面が開いていた。"
+            + "★PDF とは無関係だが、scripts/check-* はここに載せる決まり",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-protected-routes.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-protected-routes.mjs"], sentinel: "PROTECTED_ROUTES_OK" },
+        ],
+    },
+    {
         file: "check-work-minute.mjs", stage: "静的",
         why: "作業中の 1 分ごとの印が、入力・保存・確定・PDF を止めないか（2026-09-27）。"
             + "★送信を待たない・失敗を黙って捨てる・部品が落ちても画面へ伝えない・送るのは物件と総括表だけ。"

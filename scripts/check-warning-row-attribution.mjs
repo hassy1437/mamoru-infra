@@ -105,6 +105,20 @@ function behaviour(mod) {
         c.resolve({ page1_rows: rows(6, { 0: { content: "2026年10月20日" } }) })
         if (mod.buildBelowMinWarning(FORM, c).length) problems.push("その欄の値でないものが警告に出た（別の行の同じ値を拾った）")
     }
+    // 8) 総括表の設備の行（2026-10-22）。payload のキーは equipment_results（_rows で終わらない）で、
+    //    行に決まった見出しが無い。描いた側が渡す設備名（rowLabel）で行を示す。2 行目にも同じ値がある
+    {
+        const c = mod.createFitCollector()
+        c.reportSmall(LONG, 4.3, { rowsKey: "equipment_results", row: 3, column: "bad_detail", rowLabel: "誘導灯" })
+        c.resolve({ equipment_results: [
+            { name: "消火器", result: "指摘なし" },
+            { name: "自動火災報知設備", result: "要改善", bad_detail: LONG },
+            { name: "屋内消火栓設備", result: "指摘なし" },
+            { name: "誘導灯", result: "要改善", bad_detail: LONG },
+        ] })
+        const items = mod.buildBelowMinWarning("総括表", c)
+        if (items.length !== 1 || items[0].label !== "不良内容（「誘導灯」の行）") problems.push(`総括表の設備の行の警告が「誘導灯」の行を指さない: ${JSON.stringify(items.map((i) => i.label))}`)
+    }
     return problems
 }
 
@@ -173,7 +187,9 @@ if (SELF_TEST) {
         ["選択肢を値で当てる（直す前）", "const hit = locate(entries, c.text, c.at, true)", "const hit = locate(entries, c.text, undefined, true)", "選択肢の警告が 24 行目を指さない"],
         ["縮小・5pt 未満を値で当てる（直す前）", "const hit = locate(entries, f.text, f.at, false)", "const hit = locate(entries, f.text, undefined, false)", "5pt 未満の警告が 13 行目を指さない"],
         ["5pt 未満を値で畳む（2 行目が消える）", "if (!t || smalls.some((s) => sameCell(s.at, at, s.text, t))) return", "if (!t || smalls.some((s) => s.text === t)) return", "ほか1か所"],
-        ["畳んだ件数を書かない", "label: withRow(FIELD_LABELS[s.field!] ?? s.field!, form, s.rowsKey, s.row, more),\n            size", "label: withRow(FIELD_LABELS[s.field!] ?? s.field!, form, s.rowsKey, s.row),\n            size", "ほか1か所"],
+        ["総括表の設備の行を行として数えない（直す前）", 'key.endsWith("_rows") || key === "equipment_results"', 'key.endsWith("_rows")', "「誘導灯」の行を指さない"],
+        ["行の見出し（設備名）を使わない", "    if (rowLabel) return", "    if (false) return", "「誘導灯」の行を指さない"],
+        ["畳んだ件数を書かない", "label: withRow(FIELD_LABELS[s.field!] ?? s.field!, form, s.rowsKey, s.row, more, s.at?.rowLabel),\n            size", "label: withRow(FIELD_LABELS[s.field!] ?? s.field!, form, s.rowsKey, s.row, 0, s.at?.rowLabel),\n            size", "ほか1か所"],
     ]
     for (const [label, from, to, expect] of libMutants) {
         if (!lib.includes(from)) { console.log(`自己診断: 書き換える箇所が ${LIB} に無い: ${from}`); process.exit(1) }
@@ -200,14 +216,14 @@ if (SELF_TEST) {
         console.log("  陽性対照: 共有の 5pt 未満から位置を外す → 検出")
     }
     const { counts } = wiring(files, helpers)
-    console.log(`  陰性対照: 帰属 7 通り・ルート ${Object.keys(files).length} 本（縮小 ${counts.shrink}・5pt 未満 ${counts.small}・選択肢 ${counts.choice} か所）に位置あり`)
+    console.log(`  陰性対照: 帰属 8 通り・ルート ${Object.keys(files).length} 本（縮小 ${counts.shrink}・5pt 未満 ${counts.small}・選択肢 ${counts.choice} か所）に位置あり`)
     console.log("SELF_TEST_OK")
     process.exit(0)
 }
 
 const { problems: wireProblems, counts } = wiring(files, helpers)
 const problems = [...behaviour(await load(lib)), ...wireProblems]
-console.log(`警告の行の帰属を検査: 帰属 7 通り・ルート ${Object.keys(files).length} 本（縮小 ${counts.shrink}・5pt 未満 ${counts.small}・選択肢 ${counts.choice} か所）`)
+console.log(`警告の行の帰属を検査: 帰属 8 通り・ルート ${Object.keys(files).length} 本（縮小 ${counts.shrink}・5pt 未満 ${counts.small}・選択肢 ${counts.choice} か所）`)
 if (problems.length) {
     console.log("★NG:")
     for (const p of problems) console.log("   ", p)

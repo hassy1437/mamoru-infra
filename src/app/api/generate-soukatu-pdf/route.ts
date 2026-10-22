@@ -2,6 +2,7 @@
 import { PDFDocument, rgb, PDFPage, StandardFonts } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import {
+    type CellRef,
     type ReportFonts,
     measureRuns,
     drawTextRuns,
@@ -303,7 +304,8 @@ export async function POST(req: NextRequest) {
             dayCenter: (482.55 + 498.57) / 2,
         });
 
-        const results = ((body.equipment_results as EquipmentItem[] | null) ?? []).filter((item) => {
+        const allResults = (body.equipment_results as EquipmentItem[] | null) ?? [];
+        const results = allResults.filter((item) => {
             return normalizeText(item?.result) !== "該当なし";
         });
 
@@ -355,13 +357,25 @@ export async function POST(req: NextRequest) {
 
             const rowH = row.bottom - row.top;
 
+            // ★警告・エラーが「どの設備の行か」を示せるよう、描く欄に行の位置を渡す（2026-10-22）。
+            //   渡す前は「不良内容」「不良内容（ほか1か所）」とだけ出て、17行あるうちのどれか分からなかった。
+            //   row は payload の何件目か（「該当なし」を飛ばした後の rowIndex ではない。入力と突き合わせるため）。
+            //   行の見出しは設備名（画面も行番号は出さず、設備名で並べている）。
+            const rowAt = (column: string, labelKey?: string): CellRef => ({
+                rowsKey: "equipment_results",
+                row: allResults.indexOf(item),
+                column,
+                labelKey,
+                rowLabel: normalizeText(item?.name) || undefined,
+            });
+
             // ★設備方式も折り返す（3欄目）。1行時の実測: 10字で縮小開始 / 17字で5.0pt割れ / 24字で切り詰め。
             //   テンプレート実測: 内部の横罫線0本・高さ 47.8pt（余白後 41.8pt）。行数はセル高さから導出。
             drawWrappedTextInCell({
                 page, pageHeight, fonts, text: item.name,
                 cellX: col.name.x, cellTopFromTop: row.top, cellW: col.name.w, cellH: rowH,
                 fontSize: 8.8,
-                options: { paddingX: 3.5, paddingY: 3, minFontSize: 3.4 },
+                options: { paddingX: 3.5, paddingY: 3, minFontSize: 3.4, at: rowAt("name", "equipment_row_name") },
             });
 
             drawJudgeCircle(page, pageHeight, isGoodResult(item.result), row.top, row.bottom);
@@ -382,7 +396,7 @@ export async function POST(req: NextRequest) {
                     cellW: col.bad.w,
                     cellH: rowH,
                     fontSize: 7.6,
-                    options: { paddingX: 3, paddingY: 3, minFontSize: 3.2 },
+                    options: { paddingX: 3, paddingY: 3, minFontSize: 3.2, at: rowAt("bad_detail") },
                 });
             }
 
@@ -392,7 +406,7 @@ export async function POST(req: NextRequest) {
                     page, pageHeight, fonts, text: item.action,
                     cellX: col.action.x, cellTopFromTop: row.top, cellW: col.action.w, cellH: rowH,
                     fontSize: 7.6,
-                    options: { paddingX: 3, paddingY: 3, minFontSize: 3.2 },
+                    options: { paddingX: 3, paddingY: 3, minFontSize: 3.2, at: rowAt("action") },
                 });
             }
 
@@ -402,7 +416,7 @@ export async function POST(req: NextRequest) {
                     page, pageHeight, fonts, text: item.witness,
                     cellX: col.witness.x, cellTopFromTop: row.top, cellW: col.witness.w, cellH: rowH,
                     fontSize: 7.6,
-                    options: { paddingX: 3, paddingY: 3, minFontSize: 3.2 },
+                    options: { paddingX: 3, paddingY: 3, minFontSize: 3.2, at: rowAt("witness") },
                 });
             }
 

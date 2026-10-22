@@ -189,7 +189,7 @@ if (SELF_TEST) {
         ["5pt 未満を値で畳む（2 行目が消える）", "if (!t || smalls.some((s) => sameCell(s.at, at, s.text, t))) return", "if (!t || smalls.some((s) => s.text === t)) return", "ほか1か所"],
         ["総括表の設備の行を行として数えない（直す前）", 'key.endsWith("_rows") || key === "equipment_results"', 'key.endsWith("_rows")', "「誘導灯」の行を指さない"],
         ["行の見出し（設備名）を使わない", "    if (rowLabel) return", "    if (false) return", "「誘導灯」の行を指さない"],
-        ["畳んだ件数を書かない", "label: withRow(FIELD_LABELS[s.field!] ?? s.field!, form, s.rowsKey, s.row, more, s.at?.rowLabel),\n            size", "label: withRow(FIELD_LABELS[s.field!] ?? s.field!, form, s.rowsKey, s.row, 0, s.at?.rowLabel),\n            size", "ほか1か所"],
+        ["畳んだ件数を書かない", "label: withRow(fieldLabelOf(form, s.field!), form, s.rowsKey, s.row, more, s.at?.rowLabel, s.at?.place),\n            size", "label: withRow(fieldLabelOf(form, s.field!), form, s.rowsKey, s.row, 0, s.at?.rowLabel, s.at?.place),\n            size", "ほか1か所"],
     ]
     for (const [label, from, to, expect] of libMutants) {
         if (!lib.includes(from)) { console.log(`自己診断: 書き換える箇所が ${LIB} に無い: ${from}`); process.exit(1) }

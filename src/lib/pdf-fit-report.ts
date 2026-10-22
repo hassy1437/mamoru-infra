@@ -29,8 +29,11 @@ import { BEKKI_ROW_LABELS } from "./bekki-row-labels"
  * ★行ラベルが引けないときは行番号を出す。出典（フォームの PAGE{n}_ITEMS）と
  *   payload の行数がズレることは原理的にありうるので、黙って何も出さない方が悪い。
  */
-const withRow = (base: string, form: string, rowsKey?: string, row?: number, more = 0, rowLabel?: string): string => {
-    const r = rowLabelOf(form, rowsKey, row, rowLabel)
+const withRow = (
+    base: string, form: string, rowsKey?: string, row?: number, more = 0, rowLabel?: string, place?: string,
+): string => {
+    // ★描いた側が場所（CellRef.place）を渡したら、それで示す（行番号より画面に近い表記のため）
+    const r = place ?? rowLabelOf(form, rowsKey, row, rowLabel)
     // ★同じ値が何行にも出る警告は 1 件に畳むので、最初の行に「ほか N か所」を添える
     //   （畳んだ行を黙って消さない。最初の行は描画位置で決まった本当の行）
     const others = more > 0 ? `ほか${more}か所` : ""
@@ -134,7 +137,91 @@ export const FIELD_LABELS: Record<string, string> = {
     // 測定機器の機器名。★payload のキーは "name" だが、総括表の設備名も "name" なので、
     //   表記を引くキーを分けている（CellRef.labelKey）。入力欄は placeholder だけ（check-field-labels.py で除外）
     device_name: "測定機器 機器名",
+    // ★2026-10-22: 以下は警告・エラーに英語のキーのまま出ていた欄（全様式を動かして測った・
+    //   check-warning-field-labels.mjs）。表記は入力画面（見出し・placeholder・aria-label）に合わせる。
+    // 点検票の共通の欄
+    judgment: "判定",
+    inspection_type: "点検種別",
+    calibrated_at: "測定機器 校正年月日",
+    // 行の中の数値の欄（入力画面では行の中の小さな欄。placeholder の表記）
+    flow_value: "吐出量(L/min)",
+    hose_count: "本数",
+    nozzle_dia: "口径(mm)",
+    current_value: "電流(A)", // 第12・第21 は表記が違う（FORM_FIELD_LABELS）
+    // 別記16 の容量の欄（避難口・通路・客席の 3 欄。避難口は content）
+    content_tsuro: "通路",
+    content_kyaku: "客席",
+    // 点検設備名の欄（別記10・18・22）。入力画面は設定の一覧（extraFields）から {field.label} で描く
+    body_maker: "本体 製造者名",
+    body_model: "本体 型式等",
+    smoke_machine_maker: "排煙機 製造者名",
+    smoke_machine_model: "排煙機 型式等",
+    cable_model: "漏洩同軸ケーブル 型式等",
+    antenna_model: "空中線 型式等",
+    // 別記6・7・8（ガス系・粉末）の見出しと、その5 の容器の表
+    zone_name: "区画名（その1タイトル欄）",
+    equipment_system: "設備方式",
+    no: "番号",
+    cylinder_no: "容器番号",
+    spec1: "全質量(kg)",
+    spec2: "空質量(kg)",
+    spec3: "消火剤量(kg)", // 第7・第8 は「ガス質量(kg)」（FORM_FIELD_LABELS）
+    spec4: "消火剤量(m³)",
+    spec5: "充てん圧力(MPa)",
+    measure1_value: "測定1 値",
+    measure2_value: "測定2 値",
+    measure3_value: "測定3 値",
+    measure4_value: "測定4 値",
+    measure5_value: "測定5 値",
+    measure6_value: "測定6 値",
+    measure1_date: "測定1 この容器だけの点検年月日",
+    measure2_date: "測定2 この容器だけの点検年月日",
+    measure3_date: "測定3 この容器だけの点検年月日",
+    measure4_date: "測定4 この容器だけの点検年月日",
+    measure5_date: "測定5 この容器だけの点検年月日",
+    measure6_date: "測定6 この容器だけの点検年月日",
+    measure1_temp: "測定1 この容器だけの容器表面温度",
+    measure2_temp: "測定2 この容器だけの容器表面温度",
+    measure3_temp: "測定3 この容器だけの容器表面温度",
+    measure4_temp: "測定4 この容器だけの容器表面温度",
+    // 測定の列の見出し（measure_headers）。どの測定かは CellRef.place（「測定3」）で示す
+    date: "点検年月日",
+    temp: "容器表面温度",
+    // 別記1 の集計の表の数（器種名は kind）と、行の不良個数
+    installed: "設置数",
+    inspected: "点検数",
+    passed: "合格数",
+    repair_needed: "要修理数",
+    removed: "廃棄数",
+    bad_count: "不良個数",
 }
+
+/**
+ * 様式ごとに表記が違う欄（同じ payload のキーが様式によって別の欄を指す）。FIELD_LABELS より先に引く。
+ * ★2026-10-22: 点検者一覧の name・address などは、他の様式の同じキー（測定機器の name 等）と
+ *   意味が違うので、この様式に限って引く。
+ */
+export const FORM_FIELD_LABELS: Record<string, Record<string, string>> = {
+    "別記様式第7": { spec3: "ガス質量(kg)" },
+    "別記様式第8": { spec3: "ガス質量(kg)" },
+    "別記様式第12": { current_value: "＋側(％)" },
+    "別記様式第21": { current_value: "非常(V)" },
+    // 点検者の登録画面（inspector-master-form.tsx・license-editor.tsx）の表記
+    "点検者一覧": {
+        name: "氏名",
+        company: "社名",
+        address: "住所",
+        phone: "電話番号",
+        equipment_names: "設備名（点検対象設備）",
+        license_number: "交付番号",
+        issuing_governor: "交付知事",
+        shoubou_notes: "備考",
+    },
+}
+
+/** 欄の表記（様式ごとの表記 → 共通の表記 → 無ければキーのまま。キーのままは検査で落とす） */
+export const fieldLabelOf = (form: string, field: string): string =>
+    FORM_FIELD_LABELS[form]?.[field] ?? FIELD_LABELS[field] ?? field
 
 /**
  * 描画位置。★どのセルで起きたかを、値の文字列ではなくここで識別する。
@@ -163,6 +250,12 @@ export type CellRef = {
      *   決まった見出しが無い。画面も行番号を出さず設備名で並べるので、設備名を渡す。
      */
     rowLabel?: string
+    /**
+     * 欄の場所（警告に「どこの欄か」として出す）。★行で示せない欄だけが渡す。
+     * 2026-10-22: 点検者一覧（「点検者1・消防設備士 甲・乙種 ４類」）と、測定の列の見出し（「測定3」）。
+     *   同じ欄名が何か所にもあり、欄名だけではどれか分からない。
+     */
+    place?: string
 }
 
 export type CellAt = CellRef & {
@@ -439,7 +532,7 @@ type Located = { key: string; value: string; rowsKey?: string; row?: number }
 /** 同じ欄か（位置が両方分かるなら位置で、どちらかが無ければ値で比べる） */
 const sameCell = (a: CellRef | undefined, b: CellRef | undefined, textA: string, textB: string): boolean =>
     a && b
-        ? a.rowsKey === b.rowsKey && a.row === b.row && a.column === b.column && textA === textB
+        ? a.rowsKey === b.rowsKey && a.row === b.row && a.column === b.column && a.place === b.place && textA === textB
         : textA === textB
 
 /**
@@ -471,10 +564,11 @@ const locate = (
 
 /**
  * 行の配列として扱う payload のキー。ふつうは名前が _rows で終わる（点検票の page{n}_rows）。
- * ★総括表の設備の行は equipment_results で、_rows で終わらない（2026-10-22）。
- *   行として数えないと、描いた側が行の位置（CellRef）を渡しても欄が見つからず、警告ごと消える。
+ * ★総括表の設備の行は equipment_results、測定の列の見出しは measure_headers で、_rows で終わらない（2026-10-22）。
+ *   行として数えないと、描いた側が行の位置（CellRef）を渡しても欄が見つからず、警告ごと消える
+ *   （別記7・8 の見出しの点検年月日は位置を渡していたのに、これで消えていた）。
  */
-const isRowsKey = (key: string) => key.endsWith("_rows") || key === "equipment_results"
+const isRowsKey = (key: string) => key.endsWith("_rows") || key === "equipment_results" || key === "measure_headers"
 
 /**
  * payload から (キー, 文字列) を再帰的に集める。キーは最後の要素名だけ使う。
@@ -550,7 +644,7 @@ export const buildFitError = (form: string, collector: FitCollector): FitErrorBo
         .filter((f) => f.fromInput && f.field)
         .map<FitErrorItem>((f) => ({
             field: f.field!,
-            label: withRow(FIELD_LABELS[f.field!] ?? f.field!, form, f.rowsKey, f.row, 0, f.at?.rowLabel),
+            label: withRow(fieldLabelOf(form, f.field!), form, f.rowsKey, f.row, 0, f.at?.rowLabel, f.at?.place),
             input: f.text.length,
             fits: f.fits,
             over: f.text.length - f.fits,
@@ -663,7 +757,7 @@ export const buildBelowMinWarning = (form: string, collector: FitCollector): Bel
     for (const { first: s, more } of groupByFieldText(collector.smalls.filter((s) => s.fromInput && s.field))) {
         items.push({
             field: s.field!,
-            label: withRow(FIELD_LABELS[s.field!] ?? s.field!, form, s.rowsKey, s.row, more, s.at?.rowLabel),
+            label: withRow(fieldLabelOf(form, s.field!), form, s.rowsKey, s.row, more, s.at?.rowLabel, s.at?.place),
             size: s.size,
             text: s.text,
         })
@@ -688,7 +782,7 @@ export const buildChoiceWarning = (form: string, collector: FitCollector): Choic
     const items: ChoiceWarnItem[] = []
     // 入力(payload)に無い値＝システム由来。業者には直しようがないので出さない
     for (const { first: c, more } of groupByFieldText(collector.choiceMismatches.filter((c) => c.field))) {
-        const label = withRow(FIELD_LABELS[c.field!] ?? c.field!, form, c.rowsKey, c.row, more, c.at?.rowLabel)
+        const label = withRow(fieldLabelOf(form, c.field!), form, c.rowsKey, c.row, more, c.at?.rowLabel, c.at?.place)
         items.push({
             field: c.field!,
             label,
@@ -713,7 +807,7 @@ export const buildShrinkWarning = (form: string, collector: FitCollector): FitWa
     for (const { first: s, more } of groupByFieldText(targets)) {
         items.push({
             field: s.field!,
-            label: withRow(FIELD_LABELS[s.field!] ?? s.field!, form, s.rowsKey, s.row, more, s.at?.rowLabel),
+            label: withRow(fieldLabelOf(form, s.field!), form, s.rowsKey, s.row, more, s.at?.rowLabel, s.at?.place),
             design: s.design,
             actual: s.actual,
             deviation: s.deviation,

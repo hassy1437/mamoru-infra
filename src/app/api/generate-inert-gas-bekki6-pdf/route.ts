@@ -414,7 +414,7 @@ export async function POST(req: NextRequest) {
                     drawRightAt(page, pageHeight, parts.day, right, HEADER_LINES.day[0], HEADER_LINES.day[1], 7.2)
                 } else if (h.date) {
                     // 読めない書き方は、年・月・日の左の空き（列の左端〜刷り込み）に 1 行で
-                    drawTextInCell({ page, pageHeight, fonts, text: h.date, cellX: P5_COLS[7 + m], cellTopFromTop: 101.05, cellW: right - P5_COLS[7 + m], cellH: 31.68, fontSize: 6.5, options: { paddingX: 1, paddingY: 0.5, minFontSize: 3.5 } })
+                    drawTextInCell({ page, pageHeight, fonts, text: h.date, cellX: P5_COLS[7 + m], cellTopFromTop: 101.05, cellW: right - P5_COLS[7 + m], cellH: 31.68, fontSize: 6.5, options: { paddingX: 1, paddingY: 0.5, minFontSize: 3.5, at: { rowsKey: "measure_headers", row: m, column: "date", place: `測定${m + 1}` } } })
                 }
                 drawRightAt(page, pageHeight, normalizeTemp(h.temp), right, HEADER_LINES.temp[0], HEADER_LINES.temp[1], 7.2)
             })

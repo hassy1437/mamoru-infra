@@ -16,6 +16,7 @@ export function InstallPrompt() {
     useEffect(() => {
         // Check if already dismissed in this session
         if (sessionStorage.getItem("pwa-install-dismissed")) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- sessionStorage はブラウザにしか無いので、マウント後に読む（サーバの描画とずらさない）
             setDismissed(true)
         }
 

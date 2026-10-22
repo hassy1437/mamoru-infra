@@ -48,6 +48,7 @@ export default function SoukatsuPdfPreview({ data }: { data: SoukatsuPdfData }) 
     }, [data])
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- PDF を取りに行く（外への取得）。読み込み中を立てるのは取得の始まりで正しい
         void loadPreview()
     }, [loadPreview])
 

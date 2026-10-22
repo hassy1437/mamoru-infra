@@ -23,6 +23,7 @@ import fs from "fs"
 import path from "path"
 import type { InspectorData, ShoubouLicense, KensaLicense } from "@/types/database"
 import { normalizeInspectorData } from "@/lib/inspector-helpers"
+import { KENSA_TYPES, SHOUBOU_TYPES } from "@/lib/license-types"
 
 // ============================================================
 // 座標定義 (fromTop = ページ上端からの距離, pdf-lib y = 下端から)
@@ -215,23 +216,30 @@ export async function POST(req: NextRequest) {
             drawTextRuns(pg, fonts, String(text ?? ""), anchorX - w, y, size)
         }
 
+        // ★警告・エラーが「どこの欄か」を示せるよう、欄と場所（点検者1・免状の行）を渡す（2026-10-22）。
+        //   渡す前は「license_number」のように英語のキーのまま出て、同じ欄が 2 人 × 11 行あってもどれか分からなかった。
+        //   免状の行の表記は登録画面の表（license-types.ts）から引く（全角空白は表の字そろえなので詰める）
+        const typeLabel = (types: readonly { key: string; label: string }[], key: string) =>
+            (types.find((t) => t.key === key)?.label ?? key).replace(/　/g, "")
+
         // ------- 1人分の inspector データを描画 -------
-        const drawInspector = (inspector: InspectorData | null, topOffset: number) => {
+        const drawInspector = (inspector: InspectorData | null, topOffset: number, who: string) => {
             if (!inspector) return
+            const at = (column: string, place = who): CellRef => ({ column, place })
 
             // 基本情報
             drawInCell(page, PAGE_HEIGHT, inspector.address,
                 INSP1.address_x, INSP1.address_row_top + topOffset,
-                INSP1.address_w, INSP1.row_h, 7)
+                INSP1.address_w, INSP1.row_h, 7, { at: at("address") })
             drawInCell(page, PAGE_HEIGHT, inspector.name,
                 INSP1.name_x, INSP1.address_row_top + topOffset,
-                INSP1.name_w, INSP1.row_h, 7)
+                INSP1.name_w, INSP1.row_h, 7, { at: at("name") })
             drawInCell(page, PAGE_HEIGHT, inspector.company,
                 INSP1.company_x, INSP1.company_row_top + topOffset,
-                INSP1.company_w, INSP1.row_h, 7)
+                INSP1.company_w, INSP1.row_h, 7, { at: at("company") })
             drawInCell(page, PAGE_HEIGHT, inspector.phone,
                 INSP1.phone_x, INSP1.company_row_top + topOffset,
-                INSP1.phone_w, INSP1.row_h, 7)
+                INSP1.phone_w, INSP1.row_h, 7, { at: at("phone") })
 
             // 設備名 (右カラム)
             drawWrappedTextInCell({
@@ -247,7 +255,7 @@ export async function POST(req: NextRequest) {
                 //   折り返す今は根拠が無かった（規定の下限 7pt も割る）。欄は 95.3×267pt あり、
                 //   設備を全種類（約 200 字）並べても 8pt で 18 行・157pt に収まる。
                 fontSize: 8,
-                options: { verticalAlign: "top" },
+                options: { verticalAlign: "top", at: at("equipment_names") },
             })
 
             // 消防設備士 ライセンス行
@@ -261,10 +269,11 @@ export async function POST(req: NextRequest) {
                 drawRightAt(page, lic.issue_month, SHB.issue_month, rowTop, SHB_ROW_H)
                 drawRightAt(page, lic.issue_day,   SHB.issue_day,   rowTop, SHB_ROW_H)
 
+                const place = `${who}・消防設備士 ${typeLabel(SHOUBOU_TYPES, key)}`
                 drawInCell(page, PAGE_HEIGHT, lic.license_number,
-                    SHB.license.x, rowTop, SHB.license.w, SHB_ROW_H, 6, { align: "center" })
+                    SHB.license.x, rowTop, SHB.license.w, SHB_ROW_H, 6, { align: "center", at: at("license_number", place) })
                 drawInCell(page, PAGE_HEIGHT, lic.issuing_governor,
-                    SHB.governor.x, rowTop, SHB.governor.w, SHB_ROW_H, 6, { align: "center" })
+                    SHB.governor.x, rowTop, SHB.governor.w, SHB_ROW_H, 6, { align: "center", at: at("issuing_governor", place) })
 
                 drawRightAt(page, lic.training_year,  SHB.tr_year,  rowTop, SHB_ROW_H)
                 drawRightAt(page, lic.training_month, SHB.tr_month, rowTop, SHB_ROW_H)
@@ -272,7 +281,7 @@ export async function POST(req: NextRequest) {
 
             // 備考
             drawInCell(page, PAGE_HEIGHT, inspector.shoubou_notes,
-                BIKO1.x, BIKO1.top + topOffset, BIKO1.w, BIKO1.h, 6)
+                BIKO1.x, BIKO1.top + topOffset, BIKO1.w, BIKO1.h, 6, { at: at("shoubou_notes") })
 
             // 消防設備点検資格者 ライセンス行
             const kensaKeys = ["toku", "class1", "class2"] as const
@@ -286,7 +295,8 @@ export async function POST(req: NextRequest) {
                 drawRightAt(page, lic.issue_day,   KSA.issue_day,   rowTop, KSA_ROW_H)
 
                 drawInCell(page, PAGE_HEIGHT, lic.license_number,
-                    KSA.license.x, rowTop, KSA.license.w, KSA_ROW_H, 6, { align: "center" })
+                    KSA.license.x, rowTop, KSA.license.w, KSA_ROW_H, 6,
+                    { align: "center", at: at("license_number", `${who}・消防設備点検資格者 ${typeLabel(KENSA_TYPES, key)}`) })
 
                 drawRightAt(page, lic.expiry_year,  KSA.exp_year,  rowTop, KSA_ROW_H)
                 drawRightAt(page, lic.expiry_month, KSA.exp_month, rowTop, KSA_ROW_H)
@@ -296,8 +306,8 @@ export async function POST(req: NextRequest) {
 
         // Inspector 1 & 2 を描画
         // ★null は null のまま（描かない）。値があるときだけ形を整える。
-        drawInspector(body.inspector1 ? normalizeInspectorData(body.inspector1) : null, 0)
-        drawInspector(body.inspector2 ? normalizeInspectorData(body.inspector2) : null, OFFSET2)
+        drawInspector(body.inspector1 ? normalizeInspectorData(body.inspector1) : null, 0, "点検者1")
+        drawInspector(body.inspector2 ? normalizeInspectorData(body.inspector2) : null, OFFSET2, "点検者2")
 
         // ⑧ 枠に収まらなかった項目があればPDFを返さずに一覧を返す。
         //   黙って "..." で切り詰めると、法定書類から情報が静かに欠落するため。

@@ -29,6 +29,9 @@ const ROOT = process.cwd()
 const SRC = path.join(ROOT, "src")
 const HELPERS = path.join(SRC, "lib", "inspector-helpers.ts")
 const LICENSE_EDITOR = path.join(SRC, "components", "license-editor.tsx")
+// ★2026-10-22: 免状の種類の定義は license-editor.tsx から src/lib/license-types.ts に移した
+//   （点検者一覧の PDF ルートも同じ表記を使うため）。エディタがそこから読んでいることも確かめる
+const LICENSE_TYPES = path.join(SRC, "lib", "license-types.ts")
 
 /* ---------------------------------------------------------------- *
  * ★分類（②の登録簿）
@@ -96,10 +99,15 @@ async function importHelpers() {
 
 /** license-editor.tsx が読む免状のキーを、★定義から取る（ここに書き写さない）。 */
 function licenseKeysFromEditor() {
-    const src = fs.readFileSync(LICENSE_EDITOR, "utf8")
+    const editor = fs.readFileSync(LICENSE_EDITOR, "utf8")
+    if (!/import\s*\{[^}]*\bSHOUBOU_TYPES\b[^}]*\}\s*from\s*"@\/lib\/license-types"/.test(editor)
+        || !/import\s*\{[^}]*\bKENSA_TYPES\b[^}]*\}\s*from\s*"@\/lib\/license-types"/.test(editor)) {
+        throw new Error("license-editor.tsx が免状の種類を src/lib/license-types.ts から読んでいない（定義の場所が変わった）")
+    }
+    const src = fs.readFileSync(LICENSE_TYPES, "utf8")
     const grab = (name) => {
         const m = src.match(new RegExp(`const ${name}\\s*=\\s*\\[([\\s\\S]*?)\\]\\s*as const`))
-        if (!m) throw new Error(`${name} を license-editor.tsx から読めない`)
+        if (!m) throw new Error(`${name} を license-types.ts から読めない`)
         return [...m[1].matchAll(/key:\s*"([a-z0-9_]+)"/g)].map((x) => x[1])
     }
     return { shoubou: grab("SHOUBOU_TYPES"), kensa: grab("KENSA_TYPES") }
@@ -529,7 +537,7 @@ const b = await behaviour(normalize)
 const bi = bekkiInitialBehaviour(bekkiInitial)
 const s = staticCheck()
 console.log(`形の補完を検査: 欠けた形 ${CASES.length} 通り / inspector_data を読むファイル ${s.readers.length} 本`)
-console.log(`  免状の種類（license-editor.tsx から読んだ）: 消防設備士 ${b.keys.shoubou.length} / 点検資格者 ${b.keys.kensa.length}`)
+console.log(`  免状の種類（license-types.ts から読んだ・エディタもここから読む）: 消防設備士 ${b.keys.shoubou.length} / 点検資格者 ${b.keys.kensa.length}`)
 const problems = [...b.problems, ...bi, ...s.problems]
 if (problems.length > 0) {
     for (const p of problems) console.log(`  NG  ${p}`)

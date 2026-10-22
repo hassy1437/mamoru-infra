@@ -418,7 +418,7 @@ export async function POST(req: NextRequest) {
             measureHeaders.forEach((h, m) => {
                 const x = P5_COLS[5 + m]
                 const w = P5_COLS[6 + m] - x
-                drawInCell(page, pageHeight, measureHeaderDateText(h.date), x, P5_HEADER_DATE.top, w, P5_HEADER_DATE.h, 6.6, { align: "center", paddingX: 1, paddingY: 1, at: { rowsKey: "measure_headers", row: m, column: "date" } })
+                drawInCell(page, pageHeight, measureHeaderDateText(h.date), x, P5_HEADER_DATE.top, w, P5_HEADER_DATE.h, 6.6, { align: "center", paddingX: 1, paddingY: 1, at: { rowsKey: "measure_headers", row: m, column: "date", place: `測定${m + 1}` } })
             })
         }
 

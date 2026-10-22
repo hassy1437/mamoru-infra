@@ -380,6 +380,15 @@ const CHECKS = [
         runs: [{ cmd: ["node", "scripts/check-choice-mismatch-warning.mjs"], sentinel: "CHOICE_MISMATCH_WARNING_CHECK_OK" }],
     },
     {
+        file: "check-warning-field-labels.mjs", stage: "挙動", needsPdfs: true,
+        why: "PDF 出力の警告・エラーの欄名が英語のキー（inspection_type・license_number 等）のまま出ないか（全ルートを長い値・合わない値で動かす）。"
+            + "★表に足し忘れても何も落ちず、約 50 欄が英語のまま業者に出ていた（2026-10-22）。PDF は正しく出るので画像の検査では出ない種類",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-warning-field-labels.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-warning-field-labels.mjs"], sentinel: "WARNING_FIELD_LABELS_OK" },
+        ],
+    },
+    {
         file: "check-inspector-shape.mjs", stage: "静的",
         // ★排他。自己診断が itiran-form.tsx を一時的に書き換えるので、
         //   同時に走る検査に壊れた途中状態を読ませない。

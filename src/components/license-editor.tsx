@@ -12,6 +12,7 @@ import {
     splitMonthInputValue,
 } from "@/lib/date-utils"
 import { CODE_INPUT_PROPS } from "@/lib/code-input-props"
+import { KENSA_TYPES, SHOUBOU_TYPES } from "@/lib/license-types"
 
 // その分類に値が1つでも入っているか（モバイルの初期タブ選択に使う）。
 // itiran-form の isInspectorFilled と同型。保有フラグは持たず値の有無で判定する。
@@ -41,22 +42,6 @@ export type LicenseEditorValue = Pick<
     "shoubou_licenses" | "shoubou_notes" | "kensa_licenses"
 >
 
-const SHOUBOU_TYPES = [
-    { key: "toku",   label: "甲　種　特　類" },
-    { key: "class1", label: "甲・乙種　１類" },
-    { key: "class2", label: "甲・乙種　２類" },
-    { key: "class3", label: "甲・乙種　３類" },
-    { key: "class4", label: "甲・乙種　４類" },
-    { key: "class5", label: "甲・乙種　５類" },
-    { key: "class6", label: "乙　種　６　類" },
-    { key: "class7", label: "乙　種　７　類" },
-] as const
-
-const KENSA_TYPES = [
-    { key: "toku",   label: "特　　　種" },
-    { key: "class1", label: "第　１　種" },
-    { key: "class2", label: "第　２　種" },
-] as const
 
 interface LicenseEditorProps {
     value: LicenseEditorValue

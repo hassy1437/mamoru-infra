@@ -38,7 +38,12 @@ FORM_TSX = sorted([ROOT / "src" / "components" / "bekki-result-form-base.tsx",
                    ROOT / "src" / "components" / "soukatsu-equipment-details.tsx",
                    ROOT / "src" / "components" / "soukatsu-cover-inputs.tsx",
                    ROOT / "src" / "lib" / "soukatsu-equipment.ts",
-                   ROOT / "src" / "lib" / "soukatsu-cover.ts"]
+                   ROOT / "src" / "lib" / "soukatsu-cover.ts",
+                   # ★2026-10-22: 点検者の登録画面（点検者一覧の欄）と、測定の列の見出し
+                   ROOT / "src" / "components" / "inspector-master-form.tsx",
+                   ROOT / "src" / "components" / "license-editor.tsx",
+                   ROOT / "src" / "components" / "measure-header-inputs.tsx",
+                   ROOT / "src" / "lib" / "measure-headers.ts"]
                   + list((ROOT / "src" / "components").glob("*bekki*-form.tsx")))
 
 # 入力画面に固定ラベルが無い項目（理由は docstring 参照）
@@ -58,6 +63,17 @@ EXEMPT = {"content", "bad_content", "action_content", "equipment_name", "notes",
           "kind",
           # 測定機器の機器名。payload のキーは "name"（表記を引くキーだけ device_name・CellRef.labelKey）。入力欄は placeholder だけ
           "device_name",
+          # ★2026-10-22: 画面の表記が式で組み立てられていて、固定の文字列として照合できないもの
+          # 測定機器の校正年月日（aria-label は `${label} 校正年月日`＝「測定機器 N 校正年月日」）
+          "calibrated_at",
+          # 行の中の 2 つ目の値。placeholder は様式の設定から（既定「電流(A)」・第12・第21 は FORM_FIELD_LABELS）
+          "current_value",
+          # 別記18 の排煙機。画面は見出し「排煙機（製造者・型式）」の下に「製造者名」「型式等」
+          "smoke_machine_maker", "smoke_machine_model",
+          # その5 の容器の表の測定の欄（見出しは「測定N<br/>値」、aria-label は `容器N 測定N …`）
+          *{f"measure{n}_{k}" for n in range(1, 7) for k in ("value", "date", "temp")},
+          # 測定の列の見出し（aria-label は `測定${m + 1} 点検年月日`。どの測定かは CellRef.place）
+          "date", "temp",
           # 総括表の設備の行の設備名。payload のキーは "name"（表記を引くキーだけ equipment_row_name）。
           # 画面では入力欄ではなく各行の見出し（{item.name}）として出るので、固定の <Label> が無い
           "equipment_row_name"}
@@ -78,10 +94,26 @@ def main() -> int:
         # ★属性つきの <Label htmlFor="..."> も拾う。属性なしだけを見ていたため
         #   property-form.tsx のラベルが1つも拾えず「画面に無い」と誤判定した。
         form_labels |= {t.strip() for t in re.findall(r"<Label[^>]*>([^<{]+)</Label>", form)}
+        # ★2026-10-22: 表の見出し・placeholder・aria-label・設定の一覧の表記も画面の表記として読む。
+        #   表の中の欄（容器の表・集計の表・行の中の数値）は <Label> を持たず、見出しや placeholder が表記になる
+        form_labels |= {t.strip() for t in re.findall(r"<th[^>]*>([^<{]+)</th>", form)}
+        form_labels |= {t.strip() for t in re.findall(r'(?:placeholder|aria-label)="([^"]+)"', form)}
+        form_labels |= {t.strip() for t in re.findall(r'\b(?:label|first|second):\s*"([^"]+)"', form)}
         # ★省略できるキー（bad_detail?: string）も拾う
         payload_keys |= set(re.findall(r"^\s*(\w+)\??:\s*\w", form, re.M))
+        # 設定の一覧（{ key: "body_maker", label: … }）と、行の欄の更新（updateRowField(…, "content_tsuro", e.target.value)）
+        payload_keys |= set(re.findall(r'\bkey:\s*"(\w+)"', form))
+        payload_keys |= set(re.findall(r'"(\w+)",\s*e\.target\.value', form))
 
     problems: list[str] = []
+    # ★様式ごとの表記（FORM_FIELD_LABELS）も、表記が画面にあるかを見る（キーは様式ごとに違うので見ない）
+    form_block = re.search(r"FORM_FIELD_LABELS: Record<string, Record<string, string>> = \{(.*?)\n\}", ts, re.S)
+    if not form_block:
+        print("FORM_FIELD_LABELS を読み取れない")
+        return 2
+    for key, label in re.findall(r'(\w+):\s*"([^"]+)"', form_block.group(1)):
+        if label not in form_labels:
+            problems.append(f"FORM_FIELD_LABELS の {key}: 表記 {label!r} が入力画面に無い")
     for key, label in labels.items():
         if key in EXEMPT:
             continue

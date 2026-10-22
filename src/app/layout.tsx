@@ -12,6 +12,10 @@ import NavigationProgress from "@/components/navigation-progress";
 import { Suspense } from "react";
 
 export const metadata: Metadata = {
+  // ★SNS 用画像（opengraph-image・twitter-image）の URL の基準（2026-10-22）。
+  //   無いとビルドが「metadataBase が無い」と警告し、Vercel が補った値に頼ることになる。
+  //   プレビュー環境でも本番の画像を指すが、SNS 用なのでそれでよい。
+  metadataBase: new URL("https://app.mamoruinfra.com"),
   title: "Mamoru Infra — 消防設備点検の報告書作成を効率化",
   description: "スマホで入力するだけで、消防設備点検結果報告書のPDFをその場で自動生成。消火器・屋内消火栓・スプリンクラー等7設備に対応。インストール不要・無料で利用可能。",
   manifest: "/manifest.json",

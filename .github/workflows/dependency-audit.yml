@@ -1,0 +1,106 @@
+name: dependency-audit
+
+# 依存部品の既知の脆弱性を週 1 回見る（2026-10-22）。
+#
+# ■ なぜ要るか
+#   PHP の脆弱性の調査のついでに npm audit を見たら、土台の Next.js に公表済みの脆弱性
+#   （重大を含む）が残っていた。★誰も定期的に見ていなかったので、気づく機会が無かった。
+#
+# ■ 何をするか
+#   本番で使う部品（devDependencies を除く）に high 以上があれば Issue を立てて知らせる
+#   （同じ題の Issue が開いていればコメントを足す）。★Actions の失敗メールは届く相手が
+#   はっきりしないので、リポジトリの持ち主に必ず届く Issue にする。
+#   ★開発用の部品は見ない: 本番に載らず、直った版がまだ無いもの（lint の braces）が常に残るため。
+#   ★npm audit が読めなかった（通信の失敗など）ときは Issue を立てずにジョブだけ失敗させる
+#     （「脆弱性あり」と取り違えない）。
+
+on:
+  schedule:
+    - cron: "17 0 * * 1" # 毎週月曜 9:17（日本時間）
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # ★package-lock.json だけで見られるので npm ci は要らない
+      - name: npm audit（本番で使う部品）
+        run: npm audit --omit=dev --json > audit.json || true
+
+      - name: high 以上があれば Issue で知らせる
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require("fs")
+            let report
+            try {
+              report = JSON.parse(fs.readFileSync("audit.json", "utf8"))
+            } catch (e) {
+              core.setFailed(`npm audit の結果を読めなかった: ${e.message}`)
+              return
+            }
+            const counts = report.metadata?.vulnerabilities
+            if (!counts) {
+              core.setFailed(`npm audit の結果に件数が無い: ${JSON.stringify(report).slice(0, 300)}`)
+              return
+            }
+            const serious = (counts.high ?? 0) + (counts.critical ?? 0)
+            core.info(`本番で使う部品: ${JSON.stringify(counts)}`)
+            if (serious === 0) return
+
+            const rows = []
+            for (const [name, v] of Object.entries(report.vulnerabilities ?? {})) {
+              if (v.severity !== "high" && v.severity !== "critical") continue
+              // ★high 以上の項目だけ載せる（Next.js は moderate も含めると 30 行を超える）
+              const advisories = (v.via ?? []).filter((x) => typeof x === "object"
+                && (x.severity === "high" || x.severity === "critical"))
+              if (advisories.length === 0) {
+                const through = (v.via ?? []).filter((x) => typeof x === "string")
+                if (through.length) rows.push(`| ${name} | ${v.severity} | ${through.join(", ")} 経由 |`)
+                continue
+              }
+              for (const a of advisories) {
+                rows.push(`| ${name} ${a.range ?? ""} | ${a.severity} | [${a.title}](${a.url}) |`)
+              }
+            }
+            const run = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
+            const body = [
+              `本番で使う部品に、既知の脆弱性が見つかりました（重大 ${counts.critical ?? 0} 件・高 ${counts.high ?? 0} 件）。`,
+              "",
+              "| 部品 | 深刻度 | 内容 |",
+              "| --- | --- | --- |",
+              ...rows,
+              "",
+              "直し方: 手元で `npm audit --omit=dev` を見て、直った版へ上げる（`npm install <部品>@<版>` か `npm update <部品>`）。",
+              "上げたら検査・ビルドを通してから本番へ。",
+              "",
+              `見つけた実行: ${run}`,
+            ].join("\n")
+
+            const title = "依存部品に既知の脆弱性（npm audit・high 以上）"
+            const open = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner, repo: context.repo.repo, state: "open", per_page: 100,
+            })
+            const existing = open.find((i) => i.title === title && !i.pull_request)
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo, issue_number: existing.number, body,
+              })
+              core.info(`既存の Issue #${existing.number} にコメントした`)
+            } else {
+              const { data } = await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo, title, body,
+              })
+              core.info(`Issue #${data.number} を立てた`)
+            }
+            core.setFailed(`本番で使う部品に high 以上が ${serious} 件ある`)

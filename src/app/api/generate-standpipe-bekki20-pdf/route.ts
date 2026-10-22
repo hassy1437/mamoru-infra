@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
-import { PDFDocument, type PDFPage, rgb, StandardFonts } from "pdf-lib"
+import { PDFDocument, type PDFPage, StandardFonts } from "pdf-lib"
 import fontkit from "@pdf-lib/fontkit"
 import { DEVICE_TABLE_ROWS_PER_COLUMN, resolveDeviceTable } from "@/lib/bekki-device-table"
 import fs from "fs"
 import path from "path"
 import { periodDateError,
-FIT_EPSILON, drawChoiceCircle, drawPeriodDate, drawTextInCell, drawTextRuns, drawWrappedTextInCell, formatDateText, formatJapaneseDateText, formatJudgment, cellAt, measureRuns, truncateRunsToFitWidth, parseDateParts, pickFont, reportIfBelowMinSize, type CellDrawOptions, type DateAnchors, type ReportFonts, type CellAt, type CellRef, drawOrWrapWhenTiny,
+drawChoiceCircle, drawPeriodDate, drawTextInCell, drawTextRuns, drawWrappedTextInCell, formatJapaneseDateText, formatJudgment, cellAt, measureRuns, truncateRunsToFitWidth, parseDateParts, reportIfBelowMinSize, type CellDrawOptions, type DateAnchors, type ReportFonts, type CellRef, drawOrWrapWhenTiny,
     drawShiftedDown,
 } from "@/lib/pdf-form-helpers"
 import {
@@ -275,11 +275,6 @@ export async function POST(req: NextRequest) {
                 { label: "総合", cx: 206.34, cy: 172.69, rx: 18.28, ry: 8.03 },
             ], undefined, { column: "inspection_type" })
 
-            const periodText = (() => {
-                const start = formatDateText(body.period_start)
-                const end = formatDateText(body.period_end)
-                return start && end ? `${start} - ${end}` : (start || end)
-            })()
             const canDrawSplitPeriod =
                 (!body.period_start || Boolean(parseDateParts(body.period_start))) &&
                 (!body.period_end || Boolean(parseDateParts(body.period_end)))

@@ -11,7 +11,7 @@ import fontkit from "@pdf-lib/fontkit"
 import { DEVICE_TABLE_ROWS_PER_COLUMN, resolveDeviceTable } from "@/lib/bekki-device-table"
 import fs from "fs"
 import path from "path"
-import { blankPrintedRows, drawChoiceCircle, drawPeriodDate, drawTextInCell, drawWrappedTextInCell, formatDateText, formatJapaneseDateText, formatJudgment, parseDateParts, pickFont, type CellDrawOptions, type DateAnchors, type ReportFonts, type CellRef, periodDateError, drawOrWrapWhenTiny, SINGLE_LINE_FIT_DEFAULTS,
+import { blankPrintedRows, drawChoiceCircle, drawPeriodDate, drawTextInCell, drawWrappedTextInCell, formatJapaneseDateText, formatJudgment, parseDateParts, type CellDrawOptions, type DateAnchors, type ReportFonts, type CellRef, periodDateError, drawOrWrapWhenTiny, SINGLE_LINE_FIT_DEFAULTS,
     drawShiftedDown,
 } from "@/lib/pdf-form-helpers"
 
@@ -215,11 +215,6 @@ export async function POST(req: NextRequest) {
                 { label: "総合", cx: 187.37, cy: 172.57, rx: 16.74, ry: 7.03 },
             ], undefined, { column: "inspection_type" })
 
-            const periodText = (() => {
-                const start = formatDateText(body.period_start)
-                const end = formatDateText(body.period_end)
-                return start && end ? `${start} - ${end}` : (start || end)
-            })()
             const canDrawSplitPeriod =
                 (!body.period_start || Boolean(parseDateParts(body.period_start))) &&
                 (!body.period_end || Boolean(parseDateParts(body.period_end)))

@@ -11,7 +11,7 @@ import fontkit from "@pdf-lib/fontkit"
 import { DEVICE_TABLE_ROWS_PER_COLUMN, resolveDeviceTable } from "@/lib/bekki-device-table"
 import fs from "fs"
 import path from "path"
-import { blankPrintedRows, drawChoiceCircle, drawPeriodDate, drawTextInCell, drawWrappedTextInCell, formatDateText, formatJapaneseDateText, formatJudgment, parseDateParts, pickFont, type CellDrawOptions, type DateAnchors, type ReportFonts, type CellRef, periodDateError, drawOrWrapWhenTiny, SINGLE_LINE_FIT_DEFAULTS,
+import { blankPrintedRows, drawPeriodDate, drawTextInCell, drawWrappedTextInCell, formatJapaneseDateText, formatJudgment, parseDateParts, type CellDrawOptions, type DateAnchors, type ReportFonts, type CellRef, periodDateError, drawOrWrapWhenTiny, SINGLE_LINE_FIT_DEFAULTS,
     drawShiftedDown,
 } from "@/lib/pdf-form-helpers"
 
@@ -188,11 +188,6 @@ export async function POST(req: NextRequest) {
             drawInCell(page, pageHeight, body.witness, 432.6, 138.72, 97.44, 24.0, 7.4)
             // 点検種別: この様式は総合点検が無く、テンプレートに「機器」だけが刷り込まれている
             // （正典の Word でもセルの中身は「機器」のみ）。選ぶものが無いので描かない。
-            const periodText = (() => {
-                const start = formatDateText(body.period_start)
-                const end = formatDateText(body.period_end)
-                return start && end ? `${start} - ${end}` : (start || end)
-            })()
             const canDrawSplitPeriod =
                 (!body.period_start || Boolean(parseDateParts(body.period_start))) &&
                 (!body.period_end || Boolean(parseDateParts(body.period_end)))

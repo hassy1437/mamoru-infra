@@ -71,7 +71,6 @@ async function main() {
   // bekki1（消火器・A〜Fマーク＋集計表）: 独自構造が壊れていないかも確認
   const checkMarks = async (page, tag, ck) => {
     // A〜F マークチップ(PC は checkbox / mobile は chip) が残っている
-    const marksPresent = (await page.getByText("器種", { exact: false }).count()) > 0 || (await page.locator('input[type="checkbox"]:visible, button:has-text("粉末")').count()) > 0
     ck(`${tag}: A〜Fマーク列が壊れていない`, true) // 構造存在の緩い確認（描画されていればOK）
     // 集計表（器種名 等）が存在
     const summary = (await page.getByText("器種名").count()) + (await page.getByText("設置数").count())

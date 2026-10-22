@@ -6,7 +6,6 @@ import {
     drawTextRuns,
     drawWrappedTextInCell,
     measureRuns,
-    pickFont,
     SINGLE_LINE_FIT_DEFAULTS,
     type ReportFonts,
 } from "@/lib/pdf-form-helpers"

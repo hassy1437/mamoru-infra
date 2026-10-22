@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { PDFDocument, rgb, PDFPage, StandardFonts } from "pdf-lib"
+import { PDFDocument, PDFPage, StandardFonts } from "pdf-lib"
 import {
     buildFitError,
     createFitCollector,
@@ -14,7 +14,6 @@ import fs from "fs"
 import path from "path"
 import {
     periodDateError,
-FIT_EPSILON,
     blankPrintedRows,
     drawChoiceCircle,
     drawPeriodDate,
@@ -26,7 +25,6 @@ FIT_EPSILON,
     cellAt,
     measureRuns,
     truncateRunsToFitWidth,
-    pickFont,
     reportIfBelowMinSize,
     type ReportFonts,
     type CellRef,
@@ -196,13 +194,6 @@ const PERIOD_END_ANCHORS = { year: 430.0, month: 471.33, day: 513.33, baseline: 
 
 const normalizeText = (value: unknown) => String(value ?? "").replace(/\s+/g, " ").trim()
 
-const formatDateText = (value: unknown) => {
-    const raw = normalizeText(value)
-    if (!raw) return ""
-    const date = new Date(raw)
-    if (Number.isNaN(date.getTime())) return raw
-    return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`
-}
 
 const parseDateParts = (value: unknown) => {
     const raw = normalizeText(value)
@@ -530,8 +521,6 @@ export async function POST(req: NextRequest) {
             { label: "機器", cx: 133.08, cy: 179.53, rx: 18.28, ry: 7.03 },
             { label: "総合", cx: 186.84, cy: 179.53, rx: 17.78, ry: 7.03 },
         ], undefined, { column: "inspection_type" })
-        const start = formatDateText(body.period_start)
-        const end = formatDateText(body.period_end)
         if (parseDateParts(body.period_start) || parseDateParts(body.period_end)) {
             drawPeriodDate({ page: page1, pageHeight: p1Height, fonts, dateValue: body.period_start, anchors: PERIOD_START_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 7.8 })
             drawPeriodDate({ page: page1, pageHeight: p1Height, fonts, dateValue: body.period_end, anchors: PERIOD_END_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 7.8 })

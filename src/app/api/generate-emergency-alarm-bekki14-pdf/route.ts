@@ -12,7 +12,7 @@ import { DEVICE_TABLE_ROWS_PER_COLUMN, resolveDeviceTable } from "@/lib/bekki-de
 import fs from "fs"
 import path from "path"
 import { periodDateError,
-drawChoiceCircle, drawPeriodDate, drawTextInCell, drawWrappedTextInCell, formatDateText, formatJapaneseDateText, formatJudgment, parseDateParts, pickFont, type CellDrawOptions, type DateAnchors, type ReportFonts, type CellRef, drawOrWrapWhenTiny, SINGLE_LINE_FIT_DEFAULTS,
+drawChoiceCircle, drawPeriodDate, drawTextInCell, drawWrappedTextInCell, formatJapaneseDateText, formatJudgment, parseDateParts, type CellDrawOptions, type DateAnchors, type ReportFonts, type CellRef, drawOrWrapWhenTiny, SINGLE_LINE_FIT_DEFAULTS,
     drawShiftedDown,
 } from "@/lib/pdf-form-helpers"
 import { normalizeInspectorNameValue, normalizeWitnessValue } from "@/lib/bekki-header-normalization"
@@ -218,11 +218,6 @@ export async function POST(req: NextRequest) {
                 { label: "機器", cx: 137.16, cy: 174.52, rx: 18.90, ry: 6.50 },
                 { label: "総合", cx: 191.93, cy: 174.52, rx: 18.96, ry: 6.50 },
             ], undefined, { column: "inspection_type" })
-            const periodText = (() => {
-                const start = formatDateText(body.period_start)
-                const end = formatDateText(body.period_end)
-                return start && end ? `${start} - ${end}` : (start || end)
-            })()
             const canDrawSplitPeriod =
                 (!body.period_start || Boolean(parseDateParts(body.period_start))) &&
                 (!body.period_end || Boolean(parseDateParts(body.period_end)))

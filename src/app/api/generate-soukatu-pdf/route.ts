@@ -2,17 +2,10 @@
 import { PDFDocument, rgb, PDFPage, StandardFonts } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import {
-    pickFont,
     type ReportFonts,
-    cellAt,
     measureRuns,
-    truncateRunsToFitWidth,
     drawTextRuns,
     drawWrappedTextInCell,
-    FIT_EPSILON,
-    reportIfBelowMinSize,
-    type CellRef,
-    type CellAt,
 } from "@/lib/pdf-form-helpers"
 import {
     buildFitError,
@@ -100,18 +93,6 @@ const TYPE_MARK = {
     border: 1.2,  // 同じ紙の判定の○（drawJudgeCircle）と同じ太さ
 } as const;
 
-type DrawInCellOptions = {
-    align?: "left" | "center";
-    paddingX?: number;
-    paddingY?: number;
-    minFontSize?: number;
-    maxFontSize?: number;
-    xOffset?: number;
-    yOffset?: number;
-    /** どの欄の何行目のどの列か（行ループ・専用描画が渡す） */
-    at?: CellRef
-};
-
 type EquipmentItem = {
     name?: string;
     result?: string;
@@ -172,70 +153,6 @@ export async function POST(req: NextRequest) {
         const { height } = page1.getSize();
         const height2 = page2 ? page2.getSize().height : height;
 
-        const drawInCell = (
-            page: PDFPage,
-            pageHeight: number,
-            text: unknown,
-            cellX: number,
-            cellTopFromTop: number,
-            cellW: number,
-            cellH: number,
-            fontSize = 10,
-            options?: DrawInCellOptions,
-        ) => {
-            const normalized = normalizeText(text);
-            if (!normalized) return;
-
-            const paddingX = options?.paddingX ?? 4;
-            const paddingY = options?.paddingY ?? 3;
-            const minFontSize = options?.minFontSize ?? 3.5;
-            let currentSize = Math.min(fontSize, options?.maxFontSize ?? fontSize);
-            const designSize = currentSize
-
-            // 安全係数は撤廃済み（①bで計測が実描画と一致し、②③④でセル座標を実測値に直したため）
-            const maxWidth = Math.max(1, cellW - paddingX * 2);
-            const maxHeight = Math.max(1, cellH - paddingY * 2);
-
-            const widthAtCurrent = measureRuns(fonts, String(normalized ?? ""), currentSize);
-            if (widthAtCurrent > maxWidth) {
-                currentSize = currentSize * (maxWidth / widthAtCurrent);
-            }
-
-            const heightAtCurrent = fonts.jp.heightAtSize(currentSize, { descender: true });
-            if (heightAtCurrent > maxHeight) {
-                currentSize = currentSize * (maxHeight / heightAtCurrent);
-            }
-
-            currentSize = Math.max(currentSize, minFontSize)
-
-            fonts.fit?.reportShrink(normalized, designSize, currentSize, options?.at)
-
-            reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth, options?.at);
-
-            // ★共有の truncateRunsToFitWidth に寄せた（9本目の複製だった）。
-            //   自前版は切り詰めても fonts.fit?.report を**一度も呼ばない**。
-            //   他の8本は cut が 0 まで落ちた場合だけ落としていたが、この1本は
-            //   通常の切り詰め（cut > 0）すら報告しておらず、消防署に出す総括表で
-            //   情報が欠落したまま 200 が返っていた。描画結果は共有版と同一。
-            const textToDraw = truncateRunsToFitWidth(fonts, normalized, currentSize, maxWidth,
-                cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at));
-            if (!textToDraw) return;
-
-            const textWidth = measureRuns(fonts, String(textToDraw ?? ""), currentSize);
-            const textHeight = fonts.jp.heightAtSize(currentSize, { descender: true });
-            const xOffset = options?.xOffset ?? 0;
-            const yOffset = options?.yOffset ?? 0;
-            let textX = cellX + paddingX + xOffset;
-
-            if (options?.align === "center") {
-                textX = cellX + (cellW - textWidth) / 2 + xOffset;
-            }
-
-            const textTopFromTop = cellTopFromTop + (cellH - textHeight) / 2 + yOffset;
-            const baselineOffset = textHeight * 0.78;
-
-            drawTextRuns(page, fonts, String(textToDraw ?? ""), textX, pageHeight - (textTopFromTop + baselineOffset), currentSize);
-        };
 
         const drawJudgeCircle = (
             page: PDFPage,

@@ -1,5 +1,5 @@
 // PDFのコンテンツストリーム生データを出力するスクリプト
-import { PDFDocument, PDFName, PDFArray, PDFRef, PDFRawStream, PDFContentStream } from "pdf-lib";
+import { PDFDocument, PDFName, PDFArray, PDFRef } from "pdf-lib";
 import fs from "fs";
 import path from "path";
 import { decodePDFRawStream } from "pdf-lib/cjs/core/streams/decode.js";

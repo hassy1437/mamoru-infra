@@ -48,7 +48,6 @@ async function main() {
   await settle()
   check("新規: モバイルで交付番号入力欄が0（縦長解消）", (await mobileBangouInputs().count()) === 0, `inputs=${await mobileBangouInputs().count()}`)
   // 備考はチップ未選択時、モバイルでは非表示（hidden md:block 化）
-  const notesVisibleInit = await page.locator('div.md\\:hidden textarea, textarea').filter({ hasText: "" }).first().isVisible().catch(() => false)
   await page.screenshot({ path: path.join(SHOTS, "01_new_empty_vp375.png"), fullPage: true })
 
   // チップ「甲・乙種　４類」(class4) を選択 → 入力欄が1つ展開

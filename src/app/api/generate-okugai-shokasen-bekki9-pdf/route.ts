@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { PDFDocument, rgb, type PDFPage, StandardFonts } from "pdf-lib"
+import { PDFDocument, type PDFPage, StandardFonts } from "pdf-lib"
 import {
     buildFitError,
     createFitCollector,
@@ -13,7 +13,6 @@ import fs from "fs"
 import path from "path"
 import {
     periodDateError,
-FIT_EPSILON,
     blankPrintedRows,
     drawChoiceCircle,
     drawPeriodDate,
@@ -24,7 +23,6 @@ FIT_EPSILON,
     cellAt,
     measureRuns,
     truncateRunsToFitWidth,
-    pickFont,
     reportIfBelowMinSize,
     type ReportFonts,
     type CellRef,
@@ -145,13 +143,6 @@ const PERIOD_END_ANCHORS = { year: 427.3, month: 465.7, day: 503.6, baseline: 17
 const normalizeText = (value: unknown) => String(value ?? "").replace(/\s+/g, " ").trim()
 const getExtra = (body: Bekki9Payload, key: string) => normalizeText(body.extra_fields?.[key])
 
-const formatDateText = (value: unknown) => {
-    const raw = normalizeText(value)
-    if (!raw) return ""
-    const date = new Date(raw)
-    if (Number.isNaN(date.getTime())) return raw
-    return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`
-}
 
 const parseDateParts = (value: unknown) => {
     const raw = normalizeText(value)
@@ -325,22 +316,6 @@ export async function POST(req: NextRequest) {
 
         // 専用/兼用 など選択式セルに〇を描画（bekki2/3/4/20 と同一パターン）
 
-        const drawRightAt = (
-            page: PDFPage,
-            pageHeight: number,
-            text: string,
-            anchorX: number,
-            rowTop: number,
-            rowH: number,
-            size = 7.7,
-        ) => {
-            if (!text) return
-            const textHeight = fonts.jp.heightAtSize(size, { descender: true })
-            const textTop = rowTop + (rowH - textHeight) / 2
-            const y = pageHeight - (textTop + textHeight * 0.78)
-            const textWidth = measureRuns(fonts, String(text ?? ""), size)
-            drawTextRuns(page, fonts, String(text ?? ""), anchorX - textWidth, y, size)
-        }
 
         
 
@@ -355,11 +330,6 @@ export async function POST(req: NextRequest) {
             { label: "総合", cx: 186.77, cy: 171.85, rx: 16.96, ry: 7.53 },
         ], undefined, { column: "inspection_type" })
 
-        const periodText = (() => {
-            const start = formatDateText(body.period_start)
-            const end = formatDateText(body.period_end)
-            return start && end ? `${start} - ${end}` : (start || end)
-        })()
         if (parseDateParts(body.period_start) || parseDateParts(body.period_end)) {
             drawPeriodDate({ page: page1, pageHeight: p1Height, fonts, dateValue: body.period_start, anchors: PERIOD_START_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 7.7 })
             drawPeriodDate({ page: page1, pageHeight: p1Height, fonts, dateValue: body.period_end, anchors: PERIOD_END_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 7.7 })

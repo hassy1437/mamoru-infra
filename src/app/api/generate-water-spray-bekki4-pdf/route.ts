@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
-import { PDFDocument, rgb, PDFPage, StandardFonts } from "pdf-lib"
+import { PDFDocument, PDFPage, StandardFonts } from "pdf-lib"
 import fontkit from "@pdf-lib/fontkit"
 import { DEVICE_TABLE_ROWS_PER_COLUMN, resolveDeviceTable } from "@/lib/bekki-device-table"
 import fs from "fs"
 import path from "path"
 import {
     periodDateError,
-FIT_EPSILON,
     drawChoiceCircle,
     blankPrintedRows,
     drawPeriodDate,
@@ -17,7 +16,6 @@ FIT_EPSILON,
     cellAt,
     measureRuns,
     truncateRunsToFitWidth,
-    pickFont,
     reportIfBelowMinSize,
     type ReportFonts,
     type CellRef,
@@ -146,13 +144,6 @@ const PERIOD_END_ANCHORS = { year: 450.8, month: 482.5, day: 514.5, baseline: 17
 
 const normalizeText = (value: unknown) => String(value ?? "").replace(/\s+/g, " ").trim()
 
-const formatDateText = (value: unknown) => {
-    const raw = normalizeText(value)
-    if (!raw) return ""
-    const date = new Date(raw)
-    if (Number.isNaN(date.getTime())) return raw
-    return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`
-}
 
 const parseDateParts = (value: unknown) => {
     const raw = normalizeText(value)
@@ -384,22 +375,6 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        const drawRightAt = (
-            page: PDFPage,
-            pageHeight: number,
-            text: string,
-            anchorX: number,
-            rowTop: number,
-            rowH: number,
-            size = 7.9,
-        ) => {
-            if (!text) return
-            const textHeight = fonts.jp.heightAtSize(size, { descender: true })
-            const textTop = rowTop + (rowH - textHeight) / 2
-            const y = pageHeight - (textTop + textHeight * 0.78)
-            const textWidth = measureRuns(fonts, String(text ?? ""), size)
-            drawTextRuns(page, fonts, String(text ?? ""), anchorX - textWidth, y, size)
-        }
 
         
 
@@ -416,8 +391,6 @@ export async function POST(req: NextRequest) {
             { label: "機器", cx: 132, cy: 167.53, rx: 17.4, ry: 7.53 },
             { label: "総合", cx: 186.65, cy: 167.53, rx: 16.84, ry: 7.53 },
         ], undefined, { column: "inspection_type" })
-        const periodStart = formatDateText(body.period_start)
-        const periodEnd = formatDateText(body.period_end)
         if (parseDateParts(body.period_start) || parseDateParts(body.period_end)) {
             drawPeriodDate({ page: page1, pageHeight: p1Height, fonts, dateValue: body.period_start, anchors: PERIOD_START_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 7.9 })
             drawPeriodDate({ page: page1, pageHeight: p1Height, fonts, dateValue: body.period_end, anchors: PERIOD_END_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 7.9 })

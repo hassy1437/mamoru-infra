@@ -128,7 +128,7 @@ const drawCellGuides = (topOffset) => {
   drawBox(INSP1.equipment_x, INSP1.equipment_top+topOffset, INSP1.equipment_w, INSP1.equipment_h, g);
 
   // 消防設備士 行
-  SHB_ROWS_1.forEach((rowTop, i) => {
+  SHB_ROWS_1.forEach((rowTop) => {
     const ft = rowTop + topOffset;
     // 交付年月日 列全体 (x=109-244)
     drawBox(109, ft, 135, SHB_ROW_H, rgb(1,0.5,0));

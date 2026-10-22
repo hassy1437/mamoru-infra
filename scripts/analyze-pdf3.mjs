@@ -51,7 +51,7 @@ for (let pageIndex = 0; pageIndex < pages.length; pageIndex++) {
         if (filterName.includes("FlateDecode")) {
             try {
                 decoded = zlib.inflateSync(Buffer.from(rawContents));
-            } catch (e) {
+            } catch {
                 // Try raw inflate
                 try {
                     decoded = zlib.inflateRawSync(Buffer.from(rawContents));

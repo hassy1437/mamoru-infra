@@ -1,5 +1,5 @@
 ﻿import { NextRequest, NextResponse } from "next/server"
-import { PDFDocument, type PDFPage, rgb, StandardFonts } from "pdf-lib"
+import { PDFDocument, type PDFPage, StandardFonts } from "pdf-lib"
 import {
     buildFitError,
     createFitCollector,
@@ -16,24 +16,20 @@ import {
 drawPeriodDate,
     drawTextInCell,
     drawWrappedTextInCell,
-    formatDateText,
     formatJapaneseDateText,
     parseDateParts,
     type CellDrawOptions,
     type DateAnchors,
     formatJudgment,
     drawChoiceCircle,
-    pickFont,
     type ReportFonts,
     cellAt,
     measureRuns,
     truncateRunsToFitWidth,
     drawTextRuns,
-    FIT_EPSILON,
     reportIfBelowMinSize,
     blankPrintedRows,
     type CellRef,
-    type CellAt,
     drawOrWrapWhenTiny,
     drawShiftedDown,
 } from "@/lib/pdf-form-helpers"
@@ -298,11 +294,6 @@ export async function POST(req: NextRequest) {
                 { label: "総合", cx: 187.37, cy: 173.99, rx: 18.24, ry: 6.00 },
             ], undefined, { column: "inspection_type" })
 
-            const periodText = (() => {
-                const start = formatDateText(body.period_start)
-                const end = formatDateText(body.period_end)
-                return start && end ? `${start} - ${end}` : (start || end)
-            })()
             const canDrawSplitPeriod =
                 (!body.period_start || Boolean(parseDateParts(body.period_start))) &&
                 (!body.period_end || Boolean(parseDateParts(body.period_end)))

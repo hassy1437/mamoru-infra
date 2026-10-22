@@ -57,7 +57,10 @@ EXEMPT = {"content", "bad_content", "action_content", "equipment_name", "notes",
           # 別記1 の集計の表の器種名。入力画面では表の見出し（<th>器種名</th>）で、<Label> ではない
           "kind",
           # 測定機器の機器名。payload のキーは "name"（表記を引くキーだけ device_name・CellRef.labelKey）。入力欄は placeholder だけ
-          "device_name"}
+          "device_name",
+          # 総括表の設備の行の設備名。payload のキーは "name"（表記を引くキーだけ equipment_row_name）。
+          # 画面では入力欄ではなく各行の見出し（{item.name}）として出るので、固定の <Label> が無い
+          "equipment_row_name"}
 
 
 def main() -> int:

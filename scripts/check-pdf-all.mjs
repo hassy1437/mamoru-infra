@@ -348,6 +348,16 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-soukatu-row-warnings.mjs", stage: "挙動",
+        why: "総括表の設備の行で出た警告・エラーが、どの設備の行かを設備名で示すか（ルートを実際に動かす・「該当なし」を挟む）。"
+            + "★行の位置を渡しておらず「不良内容（ほか1か所）」とだけ出て、設備名の欄は英語の「name」のまま出ていた（2026-10-22）。"
+            + "PDF は正しく出るので画像の検査では出ない種類",
+        runs: [
+            { label: "自己診断", cmd: ["node", "scripts/check-soukatu-row-warnings.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "scripts/check-soukatu-row-warnings.mjs"], sentinel: "SOUKATU_ROW_WARNINGS_OK" },
+        ],
+    },
+    {
         file: "check-houkoku-layout.mjs", stage: "挙動",
         why: "報告書（様式第1）の届出者欄が記入用の下線の右端を越えないか・所在地/名称/用途が欄の縦の中央にあるか"
             + "（短い値・長い値で実際に描いて測る。罫線は雛形から毎回測る）。"

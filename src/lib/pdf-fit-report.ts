@@ -29,8 +29,8 @@ import { BEKKI_ROW_LABELS } from "./bekki-row-labels"
  * ★行ラベルが引けないときは行番号を出す。出典（フォームの PAGE{n}_ITEMS）と
  *   payload の行数がズレることは原理的にありうるので、黙って何も出さない方が悪い。
  */
-const withRow = (base: string, form: string, rowsKey?: string, row?: number, more = 0): string => {
-    const r = rowLabelOf(form, rowsKey, row)
+const withRow = (base: string, form: string, rowsKey?: string, row?: number, more = 0, rowLabel?: string): string => {
+    const r = rowLabelOf(form, rowsKey, row, rowLabel)
     // ★同じ値が何行にも出る警告は 1 件に畳むので、最初の行に「ほか N か所」を添える
     //   （畳んだ行を黙って消さない。最初の行は描画位置で決まった本当の行）
     const others = more > 0 ? `ほか${more}か所` : ""
@@ -49,8 +49,15 @@ const groupByFieldText = <T extends { field?: string; text: string }>(items: T[]
     return [...groups.values()]
 }
 
-export const rowLabelOf = (form: string, rowsKey?: string, row?: number): string | null => {
+/** 行の見出し（CellRef.rowLabel）を警告に出す長さ。設備の一覧（equipment-config.ts）で最長は 15 字（消防機関へ通報する火災報知設備） */
+const ROW_LABEL_MAX = 20
+
+export const rowLabelOf = (form: string, rowsKey?: string, row?: number, rowLabel?: string): string | null => {
     if (!rowsKey || row === undefined) return null
+    // ★行が入力で決まる様式（総括表の設備の行）は、描いた側が渡す行の見出し（設備名）で示す。
+    //   画面は行番号を出さず設備名で並べているので、番号より設備名の方が辿れる（CellRef.rowLabel）
+    //   ★長い設備名は先頭だけにする（設備名の欄そのものの警告で、同じ長い名前が2度並ばないように）
+    if (rowLabel) return `「${rowLabel.length > ROW_LABEL_MAX ? `${rowLabel.slice(0, ROW_LABEL_MAX)}…` : rowLabel}」の行`
     const label = BEKKI_ROW_LABELS[form]?.[rowsKey]?.[row]
     const page = rowsKey.match(/page(\d+)_rows/)?.[1]
     const where = page ? `その${page}・${row + 1}行目` : `${row + 1}行目`
@@ -116,6 +123,9 @@ export const FIELD_LABELS: Record<string, string> = {
     ct_model: "変流器 型式等",
     operation_maker: "操作部・複合装置 製造者名",
     operation_model: "操作部・複合装置 型式等",
+    // 総括表の設備の行の設備名。★payload のキーは "name" だが、測定機器の機器名も "name" なので
+    //   表記を引くキーを分けている（CellRef.labelKey・2026-10-22。以前は警告に英語の「name」のまま出ていた）
+    equipment_row_name: "設備名",
     // 別記1 の集計の表（2026-10-20・以前は警告が「kind（2行目）」と英語のまま出ていた）
     kind: "器種名",
     // 別記15 の見出しの欄（2026-10-20）
@@ -147,6 +157,12 @@ export type CellRef = {
      *   入力の由来の確認（payload のキーとの照合）は column のまま行う。
      */
     labelKey?: string
+    /**
+     * 行の見出し（警告に「どの行か」として出す）。★行が入力で決まる様式だけが渡す。
+     * 2026-10-22: 総括表の設備の行。行は物件の設備で決まり、BEKKI_ROW_LABELS のような
+     *   決まった見出しが無い。画面も行番号を出さず設備名で並べるので、設備名を渡す。
+     */
+    rowLabel?: string
 }
 
 export type CellAt = CellRef & {
@@ -381,7 +397,7 @@ export const createFitCollector = (): FitCollector => {
                 if (f.at?.rowsKey !== undefined && f.at?.row !== undefined) {
                     f.rowsKey = f.at.rowsKey
                     f.row = f.at.row
-                    if (f.at.column) f.field = f.at.column
+                    if (f.at.column) f.field = f.at.labelKey ?? f.at.column
                     // 由来（業者入力か実装由来か）だけは値で判定する。位置では決まらない。
                     const own = entries.find(
                         (e) => e.rowsKey === f.at!.rowsKey && e.row === f.at!.row
@@ -454,6 +470,13 @@ const locate = (
 }
 
 /**
+ * 行の配列として扱う payload のキー。ふつうは名前が _rows で終わる（点検票の page{n}_rows）。
+ * ★総括表の設備の行は equipment_results で、_rows で終わらない（2026-10-22）。
+ *   行として数えないと、描いた側が行の位置（CellRef）を渡しても欄が見つからず、警告ごと消える。
+ */
+const isRowsKey = (key: string) => key.endsWith("_rows") || key === "equipment_results"
+
+/**
  * payload から (キー, 文字列) を再帰的に集める。キーは最後の要素名だけ使う。
  *
  * ★どの rows配列の何行目かも持たせる。これが無いと業者に伝えられるのが
@@ -463,7 +486,7 @@ const collectStrings = (
     node: unknown, key = "", out: Located[] = [], rowsKey?: string, row?: number,
 ): Located[] => {
     if (Array.isArray(node)) {
-        const isRows = key.endsWith("_rows")
+        const isRows = isRowsKey(key)
         node.forEach((v, i) => collectStrings(v, key, out, isRows ? key : rowsKey, isRows ? i : row))
         return out
     }
@@ -527,7 +550,7 @@ export const buildFitError = (form: string, collector: FitCollector): FitErrorBo
         .filter((f) => f.fromInput && f.field)
         .map<FitErrorItem>((f) => ({
             field: f.field!,
-            label: withRow(FIELD_LABELS[f.field!] ?? f.field!, form, f.rowsKey, f.row),
+            label: withRow(FIELD_LABELS[f.field!] ?? f.field!, form, f.rowsKey, f.row, 0, f.at?.rowLabel),
             input: f.text.length,
             fits: f.fits,
             over: f.text.length - f.fits,
@@ -640,7 +663,7 @@ export const buildBelowMinWarning = (form: string, collector: FitCollector): Bel
     for (const { first: s, more } of groupByFieldText(collector.smalls.filter((s) => s.fromInput && s.field))) {
         items.push({
             field: s.field!,
-            label: withRow(FIELD_LABELS[s.field!] ?? s.field!, form, s.rowsKey, s.row, more),
+            label: withRow(FIELD_LABELS[s.field!] ?? s.field!, form, s.rowsKey, s.row, more, s.at?.rowLabel),
             size: s.size,
             text: s.text,
         })
@@ -665,7 +688,7 @@ export const buildChoiceWarning = (form: string, collector: FitCollector): Choic
     const items: ChoiceWarnItem[] = []
     // 入力(payload)に無い値＝システム由来。業者には直しようがないので出さない
     for (const { first: c, more } of groupByFieldText(collector.choiceMismatches.filter((c) => c.field))) {
-        const label = withRow(FIELD_LABELS[c.field!] ?? c.field!, form, c.rowsKey, c.row, more)
+        const label = withRow(FIELD_LABELS[c.field!] ?? c.field!, form, c.rowsKey, c.row, more, c.at?.rowLabel)
         items.push({
             field: c.field!,
             label,
@@ -690,7 +713,7 @@ export const buildShrinkWarning = (form: string, collector: FitCollector): FitWa
     for (const { first: s, more } of groupByFieldText(targets)) {
         items.push({
             field: s.field!,
-            label: withRow(FIELD_LABELS[s.field!] ?? s.field!, form, s.rowsKey, s.row, more),
+            label: withRow(FIELD_LABELS[s.field!] ?? s.field!, form, s.rowsKey, s.row, more, s.at?.rowLabel),
             design: s.design,
             actual: s.actual,
             deviation: s.deviation,

@@ -1,5 +1,5 @@
 ﻿import { NextRequest, NextResponse } from "next/server"
-import { PDFDocument, type PDFPage, rgb, StandardFonts } from "pdf-lib"
+import { PDFDocument, type PDFPage, StandardFonts } from "pdf-lib"
 import {
     buildFitError,
     createFitCollector,
@@ -16,22 +16,18 @@ import {
 drawPeriodDate,
     drawTextInCell,
     drawWrappedTextInCell,
-    formatDateText,
     formatJapaneseDateText,
     parseDateParts,
     type CellDrawOptions,
     type DateAnchors,
     formatJudgment,
-    pickFont,
     type ReportFonts,
     cellAt,
     measureRuns,
     truncateRunsToFitWidth,
     drawTextRuns,
-    FIT_EPSILON,
     reportIfBelowMinSize,
     type CellRef,
-    type CellAt,
     drawOrWrapWhenTiny,
     drawShiftedDown,
 } from "@/lib/pdf-form-helpers"
@@ -291,11 +287,6 @@ export async function POST(req: NextRequest) {
             drawInCell(page, pageHeight, body.witness, 411.48, 123.48, 118.92, 28.32, 7.4)
             // 点検種別はテンプレートに「機　器」が印刷済みのため描画不要
 
-            const periodText = (() => {
-                const start = formatDateText(body.period_start)
-                const end = formatDateText(body.period_end)
-                return start && end ? `${start} - ${end}` : (start || end)
-            })()
             const canDrawSplitPeriod =
                 (!body.period_start || Boolean(parseDateParts(body.period_start))) &&
                 (!body.period_end || Boolean(parseDateParts(body.period_end)))

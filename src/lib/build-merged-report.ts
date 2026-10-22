@@ -54,6 +54,7 @@ function buildTasks(input: ReportInputs): PdfTask[] {
                 return { label: id, route: config.apiRoute, body: input.bekkiPayloads[id], formNo: config.formNo }
             })
             .sort((a, b) => a.formNo - b.formNo)
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars -- 並べ替えに使った formNo を外して返すため（受け取るだけで使わない）
             .map(({ formNo: _formNo, ...task }) => task),
     ]
 }

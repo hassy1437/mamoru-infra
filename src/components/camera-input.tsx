@@ -133,6 +133,7 @@ export default function CameraInput({ itiranId }: CameraInputProps) {
                             key={photo.id}
                             className="rounded-lg border border-slate-200 bg-slate-50"
                         >
+                            {/* eslint-disable-next-line @next/next/no-img-element -- 端末内の写真（data URL）の控え。next/image の最適化は使えない */}
                             <img
                                 src={photo.dataUrl}
                                 alt={photo.note || "点検写真"}

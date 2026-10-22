@@ -13,7 +13,6 @@ import path from "path"
 import { DEVICE_TABLE_COLUMN_ROWS, DEVICE_TABLE_PRINTED, resolveDeviceTable } from "@/lib/bekki-device-table"
 import {
     periodDateError,
-FIT_EPSILON,
     blankPrintedRows,
     drawPeriodDate,
     drawTextRuns,
@@ -23,7 +22,6 @@ FIT_EPSILON,
     cellAt,
     measureRuns,
     truncateRunsToFitWidth,
-    pickFont,
     reportIfBelowMinSize,
     type ReportFonts,
     type CellRef,
@@ -124,7 +122,6 @@ const HEADER = {
 // 点検種別/点検年月日の行。旧値 top=162.0 は1行分上にずれており、
 // 日付が上の「所在」行に食い込んで罫線 x=433.8 を越えていた。
 const PERIOD_ROW = { top: 170.0, h: 16.0 }
-const PERIOD_CELL = { x: 280.6, w: 249.0 } // 280.6 → 529.6
 
 // 点検種別はテンプレートに「機　器　・　総　合」が印字済み。値の文字を重ねて描くと
 // 二重表記になる（旧実装はこれをやっていた）ので、該当する語を丸で囲む方式に統一する
@@ -154,13 +151,6 @@ const PERIOD_END_ANCHORS = { year: 440.0, month: 476.5, day: 512.0, baseline: 18
 const normalizeText = (value: unknown) => String(value ?? "").replace(/\s+/g, " ").trim()
 const getExtra = (body: Bekki11_2Payload, key: string) => normalizeText(body.extra_fields?.[key])
 
-const formatDateText = (value: unknown) => {
-    const raw = normalizeText(value)
-    if (!raw) return ""
-    const date = new Date(raw)
-    if (Number.isNaN(date.getTime())) return raw
-    return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`
-}
 
 const parseDateParts = (value: unknown) => {
     const raw = normalizeText(value)
@@ -322,22 +312,6 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        const drawRightAt = (
-            page: PDFPage,
-            pageHeight: number,
-            text: string,
-            anchorX: number,
-            rowTop: number,
-            rowH: number,
-            size = 6.8,
-        ) => {
-            if (!text) return
-            const textHeight = fonts.jp.heightAtSize(size, { descender: true })
-            const textTop = rowTop + (rowH - textHeight) / 2
-            const y = pageHeight - (textTop + textHeight * 0.78)
-            const textWidth = measureRuns(fonts, String(text ?? ""), size)
-            drawTextRuns(page, fonts, String(text ?? ""), anchorX - textWidth, y, size)
-        }
 
         
 
@@ -359,11 +333,6 @@ export async function POST(req: NextRequest) {
             })
         }
 
-        const periodText = (() => {
-            const start = formatDateText(body.period_start)
-            const end = formatDateText(body.period_end)
-            return start && end ? `${start} - ${end}` : (start || end)
-        })()
         if (parseDateParts(body.period_start) || parseDateParts(body.period_end)) {
             drawPeriodDate({ page: page1, pageHeight: p1Height, fonts, dateValue: body.period_start, anchors: PERIOD_START_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 6.8 })
             drawPeriodDate({ page: page1, pageHeight: p1Height, fonts, dateValue: body.period_end, anchors: PERIOD_END_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 6.8 })

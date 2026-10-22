@@ -46,8 +46,6 @@ for (let pageIndex = 0; pageIndex < 1; pageIndex++) {
     let currentPos = { x: 0, y: 0 };
 
     // 点検年月日行のy座標範囲 (fromTop 277 - 324, つまり y = 841.92-324 ~ 841.92-277 = 518 ~ 565)
-    const targetYmin = 517;
-    const targetYmax = 566;
 
     for (const line of lines) {
         const t = line.trim();
@@ -74,7 +72,6 @@ for (let pageIndex = 0; pageIndex < 1; pageIndex++) {
         }
 
         // Tf: font size
-        const tfMatch = t.match(/\/(F\d+)\s+([\d.]+)\s+Tf$/);
 
         // Tj: show text
         if (t.includes("Tj") || t.includes("TJ")) {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { PDFDocument, rgb, PDFPage, StandardFonts } from "pdf-lib"
+import { PDFDocument, PDFPage, StandardFonts } from "pdf-lib"
 import {
     buildFitError,
     createFitCollector,
@@ -8,14 +8,12 @@ import {
     systemFitFailures,
 } from "@/lib/pdf-fit-report"
 import {
-    pickFont,
     type ReportFonts,
     cellAt,
     measureRuns,
     truncateRunsToFitWidth,
     drawTextRuns,
     drawWrappedTextInCell,
-    FIT_EPSILON,
     reportIfBelowMinSize,
     type CellRef,
     type CellAt,

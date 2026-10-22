@@ -16,7 +16,6 @@ for (let pageIndex = 0; pageIndex < pages.length; pageIndex++) {
     console.log(`Size: ${width} x ${height} (A4 = 595.28 x 841.89)`);
 
     // コンテンツストリームのオペレーターを取得
-    const ref = page.node.get(PDFDocument.prototype.context ? undefined : undefined);
 
     // pdf-libのページからcontentStreamを直接取得
     const dict = page.node;

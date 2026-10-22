@@ -16,7 +16,7 @@ pdfDoc.registerFontkit(fontkit);
 const customFont = await pdfDoc.embedFont(fontBytes);
 
 const page1 = pdfDoc.getPages()[0];
-const { width, height } = page1.getSize();
+const { height } = page1.getSize();
 
 // 点検年月日の行: fromTop 277 - 324 → y = 518 - 565
 // 日付エリア: x = 291 ~ 530

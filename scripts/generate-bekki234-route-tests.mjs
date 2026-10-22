@@ -1,4 +1,3 @@
-import path from "path";
 import fs from "fs";
 import { runRoutePdf } from "./run-route-pdf.mjs";
 import { applyNumericRows, applyChoiceRows, numericStressValue } from "./lib-numeric-rows.mjs";

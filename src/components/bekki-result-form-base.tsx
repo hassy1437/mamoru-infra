@@ -37,7 +37,7 @@ import {
 import { bekkiWitnessInitial } from "@/lib/bekki-witness"
 import { pdfRequestError, pdfErrorText } from "@/lib/pdf-request-error"
 
-import { createEmptyRow, coerceRow, hydrateRows, type BekkiRowState } from "@/lib/bekki-row-state"
+import { hydrateRows, type BekkiRowState } from "@/lib/bekki-row-state"
 import { soukatsuPdfGate } from "@/lib/pdf-gate-client"
 import { applyBulkGood, bekkiFormNameOfApiRoute } from "@/lib/bekki-bulk-good"
 import { BekkiBulkGoodButton } from "@/components/bekki-bulk-good-button"

@@ -17,13 +17,11 @@ drawPeriodDate,
     drawTextInCell,
     drawTextInCellOrWrap,
     drawWrappedTextInCell,
-    formatDateText,
     formatJapaneseDateText,
     parseDateParts,
     type CellDrawOptions,
     type DateAnchors,
     formatJudgment,
-    pickFont,
     type ReportFonts,
     type CellRef,
     drawOrWrapWhenTiny,
@@ -111,7 +109,6 @@ const HEADER = {
 
 // 点検種別/点検年月日の行（実測 157.3-175.9）。旧値 top=162.0-10=152.0 は上にずれていた。
 const PERIOD_ROW = { top: 157.3, h: 18.6 }
-const PERIOD_CELL = { x: 269.9, w: 259.5 } // 269.9 → 529.4
 
 // ★この様式は点検種別セルに「機　器」だけが印字されている（総合の選択肢が無い＝機器点検用）。
 //   旧実装は "機器・総合点検" を印字の上に重ね書きしていた。該当語を丸で囲む方式に統一する。
@@ -231,8 +228,6 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        const headerShiftY = -10
-        const y = (v: number) => v + headerShiftY
 
         const drawHeader = (page: PDFPage, pageHeight: number) => {
             drawInCell(page, pageHeight, body.form_name, HEADER.valueX, HEADER.nameRow.top, HEADER.valueW, HEADER.nameRow.h, 8.4)
@@ -252,11 +247,6 @@ export async function POST(req: NextRequest) {
                 })
             }
 
-            const periodText = (() => {
-                const start = formatDateText(body.period_start)
-                const end = formatDateText(body.period_end)
-                return start && end ? `${start} - ${end}` : (start || end)
-            })()
             const canDrawSplitPeriod =
                 (!body.period_start || Boolean(parseDateParts(body.period_start))) &&
                 (!body.period_end || Boolean(parseDateParts(body.period_end)))

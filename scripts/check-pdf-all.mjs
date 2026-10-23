@@ -107,6 +107,8 @@ const SOURCE_GLOBS = [
  */
 /** check-warning-field-labels.mjs の本番の実行を分ける数（下の CHECKS） */
 const WARNING_LABEL_PARTS = 4
+/** check-device-maker-wrap.mjs の本番の実行を分ける数（下の CHECKS） */
+const DEVICE_MAKER_WRAP_PARTS = 4
 
 const CHECKS = [
     {
@@ -761,9 +763,15 @@ const CHECKS = [
         why: "測定機器の製造者名・機器名（と別記11/22 の点検設備の製造者名）が、ありそうな長さ（15〜16 字）で PDF を止めず全文載り、"
             + "測定機器は 5pt 以上か。短い値は 1 行のまま。★15 字で 7 様式が 422、8 様式が 3.5〜4pt だった（2026-10-07）。"
             + "#22 の検査（社名など 4 様式）は測定機器の欄を見ていなかった",
+        // ★本番の実行は様式の組を DEVICE_MAKER_WRAP_PARTS に分けて並べる（2026-10-23）。CI で 1 本 203 秒かかり、
+        //   台に分けた CI の待ちを決めていた。★組は 1〜N をここで作る（書き並べると組の抜け＝測らない様式が出うる）
         runs: [
             { label: "自己診断", cmd: ["node", "scripts/check-device-maker-wrap.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
-            { cmd: ["node", "scripts/check-device-maker-wrap.mjs"], sentinel: "DEVICE_MAKER_WRAP_OK" },
+            ...Array.from({ length: DEVICE_MAKER_WRAP_PARTS }, (_, i) => ({
+                label: `組 ${i + 1}/${DEVICE_MAKER_WRAP_PARTS}`,
+                cmd: ["node", "scripts/check-device-maker-wrap.mjs", "--part", `${i + 1}/${DEVICE_MAKER_WRAP_PARTS}`],
+                sentinel: "DEVICE_MAKER_WRAP_OK",
+            })),
         ],
     },
     {
@@ -1127,20 +1135,39 @@ const ALL = [...CHECKS, ...EXTRA_STAGES]
  * ★網羅の担保: 各台は「どの項目を受け持ち、どう終わったか」を --report に書き、
  *   まとめの段（--verify-shards）が「全部の項目がちょうど 1 台で流れた・台が欠けていない」を確かめる。
  *   ＝ 振り分けや台の数を誤っても「どこでも流れなかった検査」が緑に紛れない。
- * ★振り分けの重み（秒）は実測（2026-10-23・手元 4 並列）。外れても遅くなるだけで、流れない検査は出ない。
- *   載っていない項目は 1 回 3 秒とみなす。排他の項目は 1 本ずつ流れるので 4 倍に数える。
+ * ★振り分けの重みは、実行単位ごとの CI の実測（秒）。外れても遅くなるだけで、流れない検査は出ない。
+ *   ・CI のログの「OK  [段] ラベル (秒)」をそのまま写す（2026-10-23・master 077afb7・4 並列。5 秒以上のものだけ）。
+ *     手元の実測（2026-10-23）で振り分けたら CI では重さの比が違い、3 台目が他より最大 1 分 20 秒長かった（3 回中 2 回）
+ *   ・載っていない実行単位は 1 秒とみなす。排他の項目は 1 本ずつ流れるので 4 倍に数える
+ *   ・組に分けた検査（組 1/4 など）は、分ける前の 1 本の時間を組の数で割った見込み
+ *   ★台が大きくずれてきたら、CI のログから写し直す
  */
 const COST_SECONDS = {
-    "check-warning-field-labels.mjs": 270, "check-device-rows.mjs": 120, "check-device-maker-wrap.mjs": 105,
-    "check-row-label-placement.mjs": 70, "check-houkoku-layout.mjs": 55, "check-merged-report-size.mjs": 45,
-    "check-choice-mismatch-warning.mjs": 40, "check-defect-phrases.mjs": 40, "check-soukatu-marks.mjs": 40,
-    "check-shrink-warning.mjs": 38, "check-condense-min-size.mjs": 35, "check-device-table.mjs": 29,
-    "check-small-font-wrap.mjs": 28, "check-soukatu-row-warnings.mjs": 24, "check-row-cells.py": 20,
-    "check-printed-overlap.py": 19, "check-choice-clearance.py": 18, "check-numeric-rows-declaration.py": 13,
-    "check-bekki2-hose-row.mjs": 13, "check-below-min.py": 12, "check-fit-error.mjs": 10,
+    "check-warning-field-labels.mjs (組 1/4)": 112, "check-device-rows.mjs (自己診断)": 104, "check-houkoku-layout.mjs (自己診断)": 103,
+    "check-device-rows.mjs": 89, "check-warning-field-labels.mjs (組 2/4)": 88, "check-row-label-placement.mjs (自己診断)": 85,
+    "check-row-label-placement.mjs": 81, "check-warning-field-labels.mjs (組 4/4)": 77,
+    "check-warning-field-labels.mjs (組 3/4)": 74, "check-warning-field-labels.mjs (自己診断)": 64,
+    "check-soukatu-marks.mjs (自己診断)": 63, "check-choice-mismatch-warning.mjs": 59, "check-defect-phrases.mjs": 55,
+    "check-shrink-warning.mjs": 53, "check-device-maker-wrap.mjs (組 1/4)": 51, "check-device-maker-wrap.mjs (組 2/4)": 51,
+    "check-device-maker-wrap.mjs (組 3/4)": 51, "check-device-maker-wrap.mjs (組 4/4)": 51,
+    "check-device-maker-wrap.mjs (自己診断)": 47, "check-merged-report-size.mjs (自己診断)": 43,
+    "check-condense-min-size.mjs (自己診断)": 36, "check-device-table.mjs (自己診断)": 36, "check-small-font-wrap.mjs (自己診断)": 33,
+    "check-device-table.mjs": 33, "check-small-font-wrap.mjs": 29, "check-soukatu-row-warnings.mjs (自己診断)": 28,
+    "check-bekki2-hose-row.mjs (自己診断)": 19, "check-fit-error.mjs": 17, "check-defect-phrases.mjs (自己診断)": 17,
+    "check-soukatu-marks.mjs": 16, "check-houkoku-layout.mjs": 15, "check-row-cells.py (自己診断)": 15,
+    "check-below-min.py (自己診断)": 14, "check-merged-report-size.mjs": 14, "check-printed-overlap.py (stress)": 11,
+    "check-printed-overlap.py (realistic)": 11, "check-bekki2-hose-row.mjs": 11, "check-condense-min-size.mjs": 10,
+    "check-soukatsu-details.mjs (自己診断)": 10, "check-numeric-rows-declaration.py (自己診断)": 9,
+    "check-soukatu-row-warnings.mjs": 8, "check-kinsoku.mjs": 8, "check-choice-clearance.py (自己診断)": 7,
+    "check-overflow.py (stress)": 7, "check-below-min.py": 6, "check-start-on-rule.py (stress)": 6,
+    "check-start-on-rule.py (realistic)": 6, "check-overflow.py (realistic)": 6, "check-soukatsu-details.mjs": 6,
+    "check-row-cells.py": 5, "check-truncation.py (stress)": 5,
 }
+/** 実行単位のラベル（ログ・--report・COST_SECONDS で同じものを使う） */
+const labelOf = (c, r) => (r.label ? `${c.file ?? c.name} (${r.label})` : c.file ?? c.name)
+const costOf = (label) => COST_SECONDS[label] ?? 1
 const nameOf = (c) => c.file ?? c.name
-const loadOf = (c) => (COST_SECONDS[nameOf(c)] ?? 3 * c.runs.length) * (c.exclusive ? 4 : 1)
+const loadOf = (c) => c.runs.filter((r) => !r.prep).reduce((s, r) => s + costOf(labelOf(c, r)), 0) * (c.exclusive ? 4 : 1)
 
 /** 項目 → 受け持つ台（1〜n）。重い順に、いちばん空いている台へ（同じなら番号の小さい台）。何度呼んでも同じ結果 */
 function planShards(entries, n) {
@@ -1229,7 +1256,7 @@ function verifyShards(dir) {
 
 if (SHARD) {
     const own = ALL.filter(mine)
-    console.log(`台 ${SHARD.k}/${SHARD.n}: 受け持つ項目 ${own.length} / 全 ${ALL.length}（重みの見込み ${PLAN.load.map((l) => Math.round(l)).join("・")}）`)
+    console.log(`台 ${SHARD.k}/${SHARD.n}: 受け持つ項目 ${own.length} / 全 ${ALL.length}（4 並列での見込み ${PLAN.load.map((l) => `${Math.round(l / 4)}秒`).join("・")}）`)
 }
 
 if (LIST_ONLY) {
@@ -1335,7 +1362,7 @@ for (const c of ALL) {
     const entry = { name, state: "RAN", units: [] }
     handled.push(entry)
     for (const r of c.runs) {
-        const u = { stage: c.stage, label: r.label ? `${name} (${r.label})` : name, r, entry }
+        const u = { stage: c.stage, label: labelOf(c, r), r, entry }
         ;(r.prep ? prepUnits : c.exclusive ? exclusiveUnits : units).push(u)
     }
 }
@@ -1347,7 +1374,12 @@ const doneEx = []
 // ★prep（他の検査の前提を作るもの）を最初に。並列化すると消費側が先に走る
 for (const u of prepUnits) doneEx.push({ u, res: await runAsync(cmdOf(u.r)) })
 for (const u of exclusiveUnits) doneEx.push({ u, res: await runAsync(cmdOf(u.r)) })
-const done = [...doneEx, ...await parallelMap(units, async (u) => ({ u, res: await runAsync(cmdOf(u.r)) }), CONCURRENCY)]
+// ★並行の相は重い実行単位から始める（2026-10-23）。並べた順のままだと、最後の方にある重い 1 本
+//   （CI で 203 秒）が遅れて始まり、それだけが残って台の時間を延ばしていた。
+//   ★流す順を変えるだけで、流すもの・判定・結果を出す順（並べた順）は変えない。並行の相の実行単位は互いに独立
+const heavyFirst = units.map((u, i) => ({ u, i })).sort((a, b) => costOf(b.u.label) - costOf(a.u.label) || a.i - b.i)
+const ran = await parallelMap(heavyFirst, async ({ u, i }) => ({ u, i, res: await runAsync(cmdOf(u.r)) }), CONCURRENCY)
+const done = [...doneEx, ...ran.sort((a, b) => a.i - b.i)]
 for (const { u, res } of done) {
     const codeOk = res.code === 0
     const sentOk = u.r.sentinel === null || res.out.includes(u.r.sentinel)

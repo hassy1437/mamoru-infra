@@ -15,6 +15,15 @@
 #
 # ■ 依存（実測）
 #   Node ＋ Python ＋ PyMuPDF だけ。LibreOffice も Docker も要らない。
+#
+# ■ 3 台に分けて同時に流す（2026-10-23）
+#   1 台（4 コア）では帳票PDF検査だけで 6〜11 分かかっていた。仕事の総量（約 1,150 秒）で時間が決まり、
+#   同時実行数を増やしても縮まらない（並列の相はすでに CPU を使い切っている）。
+#     build  … 型検査とビルド（PDF検査と同時に流す）
+#     pdf    … 帳票PDF検査を 3 台に分けて流す（scripts/check-pdf-all.mjs --shard k/3）
+#     checks … まとめ。★3 台の記録を突き合わせ、全部の検査がちょうど 1 台で流れたことを確かめる
+#   ★台の数を変えるときは、matrix の shard と --shard の「/3」の両方を変える。
+#     片方だけ変えると、まとめの突き合わせ（--verify-shards）が「台が欠けている」で落ちる（＝気づける）。
 name: pdf-checks
 
 on:
@@ -24,9 +33,10 @@ on:
   workflow_dispatch:
 
 jobs:
-  checks:
+  build:
+    name: 型検査とビルド
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -35,15 +45,6 @@ jobs:
           node-version: "22"
           cache: npm
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-          cache: pip
-
-      # ★依存は requirements.txt を正とする。個別に列挙すると取りこぼす
-      #   （「PyMuPDF だけ」と書いて 42件中15件が numpy 不足で落ちた）。
-      #   scripts/check-python-deps.py が実際の import と突き合わせて守る。
-      - run: pip install -r requirements.txt
       - run: npm ci
 
       # ★型検査とビルドも見る。検査スクリプトが緑でも、
@@ -67,18 +68,90 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-dummy-not-a-real-key
         run: npm run build
 
+  pdf:
+    name: 帳票PDF検査 (${{ matrix.shard }}/3)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      # ★1 台が落ちても他の台は最後まで流す（どの検査が落ちたかを全部見せる）
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      # ★依存は requirements.txt を正とする。個別に列挙すると取りこぼす
+      #   （「PyMuPDF だけ」と書いて 42件中15件が numpy 不足で落ちた）。
+      #   scripts/check-python-deps.py が実際の import と突き合わせて守る。
+      - run: pip install -r requirements.txt
+      - run: npm ci
+
       # ★--regen 付き。CI にはリポジトリの内容しか無いので、生成物を必ず作り直す。
       #   ローカルの tmp/ に依存していると「その端末でしか通らない」を見逃す。
-      - name: 帳票PDF検査（ベースライン照合を除く全件）
-        run: node scripts/check-pdf-all.mjs --regen --skip-baseline
+      # ★同時実行数は CPU の数そのまま。既定は「CPU 数 − 1」で、手元の端末を重くしないための余り。
+      #   CI ではこの入口のほかに何も動かず、親は子を待つだけなので、1 つ空けておく理由が無い。
+      # ★--report に「どの検査を受け持ち、どう終わったか」を書く（まとめの段が突き合わせる）
+      - name: 帳票PDF検査（ベースライン照合を除く・この台の受け持ち）
+        run: CHECK_PDF_CONCURRENCY=$(nproc) node scripts/check-pdf-all.mjs --regen --skip-baseline --shard ${{ matrix.shard }}/3 --report tmp/pdf-shard.json
+
+      - name: この台の記録
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdf-shard-${{ matrix.shard }}
+          path: tmp/pdf-shard.json
+          retention-days: 7
 
       # 落ちたときに現物を見られるようにする（画素差はローカルで確認する）
       - name: 生成物
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: generated-pdfs
+          name: generated-pdfs-${{ matrix.shard }}
           path: |
             tmp/pdf-realistic/*.pdf
             tmp/pdf-test-extra/*.pdf
           retention-days: 7
+
+  # ★まとめ。以前の 1 つのジョブと同じ名前（checks）にしてある。
+  #   ★if: always() … 前の段が落ちたときに「飛ばされた（＝通った扱い）」にしない。必ず走って落ちる。
+  checks:
+    name: checks
+    needs: [build, pdf]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 型検査・ビルドと 3 台がすべて通ったか
+        run: |
+          echo "型検査とビルド: ${{ needs.build.result }} / 帳票PDF検査: ${{ needs.pdf.result }}"
+          if [ "${{ needs.build.result }}" != "success" ] || [ "${{ needs.pdf.result }}" != "success" ]; then
+            echo "★通っていない段があります（上の結果を見てください）"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: 台の記録を集める
+        uses: actions/download-artifact@v4
+        with:
+          pattern: pdf-shard-*
+          path: tmp/pdf-shards
+
+      # ★全部の検査が、ちょうど 1 台で流れて通ったか（どこでも流れなかった検査が無いか）
+      - name: 台の記録の突き合わせ
+        run: node scripts/check-pdf-all.mjs --verify-shards tmp/pdf-shards

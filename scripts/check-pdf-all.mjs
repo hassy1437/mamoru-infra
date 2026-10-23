@@ -31,6 +31,8 @@
 //   node scripts/check-pdf-all.mjs            # 検査だけ（生成物が古ければ止まる）
 //   node scripts/check-pdf-all.mjs --regen    # PDFを作り直してから検査
 //   node scripts/check-pdf-all.mjs --list     # 実行内容を出すだけ（走らせない）
+//   … --shard 2/3 --report <file>            # CI: 3 台に分けた 2 台目の分だけ流し、何を流したかを書く
+//   … --verify-shards <dir>                  # CI: 全部の台の記録を突き合わせる（「台に分ける」を参照）
 import { spawn, spawnSync } from "child_process"
 import os from "os"
 import { createHash } from "crypto"
@@ -72,13 +74,19 @@ const pdfsOf = (set) =>
                 .sort().map((f) => path.join(d, f))
         })
 
-/** 長文セットを作り直すスクリプト。全部そろって25様式になる */
+/**
+ * 長文セットを作り直すスクリプト。全部そろって25様式になる。
+ * ★GENERATORS どうしは書き出し先が別（tmp/pdf-test-<組>）なので並行に作る（2026-10-23。逐次 40 秒 → 最長の 1 本ぶん）。
+ * ★現実値セット（GENERATORS_AFTER）は、長文セットの job.json・payload.json を読んで作るので、必ずその後。
+ */
 const GENERATORS = [
     "scripts/generate-bekki234-route-tests.mjs",
     "scripts/generate-bekki5678-route-tests.mjs",
     "scripts/generate-bekki9to12-route-tests.mjs",
     "scripts/generate-bekki13to22-route-tests.mjs",
     "scripts/generate-extra-route-tests.mjs",
+]
+const GENERATORS_AFTER = [
     "scripts/generate-realistic-route-tests.mjs",
 ]
 
@@ -97,6 +105,9 @@ const SOURCE_GLOBS = [
  *   runs     … 実際の実行単位（同じスクリプトを長文/現実値で2回走らせる等）
  *   sentinel … 標準出力にこれが出ていなければ失敗（終了コード0でも）
  */
+/** check-warning-field-labels.mjs の本番の実行を分ける数（下の CHECKS） */
+const WARNING_LABEL_PARTS = 4
+
 const CHECKS = [
     {
         file: "check-header-rows.py", stage: "静的",
@@ -383,9 +394,16 @@ const CHECKS = [
         file: "check-warning-field-labels.mjs", stage: "挙動", needsPdfs: true,
         why: "PDF 出力の警告・エラーの欄名が英語のキー（inspection_type・license_number 等）のまま出ないか（全ルートを長い値・合わない値で動かす）。"
             + "★表に足し忘れても何も落ちず、約 50 欄が英語のまま業者に出ていた（2026-10-22）。PDF は正しく出るので画像の検査では出ない種類",
+        // ★本番の実行は様式の組を WARNING_LABEL_PARTS に分けて並べる（2026-10-23）。1 本で 212 秒かかり、
+        //   CI 全体の待ちを決めていた。★組は 1〜N をここで作る（書き並べると組の抜け＝測らない様式が出うる）。
+        //   ★測れないルートの確認は、どの組も分ける前の全体で見る（scripts/check-warning-field-labels.mjs の --part）
         runs: [
             { label: "自己診断", cmd: ["node", "scripts/check-warning-field-labels.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
-            { cmd: ["node", "scripts/check-warning-field-labels.mjs"], sentinel: "WARNING_FIELD_LABELS_OK" },
+            ...Array.from({ length: WARNING_LABEL_PARTS }, (_, i) => ({
+                label: `組 ${i + 1}/${WARNING_LABEL_PARTS}`,
+                cmd: ["node", "scripts/check-warning-field-labels.mjs", "--part", `${i + 1}/${WARNING_LABEL_PARTS}`],
+                sentinel: "WARNING_FIELD_LABELS_OK",
+            })),
         ],
     },
     {
@@ -1010,8 +1028,15 @@ const runAsync = (cmd) => new Promise((resolve) => {
     p.on("error", (e) => resolve({ code: 1, out: String(e), ms: Date.now() - t0 }))
 })
 
-/** 同時実行数。CPU数-1（最低2）。★増やしすぎると各検査が遅くなり合計が伸びる */
-const CONCURRENCY = Math.max(2, (os.cpus()?.length ?? 4) - 1)
+/**
+ * 同時実行数。CPU数-1（最低2）。★増やしすぎると各検査が遅くなり合計が伸びる。
+ * ★CHECK_PDF_CONCURRENCY で上書きできる（2026-10-23）。CI はこの入口のほかに何も動いていないので、
+ *   CPU 数そのままにする（.github/workflows/pdf-checks.yml）。手元は既定のまま（1 つ空けて端末を重くしない）。
+ */
+const CONCURRENCY = (() => {
+    const v = Number(process.env.CHECK_PDF_CONCURRENCY)
+    return Number.isInteger(v) && v >= 1 ? v : Math.max(2, (os.cpus()?.length ?? 4) - 1)
+})()
 
 /**
  * 実行直前にコマンドを確定する。
@@ -1091,9 +1116,126 @@ if (orphans.length || missing.length) {
 console.log("  孤立0 / 欠落0")
 
 const ALL = [...CHECKS, ...EXTRA_STAGES]
+
+// ── 台に分ける（--shard k/n）──────────────────────────────────────
+/**
+ * ★CI で検査を n 台に分けて同時に流す（2026-10-23）。1 台（4 コア）では仕事の総量（約 1,150 秒）で
+ *   時間が決まり、同時実行数を増やしても縮まらない（並列の相はすでに CPU を使い切っている）。
+ * ★分ける単位は項目（CHECKS の 1 つ）。同じ項目の自己診断と本番は同じ台で流す。
+ * ★前提（prep）の実行は、受け持たない台でも流す。他の項目がその生成物を読む
+ *   （字形化け回帰 → check-ink-coverage.py）。
+ * ★網羅の担保: 各台は「どの項目を受け持ち、どう終わったか」を --report に書き、
+ *   まとめの段（--verify-shards）が「全部の項目がちょうど 1 台で流れた・台が欠けていない」を確かめる。
+ *   ＝ 振り分けや台の数を誤っても「どこでも流れなかった検査」が緑に紛れない。
+ * ★振り分けの重み（秒）は実測（2026-10-23・手元 4 並列）。外れても遅くなるだけで、流れない検査は出ない。
+ *   載っていない項目は 1 回 3 秒とみなす。排他の項目は 1 本ずつ流れるので 4 倍に数える。
+ */
+const COST_SECONDS = {
+    "check-warning-field-labels.mjs": 270, "check-device-rows.mjs": 120, "check-device-maker-wrap.mjs": 105,
+    "check-row-label-placement.mjs": 70, "check-houkoku-layout.mjs": 55, "check-merged-report-size.mjs": 45,
+    "check-choice-mismatch-warning.mjs": 40, "check-defect-phrases.mjs": 40, "check-soukatu-marks.mjs": 40,
+    "check-shrink-warning.mjs": 38, "check-condense-min-size.mjs": 35, "check-device-table.mjs": 29,
+    "check-small-font-wrap.mjs": 28, "check-soukatu-row-warnings.mjs": 24, "check-row-cells.py": 20,
+    "check-printed-overlap.py": 19, "check-choice-clearance.py": 18, "check-numeric-rows-declaration.py": 13,
+    "check-bekki2-hose-row.mjs": 13, "check-below-min.py": 12, "check-fit-error.mjs": 10,
+}
+const nameOf = (c) => c.file ?? c.name
+const loadOf = (c) => (COST_SECONDS[nameOf(c)] ?? 3 * c.runs.length) * (c.exclusive ? 4 : 1)
+
+/** 項目 → 受け持つ台（1〜n）。重い順に、いちばん空いている台へ（同じなら番号の小さい台）。何度呼んでも同じ結果 */
+function planShards(entries, n) {
+    const load = new Array(n).fill(0)
+    const owner = new Map()
+    const order = [...entries].sort((a, b) => loadOf(b) - loadOf(a) || nameOf(a).localeCompare(nameOf(b)))
+    for (const c of order) {
+        const k = load.indexOf(Math.min(...load))
+        load[k] += loadOf(c)
+        owner.set(nameOf(c), k + 1)
+    }
+    return { owner, load }
+}
+
+const argAfter = (flag) => {
+    const i = process.argv.indexOf(flag)
+    return i >= 0 ? process.argv[i + 1] ?? "" : null
+}
+const SHARD = (() => {
+    const v = argAfter("--shard")
+    if (v === null) return null
+    const m = /^(\d+)\/(\d+)$/.exec(v)
+    if (!m || Number(m[1]) < 1 || Number(m[1]) > Number(m[2])) {
+        console.log(`★--shard は 2/3 のように「何台目/何台に分けるか」で書く: ${v}`)
+        process.exit(2)
+    }
+    return { k: Number(m[1]), n: Number(m[2]) }
+})()
+const REPORT = argAfter("--report")
+const VERIFY_DIR = argAfter("--verify-shards")
+const PLAN = SHARD ? planShards(ALL, SHARD.n) : null
+const mine = (c) => !PLAN || PLAN.owner.get(nameOf(c)) === SHARD.k
+
+if (VERIFY_DIR !== null) verifyShards(VERIFY_DIR)
+
+/**
+ * 全部の台の記録（--report）を突き合わせる。★これが通らない限り、台に分けた CI は緑にならない。
+ *   ・台の番号が 1〜n でそろっている（欠けた台・重なった台が無い）
+ *   ・全部の項目が、ちょうど 1 台で受け持たれている（どこでも流れなかった項目が無い）
+ *   ・受け持った項目は、実行単位をすべて流して全部通っている
+ *   ・飛ばしてよいのは、ベースライン照合（--skip-baseline）と、端末に無い任意の項目だけ
+ */
+function verifyShards(dir) {
+    const problems = []
+    const files = fs.existsSync(dir)
+        ? fs.readdirSync(dir, { recursive: true }).map(String).filter((f) => f.endsWith(".json")).map((f) => path.join(dir, f))
+        : []
+    const reports = files.map((f) => JSON.parse(fs.readFileSync(f, "utf8")))
+    console.log(line("═"))
+    console.log(`台の記録の突き合わせ: ${reports.length} 台分（${dir}）`)
+    if (reports.length === 0) problems.push("台の記録が 1 つも無い")
+    const ns = [...new Set(reports.map((r) => r.n))]
+    if (ns.length > 1) problems.push(`台の数がそろっていない: ${ns.join("・")}`)
+    const n = ns[0] ?? 0
+    const ks = reports.map((r) => r.k).sort((a, b) => a - b)
+    const want = Array.from({ length: n }, (_, i) => i + 1)
+    if (JSON.stringify(ks) !== JSON.stringify(want)) problems.push(`台の番号が 1〜${n} でそろっていない: ${ks.join(",")}`)
+    const defs = new Map(ALL.map((c) => [nameOf(c), c]))
+    if (defs.size !== ALL.length) problems.push("項目の名前が重なっている（台の突き合わせができない）")
+    const seen = new Map()
+    for (const r of reports) {
+        for (const e of r.entries) {
+            if (seen.has(e.name)) problems.push(`${e.name} を 2 台が受け持った（台 ${seen.get(e.name)} と ${r.k}）`)
+            seen.set(e.name, r.k)
+            const def = defs.get(e.name)
+            if (!def) { problems.push(`知らない項目: ${e.name}`); continue }
+            if (e.state === "SKIP") {
+                const okSkip = (e.reason === "skip-baseline" && e.name === "ベースライン照合") || (e.reason === "optional-missing" && def.optional)
+                if (!okSkip) problems.push(`${e.name} が飛ばされた（理由: ${e.reason}）`)
+            } else {
+                if (e.units.length !== def.runs.length) problems.push(`${e.name}: 実行単位が ${def.runs.length} 本のはずが ${e.units.length} 本`)
+                for (const u of e.units) if (!u.ok) problems.push(`${u.label} が通っていない`)
+            }
+        }
+    }
+    for (const name of defs.keys()) if (!seen.has(name)) problems.push(`★どの台でも流れていない: ${name}`)
+    if (problems.length) {
+        for (const p of problems) console.log(`  ★${p}`)
+        console.log("\nCHECK_PDF_SHARDS_FAILED")
+        process.exit(1)
+    }
+    console.log(`  ${n} 台で ${seen.size} 項目すべてを、ちょうど 1 回ずつ流した`)
+    console.log("\nCHECK_PDF_SHARDS_OK")
+    process.exit(0)
+}
+
+if (SHARD) {
+    const own = ALL.filter(mine)
+    console.log(`台 ${SHARD.k}/${SHARD.n}: 受け持つ項目 ${own.length} / 全 ${ALL.length}（重みの見込み ${PLAN.load.map((l) => Math.round(l)).join("・")}）`)
+}
+
 if (LIST_ONLY) {
     console.log(line())
     for (const c of ALL) {
+        if (!mine(c)) continue
         console.log(`  [${c.stage}] ${c.file ?? c.name} — ${c.why}`)
         for (const r of c.runs) console.log(`      ${r.label ? r.label + ": " : ""}${cmdOf(r).join(" ")}`)
     }
@@ -1105,11 +1247,14 @@ console.log(line("═"))
 console.log("STAGE 1  生成物の鮮度")
 const t0All = Date.now()
 if (REGEN) {
-    for (const g of GENERATORS) {
-        const r = run(["node", g])
+    // ★並行に作り、結果は並べた順に出す。1 本でも失敗したら止める（古い生成物を測らない）
+    const report = (g, r) => {
         console.log(`  ${r.code === 0 ? "OK  " : "★NG "} ${g} (${secs(r.ms)})`)
         if (r.code !== 0) { console.log(r.out.split("\n").slice(-15).join("\n")); process.exit(1) }
     }
+    const first = await parallelMap(GENERATORS, (g) => runAsync(["node", g]), CONCURRENCY)
+    GENERATORS.forEach((g, i) => report(g, first[i]))
+    for (const g of GENERATORS_AFTER) report(g, run(["node", g]))
     // ★どのソースから作った生成物かを残す。次回以降はこれと突き合わせて鮮度を見る
     fs.writeFileSync(MANIFEST, JSON.stringify({ hashes: sourceHashes() }, null, 2), "utf8")
     console.log(`  由来を記録: ${path.relative(ROOT, MANIFEST)}`)
@@ -1162,11 +1307,21 @@ let failed = 0
 const units = []
 const exclusiveUnits = []
 const prepUnits = []
+/** この台が受け持った項目（--report に書く） */
+const handled = []
 for (const c of ALL) {
     const name = c.file ?? c.name
+    if (!mine(c)) {
+        // ★受け持たない項目でも、前提（prep）だけは流す（他の項目がその生成物を読む）
+        for (const r of c.runs.filter((r) => r.prep)) {
+            prepUnits.push({ stage: c.stage, label: `${name} (${r.label}・前提のみ)`, r, entry: null })
+        }
+        continue
+    }
     if (c.optional && !fs.existsSync(path.join(ROOT, c.optional))) {
         console.log(`  SKIP [${c.stage}] ${name} … ${c.optional} が無い（この端末では未登録）`)
         results.push({ name, ms: 0, state: "SKIP" })
+        handled.push({ name, state: "SKIP", reason: "optional-missing", units: [] })
         continue
     }
     if (SKIP_BASELINE && name === "ベースライン照合") {
@@ -1174,10 +1329,13 @@ for (const c of ALL) {
         console.log("       画素比較は人が差分を見て承認する検査なので CI では走らせません。")
         console.log("       ★ローカルで npm run check:pdf を通すこと。pre-push フックが鮮度を見張っています。")
         results.push({ name, ms: 0, state: "SKIP" })
+        handled.push({ name, state: "SKIP", reason: "skip-baseline", units: [] })
         continue
     }
+    const entry = { name, state: "RAN", units: [] }
+    handled.push(entry)
     for (const r of c.runs) {
-        const u = { stage: c.stage, label: r.label ? `${name} (${r.label})` : name, r }
+        const u = { stage: c.stage, label: r.label ? `${name} (${r.label})` : name, r, entry }
         ;(r.prep ? prepUnits : c.exclusive ? exclusiveUnits : units).push(u)
     }
 }
@@ -1197,6 +1355,7 @@ for (const { u, res } of done) {
     if (!ok) failed += 1
     const why = !codeOk ? `exit=${res.code}` : !sentOk ? `センチネル ${u.r.sentinel} が出力に無い` : ""
     console.log(`  ${ok ? "OK  " : "★NG "} [${u.stage}] ${u.label} (${secs(res.ms)}) ${why}`)
+    u.entry?.units.push({ label: u.label, ok })
     if (!ok) {
         for (const l of res.out.split(/\r?\n/).filter(Boolean).slice(-20)) console.log(`        ${l}`)
     }
@@ -1209,6 +1368,11 @@ const total = Date.now() - t0All
 const slow = [...results].sort((a, b) => b.ms - a.ms).slice(0, 5)
 console.log(`所要 ${secs(total)} / 実行 ${results.length} 件 / 失敗 ${failed} 件`)
 console.log("  遅い順: " + slow.map((r) => `${r.name} ${secs(r.ms)}`).join(" / "))
+if (REPORT) {
+    fs.mkdirSync(path.dirname(path.resolve(ROOT, REPORT)), { recursive: true })
+    fs.writeFileSync(path.resolve(ROOT, REPORT), JSON.stringify({ k: SHARD?.k ?? 1, n: SHARD?.n ?? 1, skipBaseline: SKIP_BASELINE, entries: handled }, null, 2), "utf8")
+    console.log(`  記録: ${REPORT}（受け持った項目 ${handled.length}）`)
+}
 if (failed > 0) {
     console.log("\nCHECK_PDF_FAILED")
     process.exit(1)

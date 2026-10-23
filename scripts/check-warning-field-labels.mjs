@@ -15,7 +15,11 @@
 //   どちらも、出た欄の表記がキーのままなら NG。点検者一覧は、どの点検者・どの免状の欄かも見る。
 //   ★ルートが 1 本でも測れなければ NG（「測っていない」を「英語は 0 件」と取り違えない）
 //
-// 使い方: node scripts/check-warning-field-labels.mjs [--self-test]
+// ■ 分けて流せる（2026-10-23）: --part 2/4 … 様式を 4 つの組に分けた 2 つ目だけを動かす
+//   1 本で 212 秒かかり、CI 全体の待ちを決めていた。check-pdf-all.mjs が 1/4〜4/4 を並べて流す。
+//   ★測れないルートの確認は、分ける前の全体で見る（どの組も同じ確認をする＝抜けがあれば必ず落ちる）
+//
+// 使い方: node scripts/check-warning-field-labels.mjs [--self-test | --part 1/4]
 import fs from "fs"
 import path from "path"
 import { pathToFileURL } from "url"
@@ -24,6 +28,17 @@ import { runRouteOutput } from "./run-route-pdf.mjs"
 
 const ROOT = process.cwd()
 const SELF_TEST = process.argv.includes("--self-test")
+/** --part k/n（k 番目の組だけ動かす）。無ければ全部 */
+const PART = (() => {
+    const i = process.argv.indexOf("--part")
+    if (i < 0) return null
+    const m = /^(\d+)\/(\d+)$/.exec(process.argv[i + 1] ?? "")
+    if (!m || Number(m[1]) < 1 || Number(m[1]) > Number(m[2])) {
+        console.log("★--part は 1/4 のように「何番目/いくつに分けるか」で書く")
+        process.exit(2)
+    }
+    return { k: Number(m[1]), n: Number(m[2]) }
+})()
 const OUT = path.join("tmp", SELF_TEST ? "warning-field-labels-selftest" : "warning-field-labels")
 const LIB = "src/lib/pdf-fit-report.ts"
 const ITIRAN = "src/app/api/generate-itiran-pdf/route.ts"
@@ -77,14 +92,18 @@ async function run(c, mode, routePath = c.route) {
 /** 表記がキーのまま（＝表に無い）か */
 const isRawKey = (it) => /^[a-z][a-z0-9_]*$/.test(it.field) && it.label.startsWith(it.field)
 
-async function measure({ itiranRoute = ITIRAN, only } = {}) {
-    const all = cases().filter((c) => !only || only.includes(c.route))
+async function measure({ itiranRoute = ITIRAN, only, part = null } = {}) {
+    const everything = cases().filter((c) => !only || only.includes(c.route))
+    // ★組に分けるのは動かす様式だけ。名前順に並べて n 個おきに取る（どの様式もちょうど 1 つの組に入る）
+    const all = part ? everything.filter((_, i) => i % part.n === part.k - 1) : everything
     const problems = []
     const seen = [] // { form, field }（自己診断で表を変えたときに引き直す）
     const routes = fs.readdirSync(path.join(ROOT, "src/app/api"))
         .filter((d) => /^generate-[A-Za-z0-9_-]*pdf$/.test(d)).map((d) => `src/app/api/${d}/route.ts`)
-    const missing = routes.filter((r) => !all.some((c) => c.route === r))
+    // ★測れないルートは分ける前の全体（everything）で見る
+    const missing = routes.filter((r) => !everything.some((c) => c.route === r))
     if (!only && missing.length) problems.push(`現実値セットの payload が無く測れないルート: ${missing.join(", ")}`)
+    if (part && all.length === 0) problems.push(`組 ${part.k}/${part.n} に動かす様式が 1 つも無い（分ける数が様式より多い）`)
     let items = 0
     for (const c of all) {
         for (const mode of Object.keys(MODES)) {
@@ -159,8 +178,8 @@ if (SELF_TEST) {
     process.exit(0)
 }
 
-const { problems, routes, items } = await measure()
-console.log(`警告・エラーの欄名を検査: ${routes} 通り × 2（長い値・合わない値）・警告とエラー ${items} 件`)
+const { problems, routes, items } = await measure({ part: PART })
+console.log(`警告・エラーの欄名を検査${PART ? `（組 ${PART.k}/${PART.n}）` : ""}: ${routes} 通り × 2（長い値・合わない値）・警告とエラー ${items} 件`)
 if (problems.length) {
     console.log("★NG:")
     for (const p of problems) console.log("   ", p)

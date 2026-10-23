@@ -1139,7 +1139,9 @@ const ALL = [...CHECKS, ...EXTRA_STAGES]
  *   ・CI のログの「OK  [段] ラベル (秒)」をそのまま写す（2026-10-23・master 077afb7・4 並列。5 秒以上のものだけ）。
  *     手元の実測（2026-10-23）で振り分けたら CI では重さの比が違い、3 台目が他より最大 1 分 20 秒長かった（3 回中 2 回）
  *   ・載っていない実行単位は 1 秒とみなす。排他の項目は 1 本ずつ流れるので 4 倍に数える
- *   ・組に分けた検査（組 1/4 など）は、分ける前の 1 本の時間を組の数で割った見込み
+ *   ・製造者名の検査（check-device-maker-wrap.mjs）は、組に分けた #107 の CI（306c1ba）の実測。
+ *     ★組に分けると、組ごとの起動と同時に流れる分だけ合計が増える（1 本 203 秒 → 4 組の合計 297 秒）。
+ *       1 本の時間を組の数で割った見込み（各 51 秒）では、その台だけ 30 秒ほど長くなった
  *   ★台が大きくずれてきたら、CI のログから写し直す
  */
 const COST_SECONDS = {
@@ -1148,9 +1150,9 @@ const COST_SECONDS = {
     "check-row-label-placement.mjs": 81, "check-warning-field-labels.mjs (組 4/4)": 77,
     "check-warning-field-labels.mjs (組 3/4)": 74, "check-warning-field-labels.mjs (自己診断)": 64,
     "check-soukatu-marks.mjs (自己診断)": 63, "check-choice-mismatch-warning.mjs": 59, "check-defect-phrases.mjs": 55,
-    "check-shrink-warning.mjs": 53, "check-device-maker-wrap.mjs (組 1/4)": 51, "check-device-maker-wrap.mjs (組 2/4)": 51,
-    "check-device-maker-wrap.mjs (組 3/4)": 51, "check-device-maker-wrap.mjs (組 4/4)": 51,
-    "check-device-maker-wrap.mjs (自己診断)": 47, "check-merged-report-size.mjs (自己診断)": 43,
+    "check-shrink-warning.mjs": 53, "check-device-maker-wrap.mjs (組 1/4)": 72, "check-device-maker-wrap.mjs (組 2/4)": 81,
+    "check-device-maker-wrap.mjs (組 3/4)": 75, "check-device-maker-wrap.mjs (組 4/4)": 68,
+    "check-device-maker-wrap.mjs (自己診断)": 52, "check-merged-report-size.mjs (自己診断)": 43,
     "check-condense-min-size.mjs (自己診断)": 36, "check-device-table.mjs (自己診断)": 36, "check-small-font-wrap.mjs (自己診断)": 33,
     "check-device-table.mjs": 33, "check-small-font-wrap.mjs": 29, "check-soukatu-row-warnings.mjs (自己診断)": 28,
     "check-bekki2-hose-row.mjs (自己診断)": 19, "check-fit-error.mjs": 17, "check-defect-phrases.mjs (自己診断)": 17,

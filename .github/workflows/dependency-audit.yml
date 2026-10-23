@@ -27,18 +27,22 @@ jobs:
   audit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
+          # ★setup-node v5 以降は、cache を書かなくても条件しだいで npm のキャッシュを自動で使う
+          #   （package.json に packageManager を書いたときなど）。ここは npm ci を
+          #   しない上に Issue を書ける権限で動くので、使わない（setup-node の README の勧め・今までどおり）
+          package-manager-cache: false
 
       # ★package-lock.json だけで見られるので npm ci は要らない
       - name: npm audit（本番で使う部品）
         run: npm audit --omit=dev --json > audit.json || true
 
       - name: high 以上があれば Issue で知らせる
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const fs = require("fs")

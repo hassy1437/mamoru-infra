@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button"
 import { FileDown, Loader2 } from "lucide-react"
 import { PDF_GATE_MESSAGE } from "@/lib/finalization"
 import { useState } from "react"
-import { pdfRequestError, pdfErrorText } from "@/lib/pdf-request-error"
+import { pdfErrorText } from "@/lib/pdf-request-error"
+import { fetchPdf } from "@/lib/pdf-client"
 
 type SoukatsuPdfData = {
     building_name?: string | null
@@ -29,16 +30,7 @@ export default function SoukatsuPdfButton({
         }
         setLoading(true)
         try {
-            const response = await fetch("/api/generate-soukatu-pdf", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(data),
-            })
-
-            if (!response.ok) throw await pdfRequestError(response)
-
-
-            const blob = await response.blob()
+            const { blob } = await fetchPdf("/api/generate-soukatu-pdf", data)
             const url = window.URL.createObjectURL(blob)
             const a = document.createElement("a")
             a.href = url

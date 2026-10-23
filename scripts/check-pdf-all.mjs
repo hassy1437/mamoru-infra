@@ -160,8 +160,12 @@ const CHECKS = [
     },
     {
         file: "check-pdf-error-handling.py", stage: "静的",
-        why: "PDF取得の失敗が共有ヘルパーを通って分岐しているか（生fetchの取りこぼし）",
-        runs: [{ cmd: [PY, "scripts/check-pdf-error-handling.py"], sentinel: "PDF_ERROR_HANDLING_OK" }],
+        why: "PDF のルートを呼ぶのが src/lib/pdf-client.ts の fetchPdf だけか（生 fetch の取りこぼし）・"
+            + "PDF とプレビューの失敗を見せる catch が pdfErrorText を通っているか（2026-10-23 に呼ぶ口を 1 つにした）",
+        runs: [
+            { label: "自己診断", cmd: [PY, "scripts/check-pdf-error-handling.py", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: [PY, "scripts/check-pdf-error-handling.py"], sentinel: "PDF_ERROR_HANDLING_OK" },
+        ],
     },
     {
         file: "check-latin-font-coverage.py", stage: "静的",

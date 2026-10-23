@@ -1,4 +1,6 @@
 import { mergePdfBuffers } from "@/lib/merge-pdf-buffers"
+import { fetchPdf } from "@/lib/pdf-client"
+import { PdfRequestError } from "@/lib/pdf-request-error"
 import { PDF_MERGE_CONFIG } from "@/lib/pdf-merge-config"
 import type { ItiranInputStepId } from "@/lib/itiran-input-flow"
 
@@ -134,53 +136,29 @@ export async function buildMergedReport(
 
     const results = await Promise.allSettled(
         tasks.map(async (task, index) => {
-            const res = await fetch(task.route, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(task.body),
-            })
-            if (!res.ok) {
-                // 422 は「枠に収まらない項目がある」= 業者が直せる。本文を捨てずに運ぶ
-                let detail: FitFailureDetail | null = null
-                if (res.status === 422) {
-                    try {
-                        const body = await res.json()
-                        if (body?.error === "FIT_FAILED" && Array.isArray(body.items)) {
-                            detail = { label: task.label, items: body.items }
-                        }
-                    } catch {
-                        // 本文が読めなければラベルだけで扱う
-                    }
-                }
-                const err = new Error(`${task.label}: ${res.status}`) as Error & { detail?: FitFailureDetail | null }
+            // ★PDF のルートは src/lib/pdf-client.ts の fetchPdf からだけ呼ぶ（失敗の分類と警告の読み取りも共通）
+            let result: Awaited<ReturnType<typeof fetchPdf>>
+            try {
+                result = await fetchPdf(task.route, task.body)
+            } catch (e) {
+                // 422 は「枠に収まらない項目がある」= 業者が直せる。本文（どの項目が何文字超過か）を捨てずに運ぶ
+                const detail: FitFailureDetail | null =
+                    e instanceof PdfRequestError && e.failure.kind === "fit" && e.failure.items.length > 0
+                        ? { label: task.label, items: e.failure.items }
+                        : null
+                const err = new Error(`${task.label}: ${e instanceof PdfRequestError ? e.failure.status : "network"}`) as Error & { detail?: FitFailureDetail | null }
                 err.detail = detail
                 throw err
             }
-            // ⑨ 縮小警告はヘッダで運ばれる（PDF本体は正常）。日本語を含むので base64
-            const warnHeader = res.headers.get("X-Fit-Warnings")
-            let warning: ShrinkWarningDetail | null = null
-            let choiceWarning: ChoiceWarningDetail | null = null
-            let belowMinWarning: BelowMinWarningDetail | null = null
-            if (warnHeader) {
-                try {
-                    const json = new TextDecoder().decode(
-                        Uint8Array.from(atob(warnHeader), (c) => c.charCodeAt(0)),
-                    )
-                    const parsed = JSON.parse(json)
-                    if (Array.isArray(parsed?.items) && parsed.items.length) {
-                        warning = { label: task.label, items: parsed.items, omitted: parsed.omitted ?? 0 }
-                    }
-                    if (Array.isArray(parsed?.belowMin) && parsed.belowMin.length) {
-                        belowMinWarning = { label: task.label, items: parsed.belowMin }
-                    }
-                    if (Array.isArray(parsed?.choices) && parsed.choices.length) {
-                        choiceWarning = { label: task.label, items: parsed.choices }
-                    }
-                } catch {
-                    // 読めなければ警告なしとして扱う（PDF自体は正常なので止めない）
-                }
-            }
-            const buf = await res.arrayBuffer()
+            // ⑨ 縮小警告はヘッダで運ばれる（PDF本体は正常）。読めなければ警告なし（fetchPdf が null を返す）
+            const w = result.warnings
+            const warning: ShrinkWarningDetail | null =
+                w && w.items.length ? { label: task.label, items: w.items, omitted: w.omitted } : null
+            const belowMinWarning: BelowMinWarningDetail | null =
+                w && w.belowMin.length ? { label: task.label, items: w.belowMin } : null
+            const choiceWarning: ChoiceWarningDetail | null =
+                w && w.choices.length ? { label: task.label, items: w.choices } : null
+            const buf = await result.blob.arrayBuffer()
             done += 1
             onProgress?.(done, tasks.length)
             return { index, buf, warning, choiceWarning, belowMinWarning }

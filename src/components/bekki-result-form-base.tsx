@@ -36,7 +36,8 @@ import {
     normalizeBekkiWitnessForState,
 } from "@/lib/bekki-form-normalization"
 import { bekkiWitnessInitial } from "@/lib/bekki-witness"
-import { pdfRequestError, pdfErrorText } from "@/lib/pdf-request-error"
+import { pdfErrorText } from "@/lib/pdf-request-error"
+import { fetchPdf } from "@/lib/pdf-client"
 import { PDF_FIT_FRAGMENT, openInAppPdfPreview, prefersInAppPdfViewer } from "@/lib/pdf-preview-mode"
 
 import { hydrateRows, type BekkiRowState } from "@/lib/bekki-row-state"
@@ -375,14 +376,8 @@ export default function BekkiResultFormBase({
     }, [persistDraft])
 
     const generatePdfBlob = useCallback(async () => {
-        const response = await fetch(apiPath, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-        })
-        if (!response.ok) throw await pdfRequestError(response)
-
-        return response.blob()
+        const { blob } = await fetchPdf(apiPath, payload)
+        return blob
     }, [apiPath, payload])
 
     const handlePreview = useCallback(async () => {

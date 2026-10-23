@@ -37,6 +37,7 @@ import {
 } from "@/lib/bekki-form-normalization"
 import { bekkiWitnessInitial } from "@/lib/bekki-witness"
 import { pdfRequestError, pdfErrorText } from "@/lib/pdf-request-error"
+import { PDF_FIT_FRAGMENT, openInAppPdfPreview, prefersInAppPdfViewer } from "@/lib/pdf-preview-mode"
 
 import { hydrateRows, type BekkiRowState } from "@/lib/bekki-row-state"
 import { soukatsuPdfGate } from "@/lib/pdf-gate-client"
@@ -385,6 +386,8 @@ export default function BekkiResultFormBase({
     }, [apiPath, payload])
 
     const handlePreview = useCallback(async () => {
+        // ★スマホ・タブレットはアプリの中で、ページ全体が見える形で出す（src/lib/pdf-preview-mode.ts）
+        if (prefersInAppPdfViewer() && openInAppPdfPreview({ title: `${downloadFilenamePrefix}のプレビュー`, load: generatePdfBlob })) return
         setLoadingPreview(true)
         setError(null)
         // ポップアップブロック対策: クリック同期で先に空タブを開く（fetch 後の window.open はブロックされうる、特に iOS Safari）
@@ -415,10 +418,10 @@ export default function BekkiResultFormBase({
             const url = window.URL.createObjectURL(blob)
             if (previewWindow) {
                 // 開いておいたタブに生成PDFを流し込む
-                previewWindow.location.href = url
+                previewWindow.location.href = url + PDF_FIT_FRAGMENT
             } else {
                 // ポップアップが完全に無効な場合のフォールバック（従来どおり開く）
-                window.open(url, "_blank")
+                window.open(url + PDF_FIT_FRAGMENT, "_blank")
             }
             // タブが PDF を読み込んだ後に解放（表示は妨げない）
             window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000)
@@ -428,7 +431,7 @@ export default function BekkiResultFormBase({
         } finally {
             setLoadingPreview(false)
         }
-    }, [generatePdfBlob])
+    }, [downloadFilenamePrefix, generatePdfBlob])
 
     const handleDownload = useCallback(async () => {
         setLoadingDownload(true)

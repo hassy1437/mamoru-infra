@@ -932,6 +932,15 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-nameplate-eval.mjs", stage: "静的",
+        why: "銘板の読み取り（src/lib/nameplate-reading.ts）と評価の集計（scripts/nameplate-eval/）の自己診断（2026-10-23）。"
+            + "★正誤の決め方・集計が狂うと、危ないモデルを「合格」と読む。★返す形が Claude の制限を外れると本番で毎回 400。"
+            + "★PDF とは無関係だが、scripts/check-* はここに載せる決まり",
+        runs: [
+            { cmd: ["node", "--experimental-strip-types", "scripts/check-nameplate-eval.mjs"], sentinel: "NAMEPLATE_EVAL_OK" },
+        ],
+    },
+    {
         file: "check-work-minute.mjs", stage: "静的",
         why: "作業中の 1 分ごとの印が、入力・保存・確定・PDF を止めないか（2026-09-27）。"
             + "★送信を待たない・失敗を黙って捨てる・部品が落ちても画面へ伝えない・送るのは物件と総括表だけ。"

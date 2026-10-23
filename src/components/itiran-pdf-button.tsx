@@ -4,7 +4,8 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { FileDown, Loader2 } from "lucide-react"
 import type { InspectionItiran } from "@/types/database"
-import { pdfErrorText, pdfRequestError } from "@/lib/pdf-request-error"
+import { pdfErrorText } from "@/lib/pdf-request-error"
+import { fetchPdf } from "@/lib/pdf-client"
 import { PDF_GATE_MESSAGE } from "@/lib/finalization"
 
 interface Props {
@@ -28,15 +29,7 @@ export default function ItiranPdfButton({ data, buildingName, canDownload = true
         }
         setLoading(true)
         try {
-            const res = await fetch("/api/generate-itiran-pdf", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(data),
-            })
-
-            if (!res.ok) throw await pdfRequestError(res)
-
-            const blob = await res.blob()
+            const { blob } = await fetchPdf("/api/generate-itiran-pdf", data)
             const url = URL.createObjectURL(blob)
             const a = document.createElement("a")
             a.href = url

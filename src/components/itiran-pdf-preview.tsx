@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Loader2, RefreshCw } from "lucide-react"
-import { pdfRequestError, pdfErrorText } from "@/lib/pdf-request-error"
+import { pdfErrorText } from "@/lib/pdf-request-error"
+import { fetchPdf } from "@/lib/pdf-client"
 import PdfPreviewFrame from "@/components/pdf-preview-frame"
 
 type ItiranPdfData = Record<string, unknown>
@@ -29,15 +30,7 @@ export default function ItiranPdfPreview({ data }: { data: ItiranPdfData }) {
         setError(null)
 
         try {
-            const response = await fetch("/api/generate-itiran-pdf", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(data),
-            })
-
-            if (!response.ok) throw await pdfRequestError(response)
-
-            const blob = await response.blob()
+            const { blob } = await fetchPdf("/api/generate-itiran-pdf", data)
             const nextUrl = window.URL.createObjectURL(blob)
             setPdfBlob(blob)
             setNextPdfUrl(nextUrl)

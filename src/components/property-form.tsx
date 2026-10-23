@@ -17,7 +17,8 @@ import type { Property } from "@/types/database"
 import { ALL_EQUIPMENT_TYPES, getEnabledEquipmentTypes } from "@/lib/equipment-config"
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes"
 import FormProgress from "@/components/form-progress"
-import { pdfRequestError } from "@/lib/pdf-request-error"
+import { fetchPdf } from "@/lib/pdf-client"
+import { pdfErrorText } from "@/lib/pdf-request-error"
 import { PDF_FIT_FRAGMENT, openInAppPdfPreview, prefersInAppPdfViewer } from "@/lib/pdf-preview-mode"
 
 const FORM_SECTIONS = ["届出者情報", "防火対象物", "設備選択"]
@@ -185,13 +186,8 @@ export default function PropertyForm({ property }: PropertyFormProps) {
             total_floor_area: totalFloorArea ? parseFloat(totalFloorArea) : null,
             equipment_types: selectedEquipment,
         }
-        const response = await fetch("/api/generate-pdf", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(houkokuBody),
-        })
-        if (!response.ok) throw await pdfRequestError(response)
-        return response.blob()
+        const { blob } = await fetchPdf("/api/generate-pdf", houkokuBody)
+        return blob
     }
     const handleHoukokuPreview = async () => {
         // ★スマホ・タブレットはアプリの中で、ページ全体が見える形で出す（src/lib/pdf-preview-mode.ts）
@@ -231,9 +227,10 @@ export default function PropertyForm({ property }: PropertyFormProps) {
                 window.open(url + PDF_FIT_FRAGMENT, "_blank")
             }
             window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000)
-        } catch {
+        } catch (err) {
             if (previewWindow) previewWindow.close()
-            alert("報告書表紙プレビューの生成に失敗しました")
+            // ★失敗の種類（ログイン切れ・枠に収まらない・サーバ）を伝える。決まった一言にしない
+            alert(pdfErrorText(err, "報告書表紙プレビューの生成に失敗しました。"))
         } finally {
             setPreviewing(false)
         }

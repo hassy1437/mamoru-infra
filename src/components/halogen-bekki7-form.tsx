@@ -37,7 +37,8 @@ import CameraInput from "@/components/camera-input"
 import JudgmentButtons from "@/components/judgment-buttons"
 import DeviceTableInputs from "@/components/device-table-inputs"
 import { resolveDeviceTable, type DeviceTableRow } from "@/lib/bekki-device-table"
-import { pdfRequestError, pdfErrorText } from "@/lib/pdf-request-error"
+import { pdfErrorText } from "@/lib/pdf-request-error"
+import { fetchPdf } from "@/lib/pdf-client"
 import { PDF_FIT_FRAGMENT, openInAppPdfPreview, prefersInAppPdfViewer } from "@/lib/pdf-preview-mode"
 import { soukatsuPdfGate } from "@/lib/pdf-gate-client"
 import { CODE_INPUT_PROPS } from "@/lib/code-input-props"
@@ -511,14 +512,8 @@ export default function HalogenBekki7Form({
     }, [persistDraft])
 
     const generatePdfBlob = useCallback(async () => {
-        const response = await fetch(API_PATH, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-        })
-        if (!response.ok) throw await pdfRequestError(response)
-
-        return response.blob()
+        const { blob } = await fetchPdf(API_PATH, payload)
+        return blob
     }, [payload])
 
     const handlePreview = useCallback(async () => {

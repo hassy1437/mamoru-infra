@@ -1,4 +1,5 @@
 ﻿import { NextRequest, NextResponse } from "next/server"
+import { PDF_INVALID_BODY, PdfBodyError, readPdfBody } from "@/lib/pdf-route-body"
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib"
 import {
     drawRightAt,
@@ -52,7 +53,7 @@ const toText = (value: unknown) => {
 
 export async function POST(req: NextRequest) {
     try {
-        const body = (await req.json()) as GeneratePdfBody
+        const body = (await readPdfBody(req)) as GeneratePdfBody
 
         const pdfPath = path.join(process.cwd(), "public", "PDF", "bekki_houkoku.pdf")
         const fontPath = path.join(process.cwd(), "public", "fonts", "NotoSansJP-Regular.ttf")
@@ -285,6 +286,8 @@ export async function POST(req: NextRequest) {
             },
         })
     } catch (error) {
+        // ★本文が空・壊れている（送り切る前に接続が切れた等）はサーバの失敗ではない → 400（src/lib/pdf-route-body.ts）
+        if (error instanceof PdfBodyError) return NextResponse.json(PDF_INVALID_BODY, { status: 400 })
         console.error(error)
         return NextResponse.json({ error: "PDF generation failed" }, { status: 500 })
     }

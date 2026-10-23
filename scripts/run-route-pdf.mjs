@@ -107,7 +107,13 @@ export async function runRouteOutput({ routePath, payload, outPath }) {
       throw new Error(`POST export not found in ${routePath}`);
     }
 
-    const req = { json: async () => payload };
+    // ★本物の Request で渡す（ルートは本文を src/lib/pdf-route-body.ts の readPdfBody で読む＝ req.text()）。
+    //   以前の { json: async () => payload } は req.json() しか持たず、本文の読み方を変えると全部落ちた
+    const req = new Request("http://localhost/api/run-route-pdf", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
     const res = await mod.POST(req);
     if (!(res instanceof Response)) {
       throw new Error(`POST did not return a Response for ${routePath}`);

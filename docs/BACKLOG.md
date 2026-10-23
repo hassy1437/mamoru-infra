@@ -290,7 +290,16 @@ Next.js（Turbopack）は CSS を変更しても**同じチャンク名で古い
 
 ---
 
-## 「Unexpected end of JSON input」が dev のログに 1 回（2026-09-23 記録・★未判定）
+## 「Unexpected end of JSON input」が dev のログに 1 回（2026-09-23 記録）→ ★2026-10-23 に直した（空の本文は 400）
+
+**状態**: 対応済み（2026-10-23）
+- ★再現した: 26 本の PDF ルートすべてが、空の本文で `SyntaxError: Unexpected end of JSON input` → 500 になった
+  （`src/lib/pdf-route-body.test.ts`。直す前に全部落ちることを確かめた）
+- 本文は `src/lib/pdf-route-body.ts` の `readPdfBody` で読む。空・JSON でない・オブジェクトでないときは 400 `{ error: "INVALID_BODY" }`。
+  ★サーバの失敗（500）とログの SyntaxError にはしない。画面は 400 を「通信状況をご確認のうえ再試行」と出す（pdf-request-error.ts）
+- `scripts/run-route-pdf.mjs`（PDF の検査がルートを直に呼ぶ口）は、`{ json: async () => payload }` から本物の `Request` に替えた
+- ★以下は 2026-09-23 時点の記録
+
 
 ### 何が出たか
 ローカル dev（`next dev`）で、点検アプリの画面を Playwright で順に開いて閉じたとき、サーバのログに 1 回だけ:

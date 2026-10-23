@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { PDF_INVALID_BODY, PdfBodyError, readPdfBody } from "@/lib/pdf-route-body"
 import { PDFDocument, type PDFPage, StandardFonts } from "pdf-lib"
 import {
     buildFitError,
@@ -82,7 +83,7 @@ const PERIOD_END_ANCHORS: DateAnchors = { year: 452.42, month: 483.98, day: 515.
 
 export async function POST(req: NextRequest) {
     try {
-        const body = (await req.json()) as Bekki21Payload
+        const body = (await readPdfBody(req)) as Bekki21Payload
 
         // ★点検期間が年月日に分解できないときは描かずに止める。
         //   以前は期間文字列を刷り込み「年月日～年月日」の上に生で描いていた
@@ -318,6 +319,8 @@ export async function POST(req: NextRequest) {
             },
         })
     } catch (error) {
+        // ★本文が空・壊れている（送り切る前に接続が切れた等）はサーバの失敗ではない → 400（src/lib/pdf-route-body.ts）
+        if (error instanceof PdfBodyError) return NextResponse.json(PDF_INVALID_BODY, { status: 400 })
         console.error(error)
         return NextResponse.json({ error: "PDF generation failed" }, { status: 500 })
     }

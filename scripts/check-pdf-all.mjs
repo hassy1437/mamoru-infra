@@ -566,6 +566,16 @@ const CHECKS = [
         ],
     },
     {
+        file: "check-autotest-rows.mjs", stage: "挙動", needsPdfs: true,
+        why: "別記11の1 で「自動試験機能あり」のとき、※の付いた行（点検対象外）だけが PDF から消えるか（2026-10-23）。"
+            + "★以前は「現実値セットのケースとベースライン照合が捕まえる」として作らなかったが、そのケースは無く、照合は CI で走らない"
+            + "＝ ※行を消す処理を壊してもどこにも引っかからなかった（docs/BACKLOG.md「※行の専用検査」）",
+        runs: [
+            { label: "自己診断", cmd: ["node", "--experimental-strip-types", "scripts/check-autotest-rows.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
+            { cmd: ["node", "--experimental-strip-types", "scripts/check-autotest-rows.mjs"], sentinel: "AUTOTEST_ROWS_OK" },
+        ],
+    },
+    {
         file: "check-bekki2-hose-row.mjs", stage: "挙動", needsPdfs: true,
         why: "別記2 のホース・ノズルの行が長さ・本数・口径の 3 つの欄で入り、以前の \"/\" 区切りと同じ位置・同じ文字で出るか。"
             + "★入力欄が 1 つで「20/2/19」と書く決まりが画面に無く、値を 1 つ書くと長さの空欄にだけ出た（2026-10-20・本番の通しチェック）",
@@ -1159,7 +1169,7 @@ const COST_SECONDS = {
     "check-device-maker-wrap.mjs (自己診断)": 52, "check-merged-report-size.mjs (自己診断)": 43,
     "check-condense-min-size.mjs (自己診断)": 36, "check-device-table.mjs (自己診断)": 36, "check-small-font-wrap.mjs (自己診断)": 33,
     "check-device-table.mjs": 33, "check-small-font-wrap.mjs": 29, "check-soukatu-row-warnings.mjs (自己診断)": 28,
-    "check-bekki2-hose-row.mjs (自己診断)": 19, "check-fit-error.mjs": 17, "check-defect-phrases.mjs (自己診断)": 17,
+    "check-bekki2-hose-row.mjs (自己診断)": 19, "check-autotest-rows.mjs (自己診断)": 15, "check-autotest-rows.mjs": 6, "check-fit-error.mjs": 17, "check-defect-phrases.mjs (自己診断)": 17,
     "check-soukatu-marks.mjs": 16, "check-houkoku-layout.mjs": 15, "check-row-cells.py (自己診断)": 15,
     "check-below-min.py (自己診断)": 14, "check-merged-report-size.mjs": 14, "check-printed-overlap.py (stress)": 11,
     "check-printed-overlap.py (realistic)": 11, "check-bekki2-hose-row.mjs": 11, "check-condense-min-size.mjs": 10,

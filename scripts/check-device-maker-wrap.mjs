@@ -16,7 +16,12 @@
 //      ★2026-10-09 の本番の印字テストで、別記9・2 の測定機器の欄の定義（649／14）が上の罫線にかかっていて、
 //        2 行にした 1 行目が罫線に触れた。1 行の値は真ん中に置くので、短い値では出ない
 //
-// 使い方: node scripts/check-device-maker-wrap.mjs [--self-test]
+// ■ 分けて流せる（2026-10-23）: --part 2/4 … 様式を 4 つの組に分けた 2 つ目だけを測る
+//   CI で 1 本 203 秒かかり、台に分けた CI の待ちを決めていた（scripts/check-pdf-all.mjs が組ごとに並べる）。
+//   ★組は様式の並びを順に配る（i % n）。全部の組を流せば、分けないときと同じ様式を 1 回ずつ測る。
+//   ★組の出力先は同じ（tmp/device-maker-wrap）。ファイル名は様式ごとなので、組どうしで重ならない。
+//
+// 使い方: node scripts/check-device-maker-wrap.mjs [--self-test | --part 1/4]
 //   ★tmp/pdf-realistic の payload を土台にする（generate-realistic-route-tests.mjs / check-pdf-all --regen）
 import { spawnSync } from "child_process"
 import fs from "fs"
@@ -25,6 +30,17 @@ import { runRoutePdf } from "./run-route-pdf.mjs"
 
 const PY = process.platform === "win32" ? "python" : "python3"
 const SELF_TEST = process.argv.includes("--self-test")
+/** --part k/n（k 番目の組だけ測る）。無ければ全部 */
+const PART = (() => {
+    const i = process.argv.indexOf("--part")
+    if (i < 0) return null
+    const m = /^(\d+)\/(\d+)$/.exec(process.argv[i + 1] ?? "")
+    if (!m || Number(m[1]) < 1 || Number(m[1]) > Number(m[2])) {
+        console.log("★--part は 1/4 のように「何番目/いくつに分けるか」で書く")
+        process.exit(2)
+    }
+    return { k: Number(m[1]), n: Number(m[2]) }
+})()
 // ★自己診断と本番で出力先を分ける（check-pdf-all は両方を並列に走らせる）
 const OUT = path.join("tmp", SELF_TEST ? "device-maker-wrap-selftest" : "device-maker-wrap")
 const LONG = "株式会社サンプル防災機器製作所"   // 15 字（実在しない一般的な形）
@@ -219,9 +235,15 @@ if (SELF_TEST) {
     process.exit(0)
 }
 
-const list = forms()
+const everything = forms()
+const list = PART ? everything.filter((_, i) => i % PART.n === PART.k - 1) : everything
+// ★測る様式が 0 だと、何も測らずに通ってしまう（生成物が無い・分ける数が様式より多い）
+if (list.length === 0) {
+    console.log(`★測る様式が 1 つも無い${PART ? `（組 ${PART.k}/${PART.n}・全 ${everything.length} 様式）` : ""}。tmp/pdf-realistic を作ってから流すこと`)
+    process.exit(1)
+}
 const problems = await inspect(list)
-console.log(`測定機器の製造者名・機器名を検査: ${list.length} 様式 × 長い値（製造者名 ${LONG.length} 字・機器名 ${LONG_NAME.length} 字）・短い値`)
+console.log(`測定機器の製造者名・機器名を検査: ${list.length} 様式${PART ? `（組 ${PART.k}/${PART.n}・全 ${everything.length} 様式）` : ""} × 長い値（製造者名 ${LONG.length} 字・機器名 ${LONG_NAME.length} 字）・短い値`)
 if (problems.length) {
     console.log("★NG:")
     for (const p of problems) console.log("   ", p)

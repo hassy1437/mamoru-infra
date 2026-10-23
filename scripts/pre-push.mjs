@@ -31,6 +31,8 @@ const CHECKS = [
       why: "一括PDFの並び順" },
     { name: "作業中の印（入力を止めない）", cmd: ["node", "--experimental-strip-types", "scripts/check-work-minute.mjs"], sentinel: "WORK_MINUTE_OK",
       why: "印の口が落ちても・遅くても、入力・保存・確定・PDF を止めてはいけない" },
+    { name: "銘板の読み取りの採点", cmd: ["node", "--experimental-strip-types", "scripts/check-nameplate-eval.mjs"], sentinel: "NAMEPLATE_EVAL_OK",
+      why: "正誤の決め方・集計が狂うと危ないモデルを合格と読む／返す形が Claude の制限を外れると本番で毎回 400" },
     { name: "ログインの確認の対象", cmd: ["node", "scripts/check-protected-routes.mjs"], sentinel: "PROTECTED_ROUTES_OK",
       why: "画面を足して protectedPaths に入れ忘れると、未ログインでも開く（/inspectors で起きた）" },
     { name: "数値欄の宣言", cmd: [PY, "scripts/check-numeric-rows-declaration.py"], sentinel: "NUMERIC_ROWS_DECLARATION_OK",

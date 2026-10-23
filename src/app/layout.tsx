@@ -9,6 +9,7 @@ import { Toaster } from "@/components/ui/toaster";
 import ChatbotHint from "@/components/chatbot-hint";
 import ChatbotPrivacyNotice from "@/components/chatbot-privacy-notice";
 import NavigationProgress from "@/components/navigation-progress";
+import PdfPreviewHost from "@/components/pdf-preview-host";
 import { Suspense } from "react";
 
 export const metadata: Metadata = {
@@ -62,6 +63,8 @@ export default async function RootLayout({
             <NavigationProgress />
           </Suspense>
           {children}
+          {/* スマホ・タブレットの PDF プレビュー（全画面・ページ全体を表示）。src/lib/pdf-preview-mode.ts */}
+          <PdfPreviewHost />
         </AuthProvider>
         <ChatbotHint />
         {/* ★チャットを開いたら「個人の情報は入力しない」を出す（外部の Dify へ送られる・P3） */}
@@ -119,6 +122,11 @@ export default async function RootLayout({
                   height: 40rem !important;
                   max-height: 40rem !important;
                 }
+              }
+              /* PDF のプレビュー（全画面）を開いている間はチャットを隠す（src/components/pdf-preview-host.tsx） */
+              body.pdf-preview-open #dify-chatbot-bubble-button,
+              body.pdf-preview-open #dify-chatbot-bubble-window {
+                display: none !important;
               }
               @media (prefers-reduced-motion: reduce) {
                 #dify-chatbot-bubble-button {

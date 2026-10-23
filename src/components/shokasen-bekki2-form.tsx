@@ -34,6 +34,7 @@ import JudgmentButtons from "@/components/judgment-buttons"
 import DeviceTableInputs from "@/components/device-table-inputs"
 import { resolveDeviceTable, type DeviceTableRow } from "@/lib/bekki-device-table"
 import { pdfRequestError, pdfErrorText } from "@/lib/pdf-request-error"
+import { PDF_FIT_FRAGMENT, openInAppPdfPreview, prefersInAppPdfViewer } from "@/lib/pdf-preview-mode"
 import { soukatsuPdfGate } from "@/lib/pdf-gate-client"
 import { CODE_INPUT_PROPS } from "@/lib/code-input-props"
 import CopyTextFromPhotoHint from "@/components/copy-text-from-photo-hint"
@@ -415,6 +416,8 @@ export default function ShokasenBekki2Form({
     }, [payload])
 
     const handlePreview = useCallback(async () => {
+        // ★スマホ・タブレットはアプリの中で、ページ全体が見える形で出す（src/lib/pdf-preview-mode.ts）
+        if (prefersInAppPdfViewer() && openInAppPdfPreview({ title: "屋内消火栓設備点検票のプレビュー", load: generatePdfBlob })) return
         setLoadingPreview(true)
         setError(null)
         // ポップアップブロック対策: クリック同期で先に空タブを開く（fetch 後の window.open はブロックされうる、特に iOS Safari）
@@ -445,10 +448,10 @@ export default function ShokasenBekki2Form({
             const url = window.URL.createObjectURL(blob)
             if (previewWindow) {
                 // 開いておいたタブに生成PDFを流し込む
-                previewWindow.location.href = url
+                previewWindow.location.href = url + PDF_FIT_FRAGMENT
             } else {
                 // ポップアップが完全に無効な場合のフォールバック（従来どおり開く）
-                window.open(url, "_blank")
+                window.open(url + PDF_FIT_FRAGMENT, "_blank")
             }
             // タブが PDF を読み込んだ後に解放（表示は妨げない）
             window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000)

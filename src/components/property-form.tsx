@@ -18,6 +18,7 @@ import { ALL_EQUIPMENT_TYPES, getEnabledEquipmentTypes } from "@/lib/equipment-c
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes"
 import FormProgress from "@/components/form-progress"
 import { pdfRequestError } from "@/lib/pdf-request-error"
+import { PDF_FIT_FRAGMENT, openInAppPdfPreview, prefersInAppPdfViewer } from "@/lib/pdf-preview-mode"
 
 const FORM_SECTIONS = ["届出者情報", "防火対象物", "設備選択"]
 
@@ -168,7 +169,33 @@ export default function PropertyForm({ property }: PropertyFormProps) {
     // route は無変更。点検年月日(report_date)・消防署名(fire_department_name)は
     // 物件段階で未定のため空（houkoku 側で空はスキップ＝該当欄が空欄になるだけ）。
     const [previewing, setPreviewing] = useState(false)
+    /** 報告書表紙の PDF を作る（現在の入力値から。保存はしない） */
+    const buildHoukokuBlob = async () => {
+        const houkokuBody = {
+            report_date: "",
+            fire_department_name: "",
+            notifier_address: notifierAddress,
+            notifier_name: notifierName,
+            notifier_phone: notifierPhone || null,
+            building_address: buildingAddress,
+            building_name: buildingName,
+            building_usage: buildingUsage,
+            floor_above: floorAbove ? parseInt(floorAbove) : null,
+            floor_below: floorBelow ? parseInt(floorBelow) : null,
+            total_floor_area: totalFloorArea ? parseFloat(totalFloorArea) : null,
+            equipment_types: selectedEquipment,
+        }
+        const response = await fetch("/api/generate-pdf", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(houkokuBody),
+        })
+        if (!response.ok) throw await pdfRequestError(response)
+        return response.blob()
+    }
     const handleHoukokuPreview = async () => {
+        // ★スマホ・タブレットはアプリの中で、ページ全体が見える形で出す（src/lib/pdf-preview-mode.ts）
+        if (prefersInAppPdfViewer() && openInAppPdfPreview({ title: "報告書表紙のプレビュー", load: buildHoukokuBlob })) return
         setPreviewing(true)
         // ポップアップブロック対策: クリック同期で先に空タブを開く（fetch 後の window.open はブロックされうる、特に iOS Safari）
         const previewWindow = window.open("", "_blank")
@@ -194,35 +221,14 @@ export default function PropertyForm({ property }: PropertyFormProps) {
             previewWindow.document.close()
         }
         try {
-            const houkokuBody = {
-                report_date: "",
-                fire_department_name: "",
-                notifier_address: notifierAddress,
-                notifier_name: notifierName,
-                notifier_phone: notifierPhone || null,
-                building_address: buildingAddress,
-                building_name: buildingName,
-                building_usage: buildingUsage,
-                floor_above: floorAbove ? parseInt(floorAbove) : null,
-                floor_below: floorBelow ? parseInt(floorBelow) : null,
-                total_floor_area: totalFloorArea ? parseFloat(totalFloorArea) : null,
-                equipment_types: selectedEquipment,
-            }
-            const response = await fetch("/api/generate-pdf", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(houkokuBody),
-            })
-            if (!response.ok) throw await pdfRequestError(response)
-
-            const blob = await response.blob()
+            const blob = await buildHoukokuBlob()
             const url = window.URL.createObjectURL(blob)
             if (previewWindow) {
-                // 開いておいたタブに生成PDFを流し込む
-                previewWindow.location.href = url
+                // 開いておいたタブに生成PDFを流し込む（パソコンはページ全体で開く）
+                previewWindow.location.href = url + PDF_FIT_FRAGMENT
             } else {
                 // ポップアップが完全に無効な場合のフォールバック
-                window.open(url, "_blank")
+                window.open(url + PDF_FIT_FRAGMENT, "_blank")
             }
             window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000)
         } catch {

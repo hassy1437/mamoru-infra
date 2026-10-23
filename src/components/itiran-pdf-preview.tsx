@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Loader2, RefreshCw } from "lucide-react"
 import { pdfRequestError, pdfErrorText } from "@/lib/pdf-request-error"
+import PdfPreviewFrame from "@/components/pdf-preview-frame"
 
 type ItiranPdfData = Record<string, unknown>
 
@@ -11,6 +12,8 @@ export default function ItiranPdfPreview({ data }: { data: ItiranPdfData }) {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [pdfUrl, setPdfUrl] = useState<string | null>(null)
+    // ★スマホ・タブレットはページの画像にして出すので、PDF そのものも持つ（src/components/pdf-preview-frame.tsx）
+    const [pdfBlob, setPdfBlob] = useState<Blob | null>(null)
     const pdfUrlRef = useRef<string | null>(null)
 
     const setNextPdfUrl = (nextUrl: string | null) => {
@@ -36,6 +39,7 @@ export default function ItiranPdfPreview({ data }: { data: ItiranPdfData }) {
 
             const blob = await response.blob()
             const nextUrl = window.URL.createObjectURL(blob)
+            setPdfBlob(blob)
             setNextPdfUrl(nextUrl)
         } catch (err) {
             setError(pdfErrorText(err, "PDFプレビューの生成に失敗しました。"))
@@ -69,7 +73,7 @@ export default function ItiranPdfPreview({ data }: { data: ItiranPdfData }) {
         )
     }
 
-    if (error || !pdfUrl) {
+    if (error || !pdfUrl || !pdfBlob) {
         return (
             <div className="w-full bg-white border border-red-200 rounded-xl p-8 min-h-[40vh] flex flex-col items-center justify-center gap-4">
                 <p className="text-red-600">{error ?? "PDFプレビューを表示できませんでした。"}</p>
@@ -81,13 +85,5 @@ export default function ItiranPdfPreview({ data }: { data: ItiranPdfData }) {
         )
     }
 
-    return (
-        <div className="w-full bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-            <iframe
-                src={pdfUrl}
-                title="点検者一覧表PDFプレビュー"
-                className="w-full h-[75vh] md:h-[calc(100vh-220px)]"
-            />
-        </div>
-    )
+    return <PdfPreviewFrame blob={pdfBlob} url={pdfUrl} title="点検者一覧表PDFプレビュー" />
 }

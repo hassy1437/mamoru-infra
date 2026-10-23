@@ -43,6 +43,10 @@ const CHECKS = [
       why: "セル定義が刷り込みに掛かっていないか" },
     { name: "ベースラインの鮮度", cmd: ["node", "scripts/baseline-stamp.mjs"], sentinel: "BASELINE_STAMP_OK",
       why: "★照合は人がやるが、やり忘れは機構が止める" },
+    // ★npx ではなく node で直に起動する（shell: false の Windows では npx.cmd が見つからない）。
+    //   テストが 0 件のとき vitest は失敗で終わる。印は件数の行の「passed」
+    { name: "単体テスト", cmd: ["node", "node_modules/vitest/vitest.mjs", "run"], sentinel: " passed (",
+      why: "入力画面の状態・PDF を取りに行く口（src/**/*.test.ts）" },
 ]
 
 const t0 = Date.now()

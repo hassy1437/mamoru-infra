@@ -42,7 +42,8 @@ const walk = (dir) => {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
         const p = path.join(dir, e.name)
         if (e.isDirectory()) walk(p)
-        else if (/\.tsx?$/.test(e.name)) {
+        // ★単体テスト（*.test.ts）は画面ではない。返り値を丸ごと比べるので分割代入しない
+        else if (/\.tsx?$/.test(e.name) && !/\.test\.tsx?$/.test(e.name)) {
             const s = fs.readFileSync(p, "utf8")
             if (/\bawait buildMergedReport\(/.test(s)) consumers.push([p, s])
         }

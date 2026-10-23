@@ -47,7 +47,15 @@ off で描かれなかった※行: P2_5, P2_9, P2_11 ← 元から未描画
 （`{ file, stage, why }`。STAGE 0 が孤立検査を検出するので登録必須）も要る。
 
 
-## ★点検アプリ側にテストが1件も無い（2026-08-03 記録）
+## ★点検アプリ側にテストが1件も無い（2026-08-03 記録）→ ★2026-10-23 に vitest を入れた
+
+**状態**: 対応済み（2026-10-23）
+- `npm test`（vitest）。置き場所は対象の隣の `src/**/*.test.ts`。CI（型検査とビルド）と push 前の検査で走る
+- 下の `scripts/check-bekki-row-state.ts` は `src/lib/bekki-row-state.test.ts` に移した
+  （★.ts の検査は check:pdf の登録簿の対象外で、★どこからも走っていなかった）
+- `src/lib/pdf-client.test.ts`: PDF を取りに行く口（fetchPdf）と一括出力が、成功・失敗・警告を落とさずに運ぶか
+- ★以下は 2026-08-03 時点の記録（「PDF出力は check:pdf の 52件」は当時の数。いまは約 90 本）
+
 
 ### 事実
 - テストファイル **0件**。`vitest run` は `No test files found`、`package.json` に `test` スクリプトも無い。

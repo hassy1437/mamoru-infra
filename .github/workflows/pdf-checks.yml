@@ -53,6 +53,10 @@ jobs:
       - name: 型検査
         run: npx tsc --noEmit
 
+      # ★関数が入力に対して何を返すか（src/**/*.test.ts）。PDF の出来上がりは下の帳票PDF検査が見る
+      - name: 単体テスト
+        run: npm test
+
       - name: ビルド
         # ★ダミーの環境変数を置く。接続しないので実際の値は不要で、
         #   静的生成時に Supabase クライアントを組み立てられれば通る。

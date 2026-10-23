@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "vitest run",
     "check:pdf": "node scripts/check-pdf-all.mjs",
     "eval:nameplate": "node --experimental-strip-types scripts/nameplate-eval/run.mts",
     "prepare": "git config core.hooksPath scripts/git-hooks || true",
@@ -38,6 +39,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.2",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.12"
   }
 }

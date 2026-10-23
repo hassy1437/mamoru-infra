@@ -49,3 +49,8 @@ public/debug/
 .next-dev.err.log
 .next-dev.out.log
 --info/
+
+# python（scripts/ の検査が import すると自動で作られる。中身は .py から作り直せるので追跡しない）
+# ★以前 scripts/__pycache__/ の 1 ファイルが誤ってコミットされ、検査を流すたびに「変更あり」になっていた
+__pycache__/
+*.pyc

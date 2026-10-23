@@ -82,10 +82,21 @@ for (const f of fs.readdirSync(REAL_DIR)) {
     if (jobFile) jobs.push({ name, routePath: JSON.parse(fs.readFileSync(jobFile, "utf8")).routePath })
 }
 function* findJobs(dir = path.join(process.cwd(), "tmp")) {
-    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    // ★並行して走る検査が tmp/route-pdf-mods/route-pdf-* を作っては消す。たどっている最中に消えると
+    //   ENOENT で落ちていた（2026-10-23・check-pdf-all で実測。check-choice-mismatch-warning と同じ直し方）。
+    //   job.json はそこには無いので入らない。★それでも消えたフォルダは飛ばす
+    let entries
+    try {
+        entries = fs.readdirSync(dir, { withFileTypes: true })
+    } catch (e) {
+        if (e.code === "ENOENT") return
+        throw e
+    }
+    for (const e of entries) {
         const p = path.join(dir, e.name)
-        if (e.isDirectory()) yield* findJobs(p)
-        else if (e.name.endsWith(".job.json")) yield p
+        if (e.isDirectory()) {
+            if (e.name !== "route-pdf-mods") yield* findJobs(p)
+        } else if (e.name.endsWith(".job.json")) yield p
     }
 }
 

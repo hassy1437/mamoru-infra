@@ -1,4 +1,5 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
+import { PDF_INVALID_BODY, PdfBodyError, readPdfBody } from "@/lib/pdf-route-body";
 import { PDFDocument, rgb, PDFPage, StandardFonts } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import {
@@ -124,7 +125,7 @@ const isGeneralInspectionType = (value: unknown) => {
 
 export async function POST(req: NextRequest) {
     try {
-        const body = await req.json();
+        const body = await readPdfBody(req);
 
         const candidatePdfPaths = [
             path.join(process.cwd(), "public", "PDF", "bekki_soukatu.pdf"),
@@ -452,6 +453,8 @@ export async function POST(req: NextRequest) {
             },
         });
     } catch (error) {
+        // ★本文が空・壊れている（送り切る前に接続が切れた等）はサーバの失敗ではない → 400（src/lib/pdf-route-body.ts）
+        if (error instanceof PdfBodyError) return NextResponse.json(PDF_INVALID_BODY, { status: 400 });
         console.error(error);
         return NextResponse.json({ error: "PDF generation failed" }, { status: 500 });
     }

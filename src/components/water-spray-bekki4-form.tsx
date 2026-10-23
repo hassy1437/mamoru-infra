@@ -36,6 +36,7 @@ import { resolveDeviceTable, type DeviceTableRow } from "@/lib/bekki-device-tabl
 import { pdfRequestError, pdfErrorText } from "@/lib/pdf-request-error"
 import { soukatsuPdfGate } from "@/lib/pdf-gate-client"
 import { CODE_INPUT_PROPS } from "@/lib/code-input-props"
+import CopyTextFromPhotoHint from "@/components/copy-text-from-photo-hint"
 import { useAutoSave } from "@/hooks/use-auto-save"
 import FormActionBar from "@/components/form-action-bar"
 import InspectorSyncNotice from "@/components/inspector-sync-notice"
@@ -854,6 +855,7 @@ export default function WaterSprayBekki4Form({
                         </div>
                     </div>
 
+                    <CopyTextFromPhotoHint />
                     {/* ★「設備名」の入力欄は出さない（#20）。紙の「点検設備名」はポンプ・電動機の製造者名／型式の
                         行見出しで、自由に設備名を書く欄が無い（ルートも描かない＝入れても載らなかった） */}
                     <div className="grid md:grid-cols-4 gap-4">

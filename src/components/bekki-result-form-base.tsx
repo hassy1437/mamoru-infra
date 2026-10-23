@@ -28,6 +28,7 @@ import {
 import CameraInput from "@/components/camera-input"
 import JudgmentButtons from "@/components/judgment-buttons"
 import DeviceTableInputs from "@/components/device-table-inputs"
+import CopyTextFromPhotoHint from "@/components/copy-text-from-photo-hint"
 import {
     normalizeBekkiInspectorNameForPayload,
     normalizeBekkiInspectorNameForState,
@@ -1009,6 +1010,7 @@ export default function BekkiResultFormBase({
                     {extraFields.length > 0 && (
                         <div className="space-y-2">
                             <p className="text-sm font-medium text-slate-700">{extraFieldsTitle}</p>
+                            {extraFields.some((f) => /_(maker|model)$/.test(f.key)) && <CopyTextFromPhotoHint />}
                             <div className={`grid gap-4 ${extraColumnsClass}`}>
                                 {extraFields.map((field) =>
                                     field.type === "checkbox" ? (

@@ -13,6 +13,7 @@ import {
     type DeviceTableRow,
 } from "@/lib/bekki-device-table"
 import { CODE_INPUT_PROPS } from "@/lib/code-input-props"
+import CopyTextFromPhotoHint from "@/components/copy-text-from-photo-hint"
 
 // ★日付の形でない以前の保存（和暦・年月だけなど）は日付の欄では空に見える（印字はそのまま出る）。文字の欄で見せて直せるようにする（2026-10-20）
 const isLegacyDate = (v: string) => v.trim() !== "" && toDateInputValue(v) === ""
@@ -47,6 +48,7 @@ export default function DeviceTableInputs({
                 <p className="text-xs text-slate-500">
                     様式の表と同じ並びです（左の列の上から → 右の列の上から）。使った機器の行だけ入れてください。
                 </p>
+                <CopyTextFromPhotoHint />
                 <div className="space-y-2">
                     {rows.map((row, i) => {
                         const printed = DEVICE_TABLE_PRINTED[kind][i]
@@ -80,6 +82,7 @@ export default function DeviceTableInputs({
     const slots = Array.from({ length: lines }, (_, line) => [line, perColumn + line]).flat()
     return (
         <div className="space-y-3">
+            <CopyTextFromPhotoHint />
             <div className="grid md:grid-cols-2 gap-4">
                 {slots.map((index, k) => {
                     const row = rows[index]

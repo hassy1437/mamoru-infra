@@ -38,12 +38,13 @@ const LICENSE = "src/components/license-editor.tsx"
 const SHOKAKI = "src/components/shokaki-bekki1-form.tsx"
 const SOUKATSU = "src/components/soukatsu-form.tsx"
 const CHOICE = "src/components/bekki-choice-checkboxes.tsx"
+const ACTION = "src/lib/action-button.ts"
 const NUMERIC_PLACEHOLDERS = ["吐出量(L/min)", "吐出圧力(MPa)", "電流(A)", "電圧(V)", "設定圧力(MPa)", "作動圧力(MPa)", "長さ(m)", "長さ", "口径(mm)", "口径",
     "空質量", "全質量", "ガス質量", "本数", "番号", "例: 67.2", "例: 14.7"]
 const FORM_PAGES = fs.readdirSync(path.join(ROOT, "src/app/inspection/[id]/itiran/[itiranId]"), { withFileTypes: true })
     .filter((d) => d.isDirectory() && fs.existsSync(path.join(ROOT, "src/app/inspection/[id]/itiran/[itiranId]", d.name, "page.tsx")))
     .map((d) => `src/app/inspection/[id]/itiran/[itiranId]/${d.name}/page.tsx`)
-const ALL = [...new Set([...FORMS, CSS, JUDGE, BAR, AUTO, CAMERA, CRUMB, NAV, MEASURE, ITIRAN, DEVICE, LICENSE, SOUKATSU, CHOICE, ...FORM_PAGES])]
+const ALL = [...new Set([...FORMS, CSS, JUDGE, BAR, AUTO, CAMERA, CRUMB, NAV, MEASURE, ITIRAN, DEVICE, LICENSE, SOUKATSU, CHOICE, ACTION, ...FORM_PAGES])]
 
 /** <Input ... /> を 1 つずつ（属性に => があるので正規表現の [^>] では切れない） */
 const inputsOf = (src) => {
@@ -91,10 +92,12 @@ function check(files) {
         if (/<select\n\s*className="w-full h-9 border border-input rounded-md bg-background px-2 text-sm"\n\s*value=\{[^\n]*\}\n\s*onChange=\{\(e\) => [^\n]*"judgment"/.test(src)) problems.push(`${f}: スマホの判定がプルダウンのまま`)
         if (!/<JudgmentButtons\n/.test(src)) problems.push(`${f}: スマホの判定のボタンが無い`)
         if (!/useAutoSave\(payload, \(\) => persistDraftRef\.current\(false\), /.test(src)) problems.push(`${f}: 自動保存（5 秒後・別のアプリに切り替えた瞬間）が無い`)
-        for (const h of ["handleSave", "handlePreview", "handleDownload"]) {
-            if (!src.includes(`<Button type="button" onClick={${h}} disabled={busy} className="min-h-11 md:min-h-0 `)) problems.push(`${f}: 一番下のボタン（${h}）がスマホで 44px 未満`)
+        // ★2026-10-24 から主な操作のボタン（lib/action-button・スマホは横いっぱい・高さ 56px）。以前は 44px
+        for (const [h, c] of [["handleSave", "SAVE_BUTTON"], ["handlePreview", "PREVIEW_BUTTON"], ["handleDownload", "DOWNLOAD_BUTTON"]]) {
+            if (!src.includes(`<Button type="button" onClick={${h}} disabled={busy} className={${c}}>`)) problems.push(`${f}: 一番下のボタン（${h}）が主な操作の大きさ（lib/action-button）でない`)
         }
     }
+    if (!/const BASE = "h-auto min-h-14 w-full /.test(files[ACTION])) problems.push(`${ACTION}: 主な操作のボタンがスマホで横いっぱい・高さ 56px でない`)
     const judge = files[JUDGE]
     if (!/onClick=\{\(\) => onChange\(pressed \? "" : o\.v\)\}/.test(judge) || !/v: "良"/.test(judge) || !/v: "否"/.test(judge)) problems.push(`${JUDGE}: 良・否のボタンの値が今までと違う（"" / 良 / 否）`)
     if (!/className=\{`h-11 /.test(judge)) problems.push(`${JUDGE}: 判定のボタンが 44px 未満`)
@@ -157,7 +160,8 @@ if (SELF_TEST) {
         ["第6 の下の「次へ」を外す", mut(FORM_PAGES.find((f) => f.includes("/inert-gas/")), "<ItiranFormNavBottom\n", "<ItiranFormNavBottomX\n"), "いちばん下に「次へ」が無い"],
         ["写真の見出しを横並びに戻す", mut(CAMERA, '<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">', '<div className="flex items-center justify-between">'), "縦に折れる"],
         ["戻るリンクを小さく戻す", mut(NAV, 'className="inline-flex min-h-11 items-center text-blue-600', 'className="text-blue-600'), "点検票の一覧に戻る"],
-        ["一番下の保存ボタンを小さく戻す", mut(FORMS[5], '<Button type="button" onClick={handleSave} disabled={busy} className="min-h-11 md:min-h-0 ', '<Button type="button" onClick={handleSave} disabled={busy} className="'), "一番下のボタン（handleSave）"],
+        ["一番下の保存ボタンを小さく戻す", mut(FORMS[5], "onClick={handleSave} disabled={busy} className={SAVE_BUTTON}", 'onClick={handleSave} disabled={busy} className="bg-slate-700"'), "一番下のボタン（handleSave）"],
+        ["主な操作のボタンを小さく戻す", mut(ACTION, "h-auto min-h-14 w-full ", "h-auto min-h-10 w-full "), "高さ 56px"],
         ["総括表の指摘なし・要改善を小さく戻す", mut(SOUKATSU, "inline-flex min-h-11 md:min-h-0 items-center gap-1 px-3", "inline-flex items-center gap-1 px-3"), "指摘なし・要改善"],
         ["型式の自動修正を戻す", mut(DEVICE, '<Input {...CODE_INPUT_PROPS} placeholder="型式"', '<Input placeholder="型式"'), "測定機器の型式"],
     ]

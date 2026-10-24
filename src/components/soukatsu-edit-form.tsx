@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/components/auth-provider"
 import { Button } from "@/components/ui/button"
+import { ACTION_BUTTON } from "@/lib/action-button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
@@ -342,7 +343,7 @@ export default function SoukatsuEditForm({ soukatsu, isDelivered, isFinalized }:
             </Card>
 
             <div className="flex justify-end pt-4">
-                <Button type="submit" size="lg" disabled={loading} className="w-full md:w-auto">
+                <Button type="submit" size="lg" disabled={loading} className={ACTION_BUTTON}>
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     {loading ? "保存中..." : "変更を保存する"}
                 </Button>

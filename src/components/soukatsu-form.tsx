@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/components/auth-provider"
 import { Button } from "@/components/ui/button"
+import { ACTION_BUTTON } from "@/lib/action-button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
@@ -577,7 +578,7 @@ export default function SoukatsuForm({ property, previousData, copyFromId, sourc
             {/* ★押したあとにどこへ行くかを書く（2026-10-21）。以前は「点検結果を保存する」で、総括表を作る画面なのに
                  「点検結果」と読め、保存したあと次に何をするかも出ていなかった */}
             <div className="flex flex-col items-stretch gap-1 pt-4 md:items-end">
-                <Button type="submit" size="lg" disabled={loading} className="min-h-11 w-full md:w-auto">
+                <Button type="submit" size="lg" disabled={loading} className={ACTION_BUTTON}>
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     {loading ? "保存中..." : "総括表を保存して次へ"}
                 </Button>

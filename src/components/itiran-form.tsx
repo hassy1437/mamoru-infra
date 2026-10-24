@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
+import { ACTION_BUTTON } from "@/lib/action-button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
@@ -318,7 +319,7 @@ export default function ItiranForm({ soukatsuId, masters, initial, itiranId }: P
             {/* ★押したあとに着く画面の名前にする（2026-10-21）。以前は「保存してプレビューへ」で、実際は点検票（別記）の一覧に着き、
                  プレビューはその画面のいちばん下に畳まれていた。どちらも保存したあと点検票の一覧へ移る */}
             <div className="flex flex-col items-end gap-1 pb-8">
-                <Button type="submit" disabled={loading} size="lg" className="min-h-11 px-12">
+                <Button type="submit" disabled={loading} size="lg" className={ACTION_BUTTON}>
                     {loading ? (
                         <><Loader2 className="w-4 h-4 mr-2 animate-spin" />保存中...</>
                     ) : isEditMode ? (

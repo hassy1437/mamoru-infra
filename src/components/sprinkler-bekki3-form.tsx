@@ -6,6 +6,7 @@ import { bekkiPeriodDefault } from "@/lib/bekki-period"
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react"
 import { WRAP_CLS, bindLabelBreaks } from "@/components/row-label"
 import { Button } from "@/components/ui/button"
+import { DOWNLOAD_BUTTON, PREVIEW_BUTTON, SAVE_BUTTON } from "@/lib/action-button"
 import { applyBulkGood } from "@/lib/bekki-bulk-good"
 import { BekkiBulkGoodButton } from "@/components/bekki-bulk-good-button"
 import { isJudgmentsDefaulted } from "@/lib/bekki-default-good"
@@ -1044,16 +1045,16 @@ export default function SprinklerBekki3Form({
                 </CardContent>
             </Card>
 
-            <div className="flex gap-2 flex-wrap items-center">
-                <Button type="button" onClick={handleSave} disabled={busy} className="min-h-11 md:min-h-0 bg-slate-700 hover:bg-slate-800 text-white">
+            <div className="flex flex-wrap items-center gap-3">
+                <Button type="button" onClick={handleSave} disabled={busy} className={SAVE_BUTTON}>
                     {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                     保存
                 </Button>
-                <Button type="button" onClick={handlePreview} disabled={busy} className="min-h-11 md:min-h-0 bg-blue-600 hover:bg-blue-700 text-white">
+                <Button type="button" onClick={handlePreview} disabled={busy} className={PREVIEW_BUTTON}>
                     {loadingPreview ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Eye className="w-4 h-4 mr-2" />}
                     プレビュー
                 </Button>
-                <Button type="button" onClick={handleDownload} disabled={busy} className="min-h-11 md:min-h-0 bg-emerald-600 hover:bg-emerald-700 text-white">
+                <Button type="button" onClick={handleDownload} disabled={busy} className={DOWNLOAD_BUTTON}>
                     {loadingDownload ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileDown className="w-4 h-4 mr-2" />}
                     PDFダウンロード
                 </Button>

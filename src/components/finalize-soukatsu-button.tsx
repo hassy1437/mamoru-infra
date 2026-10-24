@@ -6,6 +6,7 @@ import { MATCHING_VENDOR_HOME_URL } from "@/lib/matching-site"
 import { useRouter } from "next/navigation"
 import { AlertTriangle, CheckCircle2, Ban, Lock } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ACTION_BUTTON, ACTION_ROW, ACTION_ROW_SECONDARY } from "@/lib/action-button"
 import { createClient } from "@/lib/supabase/client"
 import {
     finalizeBlockNotice,
@@ -188,7 +189,7 @@ export default function FinalizeSoukatsuButton({
                 onClick={() => setOpen(true)}
                 disabled={blockedByReadiness}
                 aria-describedby={blockedByReadiness ? "finalize-readiness-note" : undefined}
-                className="min-h-11 bg-blue-600 hover:bg-blue-700 text-white"
+                className={`${ACTION_BUTTON} bg-blue-600 hover:bg-blue-700 text-white`}
             >
                 この点検を確定する
             </Button>
@@ -276,14 +277,14 @@ export default function FinalizeSoukatsuButton({
                         )}
 
                         {/* ★ボタンは下端に貼り付けて常に見せる（スクロールしても押せる） */}
-                        <div className="sticky -bottom-6 -mx-6 -mb-6 mt-5 flex justify-end gap-2 border-t border-slate-100 bg-white px-6 py-4">
-                            <Button variant="outline" disabled={busy} onClick={() => setOpen(false)}>
+                        <div className={`sticky -bottom-6 -mx-6 -mb-6 mt-5 border-t border-slate-100 bg-white px-6 py-4 ${ACTION_ROW}`}>
+                            <Button variant="outline" disabled={busy} onClick={() => setOpen(false)} className={ACTION_ROW_SECONDARY}>
                                 キャンセル
                             </Button>
                             <Button
                                 disabled={busy}
                                 onClick={() => run(false)}
-                                className="bg-blue-600 hover:bg-blue-700 text-white"
+                                className={`${ACTION_BUTTON} bg-blue-600 hover:bg-blue-700 text-white`}
                             >
                                 {busy ? "確定中…" : "確定する"}
                             </Button>
@@ -345,18 +346,19 @@ export default function FinalizeSoukatsuButton({
                         )}
 
                         {/* ★ボタンは下端に貼り付けて常に見せる（スクロールしても押せる） */}
-                        <div className="sticky -bottom-6 -mx-6 -mb-6 mt-5 flex justify-end gap-2 border-t border-slate-100 bg-white px-6 py-4">
+                        <div className={`sticky -bottom-6 -mx-6 -mb-6 mt-5 border-t border-slate-100 bg-white px-6 py-4 ${ACTION_ROW}`}>
                             <Button
                                 variant="outline"
                                 disabled={busy}
                                 onClick={() => setConfirmingDup(false)}
+                                className={ACTION_ROW_SECONDARY}
                             >
                                 やめておく
                             </Button>
                             <Button
                                 disabled={busy}
                                 onClick={() => run(true)}
-                                className="bg-amber-600 hover:bg-amber-700 text-white"
+                                className={`${ACTION_BUTTON} bg-amber-600 hover:bg-amber-700 text-white`}
                             >
                                 {busy ? "確定中…" : "別の点検として確定する"}
                             </Button>

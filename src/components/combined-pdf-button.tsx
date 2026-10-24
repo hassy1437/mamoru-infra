@@ -1,6 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
+import { ACTION_BUTTON } from "@/lib/action-button"
 import { FileDown, Loader2 } from "lucide-react"
 import { useState } from "react"
 import {
@@ -152,7 +153,7 @@ export default function CombinedPdfButton({
             onClick={handleDownload}
             disabled={loading || taskCount === 0 || (!canDownload && !!gateNoteId)}
             aria-describedby={!canDownload && gateNoteId ? gateNoteId : undefined}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
+            className={`${ACTION_BUTTON} bg-blue-600 hover:bg-blue-700 text-white`}
         >
             {loading ? (
                 <>

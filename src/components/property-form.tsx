@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/components/auth-provider"
 import { Button } from "@/components/ui/button"
+import { ACTION_BUTTON } from "@/lib/action-button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
@@ -459,7 +460,7 @@ export default function PropertyForm({ property }: PropertyFormProps) {
                     {previewing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Eye className="mr-2 h-4 w-4" />}
                     報告書表紙プレビュー
                 </Button>
-                <Button type="submit" size="lg" disabled={loading} className="w-full md:w-auto">
+                <Button type="submit" size="lg" disabled={loading} className={ACTION_BUTTON}>
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     {loading ? "保存中..." : property?.id ? "物件情報を更新する" : "物件情報を登録する"}
                 </Button>

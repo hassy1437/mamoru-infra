@@ -1,6 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
+import { ACTION_BUTTON } from "@/lib/action-button"
 import { MATCHING_VENDOR_HOME_URL } from "@/lib/matching-site"
 import { CheckCircle2, Loader2, MinusCircle, Send } from "lucide-react"
 import { useState } from "react"
@@ -390,7 +391,7 @@ export default function DeliverReportButton({
             <Button
                 onClick={handleDeliver}
                 disabled={busy || cloneBlocked || !canDeliver}
-                className="bg-teal-700 hover:bg-teal-800 text-white"
+                className={`${ACTION_BUTTON} bg-teal-700 hover:bg-teal-800 text-white`}
             >
                 {busy ? (
                     <>

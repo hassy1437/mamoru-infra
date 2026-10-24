@@ -3,6 +3,7 @@
 import { useState, useSyncExternalStore } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import { ACTION_BUTTON } from "@/lib/action-button"
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
 import { ArrowLeft, RotateCcw, Save } from "lucide-react"
 import {
@@ -146,7 +147,7 @@ export default function EquipmentSettingsPage() {
                         )}
 
                         <div className="flex gap-3 pt-2">
-                            <Button onClick={handleSave} disabled={enabled === null} className="gap-2">
+                            <Button onClick={handleSave} disabled={enabled === null} className={ACTION_BUTTON}>
                                 <Save className="w-4 h-4" />
                                 保存する
                             </Button>

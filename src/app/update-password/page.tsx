@@ -6,6 +6,7 @@ import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import { markMyPasswordSet } from "@/lib/password-mark"
 import { Button } from "@/components/ui/button"
+import { ACTION_BUTTON_FULL } from "@/lib/action-button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
@@ -183,7 +184,7 @@ export default function UpdatePasswordPage() {
                                     minLength={6}
                                 />
                             </div>
-                            <Button type="submit" className="w-full" disabled={loading}>
+                            <Button type="submit" className={ACTION_BUTTON_FULL} disabled={loading}>
                                 {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                                 パスワードを変更
                             </Button>

@@ -98,13 +98,16 @@ export default function ChatbotHint() {
         >
             {/* ★本体はタップを素通りさせる（押して何かが起きる場所ではない）。×だけ押せる */}
             <div className="pointer-events-none relative rounded-2xl border border-slate-200 bg-white px-3 py-2.5 sm:px-4 sm:py-3 shadow-xl">
+                {/* ★見た目の丸は 24px のまま、押せる場所は 44px（2026-10-25 のボタンの見直し・以前は 24px で押し損ねた） */}
                 <button
                     type="button"
                     onClick={handleDismiss}
                     aria-label="ヒントを閉じる"
-                    className="pointer-events-auto absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:bg-slate-50 hover:text-slate-700"
+                    className="group pointer-events-auto absolute -right-5 -top-5 flex h-11 w-11 items-center justify-center"
                 >
-                    <X className="h-3.5 w-3.5" />
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition group-hover:bg-slate-50 group-hover:text-slate-700">
+                        <X className="h-3.5 w-3.5" />
+                    </span>
                 </button>
                 <p className="text-[11px] sm:text-xs font-bold text-slate-900">
                     お困りですか？ 💬

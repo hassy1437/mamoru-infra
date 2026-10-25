@@ -73,7 +73,8 @@ export default function EquipmentSettingsPage() {
                     className="gap-2"
                 >
                     <ArrowLeft className="w-4 h-4" />
-                    戻る
+                    {/* ★どこへ戻るかを書く（2026-10-25 のボタンの見直し・以前は「戻る」だけ） */}
+                    ホームに戻る
                 </Button>
 
                 <Card>

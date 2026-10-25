@@ -1,6 +1,7 @@
 import Link from "next/link"
+import type { ReactNode } from "react"
 import { AlertCircle, AlertTriangle, CheckCircle2, ChevronRight, ClipboardCheck, XCircle } from "lucide-react"
-import { readinessFixHref, type ReadinessFix, type ReadinessItem, type ReportReadiness } from "@/lib/report-readiness"
+import { groupReadinessByFix, readinessFixHref, type ReadinessFix, type ReadinessItem, type ReportReadiness } from "@/lib/report-readiness"
 
 /**
  * 確定前・出力前の不備チェックの表示（src/lib/report-readiness.ts・2026-10-19・打合せ #101）。
@@ -11,6 +12,8 @@ import { readinessFixHref, type ReadinessFix, type ReadinessItem, type ReportRea
  *   ・注意は入っていないものだけ。止めない（確定・出力はできる）と書く
  *   ・★点検者 1 の氏名・資格・電話番号と報告年月日（urgent）は、赤い枠に点滅する印で出す
  *     （2026-10-20・録音 102「不足している項目は一覧上で赤く光らせるなど、誰が見ても一目で気づく表示」）。止めないのは同じ
+ *   ・★点滅は約 5 秒で止める・枠もうっすら光らせる（2026-10-25・app/globals.css の attention-pulse / attention-blink）
+ *   ・★同じ画面で直す項目は、直すボタンを 1 つにまとめる（2026-10-25・以前は「総括表を編集」が 3 つ並んだ）
  *   ★確定のボタンを止めるのは FinalizeSoukatsuButton（missingRequired）。ここは知らせるだけ
  */
 
@@ -21,18 +24,37 @@ const FIX_TEXT: Record<ReadinessFix["kind"], string> = {
     bekki: "この様式を開く",
 }
 
-function FixLink({ item, ctx }: { item: ReadinessItem; ctx: Parameters<typeof readinessFixHref>[1] }) {
-    const href = readinessFixHref(item.fix, ctx)
-    if (!href || !item.fix) return null
+type Ctx = Parameters<typeof readinessFixHref>[1]
+
+function FixLink({ fix, ctx }: { fix: ReadinessFix | null; ctx: Ctx }) {
+    const href = readinessFixHref(fix, ctx)
+    if (!href || !fix) return null
     return (
         // ★押しやすさ: 高さ 44px 以上（min-h-11）
         <Link
             href={href}
             className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
         >
-            {FIX_TEXT[item.fix.kind]}
+            {FIX_TEXT[fix.kind]}
             <ChevronRight className="h-4 w-4" />
         </Link>
+    )
+}
+
+/** 同じ画面で直す項目を 1 つの行にまとめ、直すボタンは行に 1 つだけ出す */
+function FixGroups({ items, ctx, render }: { items: ReadinessItem[]; ctx: Ctx; render: (item: ReadinessItem) => ReactNode }) {
+    return (
+        <ul className="space-y-3">
+            {groupReadinessByFix(items).map((g) => (
+                // ★スマホは項目を横いっぱいに出し、直すボタンはその下の右（横に並べると文字が細切れに折り返す）
+                <li key={g.key} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0 flex-1 space-y-1.5">{g.items.map((item) => <div key={item.id}>{render(item)}</div>)}</div>
+                    <div className="self-end sm:self-auto">
+                        <FixLink fix={g.fix} ctx={ctx} />
+                    </div>
+                </li>
+            ))}
+        </ul>
     )
 }
 
@@ -42,7 +64,7 @@ export default function ReportReadinessBox({
     mode,
 }: {
     readiness: ReportReadiness
-    ctx: Parameters<typeof readinessFixHref>[1]
+    ctx: Ctx
     /** finalize … この画面に確定のボタンがある（空の必須があると押せない）／ review … 確定済み・出力の画面 */
     mode: "finalize" | "review"
 }) {
@@ -64,26 +86,25 @@ export default function ReportReadinessBox({
             </div>
 
             {missing.length > 0 && (
-                <div role="alert" className="space-y-2 rounded-lg border border-red-200 bg-red-50 p-3">
+                <div role="alert" className="attention-pulse space-y-2 rounded-lg border border-red-200 bg-red-50 p-3">
                     <p className="text-sm font-semibold text-red-800">
                         {mode === "finalize"
                             ? "必須の項目が空です。入れるまで「この点検を確定する」は押せません。"
                             : "必須の項目が空です。空欄のまま報告書（様式第１）・総括表に出ます。"}
                     </p>
-                    <ul className="space-y-2">
-                        {missing.map((m) => (
-                            <li key={m.id} className="flex flex-wrap items-center justify-between gap-2">
-                                <span className="flex min-w-0 items-start gap-2 text-sm text-red-800">
-                                    <XCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                                    <span>
-                                        <span className="font-medium">{m.label}</span>
-                                        {m.id === "equipment" && <span className="block text-xs text-red-700">{m.message}</span>}
-                                    </span>
+                    <FixGroups
+                        items={missing}
+                        ctx={ctx}
+                        render={(m) => (
+                            <span className="flex min-w-0 items-start gap-2 text-sm text-red-800">
+                                <XCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                                <span>
+                                    <span className="font-medium">{m.label}</span>
+                                    {m.id === "equipment" && <span className="block text-xs text-red-700">{m.message}</span>}
                                 </span>
-                                <FixLink item={m} ctx={ctx} />
-                            </li>
-                        ))}
-                    </ul>
+                            </span>
+                        )}
+                    />
                 </div>
             )}
 
@@ -99,24 +120,23 @@ export default function ReportReadinessBox({
             )}
 
             {urgent.length > 0 && (
-                <div role="alert" className="space-y-2 rounded-lg border-2 border-red-400 bg-red-50 p-3">
+                <div role="alert" className="attention-pulse space-y-2 rounded-lg border-2 border-red-400 bg-red-50 p-3">
                     <p className="text-sm font-semibold text-red-800">
                         足りない項目（{mode === "finalize" ? "確定はできます" : "出力・納品はできます"}が、報告書に空欄で出ます）
                     </p>
-                    <ul className="space-y-2">
-                        {urgent.map((w) => (
-                            <li key={w.id} className="flex flex-wrap items-center justify-between gap-2">
-                                <span className="flex min-w-0 items-start gap-2 text-sm text-red-800">
-                                    {/* ★印を点滅させて目に入れる（動きを減らす設定の人には点滅させない） */}
-                                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600 motion-safe:animate-pulse" />
-                                    <span className="min-w-0">
-                                        <span className="font-bold">{w.label}</span>：{w.message}
-                                    </span>
+                    <FixGroups
+                        items={urgent}
+                        ctx={ctx}
+                        render={(w) => (
+                            <span className="flex min-w-0 items-start gap-2 text-sm text-red-800">
+                                {/* ★印を点滅させて目に入れる（約 5 秒で止まる・動きを減らす設定の人には点滅させない） */}
+                                <AlertCircle className="attention-blink mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+                                <span className="min-w-0">
+                                    <span className="font-bold">{w.label}</span>：{w.message}
                                 </span>
-                                <FixLink item={w} ctx={ctx} />
-                            </li>
-                        ))}
-                    </ul>
+                            </span>
+                        )}
+                    />
                 </div>
             )}
 
@@ -125,22 +145,21 @@ export default function ReportReadinessBox({
                     <p className="text-sm font-semibold text-amber-800">
                         注意（{mode === "finalize" ? "確定はできます" : "出力・納品はできます"}。入れ忘れでないか確かめてください）
                     </p>
-                    <ul className="space-y-2">
-                        {normal.map((w) => (
-                            <li key={w.id} className="flex flex-wrap items-center justify-between gap-2">
-                                <span className="flex min-w-0 items-start gap-2 text-sm text-amber-800">
-                                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                                    <span className="min-w-0">
-                                        <span className="font-medium">{w.label}</span>：{w.message}
-                                        {w.details.length > 0 && (
-                                            <span className="block break-words text-xs text-amber-700">{w.details.join("・")}</span>
-                                        )}
-                                    </span>
+                    <FixGroups
+                        items={normal}
+                        ctx={ctx}
+                        render={(w) => (
+                            <span className="flex min-w-0 items-start gap-2 text-sm text-amber-800">
+                                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                                <span className="min-w-0">
+                                    <span className="font-medium">{w.label}</span>：{w.message}
+                                    {w.details.length > 0 && (
+                                        <span className="block break-words text-xs text-amber-700">{w.details.join("・")}</span>
+                                    )}
                                 </span>
-                                <FixLink item={w} ctx={ctx} />
-                            </li>
-                        ))}
-                    </ul>
+                            </span>
+                        )}
+                    />
                 </div>
             ) : (
                 missing.length === 0 && urgent.length === 0 && (

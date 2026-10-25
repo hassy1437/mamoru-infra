@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { Download, X } from "lucide-react"
+import { Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface BeforeInstallPromptEvent extends Event {
@@ -58,7 +58,7 @@ export function InstallPrompt() {
                     <Button
                         size="sm"
                         onClick={handleInstall}
-                        className="bg-blue-600 hover:bg-blue-700 text-xs h-8"
+                        className="bg-blue-600 hover:bg-blue-700 text-sm h-11 px-4"
                     >
                         インストール
                     </Button>
@@ -66,19 +66,14 @@ export function InstallPrompt() {
                         size="sm"
                         variant="ghost"
                         onClick={handleDismiss}
-                        className="text-xs h-8 text-slate-500"
+                        className="text-sm h-11 px-4 text-slate-500"
                     >
                         後で
                     </Button>
                 </div>
             </div>
-            <button
-                onClick={handleDismiss}
-                className="text-slate-400 hover:text-slate-600"
-                aria-label="閉じる"
-            >
-                <X className="w-4 h-4" />
-            </button>
+            {/* ★右上の × は「後で」と同じ動き（handleDismiss）だったので外した（2026-10-25 のボタンの見直し）。
+                以前は 16px の × と「後で」の 2 つが同じことをしていた */}
         </div>
     )
 }

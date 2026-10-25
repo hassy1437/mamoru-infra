@@ -179,3 +179,27 @@ input[type="week"] {
     width: 100%;
   }
 }
+
+/* ★いま見てほしい所を、うっすら光らせる（2026-10-25・橋本さん「注意すべきものはうっすら点滅するなどのエフェクトも使って良い」）。
+ *   attention-pulse … 外側に輪がふわっと広がって消える（通知の点が脈打つ GitHub・Slack などと同じ考え）。色は赤（足りない項目）
+ *   attention-blink … 印（アイコン）をゆっくり薄くして戻す
+ *   ★どちらも約 5 秒で止める。光り続けると、ほかを読む邪魔になる（WCAG 2.2.2「5 秒を超えて点滅させない」）。
+ *     以前の「足りない項目」の印は Tailwind の animate-pulse で、ずっと点滅していた
+ *   ★動きを減らす設定（prefers-reduced-motion）の人には動かさない（赤い枠と文字で分かる） */
+@keyframes attention-pulse {
+  0% { box-shadow: 0 0 0 0 rgb(220 38 38 / 0.4); }
+  70% { box-shadow: 0 0 0 10px rgb(220 38 38 / 0); }
+  100% { box-shadow: 0 0 0 0 rgb(220 38 38 / 0); }
+}
+@keyframes attention-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .attention-pulse {
+    animation: attention-pulse 1.6s ease-out 0.6s 3;
+  }
+  .attention-blink {
+    animation: attention-blink 1.2s ease-in-out 4;
+  }
+}

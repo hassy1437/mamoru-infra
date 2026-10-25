@@ -9,7 +9,8 @@ import { ACTION_BUTTON } from "@/lib/action-button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
-import { SOUKATSU_NOT_PRINTED_NOTE } from "@/lib/soukatsu-not-printed"
+import MoreInfo from "@/components/more-info"
+import { SOUKATSU_NOT_PRINTED_DETAIL, SOUKATSU_NOT_PRINTED_NOTE } from "@/lib/soukatsu-not-printed"
 import { UsageSelect } from "@/components/usage-select"
 import { FloorSelect } from "@/components/floor-select"
 import { Textarea } from "@/components/ui/textarea"
@@ -542,6 +543,9 @@ export default function SoukatsuForm({ property, previousData, copyFromId, sourc
                         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
                         <span>{SOUKATSU_NOT_PRINTED_NOTE}</span>
                     </p>
+                    <MoreInfo className="px-1 text-amber-900">
+                        <p>{SOUKATSU_NOT_PRINTED_DETAIL}</p>
+                    </MoreInfo>
                 </CardHeader>
                 <CardContent className="space-y-6">
                     <div className="space-y-2">

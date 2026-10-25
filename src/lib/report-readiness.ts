@@ -274,3 +274,26 @@ export function readinessFixHref(
                 : null
     }
 }
+
+/**
+ * 同じ画面で直す項目をまとめる（2026-10-25 のボタンの見直し）。
+ *   以前は項目ごとに「総括表を編集」が付き、延べ面積・地上階数・報告年月日で同じボタンが 3 つ並んだ。
+ *   ★行き先の画面（fix の種類・様式）ごとに 1 つ。飛び先の位置（anchor）は先頭の項目のもの。
+ *   ★直す画面が無い項目は、それだけで 1 つ（ボタンは出ない）。並びは最初に出てきた順のまま。
+ */
+export function groupReadinessByFix<T extends Pick<ReadinessItem, "id" | "fix">>(items: T[]): { key: string; fix: ReadinessFix | null; items: T[] }[] {
+    const groups: { key: string; fix: ReadinessFix | null; items: T[] }[] = []
+    const byKey = new Map<string, { key: string; fix: ReadinessFix | null; items: T[] }>()
+    for (const item of items) {
+        const key = item.fix ? (item.fix.kind === "bekki" ? `bekki:${item.fix.stepId}` : item.fix.kind) : `none:${item.id}`
+        const found = byKey.get(key)
+        if (found) {
+            found.items.push(item)
+            continue
+        }
+        const g = { key, fix: item.fix, items: [item] }
+        byKey.set(key, g)
+        groups.push(g)
+    }
+    return groups
+}

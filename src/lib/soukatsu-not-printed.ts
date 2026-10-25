@@ -9,5 +9,8 @@
  *
  * ★帳票に出すようにしたら、この文言を消すこと（scripts/check-soukatsu-not-printed.mjs が route を見張る）
  */
-export const SOUKATSU_NOT_PRINTED_NOTE =
-    "総合判定と備考は、提出する帳票（報告書・総括表）には印字されません。様式に記入する欄が無いためです。アプリ内の記録として残ります（総合判定は報告書一覧と物件の画面に表示されます）。"
+export const SOUKATSU_NOT_PRINTED_NOTE = "総合判定と備考は、提出する帳票（報告書・総括表）には印字されません。"
+
+/** ★理由とどこに残るかは「詳しく見る」の中（2026-10-25 注意書きを短く・要点は上の NOTE に残す） */
+export const SOUKATSU_NOT_PRINTED_DETAIL =
+    "様式に記入する欄が無いためです。アプリ内の記録として残ります（総合判定は報告書一覧と物件の画面に表示されます）。"

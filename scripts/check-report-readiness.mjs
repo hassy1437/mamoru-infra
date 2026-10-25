@@ -202,8 +202,11 @@ function wiring(src) {
     if (!/<ReportReadinessBox[\s\S]*?mode=\{needsFinalizeOnOutput\(finalization\) \? "finalize" : "review"\}/.test(out)) problems.push("出力画面に出力前の確認が無い")
     if (!/min-h-11/.test(src(BOX))) problems.push("確定前の確認のリンクが押しにくい（高さ 44px 未満）")
     // ★足りない項目（urgent）は赤い枠・点滅する印で出す（2026-10-20・録音 102）
+    //   ★点滅は約 5 秒で止める（2026-10-25・WCAG 2.2.2・src/app/globals.css の attention-blink）。ずっと点滅する animate-pulse に戻さない
     const boxSrc = src(BOX)
-    if (!boxSrc.includes("warnings.filter((w) => w.urgent)") || !/border-red-400[\s\S]*?motion-safe:animate-pulse/.test(boxSrc)) problems.push("確定前の確認: 足りない項目を赤い枠・点滅する印で出していない")
+    if (!boxSrc.includes("warnings.filter((w) => w.urgent)") || !/border-red-400[\s\S]*?attention-blink/.test(boxSrc)) problems.push("確定前の確認: 足りない項目を赤い枠・点滅する印で出していない")
+    if (/animate-pulse/.test(boxSrc)) problems.push("確定前の確認: 点滅が止まらない（animate-pulse）。約 5 秒で止まる attention-blink を使う")
+    if (!/\.attention-blink\s*\{\s*animation:[^;}]*\s[1-5]\s*;/.test(src("src/app/globals.css"))) problems.push("attention-blink が回数で止まらない（5 秒を超えて点滅する）")
     if (!/"urgent" in item && item\.urgent \?/.test(out)) problems.push("出力画面: 足りない項目のある書類に赤い印を出していない")
     const base = src(BASE)
     if (!/useState\(\(\) => basicInfoBlank\.length > 0\)/.test(base)) problems.push("共通の別記フォーム: 基本情報が入っていても最初から開いている（判定表が下に押し出される）")
@@ -250,6 +253,8 @@ if (SELF_TEST) {
             return s.replace(block[0], "").replace(/\n(\s*)<\/div>\n(\s*)\)\n\}\s*$/, `${block[0]}\n$1</div>\n$2)\n}\n`)
         }, "並びが"],
         ["基本情報を畳まない", swap(BASE, "useState(() => basicInfoBlank.length > 0)", "useState(() => true)"), "最初から開いている"],
+        ["点滅を止めない（animate-pulse に戻す）", swap(BOX, "attention-blink", "motion-safe:animate-pulse attention-blink"), "点滅が止まらない"],
+        ["点滅をずっと続ける（infinite）", swap("src/app/globals.css", "animation: attention-blink 1.2s ease-in-out 4;", "animation: attention-blink 1.2s ease-in-out infinite;"), "回数で止まらない"],
     ]
     for (const [label, src, expect] of mutants) {
         let found

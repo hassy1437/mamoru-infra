@@ -61,6 +61,7 @@ describe("★使っている画面", () => {
         "src/app/forgot-password/page.tsx",
         "src/app/update-password/page.tsx",
         "src/app/tool/equipment-settings/page.tsx",
+        "src/app/contact/page.tsx",
     ]
     it.each(USERS)("%s", (p) => {
         expect(read(p)).toMatch(/from "@\/lib\/action-button"/)

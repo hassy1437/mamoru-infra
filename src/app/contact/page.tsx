@@ -4,6 +4,8 @@ import { useState } from "react"
 import Link from "next/link"
 import { Building2, Mail, CheckCircle2 } from "lucide-react"
 
+import { ACTION_BUTTON_FULL } from "@/lib/action-button"
+
 export default function ContactPage() {
     const [sent, setSent] = useState(false)
 
@@ -109,7 +111,7 @@ export default function ContactPage() {
                             </div>
                             <button
                                 type="submit"
-                                className="w-full rounded-lg bg-blue-600 py-3 text-sm font-bold text-white transition-colors hover:bg-blue-700"
+                                className={`${ACTION_BUTTON_FULL} bg-blue-600 text-white hover:bg-blue-700`}
                             >
                                 送信する
                             </button>

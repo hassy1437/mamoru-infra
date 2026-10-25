@@ -1,4 +1,5 @@
 ﻿import { getAuthenticatedClient } from "@/lib/supabase/auth-server"
+import MoreInfo from "@/components/more-info"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import { AlertTriangle, ArrowRight, Pencil } from "lucide-react"
@@ -146,11 +147,14 @@ export default async function InspectionDetailPage({ params }: { params: Promise
                     {/* ★いつ確定するか（2026-10-21・次に進む方法の洗い出し）。上の 1〜5 の段に確定が無く、ここで押すのか
                          最後に押すのかが分からなかった。確定はこの画面でも結果出力の画面でもできる（どちらでも同じ） */}
                     {finalization.finalized.length === 0 && finalizeBlockNotice(finalization.blockedSince, finalization.notContracted) === null && (
-                        <p role="note" className="mb-3 rounded-lg border border-slate-200 bg-white p-4 text-sm leading-relaxed text-slate-700">
-                            <span className="font-semibold text-slate-900">確定はいつでも、ここか最後の「結果出力」の画面で行えます。</span>
-                            確定すると PDF の出力と納品ができるようになります（押す前に金額を表示します）。
-                            点検者一覧表と点検票（別記様式）は、確定の前でもあとでも入れられます。まだ入れていなければ、先に「次へ」で進めて構いません。
-                        </p>
+                        // ★要点だけ出し、細かいことは「詳しく見る」（2026-10-25 注意書きを短く）
+                        <div role="note" className="mb-3 rounded-lg border border-slate-200 bg-white px-4 pt-4 text-sm leading-relaxed text-slate-700">
+                            <p className="font-semibold text-slate-900">確定はいつでも、ここか最後の「結果出力」の画面で行えます。</p>
+                            <MoreInfo>
+                                <p>確定すると PDF の出力と納品ができるようになります（押す前に金額を表示します）。</p>
+                                <p>点検者一覧表と点検票（別記様式）は、確定の前でもあとでも入れられます。まだ入れていなければ、先に「次へ」で進めて構いません。</p>
+                            </MoreInfo>
+                        </div>
                     )}
                     <FinalizeSoukatsuButton
                         soukatsuId={id}

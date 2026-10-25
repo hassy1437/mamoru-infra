@@ -1,5 +1,7 @@
 "use client"
 
+import MoreInfo from "@/components/more-info"
+import { COVER_REPORT_DATE_POINT } from "@/lib/soukatsu-cover-notes"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toDateInputValue } from "@/lib/date-utils"
@@ -55,7 +57,10 @@ export function SoukatsuCoverInputs({
                     onChange={(e) => onReportDateChange(e.target.value)}
                     aria-describedby="reportDate-note"
                 />
-                <p id="reportDate-note" className="text-xs text-slate-500">{COVER_REPORT_DATE_NOTE}</p>
+                <p className="text-xs text-slate-500">{COVER_REPORT_DATE_POINT}</p>
+                <MoreInfo className="text-xs text-slate-500">
+                    <p id="reportDate-note">{COVER_REPORT_DATE_NOTE}</p>
+                </MoreInfo>
             </div>
             <div className="space-y-2 min-w-0">
                 <Label htmlFor="fireDepartmentName">宛名</Label>
@@ -91,7 +96,10 @@ export function SoukatsuCoverInputs({
                           ? `${printed}　殿`
                           : `上の行に「${printed}」（敬称は刷り込みのまま）`}
                 </p>
-                <p id="fireDepartmentName-note" className="text-xs text-slate-500">{COVER_FIRE_DEPARTMENT_NOTE}</p>
+                {/* ★上の「表紙の印字：」で結果は見えるので、印字のしかたの説明は「詳しく見る」に（2026-10-25 注意書きを短く） */}
+                <MoreInfo label="印字のしかた" className="text-xs text-slate-500">
+                    <p id="fireDepartmentName-note">{COVER_FIRE_DEPARTMENT_NOTE}</p>
+                </MoreInfo>
             </div>
         </div>
     )

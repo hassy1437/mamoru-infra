@@ -9,6 +9,7 @@ import {
     CheckCircle2,
     ClipboardCheck,
     Copy,
+    FireExtinguisher,
     MapPin,
     Pencil,
     Plus,
@@ -53,6 +54,9 @@ export default async function PropertyDetailPage({
     const latestInspectionId = history.length > 0 ? history[0].id : null
     // ★点検履歴は、総括表の確認画面ではなく「続き」へ（点検者一覧表があれば点検票の一覧・src/lib/report-resume.ts）
     const itiranIds = await loadItiranIds(supabase, history.map((h) => h.id as string))
+    // ★消火器の台帳（2026-10-30）は消火器のある物件だけ（設置設備が空の物件は分からないので出す）
+    const equipment = p.equipment_types ?? []
+    const showExtinguishers = equipment.length === 0 || equipment.includes("消火器")
 
     return (
         <main className="min-h-screen bg-gray-50 py-10">
@@ -185,6 +189,22 @@ export default async function PropertyDetailPage({
                         </div>
                     </div>
                 </div>
+
+                {showExtinguishers && (
+                    <Link
+                        href={`/properties/${id}/extinguishers`}
+                        className="flex min-h-11 items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-5 py-4 transition-colors hover:bg-slate-50"
+                    >
+                        <span className="flex min-w-0 items-center gap-3">
+                            <FireExtinguisher className="h-5 w-5 shrink-0 text-blue-600" />
+                            <span className="min-w-0">
+                                <span className="block font-semibold text-slate-800">消火器の台帳</span>
+                                <span className="block text-xs text-slate-500">製造年から、耐圧性能点検・内部と機能の点検の対象と交換の目安を出します</span>
+                            </span>
+                        </span>
+                        <ArrowRight className="h-4 w-4 shrink-0 text-slate-400" />
+                    </Link>
+                )}
 
                 {/* 点検履歴 */}
                 <div className="bg-white rounded-xl border border-slate-200 p-6">

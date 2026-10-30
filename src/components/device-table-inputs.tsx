@@ -14,6 +14,11 @@ import {
 } from "@/lib/bekki-device-table"
 import { CODE_INPUT_PROPS } from "@/lib/code-input-props"
 import CopyTextFromPhotoHint from "@/components/copy-text-from-photo-hint"
+import InstrumentPicker from "@/components/instrument-picker"
+import InstrumentCalibrationNote from "@/components/instrument-calibration-note"
+import { useMeasuringInstruments } from "@/hooks/use-measuring-instruments"
+import { findInstrumentForRow } from "@/lib/measuring-instruments"
+import { jstTodayYmd } from "@/lib/date-utils"
 
 // ★日付の形でない以前の保存（和暦・年月だけなど）は日付の欄では空に見える（印字はそのまま出る）。文字の欄で見せて直せるようにする（2026-10-20）
 const isLegacyDate = (v: string) => v.trim() !== "" && toDateInputValue(v) === ""
@@ -26,6 +31,8 @@ const filled = (row: DeviceTableRow | undefined) =>
  * ・11の1・11の2: 紙の表どおりの 10 行（刷り込みの行は機器名なし・空欄の行は機器名から）
  * ・ほかの様式（plain）: 紙の 3 行 × 左右（6 台）。紙と同じく左右に並べ、最初は 1 行目の左右（2 台）だけ出す。
  *   「測定機器の欄を足す」で 1 行（2 台）ずつ増やす（2026-10-20。以前は 2 台までしか入れられなかった）
+ * ・「台帳から選ぶ」（2026-10-30・instrument-picker.tsx）: 業者の測定機器の台帳から写す。
+ *   台帳の機器と同じ行は、校正の周期を過ぎていれば黄色（★止めない）
  */
 export default function DeviceTableInputs({
     kind,
@@ -37,6 +44,15 @@ export default function DeviceTableInputs({
     onChange: (index: number, field: keyof DeviceTableRow, value: string) => void
 }) {
     const perColumn = DEVICE_TABLE_ROWS_PER_COLUMN[kind]
+    const [instruments, reloadInstruments] = useMeasuringInstruments()
+    const today = jstTodayYmd()
+    const picker = <InstrumentPicker kind={kind} rows={rows} onChange={onChange} state={instruments} reload={reloadInstruments} today={today} />
+    /** 台帳の機器と同じ行なら、校正の期限の知らせ（周期は台帳の値・校正年月日は表の値） */
+    const calibrationNote = (row: DeviceTableRow) => {
+        if (instruments.status !== "ready") return null
+        const inst = findInstrumentForRow(row, instruments.instruments)
+        return inst ? <InstrumentCalibrationNote calibratedAt={toDateInputValue(row.calibrated_at)} months={inst.calibration_months} today={today} /> : null
+    }
     // ★入れてある行は必ず出す（古い保存の 2 台目＝右の列の先頭・下書きの復元で後から入った行も）
     const lastFilledLine = rows.reduce((acc, row, i) => (filled(row) ? Math.max(acc, i % perColumn) : acc), -1)
     const [linesShown, setLinesShown] = useState(1)
@@ -49,9 +65,11 @@ export default function DeviceTableInputs({
                     様式の表と同じ並びです（左の列の上から → 右の列の上から）。使った機器の行だけ入れてください。
                 </p>
                 <CopyTextFromPhotoHint />
+                {picker}
                 <div className="space-y-2">
                     {rows.map((row, i) => {
                         const printed = DEVICE_TABLE_PRINTED[kind][i]
+                        const note = calibrationNote(row)
                         return (
                             <div key={i} className="grid gap-2 rounded-md border border-slate-200 p-2 md:grid-cols-4 md:items-end">
                                 {printed ? (
@@ -69,6 +87,7 @@ export default function DeviceTableInputs({
                                     <Input type={isLegacyDate(row.calibrated_at) ? "text" : "date"} value={isLegacyDate(row.calibrated_at) ? row.calibrated_at : toDateInputValue(row.calibrated_at)} onChange={(e) => onChange(i, "calibrated_at", e.target.value)} />
                                 </div>
                                 <Input placeholder="製造者名" value={row.maker} onChange={(e) => onChange(i, "maker", e.target.value)} />
+                                {note && <div className="md:col-span-4">{note}</div>}
                             </div>
                         )
                     })}
@@ -83,6 +102,7 @@ export default function DeviceTableInputs({
     return (
         <div className="space-y-3">
             <CopyTextFromPhotoHint />
+            {picker}
             <div className="grid md:grid-cols-2 gap-4">
                 {slots.map((index, k) => {
                     const row = rows[index]
@@ -97,6 +117,7 @@ export default function DeviceTableInputs({
                                 <Input type={isLegacyDate(row.calibrated_at) ? "text" : "date"} aria-label={`${label} 校正年月日`} value={isLegacyDate(row.calibrated_at) ? row.calibrated_at : toDateInputValue(row.calibrated_at)} onChange={(e) => onChange(index, "calibrated_at", e.target.value)} />
                             </div>
                             <Input placeholder="製造者名" aria-label={`${label} 製造者名`} value={row.maker} onChange={(e) => onChange(index, "maker", e.target.value)} />
+                            {calibrationNote(row)}
                         </div>
                     )
                 })}

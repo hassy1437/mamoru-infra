@@ -16,9 +16,17 @@
  * ★この file は実行時の import を持たない（node --experimental-strip-types でそのまま読むため）。
  */
 
-/** 機器の種類（設計書 2.「返す形」） */
+/**
+ * 機器の種類（設計書 2.「返す形」）。
+ * ★2026-10-30: 様式の「製造者名・型式等」の欄にある設備に合わせて足した（docs/銘板の転記_全様式_現状と設計案_20261030.md 1-1）。
+ *   変流器（第12）・操作部（第14 の操作部・複合装置）・排煙機（第18）・漏洩同軸ケーブル・空中線（第22）・
+ *   動力消防ポンプ（第10 の本体）・泡消火薬剤・泡合成器（第5）。以前はどれも「その他」になっていた。
+ *   ★「その他」は最後に置く（迷ったときの逃げ場）。
+ */
 export const NAMEPLATE_DEVICE_KINDS = [
-    "受信機", "中継器", "ポンプ", "電動機", "増幅器", "消火器", "誘導灯", "測定機器", "その他",
+    "受信機", "中継器", "ポンプ", "電動機", "増幅器", "消火器", "誘導灯", "測定機器",
+    "変流器", "操作部", "排煙機", "漏洩同軸ケーブル", "空中線", "動力消防ポンプ", "泡消火薬剤", "泡合成器",
+    "その他",
 ] as const
 export type NameplateDeviceKind = (typeof NAMEPLATE_DEVICE_KINDS)[number]
 
@@ -194,8 +202,8 @@ export function nameplateYear(value: string): number | null {
     return west ? Number(west[0].slice(0, 4)) : null
 }
 
-/** 型式番号の頭の字（検定品）。★分かっているものだけ。ほかの機器は頭の字を見ない */
-const APPROVAL_PREFIX: Partial<Record<NameplateDeviceKind, string>> = { 消火器: "消", 受信機: "受", 中継器: "中" }
+/** 型式番号の頭の字（検定品）。★分かっているものだけ。ほかの機器は頭の字を見ない（泡は第5 の欄の「泡第 ○ 〜 ○ 号」から） */
+const APPROVAL_PREFIX: Partial<Record<NameplateDeviceKind, string>> = { 消火器: "消", 受信機: "受", 中継器: "中", 泡消火薬剤: "泡" }
 
 export type NameplateCheckOptions = {
     /** 年の上限を決める「いま」（既定は実行した時） */

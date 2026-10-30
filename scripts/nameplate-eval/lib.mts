@@ -506,7 +506,7 @@ export function renderSummaryMarkdown(
             lines.push(`| ${MODELS[c.cheap].label} → ${MODELS[c.strong].label} | ${RULE_LABEL[c.rule]} | ${c.escalated}/${c.calls} | ${c.passes ? "満たす" : "★満たさない"} | ${pct(c.accuracy)} | ${c.fabricated} | ${c.wrong} | ${c.confidentMistakes} | ${mark}${yen(c.yenPerImage)} | ${c.avgSeconds.toFixed(1)}秒 |`)
         }
         lines.push("", "- 両方のモデルで流した結果から組み立てた（追加の呼び出しはしていない）。費用と時間は、読み直した写真で 2 回分")
-        lines.push("- 形の確かめ: 失敗・答えの形が違う・製造年や校正年月日がありえない年・型式番号が「〇第…号」の形でない・消火器／受信機／中継器で型式番号の頭の字が違う・「読めた」のに値が無い（またはその逆）"
+        lines.push("- 形の確かめ: 失敗・答えの形が違う・製造年や校正年月日がありえない年・型式番号が「〇第…号」の形でない・消火器／受信機／中継器／泡消火薬剤で型式番号の頭の字が違う・「読めた」のに値が無い（またはその逆）"
             + (meta.makers ? `・製造者名が一覧（${meta.makers} 件）に無い` : ""))
         lines.push("- ★組と条件は同じ写真で選んでいる。本番に使う前に、別の写真でもう一度確かめる", "")
     }

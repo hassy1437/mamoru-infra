@@ -71,6 +71,12 @@ check(schemaProblems({ type: "object", properties: { a: { type: "string" } }, re
 check(schemaProblems({ type: "object", properties: { a: { type: "string", maxLength: 3 } }, required: ["a"], additionalProperties: false }).length === 1,
     "自己診断: 使えない制約を拾えない")
 
+// ★様式の「製造者名・型式等」の欄にある設備は、機器の種類で選べる（「その他」にしない・2026-10-30）
+for (const kind of ["受信機", "中継器", "ポンプ", "電動機", "増幅器", "変流器", "操作部", "排煙機", "漏洩同軸ケーブル", "空中線", "動力消防ポンプ", "泡消火薬剤", "泡合成器", "測定機器"]) {
+    check(R.NAMEPLATE_DEVICE_KINDS.includes(kind), `機器の種類に「${kind}」が無い（様式の欄にある設備）`)
+}
+check(R.NAMEPLATE_DEVICE_KINDS.at(-1) === "その他", "「その他」が最後でない")
+
 // ★判定・点検者を読ませない（設計書 1.「読まないもの」）
 const keys = JSON.stringify(R.NAMEPLATE_SCHEMA)
 for (const bad of ["judg", "result", "inspector", "defect", "良", "不良", "点検者"]) {
@@ -172,6 +178,7 @@ for (const [kind, vals, want, why] of [
     ["消火器", { approval_number: "受第2〜1号" }, "頭の字", "消火器なのに受第"],
     ["中継器", { approval_number: "受第2〜1号" }, "頭の字", "中継器なのに受第"],
     ["受信機", { approval_number: "受第2〜1" }, "形でない", "号が無い型式番号"],
+    ["泡消火薬剤", { approval_number: "消第18～12号" }, "頭の字", "泡消火薬剤なのに消第"],
 ]) {
     const got = problemsOf(rd(kind, vals))
     check(got.some((p) => p.includes(want)), `形の確かめ: ${why}を拾えない（${JSON.stringify(got)}）`)

@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { ArrowRight, Building, ClipboardCheck, Settings, Wrench, FileText, Users } from "lucide-react"
+import { ArrowRight, Building, ClipboardCheck, Settings, Wrench, FileText, Users, Gauge } from "lucide-react"
 import LogoutButton from "@/components/logout-button"
 import { InstallPrompt } from "@/components/install-prompt"
 import { createClient } from "@/lib/supabase/server"
@@ -125,6 +125,15 @@ export default async function ToolPage() {
             <Button size="lg" variant="outline" className="w-full text-base px-6 py-6 gap-3 border-slate-300 hover:bg-slate-50 transition-all duration-300 rounded-xl font-medium text-slate-600">
               <Users className="w-5 h-5" />
               点検者マスタ
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </Button>
+          </Link>
+
+          {/* ★測定機器の台帳（2026-10-30）: 1 回登録すると、どの点検票でも選ぶだけで入る */}
+          <Link href="/instruments" className="w-full group">
+            <Button size="lg" variant="outline" className="w-full text-base px-6 py-6 gap-3 border-slate-300 hover:bg-slate-50 transition-all duration-300 rounded-xl font-medium text-slate-600">
+              <Gauge className="w-5 h-5" />
+              測定機器の台帳
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Button>
           </Link>

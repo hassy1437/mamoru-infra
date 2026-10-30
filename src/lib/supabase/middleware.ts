@@ -52,7 +52,7 @@ export async function updateSession(request: NextRequest) {
 
         // ★画面を足したらここか、scripts/check-protected-routes.mjs の PUBLIC に足す（検査が漏れを止める）。
         //   /inspectors は 2026-10-22 まで抜けていて、未ログインでも点検者の登録画面が開いていた。
-        const protectedPaths = ['/tool', '/properties', '/inspection', '/inspectors', '/reports']
+        const protectedPaths = ['/tool', '/properties', '/inspection', '/inspectors', '/instruments', '/reports']
         const isProtected = protectedPaths.some(p => request.nextUrl.pathname.startsWith(p))
 
         if (!user && isProtected) {

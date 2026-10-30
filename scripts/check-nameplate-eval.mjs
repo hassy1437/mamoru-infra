@@ -179,6 +179,8 @@ for (const [kind, vals, want, why] of [
     ["中継器", { approval_number: "受第2〜1号" }, "頭の字", "中継器なのに受第"],
     ["受信機", { approval_number: "受第2〜1" }, "形でない", "号が無い型式番号"],
     ["泡消火薬剤", { approval_number: "消第18～12号" }, "頭の字", "泡消火薬剤なのに消第"],
+    ["受信機", { pressurization: "蓄圧式" }, "なのに値がある", "消火器でないのに加圧式・蓄圧式"],
+    ["消火器", { pressurization: "ABC" }, "形でない", "加圧式・蓄圧式の語でない"],
 ]) {
     const got = problemsOf(rd(kind, vals))
     check(got.some((p) => p.includes(want)), `形の確かめ: ${why}を拾えない（${JSON.stringify(got)}）`)
@@ -188,6 +190,10 @@ check(problemsOf(rd("受信機", {}, { model: { legibility: "clear" } })).some((
 check(problemsOf(rd("受信機", { maker: "ホーチキ" }), { makers: ["ホーチキ株式会社"] }).length === 0, "一覧の製造者名を（会社の種類の書き方の違いで）引っかけている")
 check(problemsOf(rd("受信機", { maker: "ホーチ" }), { makers: ["ホーチキ株式会社"] }).some((p) => p.includes("一覧に無い")), "一覧に無い製造者名を拾えない")
 check(problemsOf(rd("受信機", { maker: "ホーチ" })).length === 0, "一覧を渡さないのに製造者名を引っかけている")
+check(problemsOf(rd("消火器", { pressurization: "蓄圧式" })).length === 0, "消火器の「蓄圧式」を引っかけている")
+for (const [v, want] of [["蓄圧式", "stored"], ["加圧式", "pressurized"], ["ガス加圧式", "pressurized"], ["化学泡", "chemical"], ["反応式", "chemical"], ["ABC", null]]) {
+    check(R.nameplatePressurization(v) === want, `方式の読み替え: ${v} → ${R.nameplatePressurization(v)}（期待 ${want}）`)
+}
 for (const [v, want] of [["2015", 2015], ["201504", 2015], ["20150412", 2015], ["H27.4", 2015], ["平成27年", 2015], ["令和元年", 2019], ["S50", 1975], ["2015041", null], ["15", null]]) {
     check(R.nameplateYear(v) === want, `年の読み取り: ${v} → ${R.nameplateYear(v)}（期待 ${want}）`)
 }

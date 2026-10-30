@@ -30,7 +30,11 @@ export const NAMEPLATE_DEVICE_KINDS = [
 ] as const
 export type NameplateDeviceKind = (typeof NAMEPLATE_DEVICE_KINDS)[number]
 
-/** 読む欄。★並びは評価の表・正解の CSV の列の並びにもなる */
+/**
+ * 読む欄。★並びは評価の表・正解の CSV の列の並びにもなる。
+ * ★2026-10-30: 消火器の「加圧式・蓄圧式」を最後に足した（内部・機能の点検の時期が変わる・
+ *   docs/消火器の台帳_現状と設計案_20261030.md Q5）。★前の列の並びを変えないよう最後に置く。
+ */
 export const NAMEPLATE_FIELDS = [
     { key: "maker", label: "製造者名" },
     { key: "model", label: "型式" },
@@ -38,6 +42,7 @@ export const NAMEPLATE_FIELDS = [
     { key: "manufactured", label: "製造年" },
     { key: "serial_number", label: "製造番号" },
     { key: "calibrated_at", label: "校正年月日" },
+    { key: "pressurization", label: "加圧式・蓄圧式" },
 ] as const
 export type NameplateFieldKey = (typeof NAMEPLATE_FIELDS)[number]["key"]
 
@@ -106,7 +111,8 @@ export const NAMEPLATE_SYSTEM_PROMPT = `あなたは消防用設備等の点検�
 - approval_number: 型式番号（検定・認定の番号。例: 受第2〜1号）
 - manufactured: 製造年または製造年月（銘板の書き方のまま）
 - serial_number: 製造番号
-- calibrated_at: 校正年月日（測定機器の校正ラベルにあるとき）`
+- calibrated_at: 校正年月日（測定機器の校正ラベルにあるとき）
+- pressurization: 消火器の加圧式・蓄圧式の別（ラベルに「蓄圧式」「加圧式」「化学泡」などと書いてあるとき、その語のまま）。消火器でないとき・書いていないときは absent`
 
 export const NAMEPLATE_USER_TEXT = "この写真の銘板を読み取ってください。"
 
@@ -202,6 +208,19 @@ export function nameplateYear(value: string): number | null {
     return west ? Number(west[0].slice(0, 4)) : null
 }
 
+/**
+ * 読み取った「加圧式・蓄圧式」の値を、消火器の台帳の方式に直す（分からなければ null）。
+ *   stored 蓄圧式 / pressurized 加圧式（ガス加圧式・加圧式粉末など）/ chemical 化学泡（反応式）
+ * ★台帳（src/lib/extinguisher-ledger.ts の Pressurization）と同じ値。この file は import を持たないので文字で返す。
+ */
+export function nameplatePressurization(value: string): "stored" | "pressurized" | "chemical" | null {
+    const s = normalizeNameplateText(value)
+    if (s.includes("蓄圧")) return "stored"
+    if (s.includes("化学泡") || s.includes("反応")) return "chemical"
+    if (s.includes("加圧")) return "pressurized"
+    return null
+}
+
 /** 型式番号の頭の字（検定品）。★分かっているものだけ。ほかの機器は頭の字を見ない（泡は第5 の欄の「泡第 ○ 〜 ○ 号」から） */
 const APPROVAL_PREFIX: Partial<Record<NameplateDeviceKind, string>> = { 消火器: "消", 受信機: "受", 中継器: "中", 泡消火薬剤: "泡" }
 
@@ -245,6 +264,11 @@ export function checkNameplateReading(reading: NameplateReading, opts: Nameplate
             const head = APPROVAL_PREFIX[reading.device_kind]
             if (head && !s.startsWith(head)) out.push(`型式番号: ${reading.device_kind}なのに頭の字が「${head}」でない（${approval}）`)
         }
+    }
+    const pressurization = value("pressurization")
+    if (pressurization !== null) {
+        if (reading.device_kind !== "消火器") out.push(`加圧式・蓄圧式: ${reading.device_kind}なのに値がある（${pressurization}）`)
+        else if (nameplatePressurization(pressurization) === null) out.push(`加圧式・蓄圧式: 「蓄圧式」「加圧式」の形でない（${pressurization}）`)
     }
     const maker = value("maker")
     if (maker !== null && opts.makers && opts.makers.length > 0) {

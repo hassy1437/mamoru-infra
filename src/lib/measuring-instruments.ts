@@ -73,7 +73,9 @@ function parseYmd(s: string | null | undefined): Date | null {
     return Number.isNaN(d.getTime()) ? null : d
 }
 
-const ymd = (d: Date) => d.toISOString().slice(0, 10)
+/** ★日付だけの計算（時刻・時間帯を持たない）なので UTC の年月日をそのまま並べる（scripts/check-jst-dates.mjs が toISOString の切り出しを止める） */
+const ymd = (d: Date) =>
+    `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`
 
 /** 月を足す（★月末は月末に寄せる: 1/31 + 1 か月 = 2/28 か 2/29） */
 function addMonths(d: Date, months: number): Date {

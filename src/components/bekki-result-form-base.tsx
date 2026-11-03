@@ -30,6 +30,8 @@ import CameraInput from "@/components/camera-input"
 import JudgmentButtons from "@/components/judgment-buttons"
 import DeviceTableInputs from "@/components/device-table-inputs"
 import CopyTextFromPhotoHint from "@/components/copy-text-from-photo-hint"
+import { NameplatePairButtons } from "@/components/nameplate-read-button"
+import { nameplateFieldPairs } from "@/lib/nameplate-apply"
 import {
     normalizeBekkiInspectorNameForPayload,
     normalizeBekkiInspectorNameForState,
@@ -887,6 +889,7 @@ export default function BekkiResultFormBase({
     )
 
     const busy = saving || loadingPreview || loadingDownload
+    const nameplatePairs = nameplateFieldPairs(extraFields)
     const extraColumnsClass = extraFields.length >= 5 ? "md:grid-cols-5" : extraFields.length >= 4 ? "md:grid-cols-4" : "md:grid-cols-3"
 
     return (
@@ -1009,6 +1012,19 @@ export default function BekkiResultFormBase({
                     {extraFields.length > 0 && (
                         <div className="space-y-2">
                             <p className="text-sm font-medium text-slate-700">{extraFieldsTitle}</p>
+                            {/* ★銘板を撮って読む（2026-11-03・スイッチが on のときだけ出る）。型式等は「型式（型式番号）」で入れる。空の欄は今の値を消さない */}
+                            <NameplatePairButtons
+                                pairs={nameplatePairs.map((p) => ({
+                                    key: p.prefix,
+                                    device: p.device,
+                                    apply: (maker, model) =>
+                                        setExtraFieldValues((prev) => ({
+                                            ...prev,
+                                            [p.makerKey]: maker || prev[p.makerKey] || "",
+                                            [p.modelKey]: model || prev[p.modelKey] || "",
+                                        })),
+                                }))}
+                            />
                             {extraFields.some((f) => /_(maker|model)$/.test(f.key)) && <CopyTextFromPhotoHint />}
                             <div className={`grid gap-4 ${extraColumnsClass}`}>
                                 {extraFields.map((field) =>

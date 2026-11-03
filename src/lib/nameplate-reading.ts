@@ -1,5 +1,7 @@
 /**
- * 銘板の写真を AI（Claude）に読ませるときの「何を・どの形で返させるか」と「正誤の決め方」（2026-10-23）。
+ * 銘板の写真を AI に読ませるときの「何を・どの形で返させるか」と「正誤の決め方」（2026-10-23）。
+ * ★2026-10-30: 評価では Claude・Gemini・GPT に同じ指示・同じ形を渡す（scripts/nameplate-eval/providers.mts）。
+ *   読み取った値の「形」の確かめ（checkNameplateReading）もここに置いた（段階方式と本番の確かめる画面で使う）。
  *
  * ■ 1 か所にまとめる
  *   評価（scripts/nameplate-eval/）と、あとで作る本番の読み取りが★同じ指示・同じ形を使う。
@@ -14,13 +16,25 @@
  * ★この file は実行時の import を持たない（node --experimental-strip-types でそのまま読むため）。
  */
 
-/** 機器の種類（設計書 2.「返す形」） */
+/**
+ * 機器の種類（設計書 2.「返す形」）。
+ * ★2026-10-30: 様式の「製造者名・型式等」の欄にある設備に合わせて足した（docs/銘板の転記_全様式_現状と設計案_20261030.md 1-1）。
+ *   変流器（第12）・操作部（第14 の操作部・複合装置）・排煙機（第18）・漏洩同軸ケーブル・空中線（第22）・
+ *   動力消防ポンプ（第10 の本体）・泡消火薬剤・泡合成器（第5）。以前はどれも「その他」になっていた。
+ *   ★「その他」は最後に置く（迷ったときの逃げ場）。
+ */
 export const NAMEPLATE_DEVICE_KINDS = [
-    "受信機", "中継器", "ポンプ", "電動機", "増幅器", "消火器", "誘導灯", "測定機器", "その他",
+    "受信機", "中継器", "ポンプ", "電動機", "増幅器", "消火器", "誘導灯", "測定機器",
+    "変流器", "操作部", "排煙機", "漏洩同軸ケーブル", "空中線", "動力消防ポンプ", "泡消火薬剤", "泡合成器",
+    "その他",
 ] as const
 export type NameplateDeviceKind = (typeof NAMEPLATE_DEVICE_KINDS)[number]
 
-/** 読む欄。★並びは評価の表・正解の CSV の列の並びにもなる */
+/**
+ * 読む欄。★並びは評価の表・正解の CSV の列の並びにもなる。
+ * ★2026-10-30: 消火器の「加圧式・蓄圧式」を最後に足した（内部・機能の点検の時期が変わる・
+ *   docs/消火器の台帳_現状と設計案_20261030.md Q5）。★前の列の並びを変えないよう最後に置く。
+ */
 export const NAMEPLATE_FIELDS = [
     { key: "maker", label: "製造者名" },
     { key: "model", label: "型式" },
@@ -28,6 +42,7 @@ export const NAMEPLATE_FIELDS = [
     { key: "manufactured", label: "製造年" },
     { key: "serial_number", label: "製造番号" },
     { key: "calibrated_at", label: "校正年月日" },
+    { key: "pressurization", label: "加圧式・蓄圧式" },
 ] as const
 export type NameplateFieldKey = (typeof NAMEPLATE_FIELDS)[number]["key"]
 
@@ -96,7 +111,8 @@ export const NAMEPLATE_SYSTEM_PROMPT = `あなたは消防用設備等の点検�
 - approval_number: 型式番号（検定・認定の番号。例: 受第2〜1号）
 - manufactured: 製造年または製造年月（銘板の書き方のまま）
 - serial_number: 製造番号
-- calibrated_at: 校正年月日（測定機器の校正ラベルにあるとき）`
+- calibrated_at: 校正年月日（測定機器の校正ラベルにあるとき）
+- pressurization: 消火器の加圧式・蓄圧式の別（ラベルに「蓄圧式」「加圧式」「化学泡」などと書いてあるとき、その語のまま）。消火器でないとき・書いていないときは absent`
 
 export const NAMEPLATE_USER_TEXT = "この写真の銘板を読み取ってください。"
 
@@ -174,6 +190,92 @@ export function normalizeNameplateText(s: string): string {
 /** ゆるい比較: 会社の種類の書き方（株式会社・(株) など）の違いも無視する */
 export function looseNameplateText(s: string): string {
     return normalizeNameplateText(s).replace(/株式会社|\(株\)|有限会社|\(有\)/g, "")
+}
+
+// ---- 読み取った値の形の確かめ（2026-10-30） ----------------------------------
+
+const ERA_START: Record<string, number> = { 昭和: 1925, 平成: 1988, 令和: 2018, S: 1925, H: 1988, R: 2018 }
+
+/**
+ * 値の中の西暦の年（和暦は西暦に直す）。年らしい数が無ければ null。
+ *   2015・2015.4・201504・20150412・H27・平成27年・令和元年 など
+ */
+export function nameplateYear(value: string): number | null {
+    const s = normalizeNameplateText(value)
+    const era = s.match(/(昭和|平成|令和|(?<![A-Z])[SHR])\.?(元|\d{1,2})(?!\d)/)
+    if (era) return ERA_START[era[1]] + (era[2] === "元" ? 1 : Number(era[2]))
+    const west = s.match(/(?<!\d)(19|20)\d{2}(?=(\d{2}){0,2}(?!\d))/)
+    return west ? Number(west[0].slice(0, 4)) : null
+}
+
+/**
+ * 読み取った「加圧式・蓄圧式」の値を、消火器の台帳の方式に直す（分からなければ null）。
+ *   stored 蓄圧式 / pressurized 加圧式（ガス加圧式・加圧式粉末など）/ chemical 化学泡（反応式）
+ * ★台帳（src/lib/extinguisher-ledger.ts の Pressurization）と同じ値。この file は import を持たないので文字で返す。
+ */
+export function nameplatePressurization(value: string): "stored" | "pressurized" | "chemical" | null {
+    const s = normalizeNameplateText(value)
+    if (s.includes("蓄圧")) return "stored"
+    if (s.includes("化学泡") || s.includes("反応")) return "chemical"
+    if (s.includes("加圧")) return "pressurized"
+    return null
+}
+
+/** 型式番号の頭の字（検定品）。★分かっているものだけ。ほかの機器は頭の字を見ない（泡は第5 の欄の「泡第 ○ 〜 ○ 号」から） */
+const APPROVAL_PREFIX: Partial<Record<NameplateDeviceKind, string>> = { 消火器: "消", 受信機: "受", 中継器: "中", 泡消火薬剤: "泡" }
+
+export type NameplateCheckOptions = {
+    /** 年の上限を決める「いま」（既定は実行した時） */
+    now?: Date
+    /** 製造者名の一覧（渡したときだけ、一覧に無い製造者名を拾う） */
+    makers?: readonly string[]
+}
+
+/**
+ * 読み取った値の「形」がありえるかを確かめる。引っかかった所を日本語で返す（無ければ空）。
+ * ★正しいかどうかは分からない。ありえない形（未来の製造年・型式番号の頭の字の食い違いなど）だけを拾う。
+ *   使い道: 安いモデルの答えが引っかかったら強いモデルで読み直す（段階方式）／本番の確かめる画面で黄色にする。
+ *   ★引っかかっても値は消さない（読み直しと人の確かめに回すだけ）。
+ */
+export function checkNameplateReading(reading: NameplateReading, opts: NameplateCheckOptions = {}): string[] {
+    const out: string[] = []
+    const thisYear = (opts.now ?? new Date()).getFullYear()
+    for (const f of NAMEPLATE_FIELDS) {
+        const r = reading.fields[f.key]
+        if (r.value !== null && r.value.trim() !== "" && r.legibility !== "clear") out.push(`${f.label}: 値があるのに「${r.legibility === "absent" ? "銘板に無い" : "読めない"}」と答えた`)
+        if ((r.value === null || r.value.trim() === "") && r.legibility === "clear") out.push(`${f.label}: 「読めた」と答えたのに値が無い`)
+    }
+    const value = (key: NameplateFieldKey) => {
+        const v = reading.fields[key].value
+        return v === null || v.trim() === "" ? null : v
+    }
+    for (const [key, label, from] of [["manufactured", "製造年", 1950], ["calibrated_at", "校正年月日", 2000]] as const) {
+        const v = value(key)
+        if (v === null) continue
+        const year = nameplateYear(v)
+        if (year === null) out.push(`${label}: 年の形が無い（${v}）`)
+        else if (year < from || year > thisYear) out.push(`${label}: ありえない年（${v} → ${year} 年）`)
+    }
+    const approval = value("approval_number")
+    if (approval !== null) {
+        const s = normalizeNameplateText(approval)
+        if (s.includes("第")) {
+            if (!/^[^\d第]{1,4}第[\dA-Z~\-・,]+号$/.test(s)) out.push(`型式番号: 「〇第…号」の形でない（${approval}）`)
+            const head = APPROVAL_PREFIX[reading.device_kind]
+            if (head && !s.startsWith(head)) out.push(`型式番号: ${reading.device_kind}なのに頭の字が「${head}」でない（${approval}）`)
+        }
+    }
+    const pressurization = value("pressurization")
+    if (pressurization !== null) {
+        if (reading.device_kind !== "消火器") out.push(`加圧式・蓄圧式: ${reading.device_kind}なのに値がある（${pressurization}）`)
+        else if (nameplatePressurization(pressurization) === null) out.push(`加圧式・蓄圧式: 「蓄圧式」「加圧式」の形でない（${pressurization}）`)
+    }
+    const maker = value("maker")
+    if (maker !== null && opts.makers && opts.makers.length > 0) {
+        const known = new Set(opts.makers.map(looseNameplateText))
+        if (!known.has(looseNameplateText(maker))) out.push(`製造者名: 一覧に無い（${maker}）`)
+    }
+    return out
 }
 
 /**

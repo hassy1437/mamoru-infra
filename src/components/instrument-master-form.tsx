@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
 import CopyTextFromPhotoHint from "@/components/copy-text-from-photo-hint"
+import NameplateReadButton from "@/components/nameplate-read-button"
+import { nameplateIsoDate, type NameplateValues } from "@/lib/nameplate-apply"
 import { CODE_INPUT_PROPS } from "@/lib/code-input-props"
 import { friendlyError } from "@/lib/error-messages"
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes"
@@ -24,7 +26,7 @@ import {
 
 /**
  * 測定機器の登録・直す（2026-10-30・点検者の台帳の画面と同じ形）。
- * ★写真は残さない（銘板の文字は端末の文字認識でコピーして貼る。AI の読み取りは評価のあと）。
+ * ★銘板の文字は端末の文字認識でコピーして貼るか、「銘板を撮って読む」（2026-11-03・スイッチが on のときだけ出る）。
  */
 export default function InstrumentMasterForm({ instrument }: { instrument?: MeasuringInstrument }) {
     const router = useRouter()
@@ -50,6 +52,23 @@ export default function InstrumentMasterForm({ instrument }: { instrument?: Meas
     }, [markDirty])
 
     const set = (field: keyof typeof v) => (e: React.ChangeEvent<HTMLInputElement>) => setV((prev) => ({ ...prev, [field]: e.target.value }))
+
+    /**
+     * 銘板を撮って読んだ値を入れる（2026-11-03）。★空の欄は今の値を消さない。
+     * ★校正年月日は日付の欄なので、年・月・日がそろったときだけ入れる（そろわなければ知らせて手で入れてもらう）
+     */
+    const applyNameplate = (r: NameplateValues) => {
+        const date = r.calibrated_at ? nameplateIsoDate(r.calibrated_at) : null
+        setV((prev) => ({
+            ...prev,
+            model: r.model || prev.model,
+            maker: r.maker || prev.maker,
+            serial_number: r.serial_number || prev.serial_number,
+            calibrated_at: date ?? prev.calibrated_at,
+        }))
+        markDirty()
+        if (r.calibrated_at && !date) toast.warning(`校正年月日「${r.calibrated_at}」は日付の形にできなかったので入れていません。手で入れてください。`)
+    }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -99,6 +118,7 @@ export default function InstrumentMasterForm({ instrument }: { instrument?: Meas
                     <CardDescription>点検票の測定機器の表に入る 4 つ（機器名・型式・校正年月日・製造者名）と、見分けるための製造番号です。</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
+                    <NameplateReadButton purpose="instrument" onApply={applyNameplate} />
                     <CopyTextFromPhotoHint />
                     <div className="grid gap-6 md:grid-cols-2">
                         <div className="space-y-2 md:col-span-2">

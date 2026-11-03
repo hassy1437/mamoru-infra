@@ -40,6 +40,7 @@ import { PDF_FIT_FRAGMENT, openInAppPdfPreview, prefersInAppPdfViewer } from "@/
 import { soukatsuPdfGate } from "@/lib/pdf-gate-client"
 import { CODE_INPUT_PROPS } from "@/lib/code-input-props"
 import CopyTextFromPhotoHint from "@/components/copy-text-from-photo-hint"
+import { NameplatePairButtons } from "@/components/nameplate-read-button"
 import { useAutoSave } from "@/hooks/use-auto-save"
 import FormActionBar from "@/components/form-action-bar"
 import InspectorSyncNotice from "@/components/inspector-sync-notice"
@@ -967,6 +968,13 @@ export default function FoamBekki5Form({
                         </div>
                     </div>
 
+                    {/* ★銘板を撮って読む（2026-11-03・スイッチが on のときだけ出る）。空の欄は今の値を消さない。★泡消火薬剤・泡合成器は 1 組の欄に別の機器が入る（型式番号も 2 欄）ので、まだボタンを出さない */}
+                    <NameplatePairButtons
+                        pairs={[
+                            { key: "pump", device: "ポンプ", apply: (maker, model) => { if (maker) setPumpMaker(maker); if (model) setPumpModel(model) } },
+                            { key: "motor", device: "電動機", apply: (maker, model) => { if (maker) setMotorMaker(maker); if (model) setMotorModel(model) } },
+                        ]}
+                    />
                     <CopyTextFromPhotoHint />
                     {/* ★「点検設備名」の入力欄は出さない（#20）。紙の「点検設備名」はポンプ・電動機の製造者名／型式の
                         行見出しで、自由に設備名を書く欄が無い（ルートも描かない＝入れても載らなかった） */}

@@ -27,7 +27,7 @@ export const NAMEPLATE_CALLERS: NameplateCallers = {
 }
 
 function withTimeout(ms: number): typeof fetch {
-    return (input, init) => fetch(input, { ...init, signal: AbortSignal.timeout(ms) })
+    return (input, init) => fetch(input, { ...init, signal: AbortSignal.timeout(ms) }) // fetch-ok: サーバから AI 各社へ（PDF ではない）
 }
 
 /** キーらしい文字列をエラーの文から消す（★念のため。各社のエラーにキーが入ることは無いはず） */

@@ -39,7 +39,7 @@ const CODE_FIELDS: readonly NameplateFieldKey[] = ["model", "approval_number", "
 // ---- 使えるか（★画面に同じボタンが何個あっても 1 回だけ聞く） ----
 let statusPromise: Promise<NameplateStatusResponse> | null = null
 function loadNameplateStatus(): Promise<NameplateStatusResponse> {
-    statusPromise ??= fetch("/api/nameplate/status", { cache: "no-store" })
+    statusPromise ??= fetch("/api/nameplate/status", { cache: "no-store" }) // fetch-ok: 銘板の読み取りを出すか（PDF ではない）
         .then((r) => (r.ok ? (r.json() as Promise<NameplateStatusResponse>) : { enabled: false as const }))
         .catch(() => {
             statusPromise = null
@@ -200,7 +200,7 @@ export default function NameplateReadButton({ purpose, device, onApply, inGroup 
         form.append("photo", photo, "nameplate.jpg")
         let res: NameplateReadResponse
         try {
-            const r = await fetch("/api/nameplate/read", { method: "POST", body: form })
+            const r = await fetch("/api/nameplate/read", { method: "POST", body: form }) // fetch-ok: 銘板の写真を読む（PDF ではない）
             res = (await r.json()) as NameplateReadResponse
         } catch {
             setState({ kind: "error", message: "読み取りに失敗しました（電波の届く所でもう一度試すか、手で入れてください）。", retry: true })
@@ -222,7 +222,7 @@ export default function NameplateReadButton({ purpose, device, onApply, inGroup 
         const { read, values } = state
         onApply(Object.fromEntries(keys.map((k) => [k, (values[k] ?? "").trim()])) as NameplateValues)
         // ★答え合わせの記録は待たない（失敗しても入力は止めない）
-        void fetch("/api/nameplate/confirm", {
+        void fetch("/api/nameplate/confirm", { // fetch-ok: 答え合わせの記録（PDF ではない）
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ id: read.id, values: nameplateConfirmValues(values, keys) }),

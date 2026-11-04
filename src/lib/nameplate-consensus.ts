@@ -181,7 +181,13 @@ export function nameplateOutcomes(
             NAMEPLATE_FIELDS.filter((f) => Object.hasOwn(finalValues, f.key)).map((f) => {
                 const fr = reading.fields[f.key]
                 const got = fr && fr.legibility === "clear" && present(fr.value) ? fr.value : null
-                return [f.key, judgeNameplateField(finalValues[f.key] ?? null, got)]
+                const expected = finalValues[f.key] ?? null
+                const verdict = judgeNameplateField(expected, got)
+                // ★製造年・校正年月日は、書き方が違っても同じ年・同じ日なら「表記ゆれ」（多数決と同じ見方・2024/04/12 と 2024.4.12）
+                if (verdict === "wrong" && present(expected) && present(got) && nameplateVoteKey(f.key, expected) === nameplateVoteKey(f.key, got)) {
+                    return [f.key, "variant"]
+                }
+                return [f.key, verdict]
             }),
         ) as Partial<Record<NameplateFieldKey, NameplateVerdict>>
     }

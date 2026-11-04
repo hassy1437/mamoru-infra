@@ -55,3 +55,19 @@ describe("3 社に同時に読ませる", () => {
         expect(rs.filter((r) => r.ok)).toHaveLength(2)
     }, 10_000)
 })
+
+describe("ヒント（確かめ済みの製造者名）", () => {
+    it("3 社に同じヒントを渡す", async () => {
+        const seen: (string[] | undefined)[] = []
+        const caller = async (_m: unknown, _i: unknown, _t: number, hint?: { makers?: readonly string[] }) => {
+            seen.push(hint?.makers ? [...hint.makers] : undefined)
+            return { finished: true, stopReason: "end_turn", text: okText, inputTokens: 1, outputTokens: 1, error: null }
+        }
+        const callers: NameplateCallers = { anthropic: caller, google: caller, openai: caller }
+        await readNameplateWithAll(models, IMG, callers, 5_000, { makers: ["能美防災", "ホーチキ"] })
+        expect(seen).toEqual([["能美防災", "ホーチキ"], ["能美防災", "ホーチキ"], ["能美防災", "ホーチキ"]])
+        seen.length = 0
+        await readNameplateWithAll(models, IMG, callers, 5_000)
+        expect(seen).toEqual([undefined, undefined, undefined])
+    })
+})

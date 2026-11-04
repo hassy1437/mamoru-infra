@@ -140,6 +140,18 @@ describe("答え合わせ", () => {
         expect(out.anthropic).toEqual({ maker: "correct" })
     })
 
+    it("★製造年・校正年月日は、書き方が違っても同じ年・同じ日なら variant（wrong にしない）", () => {
+        const out = nameplateOutcomes(
+            [
+                result("anthropic", reading("測定機器", { calibrated_at: "2024/04/12", manufactured: "H27" })),
+                result("google", reading("測定機器", { calibrated_at: "2024.4.13", manufactured: "2016年" })),
+            ],
+            { calibrated_at: "2024.4.12", manufactured: "2015年" },
+        )
+        expect(out.anthropic).toEqual({ calibrated_at: "variant", manufactured: "variant" })
+        expect(out.google).toEqual({ calibrated_at: "wrong", manufactured: "wrong" })
+    })
+
     it("読めないと答えた値は空として採点する（入れた値があれば missed）", () => {
         const out = nameplateOutcomes(
             [result("anthropic", reading("受信機", { maker: { value: "能美", legibility: "unreadable" } }))],

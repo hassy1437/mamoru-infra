@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
 import { describe, expect, it } from "vitest"
 import {
     NAMEPLATE_DIALOG_FIELDS,
@@ -89,5 +91,14 @@ describe("写真を縮める大きさ", () => {
         expect(nameplateTargetSize(4032, 3024, 1568)).toEqual({ width: 1568, height: 1176 })
         expect(nameplateTargetSize(3024, 4032, 1568)).toEqual({ width: 1176, height: 1568 })
         expect(nameplateTargetSize(800, 600, 1568)).toEqual({ width: 800, height: 600 })
+    })
+})
+
+describe("読み取りの画面の置き場所（components/nameplate-read-button.tsx）", () => {
+    // ★部品を描かずにソースで見る（このリポジトリのテストは node で回す）
+    const src = readFileSync(join(process.cwd(), "src/components/nameplate-read-button.tsx"), "utf8")
+    it("body の直下に出す（台帳の <form> の中で改行を押すと登録が送られる・親の余白が付く・2026-11-04）", () => {
+        expect(src).toMatch(/createPortal\(\s*<div role="dialog"/)
+        expect(src).toContain("document.body,")
     })
 })

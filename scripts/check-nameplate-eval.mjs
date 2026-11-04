@@ -274,6 +274,7 @@ check(oReq.reasoning.effort === "low" && oReq.max_output_tokens === 4000 && oReq
 check("inlineData" in gReq.contents[0].parts[0] && gReq.contents[0].parts[1].text === R.NAMEPLATE_USER_TEXT, "Gemini: 写真を先・頼む文を後に置いていない")
 check(gReq.generationConfig.responseMimeType === "application/json" && gReq.generationConfig.maxOutputTokens === 4000, "Gemini: JSON で返させていない・出力の上限が違う")
 check(gReq.generationConfig.thinkingConfig.thinkingLevel === "low", "Gemini: 考える量を渡していない")
+check(gReq.store === false, "Gemini: やりとりを Google 側の記録に残さない設定（store: false）が無い")
 
 // Gemini の形
 const gs = P.toGeminiSchema(R.NAMEPLATE_SCHEMA)

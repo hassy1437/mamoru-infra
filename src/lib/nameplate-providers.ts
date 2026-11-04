@@ -233,6 +233,9 @@ export function buildGeminiRequest(img: EvalImage, effort: Effort, hint?: Namepl
             // ★考える量（Gemini 3 の書き方）。古い 2.5 は thinkingBudget なので、2.5 を --id で選ぶと 400 になる
             thinkingConfig: { thinkingLevel: effort },
         },
+        // ★やりとりを Google 側の記録（Logs and datasets）に残さない。2026-10-26 から、有料の新しいプロジェクトは既定で残す（store=true）。
+        //   頼みごとの store がプロジェクトの設定より優先される。不正利用の監視のための保存（55 日）はこれとは別で止められない
+        store: false,
     }
 }
 

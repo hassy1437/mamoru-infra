@@ -1,7 +1,7 @@
 // 銘板の読み取り: 3 社の API の呼び方（2026-10-30・評価の道具から。2026-11-03 に点検アプリ本体と共用にした＝src/lib へ移した）。
 //
 // ■ そろえること（比べるため）
-//   ・指示（NAMEPLATE_SYSTEM_PROMPT）・写真・頼む文（NAMEPLATE_USER_TEXT）・返す形（NAMEPLATE_SCHEMA）は 3 社とも同じ
+//   ・指示（NAMEPLATE_SYSTEM_PROMPT）・写真・頼む文（nameplateUserText・ヒントも同じ）・返す形（NAMEPLATE_SCHEMA）は 3 社とも同じ
 //   ・写真を先、頼む文を後に置く
 //   ・考える量は同じ言葉（low・medium・high）で渡す。出力の上限は 4,000
 //   ・決まった形で返させる（Anthropic: output_config.format ／ OpenAI: text.format の json_schema（strict）／
@@ -15,8 +15,9 @@
 import {
     NAMEPLATE_SCHEMA,
     NAMEPLATE_SYSTEM_PROMPT,
-    NAMEPLATE_USER_TEXT,
     buildNameplateRequest,
+    nameplateUserText,
+    type NameplateHint,
 } from "./nameplate-reading.ts"
 
 export type Effort = "low" | "medium" | "high"
@@ -103,9 +104,9 @@ export type AnthropicLike = {
     messages: { create(req: ReturnType<typeof buildNameplateRequest>): Promise<AnthropicMessage> }
 }
 
-export async function callAnthropic(client: AnthropicLike, model: string, img: EvalImage, effort: Effort): Promise<Reply> {
+export async function callAnthropic(client: AnthropicLike, model: string, img: EvalImage, effort: Effort, hint?: NameplateHint): Promise<Reply> {
     try {
-        const res = await client.messages.create(buildNameplateRequest({ model, imageBase64: img.base64, mediaType: img.mediaType, effort }))
+        const res = await client.messages.create(buildNameplateRequest({ model, imageBase64: img.base64, mediaType: img.mediaType, effort, hint }))
         const text = (res.content ?? []).flatMap((b) => (b.type === "text" && typeof b.text === "string" ? [b.text] : [])).join("")
         return {
             // ★断られた（refusal）・途中で切れた（max_tokens）答えは形が崩れうるので読まない（設計書 7.「作るときの注意」）
@@ -126,7 +127,7 @@ export async function callAnthropic(client: AnthropicLike, model: string, img: E
 
 export const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
 
-export function buildOpenAIRequest(model: string, img: EvalImage, effort: Effort) {
+export function buildOpenAIRequest(model: string, img: EvalImage, effort: Effort, hint?: NameplateHint) {
     return {
         model,
         instructions: NAMEPLATE_SYSTEM_PROMPT,
@@ -136,7 +137,7 @@ export function buildOpenAIRequest(model: string, img: EvalImage, effort: Effort
                 content: [
                     // ★細かい字を読むので high（既定の auto だと縮めて見ることがある）
                     { type: "input_image", image_url: `data:${img.mediaType};base64,${img.base64}`, detail: "high" },
-                    { type: "input_text", text: NAMEPLATE_USER_TEXT },
+                    { type: "input_text", text: nameplateUserText(hint) },
                 ],
             },
         ],
@@ -167,8 +168,15 @@ export function readOpenAIResponse(json: OpenAIResponse): Reply {
     }
 }
 
-export async function callOpenAI(apiKey: string, model: string, img: EvalImage, effort: Effort, fetchImpl: typeof fetch = fetch): Promise<Reply> {
-    const r = await postJson(OPENAI_RESPONSES_URL, { Authorization: `Bearer ${apiKey}` }, buildOpenAIRequest(model, img, effort), fetchImpl)
+export async function callOpenAI(
+    apiKey: string,
+    model: string,
+    img: EvalImage,
+    effort: Effort,
+    fetchImpl: typeof fetch = fetch,
+    hint?: NameplateHint,
+): Promise<Reply> {
+    const r = await postJson(OPENAI_RESPONSES_URL, { Authorization: `Bearer ${apiKey}` }, buildOpenAIRequest(model, img, effort, hint), fetchImpl)
     return "error" in r ? failed(r.error) : readOpenAIResponse(r.json as OpenAIResponse)
 }
 
@@ -206,7 +214,7 @@ export function toGeminiSchema(node: SchemaNode): Record<string, unknown> {
     return out
 }
 
-export function buildGeminiRequest(img: EvalImage, effort: Effort) {
+export function buildGeminiRequest(img: EvalImage, effort: Effort, hint?: NameplateHint) {
     return {
         systemInstruction: { parts: [{ text: NAMEPLATE_SYSTEM_PROMPT }] },
         contents: [
@@ -214,7 +222,7 @@ export function buildGeminiRequest(img: EvalImage, effort: Effort) {
                 role: "user",
                 parts: [
                     { inlineData: { mimeType: img.mediaType, data: img.base64 } },
-                    { text: NAMEPLATE_USER_TEXT },
+                    { text: nameplateUserText(hint) },
                 ],
             },
         ],
@@ -250,8 +258,15 @@ export function readGeminiResponse(json: GeminiResponse): Reply {
     }
 }
 
-export async function callGemini(apiKey: string, model: string, img: EvalImage, effort: Effort, fetchImpl: typeof fetch = fetch): Promise<Reply> {
-    const r = await postJson(geminiUrl(model), { "x-goog-api-key": apiKey }, buildGeminiRequest(img, effort), fetchImpl)
+export async function callGemini(
+    apiKey: string,
+    model: string,
+    img: EvalImage,
+    effort: Effort,
+    fetchImpl: typeof fetch = fetch,
+    hint?: NameplateHint,
+): Promise<Reply> {
+    const r = await postJson(geminiUrl(model), { "x-goog-api-key": apiKey }, buildGeminiRequest(img, effort, hint), fetchImpl)
     return "error" in r ? failed(r.error) : readGeminiResponse(r.json as GeminiResponse)
 }
 

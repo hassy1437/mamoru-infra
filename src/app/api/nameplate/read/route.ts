@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server"
 import { NAMEPLATE_PROMPT_VERSION, nameplateAiEnabledFor, nameplateLiveModels } from "@/lib/nameplate-ai-config"
 import { NAMEPLATE_PROVIDER_LABEL, buildNameplateConsensus } from "@/lib/nameplate-consensus"
 import { readNameplateWithAll } from "@/lib/nameplate-server"
+import { NAMEPLATE_HINT_MAX_MAKERS, NAMEPLATE_HINT_MIN_MAKERS } from "@/lib/nameplate-reading"
 import { NAMEPLATE_UPLOAD_MAX_BYTES, type NameplatePurpose, type NameplateReadResponse } from "@/lib/nameplate-api"
 
 /**
@@ -37,10 +38,17 @@ export async function POST(req: Request) {
         return fail(400, "bad_request", "写真の形が違います。撮り直してください。")
     }
 
+    // ヒント（確かめ済みの製造者名）。★20 社そろうまでは使わない（頼む文も形の確かめも今までどおり）。読めなければ使わない
+    const { data: makersRows } = await supabase.rpc("nameplate_known_makers", { p_limit: NAMEPLATE_HINT_MAX_MAKERS })
+    const knownMakers = Array.isArray(makersRows) ? makersRows.map((r: { maker: string }) => r.maker).filter(Boolean) : []
+    const makers = knownMakers.length >= NAMEPLATE_HINT_MIN_MAKERS ? knownMakers : undefined
+    // ★ヒントを添えた回は指示の版に「+makers」を付ける（成績表で、添えた回と添えない回を見比べるため）
+    const promptVersion = makers ? `${NAMEPLATE_PROMPT_VERSION}+makers` : NAMEPLATE_PROMPT_VERSION
+
     // 2. 行を作る（★月の上限は DB が止める）
     const { data: created, error: createError } = await supabase
         .from("nameplate_readings")
-        .insert({ purpose: purpose as NameplatePurpose, prompt_version: NAMEPLATE_PROMPT_VERSION })
+        .insert({ purpose: purpose as NameplatePurpose, prompt_version: promptVersion })
         .select("id")
         .single()
     if (createError || !created) {
@@ -61,12 +69,15 @@ export async function POST(req: Request) {
     }
 
     const models = nameplateLiveModels(process.env)
-    const results = await readNameplateWithAll(models, { base64: Buffer.from(bytes).toString("base64"), mediaType: "image/jpeg" })
-
-    // ヒント（確かめ済みの製造者名）は形の確かめに使う。読めなければ使わない
-    const { data: makersRows } = await supabase.rpc("nameplate_known_makers", { p_limit: 200 })
-    const makers = Array.isArray(makersRows) ? makersRows.map((r: { maker: string }) => r.maker).filter(Boolean) : []
-    const consensus = buildNameplateConsensus(results, { makers: makers.length >= 20 ? makers : undefined })
+    const results = await readNameplateWithAll(
+        models,
+        { base64: Buffer.from(bytes).toString("base64"), mediaType: "image/jpeg" },
+        undefined,
+        undefined,
+        makers ? { makers } : undefined,
+    )
+    // ★ヒントは形の確かめ（一覧に無い製造者名を黄色に）にも使う
+    const consensus = buildNameplateConsensus(results, { makers })
 
     const { error: saveError } = await supabase
         .from("nameplate_readings")

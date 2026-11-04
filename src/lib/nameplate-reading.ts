@@ -117,6 +117,32 @@ export const NAMEPLATE_SYSTEM_PROMPT = `あなたは消防用設備等の点検�
 export const NAMEPLATE_USER_TEXT = "この写真の銘板を読み取ってください。"
 
 /**
+ * ヒント（2026-11-04・設計メモ 1. の 3「ヒントを育てる」）: 点検者が確かめて入れた製造者名の一覧を、頼む文に添える。
+ * ★字の読み違い（似た字・かすれ）を減らすためだけに使う。決まり 1〜3（書いてあるとおりに写す・推し量らない）が優先。
+ *   一覧に合わせて書き換えたり、読めない字を一覧から補ったりしないよう、文で念を押す。
+ * ★数が少ないうちは添えない（NAMEPLATE_HINT_MIN_MAKERS）。添えた回は指示の版に「+makers」が付く（成績表で見比べるため）。
+ * ★システムの指示（NAMEPLATE_SYSTEM_PROMPT）は変えない（3 社とも同じ・キャッシュも効く）。頼む文の後ろに足す。
+ */
+export type NameplateHint = { makers?: readonly string[] }
+export const NAMEPLATE_HINT_MIN_MAKERS = 20
+export const NAMEPLATE_HINT_MAX_MAKERS = 200
+
+/** 頼む文（ヒントがあれば後ろに添える） */
+export function nameplateUserText(hint?: NameplateHint): string {
+    const makers = [...new Set((hint?.makers ?? []).map((m) => m.trim()).filter((m) => m !== "" && m.length <= 60))].slice(
+        0,
+        NAMEPLATE_HINT_MAX_MAKERS,
+    )
+    if (makers.length < NAMEPLATE_HINT_MIN_MAKERS) return NAMEPLATE_USER_TEXT
+    return `${NAMEPLATE_USER_TEXT}
+
+参考（製造者名の読み違いを減らすためだけに使う）: これまでに点検者が確かめた製造者名の書き方です。全部の会社が入っているわけではありません。
+- 銘板の文字がこの中の名前と同じに読めるときは、字の読み違いに気をつけて写してください。
+- 一覧に合わせて書き換えない・読めない字を一覧から補わない・一覧に無い会社も銘板どおりに写す（決まり 1〜3 が優先）。
+${makers.join("、")}`
+}
+
+/**
  * 読み取りの依頼の中身（モデル・画像・考える量だけを差し替える）。
  * ★thinking は送らない。Opus 5.5 は常に考える（切ると 400）、Sonnet 5.5・Haiku 5.5 も既定で考える。
  *   考える量は effort で決める（既定 low ＝ 読み取りに深い思考は要らない。評価で確かめる）。
@@ -128,6 +154,8 @@ export function buildNameplateRequest(args: {
     mediaType: "image/jpeg" | "image/png" | "image/webp"
     effort?: "low" | "medium" | "high"
     maxTokens?: number
+    /** ヒント（★無ければ頼む文は今までどおり） */
+    hint?: NameplateHint
 }) {
     return {
         model: args.model,
@@ -141,7 +169,7 @@ export function buildNameplateRequest(args: {
                         type: "image" as const,
                         source: { type: "base64" as const, media_type: args.mediaType, data: args.imageBase64 },
                     },
-                    { type: "text" as const, text: NAMEPLATE_USER_TEXT },
+                    { type: "text" as const, text: nameplateUserText(args.hint) },
                 ],
             },
         ],

@@ -8,22 +8,22 @@
  */
 import Anthropic from "@anthropic-ai/sdk"
 import { callAnthropic, callGemini, callOpenAI, type AnthropicLike, type EvalImage, type Reply } from "./nameplate-providers.ts"
-import { parseNameplateReading } from "./nameplate-reading.ts"
+import { parseNameplateReading, type NameplateHint } from "./nameplate-reading.ts"
 import { nameplateCostUsd, type NameplateLiveModel } from "./nameplate-ai-config.ts"
 import type { NameplateProvider, NameplateProviderResult } from "./nameplate-consensus.ts"
 
 export const NAMEPLATE_CALL_TIMEOUT_MS = 30_000
 const ERROR_MAX = 300
 
-export type NameplateCaller = (model: NameplateLiveModel, img: EvalImage, timeoutMs: number) => Promise<Reply>
+export type NameplateCaller = (model: NameplateLiveModel, img: EvalImage, timeoutMs: number, hint?: NameplateHint) => Promise<Reply>
 export type NameplateCallers = Record<NameplateProvider, NameplateCaller>
 
 /** 本物の呼び方（★考える量は low・評価の道具と同じ） */
 export const NAMEPLATE_CALLERS: NameplateCallers = {
-    anthropic: (m, img, timeoutMs) =>
-        callAnthropic(new Anthropic({ apiKey: m.apiKey, timeout: timeoutMs, maxRetries: 1 }) as unknown as AnthropicLike, m.id, img, "low"),
-    google: (m, img, timeoutMs) => callGemini(m.apiKey, m.id, img, "low", withTimeout(timeoutMs)),
-    openai: (m, img, timeoutMs) => callOpenAI(m.apiKey, m.id, img, "low", withTimeout(timeoutMs)),
+    anthropic: (m, img, timeoutMs, hint) =>
+        callAnthropic(new Anthropic({ apiKey: m.apiKey, timeout: timeoutMs, maxRetries: 1 }) as unknown as AnthropicLike, m.id, img, "low", hint),
+    google: (m, img, timeoutMs, hint) => callGemini(m.apiKey, m.id, img, "low", withTimeout(timeoutMs), hint),
+    openai: (m, img, timeoutMs, hint) => callOpenAI(m.apiKey, m.id, img, "low", withTimeout(timeoutMs), hint),
 }
 
 function withTimeout(ms: number): typeof fetch {
@@ -59,6 +59,8 @@ export async function readNameplateWithAll(
     img: EvalImage,
     callers: NameplateCallers = NAMEPLATE_CALLERS,
     timeoutMs: number = NAMEPLATE_CALL_TIMEOUT_MS,
+    /** ヒント（確かめ済みの製造者名）。★3 社に同じものを渡す */
+    hint?: NameplateHint,
 ): Promise<NameplateProviderResult[]> {
     const keys = models.map((m) => m.apiKey)
     return Promise.all(
@@ -66,7 +68,7 @@ export async function readNameplateWithAll(
             const started = Date.now()
             const timedOut: Reply = { finished: false, stopReason: null, text: null, inputTokens: 0, outputTokens: 0, error: "時間切れ" }
             const reply = await race(
-                Promise.resolve().then(() => callers[m.provider](m, img, timeoutMs)),
+                Promise.resolve().then(() => callers[m.provider](m, img, timeoutMs, hint)),
                 timeoutMs,
                 timedOut,
             )

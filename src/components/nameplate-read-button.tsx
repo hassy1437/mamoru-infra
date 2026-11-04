@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useId, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import { AlertTriangle, CheckCircle2, CircleHelp, Loader2, ScanLine, X } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -253,56 +254,61 @@ export default function NameplateReadButton({ purpose, device, onApply, inGroup 
             {/* ★capture を付けない（撮るか、撮ってある写真を選ぶかを端末が聞く） */}
             <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
 
-            {isOpen && (
-                <div role="dialog" aria-modal="true" aria-labelledby={titleId} className="fixed inset-0 z-[80] flex flex-col bg-white sm:bg-slate-900/40 sm:p-6">
-                    <div className="flex min-h-0 flex-1 flex-col bg-white sm:mx-auto sm:w-full sm:max-w-xl sm:rounded-xl sm:shadow-xl">
-                        <div className="flex items-center gap-2 border-b border-slate-200 px-4 py-2 pt-[max(0.5rem,env(safe-area-inset-top))]">
-                            <p id={titleId} className="min-w-0 flex-1 truncate font-medium text-slate-800">
-                                {title}
-                            </p>
-                            {!busy && (
-                                <Button ref={closeRef} type="button" variant="ghost" size="sm" className="min-h-11 px-3" onClick={close}>
-                                    <X className="h-5 w-5" aria-hidden="true" />
-                                    <span className="ml-1">{state.kind === "result" ? "入れずに閉じる" : "閉じる"}</span>
-                                </Button>
-                            )}
-                        </div>
-
-                        <div className="flex-1 overflow-auto px-4 py-4">
-                            {state.kind === "reading" && (
-                                <p className="flex flex-col items-center justify-center gap-3 py-16 text-center text-slate-700" role="status">
-                                    <Loader2 className="h-8 w-8 animate-spin text-slate-500" aria-hidden="true" />
-                                    <span>3 つの AI で読んでいます（10〜30 秒）</span>
+            {/* ★画面は body の直下に出す（2026-11-04・iPhone SE／13 で確かめて直した）。置いた場所の中に出すと、
+                 1. 測定機器の台帳の <form> の中に入り、欄で改行（Enter）を押すと台帳の登録が送られて保存されてしまう
+                 2. 親の space-y-* の下の余白（24px）が付き、画面の下に後ろのページがのぞく */}
+            {isOpen &&
+                createPortal(
+                    <div role="dialog" aria-modal="true" aria-labelledby={titleId} className="fixed inset-0 z-[80] flex flex-col bg-white sm:bg-slate-900/40 sm:p-6">
+                        <div className="flex min-h-0 flex-1 flex-col bg-white sm:mx-auto sm:w-full sm:max-w-xl sm:rounded-xl sm:shadow-xl">
+                            <div className="flex items-center gap-2 border-b border-slate-200 px-4 py-2 pt-[max(0.5rem,env(safe-area-inset-top))]">
+                                <p id={titleId} className="min-w-0 flex-1 truncate font-medium text-slate-800">
+                                    {title}
                                 </p>
-                            )}
-                            {state.kind === "error" && (
-                                <div className="space-y-4">
-                                    <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                                        {state.message}
+                                {!busy && (
+                                    <Button ref={closeRef} type="button" variant="ghost" size="sm" className="min-h-11 px-3" onClick={close}>
+                                        <X className="h-5 w-5" aria-hidden="true" />
+                                        <span className="ml-1">{state.kind === "result" ? "入れずに閉じる" : "閉じる"}</span>
+                                    </Button>
+                                )}
+                            </div>
+
+                            <div className="flex-1 overflow-auto px-4 py-4">
+                                {state.kind === "reading" && (
+                                    <p className="flex flex-col items-center justify-center gap-3 py-16 text-center text-slate-700" role="status">
+                                        <Loader2 className="h-8 w-8 animate-spin text-slate-500" aria-hidden="true" />
+                                        <span>3 つの AI で読んでいます（10〜30 秒）</span>
                                     </p>
-                                    {state.retry && (
-                                        <Button type="button" variant="outline" className="min-h-11 gap-2" onClick={() => fileRef.current?.click()}>
-                                            <ScanLine className="h-4 w-4" aria-hidden="true" />
-                                            撮り直す
-                                        </Button>
-                                    )}
+                                )}
+                                {state.kind === "error" && (
+                                    <div className="space-y-4">
+                                        <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                                            {state.message}
+                                        </p>
+                                        {state.retry && (
+                                            <Button type="button" variant="outline" className="min-h-11 gap-2" onClick={() => fileRef.current?.click()}>
+                                                <ScanLine className="h-4 w-4" aria-hidden="true" />
+                                                撮り直す
+                                            </Button>
+                                        )}
+                                    </div>
+                                )}
+                                {state.kind === "result" && (
+                                    <ResultBody read={state.read} values={state.values} keys={keys} onChange={setValue} />
+                                )}
+                            </div>
+
+                            {state.kind === "result" && (
+                                <div className="border-t border-slate-200 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+                                    <Button type="button" className="h-auto min-h-12 w-full text-base font-bold" onClick={apply}>
+                                        この値で入れる
+                                    </Button>
                                 </div>
                             )}
-                            {state.kind === "result" && (
-                                <ResultBody read={state.read} values={state.values} keys={keys} onChange={setValue} />
-                            )}
                         </div>
-
-                        {state.kind === "result" && (
-                            <div className="border-t border-slate-200 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-                                <Button type="button" className="h-auto min-h-12 w-full text-base font-bold" onClick={apply}>
-                                    この値で入れる
-                                </Button>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
+                    </div>,
+                    document.body,
+                )}
         </>
     )
 }

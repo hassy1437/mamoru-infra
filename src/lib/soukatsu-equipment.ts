@@ -27,6 +27,23 @@ export type SoukatsuEquipmentItem = {
 export const DETAIL_FIELDS = ["bad_detail", "action", "witness"] as const
 export type DetailField = (typeof DETAIL_FIELDS)[number]
 
+/** 画面の欄の見出し（総括表の作成・編集の画面の「消防用設備等の点検結果」） */
+export const DETAIL_FIELD_LABELS: Record<DetailField, string> = {
+    bad_detail: "不良内容",
+    action: "措置内容",
+    witness: "立会者",
+}
+
+/**
+ * 読み上げで使う欄の名前（★設備名を入れる・2026-11-08 定期テスト 27）。
+ *   設備の数だけ同じ見出し（不良内容・措置内容・立会者）の欄が並ぶので、見出しだけでは何の設備の欄か分からない。
+ *   ★見出しの字をそのまま含める（見えている見出しと読み上げの名前をそろえる）
+ */
+export function equipmentFieldLabel(equipmentName: string | null | undefined, field: DetailField): string {
+    const name = String(equipmentName ?? "").trim()
+    return name ? `${name} の${DETAIL_FIELD_LABELS[field]}` : DETAIL_FIELD_LABELS[field]
+}
+
 const text = (v: unknown) => (typeof v === "string" ? v.trim() : "")
 
 /** 保存する形に整える（空の欄を外す・要改善でない行の不良内容／措置内容を外す） */
@@ -76,4 +93,14 @@ export function isGoodResult(value: unknown): boolean {
     if (!t) return true
     if (BAD_RESULT_WORDS.some((w) => t.includes(w))) return false
     return t.includes("指摘なし") || t.includes("良") || t.toLowerCase() === "good"
+}
+
+/**
+ * 悪いほうの判定か（★isGoodResult と同じ言葉で見る・空は悪くない）。
+ *   点検票（別記）の「否」を数えるのに使う（2026-11-08・src/lib/soukatsu-judgment-consistency.ts）。
+ *   「良」でも「否」でもない値（空・未入力）は悪いほうに数えない
+ */
+export function isBadResult(value: unknown): boolean {
+    const t = String(value ?? "").replace(/\s+/g, " ").trim()
+    return t !== "" && BAD_RESULT_WORDS.some((w) => t.includes(w))
 }

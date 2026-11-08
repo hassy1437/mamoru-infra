@@ -13,6 +13,7 @@ import {
     type FireDepartmentTitle,
     fireDepartmentNameInputMax,
     joinFireDepartment,
+    printedFireDepartment,
     splitFireDepartment,
 } from "@/lib/soukatsu-cover"
 
@@ -33,7 +34,9 @@ export function SoukatsuCoverInputs({
     onFireDepartmentNameChange: (value: string) => void
 }) {
     const { name, title } = splitFireDepartment(fireDepartmentName)
-    const printed = joinFireDepartment(name, title)
+    // ★表紙に印字する文字は PDF（api/generate-pdf）と同じ関数で作る。名前の終わりと敬称の始まりが重なるときは重ねない
+    //   （「大阪市北消防署」＋「消防署長」→「大阪市北消防署長」・2026-11-08 定期テスト 26）。欄の値（保存する値）は入れたまま
+    const printed = printedFireDepartment(fireDepartmentName)
 
     const changeName = (next: string) => {
         // ★名前を入れ始めた（空 → 1 文字目）ときだけ、敬称が無ければいちばん多い「消防署長」を選んでおく（変えられる）。

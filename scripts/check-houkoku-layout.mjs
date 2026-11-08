@@ -14,6 +14,8 @@
 //      白で覆い、その行に描く。右端が「殿」の左端より 2pt 以上手前・7pt 以上の大きさ。★宛名が空なら覆わない（手書き用）
 //      ★末尾に敬称の無い宛名は覆わず、上の行に名前だけ（右端が日付の年の左端より 4pt 以上手前・7pt 以上）
 //      画面の上限（lib/soukatsu-cover.ts の FIRE_DEPARTMENT_NAME_MAX）いっぱいの全角で描いて測る
+//   4. 宛名の名前の終わりと敬称の始まりが重なる（「大阪市北消防署」＋「消防署長」）: 重ねずに「大阪市北消防署長」と描く
+//      （2026-11-08・定期テスト 26。画面の「表紙の印字：」と同じ lib の printedFireDepartment を通す）
 //
 // 使い方: node scripts/check-houkoku-layout.mjs [--self-test]
 import { spawnSync } from "child_process"
@@ -57,6 +59,8 @@ const CASES = [
     // ★末尾に敬称の無い宛名（10/20 より前の自由入力・敬称を選ばなかった）: 刷り込みは覆わず、上の行に名前だけ。
     //   長さは以前の画面の上限（全角 30 字）
     ["敬称なし", { ...BASE, notifier_address: "大阪市北区梅田1-1-1", notifier_name: "検証防災株式会社", building_address: "大阪市北区梅田1-1-1", building_name: "検証ビル", fire_department_name: "消".repeat(30) }],
+    // ★名前「大阪市北消防署」＋敬称「消防署長」を画面でつないだ値（2026-11-08・定期テスト 26）。重ねずに描く
+    ["重なる宛名", { ...BASE, notifier_address: "大阪市北区梅田1-1-1", notifier_name: "検証防災株式会社", building_address: "大阪市北区梅田1-1-1", building_name: "検証ビル", fire_department_name: "大阪市北消防署消防署長" }],
 ]
 
 const MEASURE = String.raw`
@@ -167,6 +171,7 @@ async function measure(routePath) {
             if (m.name.size < 7) problems.push(`${label}: 宛名が ${m.name.size}pt まで縮んでいる（下限 7pt）「${m.name.text}」`)
             if (m.upper.right) problems.push(`${label}: 敬称のある宛名なのに上の行にも描いている「${m.upper.text}」`)
         }
+        if (label === "重なる宛名" && m.name.text !== "大阪市北消防署長") problems.push(`重なる宛名: 「大阪市北消防署長」と描くはずが「${m.name.text}」（名前の終わりと敬称が重なっている）`)
         if (label === "長い値" && m.cells[0]?.lines !== 2) problems.push(`長い値: 所在地が 2 行に折り返されていない（${m.cells[0]?.lines} 行）＝ 2 行の中央寄せを見られていない`)
     }
     return problems
@@ -197,6 +202,7 @@ if (SELF_TEST) {
         ["敬称が無くても覆う（敬称が全部消える）", "if (fireDepartment && splitFireDepartment(fireDepartment).title) {", "if (fireDepartment) {", "敬称なし: 刷り込みを白で覆っている"],
         ["敬称の無い宛名の幅を決めない", "draw(fireDepartment, 70.4, 95, 12, FIRE_DEPARTMENT_NAME_ONLY_RIGHT_X - 70.4)", "draw(fireDepartment, 70.4, 95, 12)", "敬称なし: 宛名の右端"],
         ["敬称の無い宛名を描かない", "draw(fireDepartment, 70.4, 95, 12, FIRE_DEPARTMENT_NAME_ONLY_RIGHT_X - 70.4)", "void 0", "敬称なし: 宛名が描かれていない"],
+        ["宛名を重ねたまま描く（直す前）", "const fireDepartment = printedFireDepartment(toText(body.fire_department_name))", "const fireDepartment = toText(body.fire_department_name)", "重なる宛名"],
         ["所在地・名称・用途を上寄せに戻す", 'verticalAlign: "center" | "top" = "center"', 'verticalAlign: "center" | "top" = "top"', "所在地（1 行）の縦の中心"],
     ]
     for (const [label, from, to, expect] of mutants) {
@@ -208,13 +214,13 @@ if (SELF_TEST) {
         }
         console.log(`  陽性対照: ${label} → 検出`)
     }
-    console.log("  陰性対照: 短い値・長い値の両方で、届出者は下線の内側・所在地等は欄の中央・宛名は刷り込みを覆って「殿」の手前・宛名なしは刷り込みのまま・敬称なしは上の行で日付の手前")
+    console.log("  陰性対照: 短い値・長い値の両方で、届出者は下線の内側・所在地等は欄の中央・宛名は刷り込みを覆って「殿」の手前・宛名なしは刷り込みのまま・敬称なしは上の行で日付の手前・重なる宛名は重ねない")
     console.log("SELF_TEST_OK")
     process.exit(0)
 }
 
 const problems = await measure(ROUTE)
-console.log(`報告書の値の置き場所を検査: 届出者 3 行（下線の右端）・所在地/名称/用途（縦の中央）・宛名（刷り込みを覆い「殿」の手前・全角 ${NAME_MAX} 字・空なら覆わない・敬称なしは上の行）× 短い値・長い値・宛名なし・敬称なし`)
+console.log(`報告書の値の置き場所を検査: 届出者 3 行（下線の右端）・所在地/名称/用途（縦の中央）・宛名（刷り込みを覆い「殿」の手前・全角 ${NAME_MAX} 字・空なら覆わない・敬称なしは上の行・重なる宛名は重ねない）× 短い値・長い値・宛名なし・敬称なし・重なる宛名`)
 if (problems.length) {
     console.log("★NG:")
     for (const p of problems) console.log("   ", p)

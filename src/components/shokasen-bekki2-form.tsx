@@ -855,7 +855,7 @@ export default function ShokasenBekki2Form({
             <Card>
                 <CardHeader>
                     <CardTitle>屋内消火栓設備点検票（別記様式2）入力</CardTitle>
-                    <CardDescription>s50_kokuji14_bekki2.pdf に転記する項目です。</CardDescription>
+                    <CardDescription>点検票（別記様式2）に印字する項目です。</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-5">
                     <div className="grid md:grid-cols-2 gap-4">

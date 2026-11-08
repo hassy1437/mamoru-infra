@@ -4,6 +4,7 @@ import BekkiResultFormBase, { type BekkiBasePayload } from "@/components/bekki-r
 import {
     AUTO_TEST_ATTR,
     AUTO_TEST_COLLAPSED_NOTICE,
+    autoTestCheckboxNote,
     isRowActive,
     type AutoTestAttr,
 } from "@/lib/auto-test-rows"
@@ -161,7 +162,8 @@ export default function JidouKasaiHouchiBekki11_1Form(props: Props) {
                     key: AUTO_TEST_ATTR,
                     label: "受信機が自動試験機能を有する",
                     type: "checkbox",
-                    placeholder: AUTO_TEST_COLLAPSED_NOTICE,
+                    // ★チェックの有無で文を出し分ける（チェックしていないのに「対象外です」と出ていた・定期テスト 22）
+                    checkboxNote: autoTestCheckboxNote,
                 },
             ]}
             notesCardTitle="（その3）備考・測定機器"

@@ -11,10 +11,12 @@
 //      ・空白だけ・null・キーが無い も空 ／ 延べ面積 0 は空・文字の数は数として読む ／ 地上階数 0 は通す
 //   3. 設備: 0 件・名前が空の行だけ → 必須で止める（DB の normalize_equipment_codes と同じ数え方）
 //   4. 注意は止めない: 総括表の「要改善」で不良内容が空／別記の「否」で不良内容が空（見出し行は数えない）／
-//      点検者1の氏名・資格（★itiran を渡したときだけ）／未入力の様式
+//      点検者1の氏名・資格（★itiran を渡したときだけ）／未入力の様式／
+//      ★総括表で「良」に○が付く設備の点検票に「否」がある（2026-11-08・定期テスト 21。見出し行・「該当なし」は見ない・逆向きは見ない）
 //   5. 直す画面のリンク（総括表の欄・点検者一覧・様式）
 //   6. 呼び出し側: 総括表の確認画面がプレビュー → 確定前の確認 → 確定のボタンの順に並べ、空の必須を確定のボタンに渡す。
-//      確定のボタンが押せなくなる。出力画面が点検者・別記まで渡す。共通の別記フォームが基本情報を畳める
+//      確定のボタンが押せなくなる。出力画面が点検者・別記まで渡す。共通の別記フォームが基本情報を畳める。
+//      ★総括表の確認画面は別記の中身だけ渡す（判定の食い違いだけを見る）。出力画面の一覧の注記は箱の見出しと同じ言葉（定期テスト 25）
 //
 // 使い方: node scripts/check-report-readiness.mjs [--self-test]
 import fs from "fs"
@@ -26,8 +28,10 @@ const ROOT = process.cwd()
 const SELF_TEST = process.argv.includes("--self-test")
 // ★自己診断と本番で出力先を分ける（check-pdf-all は並列に走らせる）
 const OUT = path.join(ROOT, "tmp", SELF_TEST ? "report-readiness-selftest" : "report-readiness")
-const MODULES = ["report-readiness", "bekki-row-labels", "bekki-heading-row", "pdf-merge-config", "itiran-input-flow", "inspector-helpers", "bekki-default-good", "inspector-sync", "bekki-form-normalization", "bekki-header-normalization"]
+const MODULES = ["report-readiness", "bekki-row-labels", "bekki-heading-row", "pdf-merge-config", "itiran-input-flow", "inspector-helpers", "bekki-default-good", "inspector-sync", "bekki-form-normalization", "bekki-header-normalization",
+    "soukatsu-judgment-consistency", "soukatsu-equipment", "auto-test-rows"]
 const LIB = "src/lib/report-readiness.ts"
+const JUDGE = "src/lib/soukatsu-judgment-consistency.ts"
 const PAGE = "src/app/inspection/[id]/page.tsx"
 const OUTPUT = "src/app/inspection/[id]/itiran/[itiranId]/output/page.tsx"
 const BUTTON = "src/components/finalize-soukatsu-button.tsx"
@@ -163,6 +167,26 @@ function behaviour({ lib, labels }) {
     warnCase("別記の点検者が点検者一覧表と違う", { bekkiPayloads: { [STEP]: { ...BEKKI_OK[STEP], inspector_name: "前の人" } } }, [`bekki_inspector:${STEP}`])
     warnCase("点検者一覧表の空の欄とは比べない", { bekkiPayloads: { [STEP]: { ...BEKKI_OK[STEP], inspector_company: "前の会社" } } }, [])
     warnCase("★別記を渡さない（確定の前）", { bekkiPayloads: undefined, stepIds: undefined }, [])
+    // ★総括表の判定と点検票の「否」（2026-11-08・定期テスト 21）。総括表で「良」に○が付く設備だけを見る・止めない・直す画面のリンクは出さない
+    const allGood = { ...COMPLETE, equipment_results: [{ name: "消火器", result: "指摘なし" }, { name: "避難器具", result: "指摘なし" }] }
+    const badRow = (i) => rows(26, (j) => (j === i ? { judgment: "否", bad_content: "降下空間に障害物" } : { judgment: "良" }))
+    warnCase("総括表で「良」・点検票に「否」", { soukatsu: allGood, bekkiPayloads: { [STEP]: { ...HEAD, page1_rows: badRow(3), page2_rows: rows(27) } } }, ["soukatsu_judgment"], (r) => {
+        if (!same(r.warnings[0].details, ["避難器具"])) problems.push(`総括表で「良」・点検票に「否」: 設備名が ${JSON.stringify(r.warnings[0].details)}（期待 ["避難器具"]）`)
+        if (r.warnings[0].fix !== null) problems.push("総括表で「良」・点検票に「否」: 直せない画面（総括表の編集では判定を変えられない）へのリンクを出している")
+        if (r.warnings[0].urgent) problems.push("総括表で「良」・点検票に「否」: 赤にしている（黄色の注意のはず）")
+        if (r.warnings[0].label !== "総括表の判定") problems.push(`総括表で「良」・点検票に「否」: 見出しが ${JSON.stringify(r.warnings[0].label)}`)
+    })
+    warnCase("総括表で「良」・点検票の「不良」（古い値）", { soukatsu: allGood, bekkiPayloads: { [STEP]: { ...HEAD, page1_rows: rows(26, (j) => (j === 3 ? { judgment: "不良", bad_content: "x" } : { judgment: "良" })), page2_rows: rows(27) } } }, ["soukatsu_judgment"])
+    warnCase("総括表で「良」・見出し行（総合点検）だけ「否」", { soukatsu: allGood, bekkiPayloads: { [STEP]: { ...HEAD, page1_rows: rows(26), page2_rows: rows(27, (i) => (i === 23 ? { judgment: "否" } : { judgment: "良" })) } } }, [])
+    warnCase("総括表で「該当なし」・点検票に「否」（総括表の PDF に出ない行）", { soukatsu: { ...COMPLETE, equipment_results: [{ name: "消火器", result: "指摘なし" }, { name: "避難器具", result: "該当なし" }] }, bekkiPayloads: { [STEP]: { ...HEAD, page1_rows: badRow(3), page2_rows: rows(27) } } }, [])
+    warnCase("総括表で「良」・点検票は空（判定なし）", { soukatsu: allGood, bekkiPayloads: { [STEP]: { ...HEAD, page1_rows: rows(26, () => ({ judgment: "" })), page2_rows: rows(27) } } }, [])
+    warnCase("★逆向き（総括表は要改善・点検票は全部良）は知らせない", { bekkiPayloads: BEKKI_OK }, [])
+    // ★総括表の確認画面: 別記の中身だけ渡す（stepIds・itiran なし）→ 判定の食い違いだけが出る（未入力の様式・点検者は出ない）
+    const confirmPage = f({ soukatsu: allGood, bekkiPayloads: { [STEP]: { ...HEAD, page1_rows: badRow(3), page2_rows: rows(27) } } })
+    if (!same(ids(confirmPage.warnings), ["soukatsu_judgment"])) problems.push(`総括表の確認画面（別記の中身だけ渡す）: 注意は ["soukatsu_judgment"] のはずが ${JSON.stringify(ids(confirmPage.warnings))}`)
+    if (!same(ids(f({ soukatsu: allGood, bekkiPayloads: {} }).warnings), [])) problems.push("総括表の確認画面: 点検票がまだ無いのに注意を出している")
+    // ★箱の見出しと、出力画面の一覧の注記に使う言葉（定期テスト 25）
+    if (lib.readinessBoxTitle?.("finalize") !== "確定前の確認" || lib.readinessBoxTitle?.("review") !== "出力前の確認") problems.push(`箱の見出し: 確定前は「確定前の確認」・確定後は「出力前の確認」のはずが ${lib.readinessBoxTitle?.("finalize")}／${lib.readinessBoxTitle?.("review")}`)
     const beforeFinalize = f({ soukatsu: COMPLETE })
     if (!beforeFinalize.canFinalize || beforeFinalize.warnings.length) problems.push(`確定の前（総括表だけ）: 注意 0 件で確定できるはずが ${ids(beforeFinalize.warnings)}`)
 
@@ -188,7 +212,10 @@ function wiring(src) {
     const problems = []
     const page = src(PAGE)
     const at = (s) => page.indexOf(s)
-    if (!page.includes("checkReportReadiness({ soukatsu: report })")) problems.push("総括表の確認画面が確定前の確認を総括表だけで呼んでいない（点検者・別記は確定のあとに入れるのが普通）")
+    // ★総括表の確認画面は、総括表と別記の中身だけを渡す（点検者・未入力の様式は確定のあとに入れるのが普通なので見ない）。
+    //   別記の中身は判定の食い違い（定期テスト 21）を見るため
+    if (!page.includes("checkReportReadiness({ soukatsu: report, bekkiPayloads })")) problems.push("総括表の確認画面が確定前の確認を総括表と別記の中身だけで呼んでいない（点検者・未入力の様式は確定のあとに入れるのが普通／判定の食い違いを見ない）")
+    if (!/const bekkiPayloads = nextItiranId \? await loadBekkiPayloads\(supabase, nextItiranId, selectedSteps\(property\?\.equipment_types\)/.test(page)) problems.push("総括表の確認画面が点検票（別記）の中身を読んでいない（判定の食い違いが出ない）")
     if (!page.includes("missingRequired={readiness.missing.map((m) => m.label)}")) problems.push("総括表の確認画面が空の必須を確定のボタンに渡していない（押せてしまう）")
     const preview = at("<SoukatsuPdfPreview"), box = at("<ReportReadinessBox"), button = at("<FinalizeSoukatsuButton")
     if (preview < 0 || box < 0 || button < 0 || !(preview < box && box < button)) problems.push("総括表の確認画面の並びが プレビュー → 確定前の確認 → 確定のボタン でない（内容を見る前に確定を押せる）")
@@ -208,6 +235,13 @@ function wiring(src) {
     if (/animate-pulse/.test(boxSrc)) problems.push("確定前の確認: 点滅が止まらない（animate-pulse）。約 5 秒で止まる attention-blink を使う")
     if (!/\.attention-blink\s*\{\s*animation:[^;}]*\s[1-5]\s*;/.test(src("src/app/globals.css"))) problems.push("attention-blink が回数で止まらない（5 秒を超えて点滅する）")
     if (!/"urgent" in item && item\.urgent \?/.test(out)) problems.push("出力画面: 足りない項目のある書類に赤い印を出していない")
+    // ★総括表の判定の食い違い（定期テスト 21）も一覧の「総括表」に印を出す
+    if (!/label: "総括表", ready: true, attention: [^\n]*flagged\.has\("soukatsu_judgment"\)/.test(out)) problems.push("出力画面: 総括表の判定の食い違いがあっても一覧の「総括表」に印を出していない")
+    // ★一覧の注記は箱の見出しと同じ言葉（確定前は「確定前の確認」・定期テスト 25）。名前は途中で折らない
+    if (!/const readinessTitle = readinessBoxTitle\(readinessMode\)/.test(out) || !out.includes("下の「${readinessTitle}」を見てください") || out.includes("下の「出力前の確認」を見てください")) problems.push("出力画面: 一覧の注記が箱の見出し（確定前の確認／出力前の確認）と同じ言葉になっていない")
+    if (!/const readinessMode = needsFinalizeOnOutput\(finalization\) \? "finalize" : "review"/.test(out)) problems.push("出力画面: 一覧の注記の言葉を、箱と同じ条件（needsFinalizeOnOutput）で決めていない")
+    if (!/className=\{`break-keep [^`]*`\}>\{item\.label\}/.test(out)) problems.push("出力画面: 一覧の書類の名前が途中で折れる（375px 幅で「総括／表」）")
+    if (!/\{readinessBoxTitle\(mode\)\}/.test(src(BOX))) problems.push("確定前の確認の箱の見出しが readinessBoxTitle を使っていない（一覧の注記と言葉がずれる）")
     const base = src(BASE)
     if (!/useState\(\(\) => basicInfoBlank\.length > 0\)/.test(base)) problems.push("共通の別記フォーム: 基本情報が入っていても最初から開いている（判定表が下に押し出される）")
     if ((base.match(/hidden=\{!basicInfoOpen\}/g) ?? []).length !== 3) problems.push("共通の別記フォーム: 基本情報の 3 段がそろって畳まれない")
@@ -255,6 +289,14 @@ if (SELF_TEST) {
         ["基本情報を畳まない", swap(BASE, "useState(() => basicInfoBlank.length > 0)", "useState(() => true)"), "最初から開いている"],
         ["点滅を止めない（animate-pulse に戻す）", swap(BOX, "attention-blink", "motion-safe:animate-pulse attention-blink"), "点滅が止まらない"],
         ["点滅をずっと続ける（infinite）", swap("src/app/globals.css", "animation: attention-blink 1.2s ease-in-out 4;", "animation: attention-blink 1.2s ease-in-out infinite;"), "回数で止まらない"],
+        ["総括表の判定の食い違いを見ない", swap(LIB, "if (judgmentMismatch.length) {", "if (false) {"), "総括表で「良」・点検票に「否」"],
+        ["総括表の判定の注意に「総括表を編集」を付ける", swap(LIB, "SOUKATSU_JUDGMENT_MISMATCH_MESSAGE, judgmentMismatch, null)", 'SOUKATSU_JUDGMENT_MISMATCH_MESSAGE, judgmentMismatch, { kind: "soukatsu", anchor: "equipment-results" })'), "直せない画面"],
+        ["点検票の見出し行の「否」も数える", swap(JUDGE, "if (isBekkiHeadingLabel(label)) return", ""), "見出し行（総合点検）だけ「否」"],
+        ["総括表の「該当なし」も「良」に数える", swap(JUDGE, "if (!isGoodResult(item.result)) continue", 'if (!isGoodResult(item.result) && String(item.result) !== "該当なし") continue'), "「該当なし」"],
+        ["点検票の「否」を「否」の字だけで数える（古い「不良」を落とす）", swap(JUDGE, "if (!isBadResult(row.judgment)) return", 'if (row.judgment !== "否") return'), "「不良」（古い値）"],
+        ["総括表の確認画面で別記の中身を渡さない", swap(PAGE, "checkReportReadiness({ soukatsu: report, bekkiPayloads })", "checkReportReadiness({ soukatsu: report })"), "総括表と別記の中身だけで呼んでいない"],
+        ["一覧の注記を「出力前の確認」に戻す", swap(OUTPUT, "`（下の「${readinessTitle}」を見てください）`", "\"（下の「出力前の確認」を見てください）\""), "同じ言葉になっていない"],
+        ["一覧の名前を折れるままにする", swap(OUTPUT, "className={`break-keep wrap-anywhere ", "className={`"), "途中で折れる"],
     ]
     for (const [label, src, expect] of mutants) {
         let found
@@ -270,7 +312,7 @@ if (SELF_TEST) {
         }
         console.log(`  陽性対照: ${label} → 検出`)
     }
-    console.log("  陰性対照: 現状（必須 9 項目・注意 4 種・リンク・画面の並びとボタン）→ 0 件")
+    console.log("  陰性対照: 現状（必須 9 項目・注意 4 種・総括表の判定の食い違い・リンク・画面の並びとボタン・一覧の注記）→ 0 件")
     fs.rmSync(OUT, { recursive: true, force: true })
     console.log("SELF_TEST_OK")
     process.exit(0)
@@ -278,7 +320,7 @@ if (SELF_TEST) {
 
 const problems = await inspect(read)
 fs.rmSync(OUT, { recursive: true, force: true })
-console.log("確定前・出力前の不備チェックを検査: 必須 9 項目（1 つずつ空にする）・注意 4 種・リンク・画面の並びとボタン")
+console.log("確定前・出力前の不備チェックを検査: 必須 9 項目（1 つずつ空にする）・注意 4 種・総括表の判定の食い違い・リンク・画面の並びとボタン・一覧の注記")
 if (problems.length) {
     console.log("★NG:")
     for (const p of problems) console.log("   ", p)

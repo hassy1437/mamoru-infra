@@ -9,14 +9,13 @@ export default async function EditPropertyPage({
 }: {
     params: Promise<{ id: string }>
 }) {
-    const { supabase, user } = await getAuthenticatedClient()
+    const { supabase } = await getAuthenticatedClient()
     const { id } = await params
 
     const { data: property } = await supabase
         .from("properties")
         .select("*")
         .eq("id", id)
-        .eq("user_id", user.id)
         .single()
 
     if (!property) {

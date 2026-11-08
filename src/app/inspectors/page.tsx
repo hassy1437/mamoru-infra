@@ -6,11 +6,10 @@ import InspectorList from "@/components/inspector-list"
 import Breadcrumb from "@/components/breadcrumb"
 
 export default async function InspectorsPage() {
-    const { supabase, user } = await getAuthenticatedClient()
+    const { supabase } = await getAuthenticatedClient()
     const { data: inspectors } = await supabase
         .from("inspectors")
         .select("*")
-        .eq("user_id", user.id)
         .order("updated_at", { ascending: false })
 
     const list = (inspectors ?? []) as Inspector[]

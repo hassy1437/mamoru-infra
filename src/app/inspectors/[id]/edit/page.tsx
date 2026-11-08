@@ -9,14 +9,13 @@ export default async function EditInspectorPage({
 }: {
     params: Promise<{ id: string }>
 }) {
-    const { supabase, user } = await getAuthenticatedClient()
+    const { supabase } = await getAuthenticatedClient()
     const { id } = await params
 
     const { data: inspector } = await supabase
         .from("inspectors")
         .select("*")
         .eq("id", id)
-        .eq("user_id", user.id)
         .single()
 
     if (!inspector) {

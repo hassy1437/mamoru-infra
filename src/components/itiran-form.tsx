@@ -13,7 +13,6 @@ import { Loader2, Plus, X } from "lucide-react"
 import { toast } from "sonner"
 import { friendlyError } from "@/lib/error-messages"
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes"
-import { useAuth } from "@/components/auth-provider"
 import type { Inspector, InspectorData } from "@/types/database"
 import { LicenseEditor, type LicenseEditorValue } from "@/components/license-editor"
 import { emptyInspector, normalizeInspectorData } from "@/lib/inspector-helpers"
@@ -51,7 +50,6 @@ function isInspectorFilled(d: InspectorData): boolean {
 
 export default function ItiranForm({ soukatsuId, masters, initial, itiranId }: Props) {
     const router = useRouter()
-    const { user } = useAuth()
     const { markDirty, markClean } = useUnsavedChanges()
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -137,7 +135,7 @@ export default function ItiranForm({ soukatsuId, masters, initial, itiranId }: P
         setLoading(true)
         setError(null)
 
-        // ★編集モード: 既存 itiran を update（inspector1/inspector2 だけ・.eq(id).eq(user_id) 二重防御）。
+        // ★編集モード: 既存 itiran を update（inspector1/inspector2 だけ・.eq(id)。★会社の人なら直せる（RLS が会社で見る・20261231120000）。
         //   ここで早期 return するので、下の「作成(insert)コード」は1行も変えていない。
         if (isEditMode && itiranId) {
             const { error: updateError } = await supabase
@@ -147,7 +145,6 @@ export default function ItiranForm({ soukatsuId, masters, initial, itiranId }: P
                     inspector2: (showSecond ? inspectors[1] : emptyInspector()) as unknown,
                 })
                 .eq("id", itiranId)
-                .eq("user_id", user?.id ?? "")
             if (updateError) {
                 const msg = friendlyError(updateError)
                 setError(msg)

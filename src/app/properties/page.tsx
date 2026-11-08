@@ -6,11 +6,10 @@ import PropertySearch from "@/components/property-search"
 import Breadcrumb from "@/components/breadcrumb"
 
 export default async function PropertiesPage() {
-    const { supabase, user } = await getAuthenticatedClient()
+    const { supabase } = await getAuthenticatedClient()
     const { data: properties } = await supabase
         .from("properties")
         .select("*")
-        .eq("user_id", user.id)
         .order("created_at", { ascending: false })
 
     const list = (properties ?? []) as Property[]

@@ -11,11 +11,10 @@ import { jstTodayYmd } from "@/lib/date-utils"
  * ★表がまだ無い（DB の更新前）ときは「まだ使えません」と出す（落とさない）。
  */
 export default async function InstrumentsPage() {
-    const { supabase, user } = await getAuthenticatedClient()
+    const { supabase } = await getAuthenticatedClient()
     const { data, error } = await supabase
         .from("measuring_instruments")
         .select(INSTRUMENT_COLUMNS)
-        .eq("user_id", user.id)
         .order("name")
 
     const list = (data ?? []) as MeasuringInstrument[]

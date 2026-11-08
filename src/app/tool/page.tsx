@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { ArrowRight, Building, ClipboardCheck, Settings, Wrench, FileText, Users, Gauge } from "lucide-react"
+import { ArrowRight, Building, Building2, ClipboardCheck, Settings, Wrench, FileText, Users, Gauge } from "lucide-react"
 import LogoutButton from "@/components/logout-button"
 import { InstallPrompt } from "@/components/install-prompt"
 import { createClient } from "@/lib/supabase/server"
@@ -13,7 +13,7 @@ export default async function ToolPage() {
   try {
     const supabase = await createClient()
 
-    // RLS(user_id=auth.uid()) で自分の物件/報告書だけが数えられる＝ダッシュボードとして正しい。
+    // RLS（会社の人なら・20261231120000）で自分の会社の物件/報告書だけが数えられる＝ダッシュボードとして正しい。
     // ★最近の報告書は「続きから」（components/resume-reports.tsx）が引く（2026-10-21）
     const [propCountRes, inspCountRes] = await Promise.all([
       supabase.from("properties").select("id", { count: "exact", head: true }),
@@ -134,6 +134,15 @@ export default async function ToolPage() {
             <Button size="lg" variant="outline" className="w-full text-base px-6 py-6 gap-3 border-slate-300 hover:bg-slate-50 transition-all duration-300 rounded-xl font-medium text-slate-600">
               <Gauge className="w-5 h-5" />
               測定機器の台帳
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </Button>
+          </Link>
+
+          {/* ★会社と人（2026-11-08）: 同じ会社の人と報告書を一緒に見て直す・管理者は人を招待する */}
+          <Link href="/company" className="w-full group">
+            <Button size="lg" variant="outline" className="w-full text-base px-6 py-6 gap-3 border-slate-300 hover:bg-slate-50 transition-all duration-300 rounded-xl font-medium text-slate-600">
+              <Building2 className="w-5 h-5" />
+              会社と人
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Button>
           </Link>

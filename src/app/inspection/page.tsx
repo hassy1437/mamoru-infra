@@ -6,11 +6,10 @@ import PropertySearch from "@/components/property-search"
 import ResumeReports from "@/components/resume-reports"
 
 export default async function InspectionPage() {
-    const { supabase, user } = await getAuthenticatedClient()
+    const { supabase } = await getAuthenticatedClient()
     const { data: properties } = await supabase
         .from("properties")
         .select("*")
-        .eq("user_id", user.id)
         .order("created_at", { ascending: false })
 
     const list = (properties ?? []) as Property[]

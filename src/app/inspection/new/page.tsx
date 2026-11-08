@@ -14,7 +14,7 @@ export default async function NewInspectionPage({
 }: {
     searchParams: Promise<{ propertyId?: string; copyFrom?: string; sourceItiran?: string }>
 }) {
-    const { supabase, user } = await getAuthenticatedClient()
+    const { supabase } = await getAuthenticatedClient()
     const { propertyId, copyFrom, sourceItiran } = await searchParams
 
     if (!propertyId) {
@@ -25,7 +25,6 @@ export default async function NewInspectionPage({
         .from("properties")
         .select("*")
         .eq("id", propertyId)
-        .eq("user_id", user.id)
         .single()
 
     if (!property) {

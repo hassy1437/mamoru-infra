@@ -10,14 +10,13 @@ export default async function EditSoukatsuPage({
 }: {
     params: Promise<{ id: string }>
 }) {
-    const { supabase, user } = await getAuthenticatedClient()
+    const { supabase } = await getAuthenticatedClient()
     const { id } = await params
 
     const { data: soukatsu } = await supabase
         .from("inspection_soukatsu")
         .select("*")
         .eq("id", id)
-        .eq("user_id", user.id)
         .single()
     if (!soukatsu) return notFound()
 

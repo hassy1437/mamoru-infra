@@ -9,14 +9,13 @@ export default async function EditInstrumentPage({
 }: {
     params: Promise<{ id: string }>
 }) {
-    const { supabase, user } = await getAuthenticatedClient()
+    const { supabase } = await getAuthenticatedClient()
     const { id } = await params
 
     const { data: instrument } = await supabase
         .from("measuring_instruments")
         .select(INSTRUMENT_COLUMNS)
         .eq("id", id)
-        .eq("user_id", user.id)
         .maybeSingle()
 
     if (!instrument) {

@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
-import { useAuth } from "@/components/auth-provider"
 import { Button } from "@/components/ui/button"
 import { ACTION_BUTTON } from "@/lib/action-button"
 import { Input } from "@/components/ui/input"
@@ -45,7 +44,6 @@ const str = (v: unknown) => (v == null ? "" : String(v))
 //   - update は編集項目「だけ」の部分更新。updated_at は BEFORE UPDATE トリガが自動で立てる。
 export default function SoukatsuEditForm({ soukatsu, isDelivered, isFinalized }: SoukatsuEditFormProps) {
     const router = useRouter()
-    const { user } = useAuth()
     const { markDirty, markClean } = useUnsavedChanges()
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -132,7 +130,6 @@ export default function SoukatsuEditForm({ soukatsu, isDelivered, isFinalized }:
                     ...(mergedResults ? { equipment_results: mergedResults } : {}),
                 })
                 .eq("id", soukatsu.id)
-                .eq("user_id", user?.id ?? "") // RLS に加えた二重防御（properties/[id]/edit と同じ作法）
 
             if (updateError) throw updateError
 

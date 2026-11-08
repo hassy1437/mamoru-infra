@@ -20,14 +20,13 @@ import { pickMainItiranId } from "@/lib/report-resume"
 import type { ReportSummary } from "@/components/report-list"
 
 export default async function InspectionDetailPage({ params }: { params: Promise<{ id: string }> }) {
-    const { supabase, user } = await getAuthenticatedClient()
+    const { supabase } = await getAuthenticatedClient()
     const { id } = await params
 
     const { data: report } = await supabase
         .from("inspection_soukatsu")
         .select("*")
         .eq("id", id)
-        .eq("user_id", user.id)
         .single()
 
     if (!report) {

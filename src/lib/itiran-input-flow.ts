@@ -30,19 +30,15 @@ type ItiranInputStep = {
     title: string
 }
 
+/**
+ * 入力の順（点検票の一覧・「次へ」「戻る」の順）。★様式の番号の順（1, 2, …, 10, 11の1, 11の2, 12, …, 22）に並べる
+ * （2026-11-08・定期テスト 23）。以前は 1→12→13…22→2…10→11の1→11の2 で、一覧と「次へ」が番号の順でなく、
+ * 結果出力で綴じる順（様式の番号の順・src/lib/build-merged-report.ts）とも違った。
+ * ★綴じる順は今も build-merged-report.ts が formNo で並べ替えて決める（この並びに頼らない）。
+ *   同じ順になることは src/lib/itiran-input-flow.test.ts が見張る。
+ */
 const STEPS: readonly ItiranInputStep[] = [
     { id: "shokaki", routeSegment: "shokaki", equipmentKeyword: "消火器", title: "消火器点検票（別記様式1）" },
-    { id: "leakage-fire-alarm", routeSegment: "leakage-fire-alarm", equipmentKeyword: "漏電火災警報器", title: "漏電火災警報器点検票（別記様式12）" },
-    { id: "fire-department-notification", routeSegment: "fire-department-notification", equipmentKeyword: "消防機関へ通報する火災報知設備", title: "消防機関へ通報する火災報知設備点検票（別記様式13）" },
-    { id: "emergency-alarm", routeSegment: "emergency-alarm", equipmentKeyword: "非常警報器具", title: "非常警報器具及び設備点検票（別記様式14）" },
-    { id: "evacuation-equipment", routeSegment: "evacuation-equipment", equipmentKeyword: "避難器具", title: "避難器具点検票（別記様式15）" },
-    { id: "guidance-lights-signs", routeSegment: "guidance-lights-signs", equipmentKeyword: "誘導灯及び誘導標識", title: "誘導灯及び誘導標識点検票（別記様式16）" },
-    { id: "fire-water", routeSegment: "fire-water", equipmentKeyword: "消防用水", title: "消防用水点検票（別記様式17）" },
-    { id: "smoke-control", routeSegment: "smoke-control", equipmentKeyword: "排煙設備", title: "排煙設備点検票（別記様式18）" },
-    { id: "connected-sprinkler", routeSegment: "connected-sprinkler", equipmentKeyword: "連結散水設備", title: "連結散水設備点検票（別記様式19）" },
-    { id: "standpipe", routeSegment: "standpipe", equipmentKeyword: "連結送水管", title: "連結送水管点検票（別記様式20）" },
-    { id: "emergency-power-outlet", routeSegment: "emergency-power-outlet", equipmentKeyword: "非常コンセント設備", title: "非常コンセント設備点検票（別記様式21）" },
-    { id: "radio-communication-support", routeSegment: "radio-communication-support", equipmentKeyword: "無線通信補助設備", title: "無線通信補助設備点検票（別記様式22）" },
     { id: "shokasen", routeSegment: "shokasen", equipmentKeyword: "屋内消火栓設備", title: "屋内消火栓設備点検票（別記様式2）" },
     { id: "sprinkler", routeSegment: "sprinkler", equipmentKeyword: "スプリンクラー設備", title: "スプリンクラー設備点検票（別記様式3）" },
     { id: "water-spray", routeSegment: "water-spray", equipmentKeyword: "水噴霧消火設備", title: "水噴霧消火設備点検票（別記様式4）" },
@@ -54,6 +50,17 @@ const STEPS: readonly ItiranInputStep[] = [
     { id: "doryoku-pump", routeSegment: "doryoku-pump", equipmentKeyword: "動力消防ポンプ設備", title: "動力消防ポンプ設備点検票（別記様式10）" },
     { id: "jidou-kasai-houchi", routeSegment: "jidou-kasai-houchi", equipmentKeyword: "自動火災報知設備", title: "自動火災報知設備点検票（別記様式11の1）" },
     { id: "gas-leak-fire-alarm", routeSegment: "gas-leak-fire-alarm", equipmentKeyword: "ガス漏れ火災警報設備", title: "ガス漏れ火災警報設備点検票（別記様式11の2）" },
+    { id: "leakage-fire-alarm", routeSegment: "leakage-fire-alarm", equipmentKeyword: "漏電火災警報器", title: "漏電火災警報器点検票（別記様式12）" },
+    { id: "fire-department-notification", routeSegment: "fire-department-notification", equipmentKeyword: "消防機関へ通報する火災報知設備", title: "消防機関へ通報する火災報知設備点検票（別記様式13）" },
+    { id: "emergency-alarm", routeSegment: "emergency-alarm", equipmentKeyword: "非常警報器具", title: "非常警報器具及び設備点検票（別記様式14）" },
+    { id: "evacuation-equipment", routeSegment: "evacuation-equipment", equipmentKeyword: "避難器具", title: "避難器具点検票（別記様式15）" },
+    { id: "guidance-lights-signs", routeSegment: "guidance-lights-signs", equipmentKeyword: "誘導灯及び誘導標識", title: "誘導灯及び誘導標識点検票（別記様式16）" },
+    { id: "fire-water", routeSegment: "fire-water", equipmentKeyword: "消防用水", title: "消防用水点検票（別記様式17）" },
+    { id: "smoke-control", routeSegment: "smoke-control", equipmentKeyword: "排煙設備", title: "排煙設備点検票（別記様式18）" },
+    { id: "connected-sprinkler", routeSegment: "connected-sprinkler", equipmentKeyword: "連結散水設備", title: "連結散水設備点検票（別記様式19）" },
+    { id: "standpipe", routeSegment: "standpipe", equipmentKeyword: "連結送水管", title: "連結送水管点検票（別記様式20）" },
+    { id: "emergency-power-outlet", routeSegment: "emergency-power-outlet", equipmentKeyword: "非常コンセント設備", title: "非常コンセント設備点検票（別記様式21）" },
+    { id: "radio-communication-support", routeSegment: "radio-communication-support", equipmentKeyword: "無線通信補助設備", title: "無線通信補助設備点検票（別記様式22）" },
 ]
 
 const includesKeyword = (value: unknown, keyword: string) =>

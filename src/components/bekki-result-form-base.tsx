@@ -127,7 +127,13 @@ type SectionConfig = {
 type ExtraFieldConfig = {
     key: string
     label: string
+    /** 入力欄の薄い字。★"checkbox" では使わない（説明は checkboxNote） */
     placeholder?: string
+    /**
+     * "checkbox" の下に出す説明（★チェックの有無で出し分ける・2026-11-08 定期テスト 22）。
+     *   以前は placeholder を流用していて、チェックしていなくても「チェックしたときの文」が出ていた。
+     */
+    checkboxNote?: (checked: boolean) => string
     /**
      * 入力の種類。未指定は "text"（既存の16様式はすべてこれ＝挙動不変）。
      * ★"checkbox" でも保存形は string のまま（"1" = オン / "" = オフ）。
@@ -1034,6 +1040,7 @@ export default function BekkiResultFormBase({
                                                 <input
                                                     type="checkbox"
                                                     className="mt-0.5"
+                                                    aria-describedby={field.checkboxNote ? `extra-${field.key}-note` : undefined}
                                                     checked={isExtraChecked(extraFieldValues[field.key])}
                                                     onChange={(e) =>
                                                         setExtraFieldValues((prev) => ({
@@ -1045,8 +1052,10 @@ export default function BekkiResultFormBase({
                                                 />
                                                 <span>{field.label}</span>
                                             </label>
-                                            {field.placeholder && (
-                                                <p className="text-xs text-slate-500 pl-6">{field.placeholder}</p>
+                                            {field.checkboxNote && (
+                                                <p id={`extra-${field.key}-note`} className="text-xs text-slate-500 pl-6" aria-live="polite">
+                                                    {field.checkboxNote(isExtraChecked(extraFieldValues[field.key]))}
+                                                </p>
                                             )}
                                         </div>
                                     ) : (

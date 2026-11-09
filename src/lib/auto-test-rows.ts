@@ -55,7 +55,22 @@ export const isRowActive = (label: string, hasAutoTest: boolean | undefined): bo
  */
 export const EXPECTED_AUTO_TEST_ROW_COUNT = 23
 
-/** 畳んだセクションの見出しに出す文言（★入力画面で使う。文言を散らさない）。 */
+/**
+ * 畳んだセクションの見出しに出す文言（★入力画面で使う。文言を散らさない）。
+ * ★「受信機が自動試験機能を有する」のチェックの下にも、チェックしているときだけこの文を出す。
+ */
 export const AUTO_TEST_COLLAPSED_NOTICE =
     `自動試験機能ありのため、この${EXPECTED_AUTO_TEST_ROW_COUNT}項目は点検対象外です` +
     "（入力済みの値は保持されますが、報告書には出力されません）"
+
+/**
+ * 「受信機が自動試験機能を有する」のチェックの下に、チェックしていないときに出す文言（2026-11-08・定期テスト 22）。
+ * ★以前はチェックの有無にかかわらず AUTO_TEST_COLLAPSED_NOTICE（「自動試験機能ありのため…対象外です」）を出していて、
+ *   チェックしていないのに対象外と言っていた。
+ */
+export const AUTO_TEST_UNCHECKED_NOTICE =
+    `チェックすると、※印の${EXPECTED_AUTO_TEST_ROW_COUNT}項目が点検の対象外になり、報告書に出なくなります`
+
+/** チェックの下に出す文（チェックしているか・していないかで出し分ける） */
+export const autoTestCheckboxNote = (checked: boolean): string =>
+    checked ? AUTO_TEST_COLLAPSED_NOTICE : AUTO_TEST_UNCHECKED_NOTICE

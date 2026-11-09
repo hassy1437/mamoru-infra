@@ -938,7 +938,7 @@ export default function SprinklerBekki3Form({
             <Card>
                 <CardHeader>
                     <CardTitle>スプリンクラー設備点検票（別記様式3）入力</CardTitle>
-                    <CardDescription>s50_kokuji14_bekki3.pdf に転記する項目です。</CardDescription>
+                    <CardDescription>点検票（別記様式3）に印字する項目です。</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-5">
                     <div className="grid md:grid-cols-2 gap-4">

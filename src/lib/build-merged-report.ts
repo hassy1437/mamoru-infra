@@ -46,9 +46,10 @@ function buildTasks(input: ReportInputs): PdfTask[] {
         { label: "総括表", route: "/api/generate-soukatu-pdf", body: input.soukatsuData },
         { label: "点検者一覧", route: "/api/generate-itiran-pdf", body: input.itiranData },
         // ★別記様式は綴じ順（様式番号）に並べる。
-        //   applicableStepIds は入力フローの並び（STEPS）なので 1→12→13…22→2→3…11の2 と
+        //   以前の applicableStepIds は入力フローの並び（STEPS）で 1→12→13…22→2→3…11の2 と
         //   バラバラで、綴じたときに探せなかった（実機で指摘）。
-        //   入力の導線と綴じ順は別の関心事なので、STEPS は触らずここで並べ替える。
+        //   STEPS も様式番号の順にした（2026-11-08・定期テスト 23）が、綴じ順はここで決める（呼ぶ側の並びに頼らない）。
+        //   入力の順と同じになることは src/lib/itiran-input-flow.test.ts が見張る。
         ...input.applicableStepIds
             .filter((id) => input.bekkiPayloads[id])
             .map((id) => {

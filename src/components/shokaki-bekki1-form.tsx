@@ -774,7 +774,7 @@ export default function ShokakiBekki1Form({
             <Card>
                 <CardHeader>
                     <CardTitle>消火器点検票 入力</CardTitle>
-                    <CardDescription>s50_kokuji14_bekki1.pdf に転記する項目です。</CardDescription>
+                    <CardDescription>点検票（別記様式1）に印字する項目です。</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-5">
                     <div className="grid md:grid-cols-2 gap-4">

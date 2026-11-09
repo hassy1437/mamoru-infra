@@ -15,7 +15,7 @@ import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
 import { formatUsageShort } from "@/lib/usage-categories"
-import { splitFireDepartment } from "@/lib/soukatsu-cover"
+import { printedFireDepartment, splitFireDepartment } from "@/lib/soukatsu-cover"
 
 type GeneratePdfBody = {
     report_date?: string
@@ -179,7 +179,9 @@ export async function POST(req: NextRequest) {
         //   ★宛名が空なら覆わない（刷り込みのまま・手書き用）。
         //   ★末尾に敬称の無い宛名（10/20 より前の自由入力・敬称を選ばなかった）は覆わず、以前と同じ上の行（y=95）に
         //     名前だけを描く。覆うと刷り込みの敬称が全部消え、敬称の無い宛名になる（手で○を付けることもできなくなる）。
-        const fireDepartment = toText(body.fire_department_name)
+        // ★印字する宛名は lib の printedFireDepartment（画面の「表紙の印字：」と同じ関数）。
+        //   名前の終わりと敬称の始まりが重なるときは重ねない（「大阪市北消防署」＋「消防署長」→「大阪市北消防署長」・2026-11-08 定期テスト 26）
+        const fireDepartment = printedFireDepartment(toText(body.fire_department_name))
         if (fireDepartment && splitFireDepartment(fireDepartment).title) {
             firstPage.drawRectangle({
                 x: ADDRESSEE_PRINTED.x0 - 1,

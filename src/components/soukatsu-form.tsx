@@ -14,7 +14,7 @@ import { SOUKATSU_NOT_PRINTED_DETAIL, SOUKATSU_NOT_PRINTED_NOTE } from "@/lib/so
 import { UsageSelect } from "@/components/usage-select"
 import { FloorSelect } from "@/components/floor-select"
 import { Textarea } from "@/components/ui/textarea"
-import { Loader2, Building2, CheckCircle2, AlertTriangle, MinusCircle } from "lucide-react"
+import { Loader2, Building2, AlertTriangle } from "lucide-react"
 import { toast } from "sonner"
 import { friendlyError } from "@/lib/error-messages"
 import type { Property } from "@/types/database"
@@ -22,8 +22,8 @@ import { ALL_EQUIPMENT_TYPES } from "@/lib/equipment-config"
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes"
 import FormProgress from "@/components/form-progress"
 import { jstTodayYmd, toDateInputValue } from "@/lib/date-utils"
-import { cleanEquipmentItem, type DetailField, type SoukatsuEquipmentItem } from "@/lib/soukatsu-equipment"
-import { EquipmentDetailInputs, WitnessFillAll } from "@/components/soukatsu-equipment-details"
+import { cleanEquipmentItem, EDITABLE_EQUIPMENT_RESULTS, type DetailField, type SoukatsuEquipmentItem } from "@/lib/soukatsu-equipment"
+import { EquipmentDetailInputs, EquipmentResultButtons, WitnessFillAll } from "@/components/soukatsu-equipment-details"
 import { SoukatsuCoverInputs } from "@/components/soukatsu-cover-inputs"
 import { coverFieldsForSave } from "@/lib/soukatsu-cover"
 
@@ -493,38 +493,20 @@ export default function SoukatsuForm({ property, previousData, copyFromId, sourc
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-3">
-                        {/* ★不良内容・措置内容・立会者は総括表の欄（#28）。作ったあとも編集画面で直せる */}
+                        {/* ★不良内容・措置内容・立会者は総括表の欄（#28）。作ったあとも編集画面で直せる。
+                            ★点検結果（指摘なし⇄要改善）も編集画面で直せる（2026-11-09）。設備名は直せない */}
                         <WitnessFillAll onFill={fillWitness} />
                         {equipmentResults.map((item, index) => (
                             <div key={item.name} className="space-y-2 py-2 border-b border-slate-100 last:border-0">
                             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                                 <span className="text-sm font-medium text-slate-700 sm:min-w-[200px]">{item.name}</span>
-                                <div className="flex gap-2">
-                                    {(property
-                                        ? ["指摘なし", "要改善"] as const
-                                        : ["該当なし", "指摘なし", "要改善"] as const
-                                    ).map(result => (
-                                        <button
-                                            key={result}
-                                            type="button"
-                                            onClick={() => updateEquipmentResult(index, result)}
-                                            className={`inline-flex min-h-11 md:min-h-0 items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-full transition-all ${
-                                                item.result === result
-                                                    ? result === "指摘なし"
-                                                        ? "bg-green-100 text-green-700 ring-2 ring-green-500"
-                                                        : result === "要改善"
-                                                            ? "bg-red-100 text-red-700 ring-2 ring-red-500"
-                                                            : "bg-slate-200 text-slate-600 ring-2 ring-slate-400"
-                                                    : "bg-slate-50 text-slate-400 hover:bg-slate-100"
-                                            }`}
-                                        >
-                                            {result === "指摘なし" && <CheckCircle2 className="w-3 h-3" />}
-                                            {result === "要改善" && <AlertTriangle className="w-3 h-3" />}
-                                            {result === "該当なし" && <MinusCircle className="w-3 h-3" />}
-                                            {result}
-                                        </button>
-                                    ))}
-                                </div>
+                                {/* ★点検結果のボタンは編集画面と同じ部品（soukatsu-equipment-details.tsx） */}
+                                <EquipmentResultButtons
+                                    name={item.name}
+                                    value={item.result}
+                                    options={property ? EDITABLE_EQUIPMENT_RESULTS : ["該当なし", ...EDITABLE_EQUIPMENT_RESULTS]}
+                                    onChange={(result) => updateEquipmentResult(index, result)}
+                                />
                             </div>
                             <EquipmentDetailInputs item={item} onChange={(field, value) => updateEquipmentDetail(index, field, value)} />
                             </div>

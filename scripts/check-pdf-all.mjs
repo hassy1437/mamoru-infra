@@ -737,8 +737,9 @@ const CHECKS = [
     },
     {
         file: "check-soukatsu-details.mjs", stage: "挙動",
-        why: "総括表の不良内容・措置内容・立会者が、入力の整理・編集の突き合わせ（設備名と判定を消さない）・PDF の行と欄まで届くか。"
-            + "★空欄は正常なピクセルなので画像では出ない種類（画面に入力欄が無く常に空欄だった #28）",
+        why: "総括表の不良内容・措置内容・立会者が、入力の整理・編集の突き合わせ（設備名を消さない・判定は指摘なし⇄要改善だけ変える）・PDF の行と欄まで届くか。"
+            + "★空欄は正常なピクセルなので画像では出ない種類（画面に入力欄が無く常に空欄だった #28）。"
+            + "★判定は 2026-11-09 から編集でも変えられる（点検票に「否」があるのに総括表を直せなかった・定期テスト 21）",
         runs: [
             { label: "自己診断", cmd: ["node", "scripts/check-soukatsu-details.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
             { cmd: ["node", "scripts/check-soukatsu-details.mjs"], sentinel: "SOUKATSU_DETAILS_OK" },

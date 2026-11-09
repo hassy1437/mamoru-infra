@@ -13,6 +13,8 @@ import { canDownloadPdf, finalizeBlockNotice, FINALIZATION_ERROR_MESSAGE, loadFi
 import WithdrawnMatchNotice from "@/components/withdrawn-match-notice"
 import { withdrawnAtOf } from "@/lib/match-withdrawn"
 import { checkReportReadiness } from "@/lib/report-readiness"
+import { loadBekkiPayloads } from "@/lib/bekki-payloads"
+import { selectedSteps } from "@/lib/itiran-input-flow"
 import ReportReadinessBox from "@/components/report-readiness-box"
 import DeleteSoukatsuButton from "@/components/delete-soukatsu-button"
 import { soukatsuDeleteBlock } from "@/lib/soukatsu-delete"
@@ -35,8 +37,8 @@ export default async function InspectionDetailPage({ params }: { params: Promise
 
     // 総括表の防火管理者欄=物件の防火管理者名。点検実施責任者（点検者 1 の氏名）は点検者一覧表ができてから下で入れる。
     const { data: property } = report.property_id
-        ? await supabase.from("properties").select("fire_manager_name, source_match_id, withdrawn_at").eq("id", report.property_id).single()
-        : { data: null as { fire_manager_name: string | null; source_match_id: string | null; withdrawn_at: string | null } | null }
+        ? await supabase.from("properties").select("equipment_types, fire_manager_name, source_match_id, withdrawn_at").eq("id", report.property_id).single()
+        : { data: null as { equipment_types: unknown; fire_manager_name: string | null; source_match_id: string | null; withdrawn_at: string | null } | null }
     // ★成約が取り消された物件（納品できない）。入力を始める前に分かるように出す（総点検 B3）
     const withdrawnAt = withdrawnAtOf(property)
     const soukatsuDataBase = { ...report, fire_manager: property?.fire_manager_name ?? "" }
@@ -62,8 +64,11 @@ export default async function InspectionDetailPage({ params }: { params: Promise
 
     // ★確定前の不備チェック（src/lib/report-readiness.ts・2026-10-19 打合せ #101）。
     //   見るのは総括表だけ（点検者一覧・別記は確定のあとに入れるのが普通なので、ここでは見ない・出力画面で見る）。
+    //   ★ただし点検票（別記）を先に入れていれば、総括表の判定との食い違い（点検票に「否」・総括表は「良」）だけは見る
+    //     （2026-11-08・定期テスト 21）。stepIds・itiran は渡さない＝未入力の様式・点検者の注意は出さない
     //   ★空の必須があると確定のボタンを押せない。止めるのは画面だけで DB は止めない。
-    const readiness = checkReportReadiness({ soukatsu: report })
+    const bekkiPayloads = nextItiranId ? await loadBekkiPayloads(supabase, nextItiranId, selectedSteps(property?.equipment_types).map((s) => s.id)) : {}
+    const readiness = checkReportReadiness({ soukatsu: report, bekkiPayloads })
     // ★削除できるか（src/lib/soukatsu-delete.ts）。確定・納品した点検は DB が止めるので、先にボタンを出さず理由を出す。
     //   納品の状態は報告書一覧と同じ get_report_summaries から読む（public.report_deliveries はこのクライアントから直接読めない）
     const { data: summaries } = await supabase.rpc("get_report_summaries")

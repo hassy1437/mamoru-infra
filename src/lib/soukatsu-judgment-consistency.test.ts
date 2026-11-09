@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import { BEKKI_ROW_LABELS } from "@/lib/bekki-row-labels"
 import { isAutoTestRow } from "@/lib/auto-test-rows"
-import { checkReportReadiness, SOUKATSU_JUDGMENT_MISMATCH_MESSAGE } from "@/lib/report-readiness"
+import { checkReportReadiness, readinessFixHref, SOUKATSU_JUDGMENT_MISMATCH_MESSAGE } from "@/lib/report-readiness"
 import { isBadResult } from "@/lib/soukatsu-equipment"
 import { countPrintedBadRows, findSoukatsuJudgmentMismatches } from "@/lib/soukatsu-judgment-consistency"
 
@@ -84,12 +84,16 @@ describe("確定前の確認（checkReportReadiness）の注意", () => {
         equipment_results: [{ name: "消火器", result: "指摘なし" }],
     }
 
-    it("食い違いは注意（確定は止めない）・設備名つき・直す画面のリンクは出さない", () => {
+    it("食い違いは注意（確定は止めない）・設備名つき・直す画面は総括表の編集の点検結果", () => {
         const r = checkReportReadiness({ soukatsu, bekkiPayloads: { shokaki: shokaki([0]) } })
         expect(r.canFinalize).toBe(true)
+        const fix = { kind: "soukatsu", anchor: "equipment-results" }
         expect(r.warnings).toEqual([
-            expect.objectContaining({ id: "soukatsu_judgment", label: "総括表の判定", message: SOUKATSU_JUDGMENT_MISMATCH_MESSAGE, details: ["消火器"], fix: null }),
+            expect.objectContaining({ id: "soukatsu_judgment", label: "総括表の判定", message: SOUKATSU_JUDGMENT_MISMATCH_MESSAGE, details: ["消火器"], fix }),
         ])
+        // ★確定・納品のあとも総括表は編集できるので、リンクはいつも作れる（結果出力の画面・総括表の確認の画面の両方）
+        expect(readinessFixHref(r.warnings[0].fix, { soukatsuId: "s1", itiranId: "i1" })).toBe("/inspection/s1/edit#equipment-results")
+        expect(readinessFixHref(r.warnings[0].fix, { soukatsuId: "s1", itiranId: null })).toBe("/inspection/s1/edit#equipment-results")
     })
 
     it("別記の中身を渡さないとき（確定の前の総括表だけ）は見ない", () => {

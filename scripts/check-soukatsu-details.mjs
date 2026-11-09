@@ -6,8 +6,12 @@
 //
 // ■ 検査すること
 //   1. 保存前の整理（cleanEquipmentItem）: 空の欄は持たない・要改善でない行の不良内容／措置内容は外す
-//   2. 編集の保存（mergeEquipmentDetails）: ★設備名・判定・行の数・順番は DB のまま。3つの欄だけ重なる。
+//   2. 編集の保存（mergeEquipmentDetails）: ★設備名・行の数・順番は DB のまま。判定と3つの欄だけ重なる。
+//      ★判定は 2026-11-09 から編集で変えられる（定期テスト 21・橋本さんの決定 A）。変えられるのは「指摘なし」⇄「要改善」だけで、
+//        「該当なし」・古い値の行と、画面の値がこの 2 つでないときは DB のまま。判定を変えた行の不良内容・措置内容は作成の画面と同じ整え方
 //      画面に無い設備の行は元のまま。DB が配列でなければ null（書かない）
+//   4. 画面: 作成と編集が同じ判定のボタン（EquipmentResultButtons）を使い、編集は「指摘なし」「要改善」だけを出す。
+//      編集の画面に「（判定は）変えられません」と書かない
 //   3. PDF: 1枚目と2枚目の行に、不良内容 → 措置内容 → 立会者 が左から順に、その行の高さに載る
 //
 // 使い方: node scripts/check-soukatsu-details.mjs [--self-test]
@@ -20,6 +24,10 @@ import { runRoutePdf } from "./run-route-pdf.mjs"
 
 const ROOT = process.cwd()
 const PY = process.platform === "win32" ? "python" : "python3"
+const NEW_FORM = "src/components/soukatsu-form.tsx"
+const EDIT_FORM = "src/components/soukatsu-edit-form.tsx"
+const PARTS = "src/components/soukatsu-equipment-details.tsx"
+const readSrc = (f) => fs.readFileSync(path.join(ROOT, f), "utf8")
 
 // ★本番の実体を読む（写しを検査しない）
 async function loadLib(source) {
@@ -49,20 +57,40 @@ function judgeLogic(lib) {
         { name: "消火器", result: "指摘なし", extra: "keep" },
         { name: "誘導灯", result: "要改善", bad_detail: "古い" },
         { name: "避難器具", result: "指摘なし" },
+        { name: "連結送水管", result: "該当なし" },
+        { name: "排煙設備", result: "不良" },
     ]
     const edited = [
-        { name: "誘導灯", result: "指摘なし", bad_detail: "球切れ", action: "交換", witness: "山田" },   // ★判定を変えて渡しても DB の判定のまま
-        { name: "消火器", result: "要改善", bad_detail: "出ない", witness: "山田" },
+        { name: "誘導灯", result: "指摘なし", bad_detail: "球切れ", action: "交換", witness: "山田" },   // ★要改善 → 指摘なし: 不良内容・措置内容は外す（作成の画面と同じ）
+        { name: "消火器", result: "要改善", bad_detail: "出ない", witness: "山田" },                    // ★指摘なし → 要改善
+        { name: "避難器具", result: "該当なし" },                                                        // ★画面の値が 2 つの外 → DB のまま
+        { name: "連結送水管", result: "指摘なし" },                                                      // ★DB が「該当なし」→ DB のまま
+        { name: "排煙設備", result: "指摘なし" },                                                        // ★DB が古い値 → DB のまま
         { name: "画面に無い設備", result: "要改善", bad_detail: "x" },
     ]
     const m = lib.mergeEquipmentDetails(db, edited)
     const want = [
-        { name: "消火器", result: "指摘なし", extra: "keep", witness: "山田" },
-        { name: "誘導灯", result: "要改善", bad_detail: "球切れ", action: "交換", witness: "山田" },
+        { name: "消火器", result: "要改善", extra: "keep", bad_detail: "出ない", witness: "山田" },
+        { name: "誘導灯", result: "指摘なし", witness: "山田" },
         { name: "避難器具", result: "指摘なし" },
+        { name: "連結送水管", result: "該当なし" },
+        { name: "排煙設備", result: "不良" },
     ]
-    if (!eq(m, want)) problems.push(`突き合わせ: 設備名・判定・行が DB のまま、3つの欄だけ重なっていない\n      得た ${JSON.stringify(m)}\n      期待 ${JSON.stringify(want)}`)
+    if (!eq(m, want)) problems.push(`突き合わせ: 設備名・行が DB のまま、判定（指摘なし⇄要改善だけ）と3つの欄だけが重なっていない\n      得た ${JSON.stringify(m)}\n      期待 ${JSON.stringify(want)}`)
     if (lib.mergeEquipmentDetails(null, edited) !== null) problems.push("突き合わせ: DB が配列でないのに書く値を返した")
+    return problems
+}
+
+/** 4. 画面の配線（作成と編集が同じボタン・編集は 2 つだけ・「変えられません」と書かない） */
+function judgeScreens(files) {
+    const problems = []
+    if (!/export function EquipmentResultButtons\(/.test(files[PARTS])) problems.push(`${PARTS}: 判定のボタン（EquipmentResultButtons）が無い`)
+    if (!/<EquipmentResultButtons\n[\s\S]*?onChange=\{\(result\) => updateEquipmentResult\(index, result\)\}/.test(files[NEW_FORM])) problems.push(`${NEW_FORM}: 作成の画面が共有の判定のボタンを使っていない`)
+    const edit = files[EDIT_FORM]
+    if (!/\{isEditableEquipmentResult\(item\.result\) \? \(\n\s*<EquipmentResultButtons\n[\s\S]*?options=\{EDITABLE_EQUIPMENT_RESULTS\}\n\s*onChange=\{\(result\) => updateResult\(index, result\)\}/.test(edit)) problems.push(`${EDIT_FORM}: 編集の画面で判定（指摘なし⇄要改善）を変えられない`)
+    if (!/const updateResult = \(index: number, result: SoukatsuEquipmentResult\) => \{\n\s*markDirty\(\)/.test(edit)) problems.push(`${EDIT_FORM}: 判定を変えても「保存していない変更」として扱わない`)
+    if (/点検結果（指摘なし／要改善）はここでは変えられません/.test(edit)) problems.push(`${EDIT_FORM}: 判定を変えられるのに「変えられません」と書いている`)
+    if (!/点検結果（指摘なし／要改善）を変えられます。設備名は変えられません。/.test(edit)) problems.push(`${EDIT_FORM}: 何を変えられるか（点検結果は変えられる・設備名は変えられない）を書いていない`)
     return problems
 }
 
@@ -102,9 +130,11 @@ const items = Array.from({ length: 9 }, (_, k) => ({
 }))
 const libSrc = fs.readFileSync(path.join(ROOT, "src", "lib", "soukatsu-equipment.ts"), "utf8")
 
+const screens = Object.fromEntries([NEW_FORM, EDIT_FORM, PARTS].map((f) => [f, readSrc(f)]))
+
 if (process.argv.includes("--self-test")) {
     const lib = await loadLib(libSrc)
-    const okLogic = judgeLogic(lib)
+    const okLogic = [...judgeLogic(lib), ...judgeScreens(screens)]
     // ★自己診断は本番の検査と別の名前で作る（check-pdf-all は両方を並列に走らせる。
     //   同じ名前だと片方が消した直後にもう片方が読み、「PDF を読めない」で落ちた・2026-10-06）
     const okPdf = await judgePdf(items, "_soukatsu_details_selftest.pdf")
@@ -113,11 +143,33 @@ if (process.argv.includes("--self-test")) {
         for (const p of [...okLogic, ...okPdf]) console.log("   ", p)
         process.exit(1)
     }
-    // 陽性対照1: 突き合わせで判定を画面の値で上書きする形に壊す
-    const broken = await loadLib(libSrc.replace("result: db.result as SoukatsuEquipmentResult", "result: edited[idx].result"))
-    if (!judgeLogic(broken).some((p) => p.startsWith("突き合わせ"))) {
-        console.log("自己診断: 判定を上書きする形に壊しても検出できない")
-        process.exit(1)
+    // 陽性対照1: 突き合わせを壊す（判定を DB のままに戻す／「該当なし」・古い値も画面の値で上書きする／判定を変えた行の不良内容を外さない）
+    const logicMutants = [
+        ["判定を DB のままに戻す（2026-11-09 より前）", "const result = isEditableEquipmentResult(db.result) && isEditableEquipmentResult(edited[idx].result) ? edited[idx].result : db.result", "const result = db.result"],
+        ["「該当なし」・古い値の行も画面の値で上書きする", "isEditableEquipmentResult(db.result) && isEditableEquipmentResult(edited[idx].result) ? edited[idx].result", "isEditableEquipmentResult(edited[idx].result) ? edited[idx].result"],
+        ["判定を変えた行を DB の判定で整える（不良内容が残る）", "result: result as SoukatsuEquipmentResult })", "result: db.result as SoukatsuEquipmentResult })"],
+    ]
+    for (const [label, from, to] of logicMutants) {
+        if (!libSrc.includes(from)) { console.log(`自己診断: 書き換える箇所が無い: ${label}`); process.exit(1) }
+        const broken = await loadLib(libSrc.replace(from, to))
+        if (!judgeLogic(broken).some((p) => p.startsWith("突き合わせ"))) {
+            console.log(`自己診断: ${label} → 検出できない`)
+            process.exit(1)
+        }
+        console.log(`  陽性対照1: ${label} → 検出`)
+    }
+    const screenMutants = [
+        ["編集の画面の判定をボタンでなく表示だけに戻す", EDIT_FORM, "{isEditableEquipmentResult(item.result) ? (", "{false ? ("],
+        ["作成の画面が自前のボタンに戻る", NEW_FORM, "<EquipmentResultButtons\n", "<EquipmentResultButtonsX\n"],
+        ["「変えられません」の文に戻す", EDIT_FORM, "点検結果（指摘なし／要改善）を変えられます。設備名は変えられません。", "設備名と点検結果（指摘なし／要改善）はここでは変えられません。"],
+    ]
+    for (const [label, file, from, to] of screenMutants) {
+        if (!screens[file].includes(from)) { console.log(`自己診断: 書き換える箇所が無い: ${label}`); process.exit(1) }
+        if (!judgeScreens({ ...screens, [file]: screens[file].replace(from, to) }).length) {
+            console.log(`自己診断: ${label} → 検出できない`)
+            process.exit(1)
+        }
+        console.log(`  陽性対照: ${label} → 検出`)
     }
     // 陽性対照2: 3つの欄を持たない行（以前の画面の保存）では PDF の検査が落ちる
     const bare = await judgePdf(items.map(({ name, result }) => ({ name, result })), "_soukatsu_details_bare.pdf")
@@ -126,17 +178,16 @@ if (process.argv.includes("--self-test")) {
         process.exit(1)
     }
     for (const f of ["_soukatsu_details_selftest.pdf", "_soukatsu_details_bare.pdf"]) fs.rmSync(path.join("tmp", f), { force: true })
-    console.log("  陰性対照: 整理・突き合わせ・PDF（1枚目と2枚目）すべて約束どおり")
-    console.log("  陽性対照1: 突き合わせで判定を画面の値で上書きする → 検出")
+    console.log("  陰性対照: 整理・突き合わせ（判定は指摘なし⇄要改善だけ）・画面の配線・PDF（1枚目と2枚目）すべて約束どおり")
     console.log("  陽性対照2: 3つの欄が空の行（以前の画面の保存）→ PDF の検査が検出")
     console.log("SELF_TEST_OK")
     process.exit(0)
 }
 
 const lib = await loadLib(libSrc)
-const problems = [...judgeLogic(lib), ...(await judgePdf(items, "_soukatsu_details.pdf"))]
+const problems = [...judgeLogic(lib), ...judgeScreens(screens), ...(await judgePdf(items, "_soukatsu_details.pdf"))]
 fs.rmSync(path.join("tmp", "_soukatsu_details.pdf"), { force: true })
-console.log("総括表の不良内容・措置内容・立会者を検査: 整理・突き合わせ・PDF（1枚目と2枚目）")
+console.log("総括表の判定・不良内容・措置内容・立会者を検査: 整理・突き合わせ（判定は指摘なし⇄要改善だけ）・画面の配線・PDF（1枚目と2枚目）")
 if (problems.length) {
     console.log("★NG:")
     for (const p of problems) console.log("   ", p)

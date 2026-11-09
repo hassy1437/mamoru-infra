@@ -24,7 +24,7 @@ import { findSoukatsuJudgmentMismatches } from "@/lib/soukatsu-judgment-consiste
  *     - 総括表で「要改善」なのに不良内容（bad_detail）が空（様式の備考2「不良の場合は不良内容欄に記入」）
  *     - ★総括表で「良」に○が付く設備の点検票に「否」がある（2026-11-08・定期テスト 21・src/lib/soukatsu-judgment-consistency.ts）
  *       ★bekkiPayloads を渡したときだけ（stepIds は要らない。総括表の確認画面は別記の中身だけ渡す）。
- *       ★直す画面のリンクは出さない（総括表の判定は作成の画面で決めたまま。編集の画面では変えられない・soukatsu-edit-form.tsx）
+ *       ★直す画面は総括表の編集の「消防用設備等の点検結果」（2026-11-09 から判定を指摘なし⇄要改善で変えられる・soukatsu-edit-form.tsx）
  *     - 点検者1の氏名・資格（免状）・電話番号が無い ★itiran を渡したときだけ（確定の前は点検者一覧がまだ無いのが普通）
  *     - 表紙の報告年月日が空（★空欄で印字する＝手書き用なので止めない・2026-10-20・録音 102）
  *     ★点検者 1 の氏名・資格・電話番号と報告年月日は、赤で目立たせる（urgent・録音 102）
@@ -128,7 +128,7 @@ const REQUIRED_FIELDS: readonly FieldRule[] = [
 
 /** 総括表の判定と点検票の「否」が食い違うときの注意の文（★画面の確定前の確認に出す） */
 export const SOUKATSU_JUDGMENT_MISMATCH_MESSAGE =
-    "点検票に「否」がある設備が「良」になっています（PDF の総括表では「良」に○が付きます）"
+    "点検票に「否」がある設備が「良」になっています（PDF の総括表では「良」に○が付きます）。点検票が正しければ、総括表の点検結果を「要改善」にしてください"
 
 /** 必須の欄の列名（検査スクリプトが 1 つずつ空にして確かめる） */
 export const READINESS_REQUIRED_COLUMNS: readonly string[] = REQUIRED_FIELDS.map((f) => f.column)
@@ -197,7 +197,7 @@ export function checkReportReadiness(input: ReadinessInput): ReportReadiness {
         level: "required",
         label: "点検した設備（1 つ以上）",
         ok: equipmentOk,
-        // ★総括表の編集では設備を足せない（設備名と判定は作成画面で決めたまま・soukatsu-edit-form.tsx）
+        // ★総括表の編集では設備を足せない（設備名は作成画面で決めたまま・soukatsu-edit-form.tsx）
         message: equipmentOk ? "" : "点検結果に設備が 1 つもありません。物件に設備を登録してから、総括表を作り直してください（総括表の編集では設備を足せません）",
         details: [],
         fix: text(s.property_id) ? { kind: "property" } : null,
@@ -218,10 +218,10 @@ export function checkReportReadiness(input: ReadinessInput): ReportReadiness {
     }
 
     // ★総括表の判定と点検票の「否」（2026-11-08・定期テスト 21）。別記の中身を渡したときだけ見る・止めない。
-    //   ★直す画面のリンクは出さない（総括表の判定は編集の画面では変えられない＝「総括表を編集」を押しても直せない）
+    //   ★直す画面は総括表の編集の点検結果（2026-11-09 から判定を変えられる）。確定・納品のあとも編集できるので、いつもリンクを出す
     const judgmentMismatch = [...new Set(findSoukatsuJudgmentMismatches(s.equipment_results, input.bekkiPayloads).map((m) => m.equipment))]
     if (judgmentMismatch.length) {
-        warn("soukatsu_judgment", "総括表の判定", SOUKATSU_JUDGMENT_MISMATCH_MESSAGE, judgmentMismatch, null)
+        warn("soukatsu_judgment", "総括表の判定", SOUKATSU_JUDGMENT_MISMATCH_MESSAGE, judgmentMismatch, { kind: "soukatsu", anchor: "equipment-results" })
     }
 
     // ★点検者は itiran を渡したときだけ（確定の前は点検者一覧がまだ無いのが普通・出力画面で見る）

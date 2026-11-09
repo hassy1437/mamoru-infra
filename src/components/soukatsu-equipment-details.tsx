@@ -4,7 +4,8 @@ import { useId, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { DETAIL_FIELD_LABELS, equipmentFieldLabel, type DetailField, type SoukatsuEquipmentItem } from "@/lib/soukatsu-equipment"
+import { AlertTriangle, CheckCircle2, MinusCircle } from "lucide-react"
+import { DETAIL_FIELD_LABELS, equipmentFieldLabel, type DetailField, type SoukatsuEquipmentItem, type SoukatsuEquipmentResult } from "@/lib/soukatsu-equipment"
 import { DEFECT_PHRASE_LIST_PREFIX, defectPhraseListId } from "@/lib/defect-phrases"
 import { DefectPhraseDatalists } from "@/components/defect-phrase-datalists"
 
@@ -62,6 +63,52 @@ export function EquipmentDetailInputs({
                     onChange={(e) => onChange("witness", e.target.value)}
                 />
             </div>
+        </div>
+    )
+}
+
+/**
+ * 設備ごとの点検結果（指摘なし／要改善／該当なし）を選ぶボタン。
+ * ★作成画面（soukatsu-form）と編集画面（soukatsu-edit-form）で同じ部品を使う（2026-11-09・定期テスト 21）。
+ *   編集画面では「指摘なし」と「要改善」だけを出す（lib/soukatsu-equipment.ts の EDITABLE_EQUIPMENT_RESULTS）。
+ * ★押す所はスマホで 44px 以上（min-h-11・scripts/check-iphone-input.mjs）
+ */
+export function EquipmentResultButtons({
+    name,
+    value,
+    options,
+    onChange,
+}: {
+    /** 設備名（読み上げ用） */
+    name: string
+    value: SoukatsuEquipmentResult
+    options: readonly SoukatsuEquipmentResult[]
+    onChange: (result: SoukatsuEquipmentResult) => void
+}) {
+    return (
+        <div role="group" aria-label={`${name} の点検結果`} className="flex gap-2">
+            {options.map((result) => (
+                <button
+                    key={result}
+                    type="button"
+                    aria-pressed={value === result}
+                    onClick={() => onChange(result)}
+                    className={`inline-flex min-h-11 md:min-h-0 items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-full transition-all ${
+                        value === result
+                            ? result === "指摘なし"
+                                ? "bg-green-100 text-green-700 ring-2 ring-green-500"
+                                : result === "要改善"
+                                    ? "bg-red-100 text-red-700 ring-2 ring-red-500"
+                                    : "bg-slate-200 text-slate-600 ring-2 ring-slate-400"
+                            : "bg-slate-50 text-slate-400 hover:bg-slate-100"
+                    }`}
+                >
+                    {result === "指摘なし" && <CheckCircle2 className="w-3 h-3" />}
+                    {result === "要改善" && <AlertTriangle className="w-3 h-3" />}
+                    {result === "該当なし" && <MinusCircle className="w-3 h-3" />}
+                    {result}
+                </button>
+            ))}
         </div>
     )
 }

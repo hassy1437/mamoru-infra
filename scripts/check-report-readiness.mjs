@@ -12,7 +12,8 @@
 //   3. 設備: 0 件・名前が空の行だけ → 必須で止める（DB の normalize_equipment_codes と同じ数え方）
 //   4. 注意は止めない: 総括表の「要改善」で不良内容が空／別記の「否」で不良内容が空（見出し行は数えない）／
 //      点検者1の氏名・資格（★itiran を渡したときだけ）／未入力の様式／
-//      ★総括表で「良」に○が付く設備の点検票に「否」がある（2026-11-08・定期テスト 21。見出し行・「該当なし」は見ない・逆向きは見ない）
+//      ★総括表で「良」に○が付く設備の点検票に「否」がある（2026-11-08・定期テスト 21。見出し行・「該当なし」は見ない・逆向きは見ない。
+//        直す画面は総括表の編集の点検結果・2026-11-09 から判定を変えられる）
 //   5. 直す画面のリンク（総括表の欄・点検者一覧・様式）
 //   6. 呼び出し側: 総括表の確認画面がプレビュー → 確定前の確認 → 確定のボタンの順に並べ、空の必須を確定のボタンに渡す。
 //      確定のボタンが押せなくなる。出力画面が点検者・別記まで渡す。共通の別記フォームが基本情報を畳める。
@@ -172,7 +173,9 @@ function behaviour({ lib, labels }) {
     const badRow = (i) => rows(26, (j) => (j === i ? { judgment: "否", bad_content: "降下空間に障害物" } : { judgment: "良" }))
     warnCase("総括表で「良」・点検票に「否」", { soukatsu: allGood, bekkiPayloads: { [STEP]: { ...HEAD, page1_rows: badRow(3), page2_rows: rows(27) } } }, ["soukatsu_judgment"], (r) => {
         if (!same(r.warnings[0].details, ["避難器具"])) problems.push(`総括表で「良」・点検票に「否」: 設備名が ${JSON.stringify(r.warnings[0].details)}（期待 ["避難器具"]）`)
-        if (r.warnings[0].fix !== null) problems.push("総括表で「良」・点検票に「否」: 直せない画面（総括表の編集では判定を変えられない）へのリンクを出している")
+        // ★直す画面は総括表の編集の点検結果（2026-11-09 から判定を変えられる・橋本さんの決定 A）
+        if (!same(r.warnings[0].fix, { kind: "soukatsu", anchor: "equipment-results" })) problems.push(`総括表で「良」・点検票に「否」: 直す画面が総括表の編集の点検結果でない ${JSON.stringify(r.warnings[0].fix)}`)
+        else if (lib.readinessFixHref(r.warnings[0].fix, { soukatsuId: "s1", itiranId: "i1" }) !== "/inspection/s1/edit#equipment-results") problems.push("総括表で「良」・点検票に「否」: 総括表を編集へのリンクが作れない")
         if (r.warnings[0].urgent) problems.push("総括表で「良」・点検票に「否」: 赤にしている（黄色の注意のはず）")
         if (r.warnings[0].label !== "総括表の判定") problems.push(`総括表で「良」・点検票に「否」: 見出しが ${JSON.stringify(r.warnings[0].label)}`)
     })
@@ -290,7 +293,7 @@ if (SELF_TEST) {
         ["点滅を止めない（animate-pulse に戻す）", swap(BOX, "attention-blink", "motion-safe:animate-pulse attention-blink"), "点滅が止まらない"],
         ["点滅をずっと続ける（infinite）", swap("src/app/globals.css", "animation: attention-blink 1.2s ease-in-out 4;", "animation: attention-blink 1.2s ease-in-out infinite;"), "回数で止まらない"],
         ["総括表の判定の食い違いを見ない", swap(LIB, "if (judgmentMismatch.length) {", "if (false) {"), "総括表で「良」・点検票に「否」"],
-        ["総括表の判定の注意に「総括表を編集」を付ける", swap(LIB, "SOUKATSU_JUDGMENT_MISMATCH_MESSAGE, judgmentMismatch, null)", 'SOUKATSU_JUDGMENT_MISMATCH_MESSAGE, judgmentMismatch, { kind: "soukatsu", anchor: "equipment-results" })'), "直せない画面"],
+        ["総括表の判定の注意から「総括表を編集」を外す", swap(LIB, 'SOUKATSU_JUDGMENT_MISMATCH_MESSAGE, judgmentMismatch, { kind: "soukatsu", anchor: "equipment-results" })', "SOUKATSU_JUDGMENT_MISMATCH_MESSAGE, judgmentMismatch, null)"), "直す画面が総括表の編集の点検結果でない"],
         ["点検票の見出し行の「否」も数える", swap(JUDGE, "if (isBekkiHeadingLabel(label)) return", ""), "見出し行（総合点検）だけ「否」"],
         ["総括表の「該当なし」も「良」に数える", swap(JUDGE, "if (!isGoodResult(item.result)) continue", 'if (!isGoodResult(item.result) && String(item.result) !== "該当なし") continue'), "「該当なし」"],
         ["点検票の「否」を「否」の字だけで数える（古い「不良」を落とす）", swap(JUDGE, "if (!isBadResult(row.judgment)) return", 'if (row.judgment !== "否") return'), "「不良」（古い値）"],

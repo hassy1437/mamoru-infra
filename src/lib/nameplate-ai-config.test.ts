@@ -43,6 +43,16 @@ describe("モデル", () => {
         expect(ms[1]).toMatchObject({ id: "gemini-9-lite", apiKey: "k-g2" })
     })
 
+    it("★2 社（Claude・Gemini）だけで使う: ChatGPT のキーが無ければ呼ばない・test の人には出す（2026-11-09）", () => {
+        const env = { ANTHROPIC_API_KEY: "k-a", GEMINI_API_KEY: "k-g", OPENAI_API_KEY: " ", NAMEPLATE_AI: "test", NAMEPLATE_AI_TESTERS: UID }
+        expect(nameplateLiveModels(env).map((m) => [m.provider, m.id])).toEqual([
+            ["anthropic", "claude-haiku-5-5"],
+            ["google", "gemini-3.1-flash-lite"],
+        ])
+        expect(nameplateAiEnabledFor(env, UID)).toBe(true)
+        expect(nameplateAiEnabledFor(env, "6e000000-0000-0000-0000-0000000000a2")).toBe(false)
+    })
+
     it("★単価とモデル名は評価の道具（scripts/nameplate-eval/lib.mts）と同じ", () => {
         expect(NAMEPLATE_LIVE_MODELS.anthropic).toMatchObject({ id: MODELS.haiku.id, usdIn: MODELS.haiku.usdIn, usdOut: MODELS.haiku.usdOut })
         expect(NAMEPLATE_LIVE_MODELS.google).toMatchObject({

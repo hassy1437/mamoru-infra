@@ -12,6 +12,8 @@
 //   （点検アプリの依存を評価の道具のためだけに増やさない）。fetch は差し替えられる（自己診断で偽の返事を返す）
 // ■ ★2026-10-30: OpenAI・Google の公式の資料をこの環境から開けなかった。呼び方は知っている形で書いた。
 //   うまくいかないときは、results.jsonl の error に API の返したエラーの文が残る
+// ■ ★2026-11-09: Google の頼みごと（buildGeminiRequest）の欄の名前は、キー無しで受け口に送って確かめた
+//   （知らない欄があれば鍵より先に 400「Unknown name」で弾かれる。弾かれなかった）。中身は本物のキーで確かめる
 import {
     NAMEPLATE_SCHEMA,
     NAMEPLATE_SYSTEM_PROMPT,

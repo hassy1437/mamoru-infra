@@ -117,6 +117,44 @@ describe("多数決", () => {
     })
 })
 
+/** ★2026-11-09: 当面は 2 社（Claude・Gemini）で使う（ChatGPT のキーは入れていない）。2 社のときの決まりを縛る */
+describe("2 社（Claude・Gemini）のとき", () => {
+    it("2 社が同じなら agreed（緑）・違えば none（空にして両方を候補に・★割れた（黄色）にはならない）", () => {
+        const c = buildNameplateConsensus([
+            result("anthropic", reading("ポンプ", { maker: "株式会社サンプル製作所", model: "SP-65A", serial_number: "19A-0412" })),
+            result("google", reading("ポンプ", { maker: "サンプル製作所", model: "SP-65A", serial_number: "19A-04I2" })),
+        ])
+        expect(c.voters).toBe(2)
+        expect(c.device_kind).toBe("ポンプ")
+        expect(c.fields.maker).toMatchObject({ status: "agreed", value: "株式会社サンプル製作所" })
+        expect(c.fields.model).toMatchObject({ status: "agreed", value: "SP-65A" })
+        expect(c.fields.serial_number.status).toBe("none")
+        expect(c.fields.serial_number.value).toBeNull()
+        expect(c.fields.serial_number.candidates.map((x) => [x.value, x.providers])).toEqual([
+            ["19A-0412", ["anthropic"]],
+            ["19A-04I2", ["google"]],
+        ])
+    })
+
+    it("1 社が失敗・読めないときは、もう 1 社の値も入れない（★1 票では埋めない・候補には出す）", () => {
+        const failed = buildNameplateConsensus([
+            result("anthropic", reading("測定機器", { maker: "みほん計器株式会社" })),
+            result("google", null, false),
+        ])
+        expect(failed.voters).toBe(1)
+        expect(failed.fields.maker).toMatchObject({ status: "none", value: null })
+        expect(failed.fields.maker.candidates).toEqual([{ value: "みほん計器株式会社", providers: ["anthropic"] }])
+        expect(failed.device_kind).toBe("その他")
+
+        const unreadable = buildNameplateConsensus([
+            result("anthropic", reading("測定機器", { model: "IR-4052" })),
+            result("google", reading("測定機器", { model: { value: null, legibility: "unreadable" } })),
+        ])
+        expect(unreadable.fields.model).toMatchObject({ status: "none", value: null })
+        expect(unreadable.device_kind).toBe("測定機器")
+    })
+})
+
 describe("答え合わせ", () => {
     it("会社ごと・欄ごとに judgeNameplateField（失敗した会社は入れない）", () => {
         const out = nameplateOutcomes(

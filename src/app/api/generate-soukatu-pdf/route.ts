@@ -8,6 +8,7 @@ import {
     measureRuns,
     drawTextRuns,
     drawWrappedTextInCell,
+    CHOICE_CIRCLE_BORDER,
 } from "@/lib/pdf-form-helpers"
 import {
     buildFitError,
@@ -83,7 +84,8 @@ const JUDGE_BAD_CENTER_X = 196.38;    // 語「不良」185.88〜206.88 の中�
 // ★罫線・2 行目に一切触れない○は描けない（1200dpi で実測）:
 //   1 行目のインク 284.04〜294.96 と 2 行目のインクの上端 295.02 は 0.06pt しか離れておらず、
 //   語の左端と左の縦罫線の間も 2.4pt しか無い。
-//   ＝ 囲んだ語そのものが読めることを優先し、○の下は 2 行目の字の頭に 0.8pt 乗る（cy 288.2・ry 7.0・線幅 1.2）。
+//   ＝ 囲んだ語そのものが読めることを優先し、○の下は 2 行目の字の頭に 0.8pt 乗る（cy 288.2・ry 7.0・線幅 1.2。
+//      ★2026-11-11 に線幅を 0.5 にして 約 0.45pt）。
 //      左は縦罫線まで 0.2pt 残す（rx 19.4）。語の両端の字は○が少し横切る（手書きの○と同じ）。
 //   ★縦を詰めて 2 行目から離す（ry 5.6）と、○の線が語の字の上を通って読みにくくなった（描いて比較）。
 const TYPE_MARK = {
@@ -92,7 +94,10 @@ const TYPE_MARK = {
     cy: 288.2,
     rx: 19.4,
     ry: 7.0,
-    border: 1.2,  // 同じ紙の判定の○（drawJudgeCircle）と同じ太さ
+    // ★線の太さはほかの選択肢の○と同じ CHOICE_CIRCLE_BORDER（2026-11-11・全機能チェック 47。以前は判定の○と同じ 1.2）。
+    //   位置と大きさは上のとおり変えられないので、線を細くして 2 行目の字の頭への食い込みを 0.8 → 約 0.45pt に減らす。
+    //   判定の○（drawJudgeCircle・良／不良）は選択肢ではないので 1.2 のまま
+    border: CHOICE_CIRCLE_BORDER,
 } as const;
 
 type EquipmentItem = {

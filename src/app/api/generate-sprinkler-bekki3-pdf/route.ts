@@ -414,8 +414,8 @@ export async function POST(req: NextRequest) {
         //   （初期値は様式10 と同じ決め方＝中心は 2 文字の幅と高さの中央・横半径＝幅の半分＋2.5・縦半径＝高さの半分＋2.75。
         //   刷り込みに触れないよう solve-choice-circle-geometry.py で調整した値）。★ヘッダーの位置の補正（headerShiftY など）は通さない。
         drawChoiceCircle(page1, p1Height, fonts, body.inspection_type || "機器・総合", [
-            { label: "機器", cx: 132.36, cy: 169.45, rx: 17.27, ry: 7.78 },
-            { label: "総合", cx: 187.74, cy: 169.45, rx: 16.96, ry: 7.78 },
+            { label: "機器", cx: 132.36, cy: 169.7, rx: 17.52, ry: 7.78 },
+            { label: "総合", cx: 187.74, cy: 169.45, rx: 17.21, ry: 7.53 },
         ], undefined, { column: "inspection_type" })
         if (parseDateParts(body.period_start) || parseDateParts(body.period_end)) {
             drawPeriodDate({ page: page1, pageHeight: p1Height, fonts, dateValue: body.period_start, anchors: PERIOD_START_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 7.9 })

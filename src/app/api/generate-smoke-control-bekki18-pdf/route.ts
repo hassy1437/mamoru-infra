@@ -212,8 +212,8 @@ export async function POST(req: NextRequest) {
             //     「[ の直後に { label:」を見るので、★間にコメントがあると読めなくなる
             //     （★一度それを作り、call_sites_ok() が捕まえた）。
             drawChoiceCircle(page, pageHeight, fonts, body.inspection_type || "機器・総合", [
-                { label: "機器", cx: 136.50, cy: 172.57, rx: 17.24, ry: 7.03 },
-                { label: "総合", cx: 187.37, cy: 172.57, rx: 16.74, ry: 7.03 },
+                { label: "機器", cx: 136.5, cy: 172.57, rx: 17.49, ry: 7.03 },
+                { label: "総合", cx: 187.37, cy: 172.57, rx: 16.99, ry: 7.03 },
             ], undefined, { column: "inspection_type" })
 
             const canDrawSplitPeriod =

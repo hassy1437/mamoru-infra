@@ -426,8 +426,8 @@ export async function POST(req: NextRequest) {
         // 点検種別: テンプレートに「機器・総合」が刷り込まれているので文字を重ねず○で囲む。
         // ○の座標はテンプレートPDFの文字を実測（様式ごとに位置が違う）。
         drawChoiceCircle(page1, p1Height, fonts, body.inspection_type || "機器・総合", [
-            { label: "機器", cx: 134.58, cy: 171.25, rx: 18.76, ry: 8.03 },
-            { label: "総合", cx: 200.22, cy: 171.25, rx: 18.76, ry: 7.78 },
+            { label: "機器", cx: 134.58, cy: 171.25, rx: 18.76, ry: 8.28 },
+            { label: "総合", cx: 200.22, cy: 171.25, rx: 18.76, ry: 8.03 },
         ], undefined, { column: "inspection_type" })
         if (parseDateParts(body.period_start) || parseDateParts(body.period_end)) {
             drawPeriodDate({ page: page1, pageHeight: p1Height, fonts, dateValue: body.period_start, anchors: PERIOD_START_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 8.1 })

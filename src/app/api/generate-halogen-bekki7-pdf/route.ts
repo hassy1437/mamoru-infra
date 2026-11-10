@@ -537,7 +537,7 @@ export async function POST(req: NextRequest) {
         // PAGE2 row 26「起動装置 / 自動式 / 火災感知装置（専用・兼用）」: 公式PDF刷り込みの選択を丸囲み
         drawChoiceCircle(page2, p2Height, fonts, body.page2_rows?.[26]?.content ?? "", [
             { label: "専用", cx: 258.25, cy: 438.95, rx: 14.72, ry: 5.48 },
-            { label: "兼用", cx: 298.2, cy: 438.9, rx: 14, ry: 7 },
+            { label: "兼用", cx: 298.2, cy: 439.2, rx: 14.46, ry: 5.73 },
         ], undefined, { rowsKey: "page2_rows", row: 26, column: "content" })
 
         drawResultRows(page3, p3Height, body.page3_rows ?? [], P3_ROW_BOUNDS, {

@@ -399,7 +399,7 @@ export async function POST(req: NextRequest) {
         //   刷り込みに触れないよう solve-choice-circle-geometry.py で調整した値）。★ヘッダーの位置の補正（headerShiftY など）は通さない。
         drawChoiceCircle(page1, p1Height, fonts, body.inspection_type || "機器・総合", [
             { label: "機器", cx: 132, cy: 167.53, rx: 17.4, ry: 7.53 },
-            { label: "総合", cx: 186.65, cy: 167.53, rx: 16.84, ry: 7.53 },
+            { label: "総合", cx: 186.65, cy: 167.53, rx: 17.09, ry: 7.53 },
         ], undefined, { column: "inspection_type" })
         if (parseDateParts(body.period_start) || parseDateParts(body.period_end)) {
             drawPeriodDate({ page: page1, pageHeight: p1Height, fonts, dateValue: body.period_start, anchors: PERIOD_START_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 7.9 })
@@ -534,7 +534,7 @@ export async function POST(req: NextRequest) {
 
         drawChoiceCircle(page2, p2Height, fonts, p2Rows4[7]?.content ?? "", [
             { label: "専用", cx: 266.4, cy: 224.05, rx: 13, ry: 7 },
-            { label: "兼用", cx: 308.5, cy: 224.05, rx: 14.29, ry: 7.03 },
+            { label: "兼用", cx: 308.5, cy: 224.05, rx: 14.54, ry: 7.03 },
         ], undefined, { rowsKey: "page2_rows", row: 7, column: "content" })
 
         // 12行目「総合点検」は全幅の刷り込み見出し行（内容列の左右に縦罫線が無い＝全列が1セル）。

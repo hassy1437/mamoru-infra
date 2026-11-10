@@ -70,15 +70,51 @@ KNOWN_TIGHT_CELLS = {
     ("emergency-alarm-bekki14", 1, "総合"),
     ("evacuation-equipment-bekki15", 1, "機器"),
     ("evacuation-equipment-bekki15", 1, "総合"),
+    # ★2026-11-11（全機能チェック 47）: 隙間 CLEAR_PX を求めるようにして、隙間を残せなくなった 5 つ。
+    #   どれも★刷り込みには重ならない（線を 0.5pt にし、solve-choice-circle-geometry.py が解いた）。
+    #   行の高さ 11〜13pt に字の高さ 約 10pt の欄で、上下の罫線まで 0.17pt を残す置き方が無い。
+    #   ★上の 12 個のうち 第14 の機器・総合／第7・第8・第2 の兼用 の 5 つも、重ならない位置まで直した（隙間は残せない）。
+    ("emergency-alarm-bekki14", 1, "再鳴動"),
+    ("halogen-bekki7", 2, "専用"),
+    ("inert-gas-bekki6", 1, "機器"),
+    ("powder-bekki8", 2, "専用"),
+    ("shokasen-bekki2", 3, "専用"),
 }
 KNOWN_TIGHT_REASON = (
-    "★罫線が語から 0.8pt 以内にあり、語を囲みながら罫線に触れないことが"
-    "物理的に成立しない欄（2026-08-25 に探索で確認）"
+    "★罫線が語から 0.8pt 以内にあり、語を囲みながら罫線から隙間（CLEAR_PX）を残すことが"
+    "物理的に成立しない欄（2026-08-25・2026-11-11 に探索で確認）。"
+    "○を描かない（＝選んだ値が分からない）より、わずかに触れても○がある方を選んだ"
 )
 
 # ★重なりの下限。check-printed-overlap と同じ考え方（ノイズ床が無いので 1px）。
 #   ★ここを緩めると「かすっている」を見逃す。緩めるなら理由を書くこと。
 INK_LIMIT = 1
+
+# ★○の線と刷り込みのインクの間に必ず残す隙間（2026-11-11・全機能チェック 47）。
+#   ★それまでは「重ならない」だけを見ていて、隙間 0（線と罫線がぴったり接する）でも通っていた。
+#     1200dpi で測ると、描く○ 88 個のうち 54 個が刷り込みから 0.3pt 未満・17 個は重なっていた
+#     （432dpi では 1px に満たない重なりが「0」に丸まって見えていた）。印字では「罫線に触れている」と見える。
+#   ★刷り込みのインクをこの画素数だけ太らせてから重ねる。432dpi で 1px ＝ 0.167pt（1200dpi の印字で約 3 ドット）。
+#   ★2px（0.33pt）も試したが、線を細くしても 21 個が囲めなかった（1px なら 17 個・ほぼ行の高さが足りない欄）。
+#   ★緩めるなら理由を書くこと。
+CLEAR_PX = 1
+
+
+def _helpers_src():
+    return io.open("src/lib/pdf-form-helpers.ts", encoding="utf-8").read()
+
+
+def circle_border() -> float:
+    """選択肢の○の線の太さ（pdf-form-helpers.ts の CHOICE_CIRCLE_BORDER）。★写しを持たない。"""
+    m = re.search(r"export const CHOICE_CIRCLE_BORDER\s*=\s*([\d.]+)", _helpers_src())
+    if not m:
+        raise SystemExit("★pdf-form-helpers.ts に CHOICE_CIRCLE_BORDER が見つからない")
+    return float(m.group(1))
+
+
+# ★選択肢の○の線の太さ（2026-11-11・全機能チェック 47）。0.7〜0.8 → 0.5。
+#   ★線が太いほど、同じ○でも罫線までの隙間が減る。★全様式で 1 つの値（様式ごとに渡さない）。
+CIRCLE_BORDER = circle_border()
 
 
 def call_constants(src):
@@ -118,6 +154,51 @@ def call_constants(src):
     return out
 
 
+def direct_constants(src):
+    """★drawChoiceCircle を通さず drawEllipse で描く選択肢の○（const TYPE_CHOICES = [...]・1 頁目の見出し）。
+
+    ★2026-11-11（全機能チェック 47）まで、この○は静的検査の外だった（check-circle-coverage の「届いていない○」）。
+      第11の2「総合」は刷り込みに重なっていた。★定数の形は drawChoiceCircle と同じなので、同じ物差しで見る。
+    """
+    m = re.search(r"const TYPE_CHOICES\s*=\s*\[", src)
+    if not m:
+        return []
+    j = src.find("\n]", m.end())
+    marks = []
+    for mm in re.finditer(
+        r'label:\s*"([^"]+)"\s*,\s*cx:\s*([\d.]+)\s*,\s*cy:\s*([\d.]+)\s*,'
+        r'\s*rx:\s*([\d.]+)\s*,\s*ry:\s*([\d.]+)', src[m.end():j],
+    ):
+        marks.append((mm.group(1), *(float(mm.group(k)) for k in (2, 3, 4, 5))))
+    return [(1, marks)] if marks else []
+
+
+def call_tails(src):
+    """drawChoiceCircle(...) の、選択肢の配列より後ろ（線の太さ・at）"""
+    out = []
+    for m in re.finditer(r"drawChoiceCircle\(", src):
+        depth = 0
+        for j in range(m.end() - 1, len(src)):
+            if src[j] == "(":
+                depth += 1
+            elif src[j] == ")":
+                depth -= 1
+                if depth == 0:
+                    break
+        call = src[m.start():j]
+        out.append(call[call.rfind("]") + 1:])
+    return out
+
+
+def all_constants(src):
+    """静的に見る○の定数（drawChoiceCircle の呼び出し＋直接描く TYPE_CHOICES）"""
+    return call_constants(src) + direct_constants(src)
+
+
+def has_choice_circles(src) -> bool:
+    return "drawChoiceCircle(" in src or bool(direct_constants(src))
+
+
 def call_sites_ok() -> list[str]:
     """★drawChoiceCircle の呼び出しを1つも読み落としていないこと。
 
@@ -132,9 +213,19 @@ def call_sites_ok() -> list[str]:
         if calls == 0:
             continue
         read = len(call_constants(src))
+        name = os.path.basename(os.path.dirname(route))
         if read != calls:
-            name = os.path.basename(os.path.dirname(route))
             bad.append(f"{name}: 呼び出し {calls} 件のうち★読めたのは {read} 件")
+        # ★線の太さを呼び出しごとに渡さない（検査も解く道具も CHOICE_CIRCLE_BORDER で測る・2026-11-11）
+        for tail in call_tails(src):
+            mm = re.match(r"\s*,\s*([\d.]+)", tail)
+            if mm:
+                bad.append(f"{name}: drawChoiceCircle に線の太さ {mm.group(1)} を渡している（既定の CHOICE_CIRCLE_BORDER に揃える）")
+    # ★直接描く選択肢の○も、線の太さは同じ値（CHOICE_CIRCLE_BORDER）を使う
+    for route in sorted(glob.glob("src/app/api/*-pdf/route.ts")):
+        src = io.open(route, encoding="utf-8").read()
+        if direct_constants(src) and "borderWidth: CHOICE_CIRCLE_BORDER" not in src:
+            bad.append(f"{os.path.basename(os.path.dirname(route))}: TYPE_CHOICES の○の線の太さが CHOICE_CIRCLE_BORDER でない")
     return bad
 
 
@@ -178,14 +269,45 @@ def _ink(page, scale=DRAW_SCALE):
     return a < DRAW_DARK
 
 
-def circle_overlap_px(tpl_page, cx, cy, rx, ry, border=0.7):
-    """その○を描いたとき、刷り込みのインクと何画素重なるか。
+def dilate(mask, r):
+    """インクを r 画素だけ太らせる（円盤）。★隙間 CLEAR_PX を「太らせた刷り込みに重ならない」で見るため"""
+    if r <= 0:
+        return mask
+    h, w = mask.shape
+    out = mask.copy()
+    for dy in range(-r, r + 1):
+        for dx in range(-r, r + 1):
+            if (dx == 0 and dy == 0) or dx * dx + dy * dy > r * r:
+                continue
+            sh = np.zeros_like(mask)
+            sh[max(0, dy):h + min(0, dy), max(0, dx):w + min(0, dx)] = \
+                mask[max(0, -dy):h + min(0, -dy), max(0, -dx):w + min(0, -dx)]
+            out |= sh
+    return out
+
+
+_TPL_CACHE = {}
+
+
+def tpl_ink(tpl_page, clear=None):
+    """刷り込みのインク（clear 画素だけ太らせたもの）。★定数ごとに描き直すと遅いので頁ごとに覚える"""
+    clear = CLEAR_PX if clear is None else clear
+    key = (tpl_page.parent.name, tpl_page.number, clear)
+    if key not in _TPL_CACHE:
+        _TPL_CACHE[key] = dilate(_ink(tpl_page), clear)
+    return _TPL_CACHE[key]
+
+
+def circle_overlap_px(tpl_page, cx, cy, rx, ry, border=None, clear=None):
+    """その○を描いたとき、刷り込みのインク（clear 画素だけ太らせたもの）と何画素重なるか。
 
     ★ルートと同じ描き方（drawEllipse 相当・線だけ・塗り無し）で、
       ★白紙に描いて重ねる。テンプレートに直接描くと、
       ★刷り込みのインクと区別がつかなくなる。
+    ★既定は CIRCLE_BORDER と CLEAR_PX（＝隙間を残せているか）。clear=0 で「重なるか」だけを見る。
     """
-    tpl_mask = _ink(tpl_page)
+    border = CIRCLE_BORDER if border is None else border
+    tpl_mask = tpl_ink(tpl_page, clear)
     blank = fitz.open()
     pg = blank.new_page(width=tpl_page.rect.width, height=tpl_page.rect.height)
     # ★cy はルートと同じく「上からの座標」。pdf-lib 側は pageHeight - cy を渡すので、
@@ -204,14 +326,14 @@ def audit():
     problems, total, known = [], 0, []
     for route in sorted(glob.glob("src/app/api/*-pdf/route.ts")):
         src = io.open(route, encoding="utf-8").read()
-        if "drawChoiceCircle(" not in src:
+        if not has_choice_circles(src):
             continue
         name = os.path.basename(os.path.dirname(route)).replace("generate-", "").replace("-pdf", "")
         tpl = template_of(route)
         if not tpl:
             raise SystemExit(f"★{name}: テンプレートPDFを特定できない")
         doc = fitz.open(tpl)
-        for pno, marks in call_constants(src):
+        for pno, marks in all_constants(src):
             if pno - 1 >= doc.page_count:
                 raise SystemExit(f"★{name}: p{pno} がテンプレートに無い")
             page = doc[pno - 1]
@@ -242,8 +364,9 @@ def audit():
                         known.append(f"{name} p{pno}「{label}」({px}px)")
                     else:
                         problems.append(
-                            f"{name} p{pno}「{label}」: ★○が刷り込みに重なる（{px}px）。"
-                            f"縦（cy={cy} ry={ry}）か罫線を見直すこと")
+                            f"{name} p{pno}「{label}」: ★○が刷り込みに重なる・{CLEAR_PX}px の隙間が無い（{px}px）。"
+                            f"縦（cy={cy} ry={ry}）か罫線を見直すこと"
+                            "（scripts/solve-choice-circle-geometry.py --apply が解く）")
                 k = order.index(label)
                 if k > 0:
                     gap = ex0 - spans[order[k - 1]][1]
@@ -264,11 +387,11 @@ def margins():
     out = []
     for route in sorted(glob.glob("src/app/api/*-pdf/route.ts")):
         src = io.open(route, encoding="utf-8").read()
-        if "drawChoiceCircle(" not in src:
+        if not has_choice_circles(src):
             continue
         name = os.path.basename(os.path.dirname(route)).replace("generate-", "").replace("-pdf", "")
         doc = fitz.open(template_of(route))
-        for pno, marks in call_constants(src):
+        for pno, marks in all_constants(src):
             page = doc[pno - 1]
             spans = {}
             for label, cx, cy, rx, ry in marks:
@@ -337,13 +460,36 @@ def self_test():
                 ok_v = True
                 break
         break
+    # ★隙間の陽性対照（2026-11-11・全機能チェック 47）: ○を少しずつ縦に広げ、
+    #   「まだ重ならない（clear=0 で 0）のに、隙間が無い（CLEAR_PX で 1 以上）」所で検出すること。
+    #   ★ここが取れないなら、隙間を見ていない（＝接するだけの○を通す）
+    ok_c = False
+    for pno, ms in marks:
+        if pno != 1:
+            continue
+        for label, cx, cy, rx, ry in ms:
+            for k in range(1, 60):
+                r2 = ry + 0.02 * k
+                raw = circle_overlap_px(page, cx, cy, rx, r2, clear=0)
+                if raw >= INK_LIMIT:
+                    break
+                if circle_overlap_px(page, cx, cy, rx, r2) >= INK_LIMIT:
+                    ok_c = True
+                    break
+            if ok_c:
+                break
+        break
     doc.close()
     if not ok_v:
         print("自己診断: ★ry を +6pt 太らせても縦の重なりが増えない（縦を見ていない）")
         return 1
+    if not ok_c:
+        print("自己診断: ★重ならないが隙間の無い○を検出できない（隙間を見ていない）")
+        return 1
 
     print(f"  陽性対照1: bekki5「専用」の rx を +40pt → 横の検査が反応（{len(before)} → 増えた）")
     print("  陽性対照2: ★ry を +6pt → 縦の重なりが増える（縦を見ている）")
+    print(f"  陽性対照3: ★重ならないが {CLEAR_PX}px の隙間が無い○ → 検出（隙間を見ている）")
     print("SELF_TEST_OK")
     return 0
 

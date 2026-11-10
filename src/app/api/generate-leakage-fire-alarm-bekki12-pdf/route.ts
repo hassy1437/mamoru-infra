@@ -29,6 +29,7 @@ import {
     drawOrWrapWhenTiny,
     drawShiftedDown,
     condenseSingleLine,
+    CHOICE_CIRCLE_BORDER,
 } from "@/lib/pdf-form-helpers"
 
 /**
@@ -133,8 +134,8 @@ const PERIOD_ROW = { top: 170.0, h: 16.5 }
 const TYPE_CHOICES = [
     // ★2026-08-25: テンプレートの実測から解き直した（重なり 229px / 230px → 0px）。
     //   ★rx を広げ、ry を縮める。★縦だけでは解けない（角で字を切っていた）。
-    { label: "機器", cx: 137.9, cy: 177.6, rx: 19.14, ry: 7.28 },
-    { label: "総合", cx: 196.5, cy: 177.6, rx: 18.32, ry: 7.28 },
+    { label: "機器", cx: 137.9, cy: 177.86, rx: 19.14, ry: 7.28 },
+    { label: "総合", cx: 196.5, cy: 177.86, rx: 18.32, ry: 7.28 },
 ]
 
 // 点検者ブロック。セル内に「氏名」「社名」「TEL」「住所」が印字されているため、
@@ -342,7 +343,7 @@ export async function POST(req: NextRequest) {
                     xScale: choice.rx,
                     yScale: choice.ry,
                     borderColor: rgb(0, 0, 0),
-                    borderWidth: 0.7,
+                    borderWidth: CHOICE_CIRCLE_BORDER,
                 })
             }
 

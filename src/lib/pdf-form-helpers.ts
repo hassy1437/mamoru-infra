@@ -1046,6 +1046,20 @@ export const drawPeriodDate = ({
 export type ChoiceMark = { label: string; cx: number; cy: number; rx: number; ry: number }
 
 /**
+ * 選択肢を囲む○の線の太さ（2026-11-11・全機能チェック 47）。0.7〜0.8 → 0.5。
+ *
+ * ■ なぜ細くしたか
+ *   1200dpi で測ると、描く○ 88 個のうち 54 個が刷り込み（罫線・字）から 0.3pt 未満・17 個は重なっていた。
+ *   行の高さが字の高さとほぼ同じ欄が多く、○を小さくするだけでは罫線から離れない。線を細くすると、
+ *   同じ大きさの○でも罫線までの隙間が線の太さの半分だけ増える（0.7 → 0.5 で 0.1pt）。
+ * ■ 1 つの値にする
+ *   様式ごとに渡さない。直接 drawEllipse で描く○（第11の2・第12・第13 の TYPE_CHOICES）もこの値を使う。
+ *   scripts/check-choice-clearance.py と solve-choice-circle-geometry.py がこの値を読んで測る（写しを持たない）。
+ *   判定の○（総括表の良・不良）は選択肢ではないので対象外。
+ */
+export const CHOICE_CIRCLE_BORDER = 0.5
+
+/**
  * 刷り込まれた選択肢を○で囲む。
  *
  * ★選択肢欄に文字を重ね書きしてはいけない（Phase 1）。テンプレートが
@@ -1064,7 +1078,7 @@ export const drawChoiceCircle = (
     fonts: ReportFonts,
     value: unknown,
     choices: ChoiceMark[],
-    borderWidth = 0.7,
+    borderWidth = CHOICE_CIRCLE_BORDER,
     /**
      * どの欄の値か（行の選択肢なら rowsKey・row・column、見出しの選択肢なら column）。
      * ★不一致の警告を位置で帰属させる。値で当てると「専用」「一斉」のように

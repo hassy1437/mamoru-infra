@@ -332,8 +332,8 @@ export async function POST(req: NextRequest) {
         // 点検種別: テンプレートに「機器・総合」が刷り込まれているので文字を重ねず○で囲む。
         // ○の座標はテンプレートPDFの文字を実測（様式ごとに位置が違う）。
         drawChoiceCircle(page1, p1Height, fonts, body.inspection_type || "機器・総合", [
-            { label: "機器", cx: 132, cy: 171.85, rx: 16.9, ry: 7.78 },
-            { label: "総合", cx: 186.77, cy: 171.85, rx: 16.96, ry: 7.53 },
+            { label: "機器", cx: 132, cy: 171.85, rx: 16.9, ry: 8.03 },
+            { label: "総合", cx: 186.77, cy: 171.85, rx: 16.96, ry: 7.78 },
         ], undefined, { column: "inspection_type" })
 
         if (parseDateParts(body.period_start) || parseDateParts(body.period_end)) {
@@ -417,7 +417,7 @@ export async function POST(req: NextRequest) {
         // PAGE2 row 7「遠隔操作部 / 機能（専用・兼用）」: 公式PDF刷り込みの選択を丸囲み
         drawChoiceCircle(page2, p2Height, fonts, body.page2_rows?.[7]?.content ?? "", [
             { label: "専用", cx: 237.24, cy: 210, rx: 14, ry: 7 },
-            { label: "兼用", cx: 279.3, cy: 210.13, rx: 14.01, ry: 7.28 },
+            { label: "兼用", cx: 279.3, cy: 210.38, rx: 13.76, ry: 7.28 },
         ], undefined, { rowsKey: "page2_rows", row: 7, column: "content" })
 
         // PAGE2 row 21「ポンプ / 性能（MPa・L/min）」: 吐出圧力(MPa)/吐出量(L/min) を分割描画

@@ -519,7 +519,7 @@ export async function POST(req: NextRequest) {
         // P3A row 13: 表示灯（専用/兼用）の選択を〇で表示
         drawChoiceCircle(page3, p3Height, fonts, p3Rows[13]?.content ?? "", [
             { label: "専用", cx: 270, cy: 306.75, rx: 16.06, ry: 5.78 },
-            { label: "兼用", cx: 312.1, cy: 306.75, rx: 14, ry: 7 },
+            { label: "兼用", cx: 312.1, cy: 306.98, rx: 15.54, ry: 6.03 },
         ], undefined, { rowsKey: "page3_rows", row: 13, column: "content" })
 
         // P3A row 8, 9: ホース/ノズル径「ホース ___m× ___本 ｜ ノズル径 ___mm」を手動3分割描画

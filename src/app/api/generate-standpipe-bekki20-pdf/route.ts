@@ -412,7 +412,7 @@ export async function POST(req: NextRequest) {
             drawChoiceCircle(page2, p2Height, fonts, funcRow.content ?? "", [
                 { label: "専用", cx: 259, cy: 220.09, rx: 16.1, ry: 5.78 },
                 { label: "兼用", cx: 301, cy: 220.09, rx: 16.03, ry: 6.78 },
-            ], 0.8, { rowsKey: "page2_rows", row: 7, column: "content" })
+            ], undefined, { rowsKey: "page2_rows", row: 7, column: "content" })
         }
 
         // === P2 Row 18: 性能 (吐出圧力MPa / 吐出量L/min) ===

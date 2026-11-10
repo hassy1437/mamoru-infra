@@ -11,9 +11,12 @@
 //      第6 は横を縮めている（Tz）。第7 は縮めなくても 5pt で入る（縮小の刻み 0.3pt で 4.9pt に落ちていた分も拾う）
 //   2. 短い値: 縮めない（★収まっている値の見た目を変えない）
 //   3. 15% 縮めても入らない値: 今までどおり小さく描いて 5pt 未満の警告を出す（＝測り方が小さい文字を捉えている）
+//   4. 1 行の欄（折り返さない欄）も同じ（2026-11-11・全機能チェック 48）: 第3 その2 ポンプ「性能」の吐出量 4 桁は
+//      縮めて入る・3 桁は 5pt 以上なので縮めない。★1 行の欄を描く関数は様式ごとに複製があり、
+//      ここで踏むのは第3 の drawInCellWithFont（condenseSingleLine を呼ぶ約束 3 つの代表）
 //
 // 使い方: node scripts/check-condense-min-size.mjs [--self-test]
-//   ★自己診断は src/lib/pdf-form-helpers.ts を一時的に書き換える（check-pdf-all では排他で走らせる）
+//   ★自己診断は src/lib/pdf-form-helpers.ts と第3 の route.ts を一時的に書き換える（check-pdf-all では排他で走らせる）
 import { spawnSync } from "child_process"
 import fs from "fs"
 import path from "path"
@@ -24,19 +27,26 @@ const SELF_TEST = process.argv.includes("--self-test")
 const OUT = path.join("tmp", SELF_TEST ? "condense-min-size-selftest" : "condense-min-size")
 const HELPERS = "src/lib/pdf-form-helpers.ts"
 
+const SPRINKLER = "src/app/api/generate-sprinkler-bekki3-pdf/route.ts"
+// 性能の行（page2_rows[20]）: content が圧力（MPa）、flow_value が吐出量（L/min）
+const flow = (v) => (payload) => { payload.page2_rows[20] = { ...payload.page2_rows[20], content: "0.65", flow_value: v } }
+
 const CASES = [
     { name: "第6 の不良内容（17 字・縮めて入る）", form: "bekki6", route: "src/app/api/generate-inert-gas-bekki6-pdf/route.ts", row: 13, text: "不活性ガス消火設備の一部に損傷あり", cell: [359.33, 444.0], rowY: [444.67, 458.0], expect: "condensed" },
     { name: "第7 の不良内容（18 字・5pt で入る）", form: "bekki7", route: "src/app/api/generate-halogen-bekki7-pdf/route.ts", row: 13, text: "ハロゲン化物消火設備の一部に損傷あり", cell: [368.0, 462.67], rowY: [440.0, 451.33], expect: "fits" },
     { name: "第6 の短い不良内容（縮めない）", form: "bekki6", route: "src/app/api/generate-inert-gas-bekki6-pdf/route.ts", row: 13, text: "部品交換", cell: [359.33, 444.0], rowY: [444.67, 458.0], expect: "plain" },
     { name: "第6 の不良内容（18 字・2 行に割らず縮めて 1 行）", form: "bekki6", route: "src/app/api/generate-inert-gas-bekki6-pdf/route.ts", row: 13, text: "不活性ガス消火設備の一部に損傷ありA", cell: [359.33, 444.0], rowY: [444.67, 458.0], expect: "condensed" },
     { name: "第6 の長すぎる不良内容（15% 縮めても入らない）", form: "bekki6", route: "src/app/api/generate-inert-gas-bekki6-pdf/route.ts", row: 13, text: "不活性ガス消火設備の容器弁開放装置の一部に損傷あり", cell: [359.33, 444.0], rowY: [444.67, 458.0], expect: "small" },
+    // ★1 行の欄: 吐出量の欄は刷り込みの「MPa」と「L/min」に挟まれた 293.64〜304.20（10.56pt）。行は P2_ROW_BOUNDS[20]〜[21]
+    { name: "第3 その2 ポンプ性能の吐出量（4 桁・1 行の欄で縮めて入る）", form: "bekki3", route: SPRINKLER, page: 1, text: "1800", cell: [293.64, 304.2], rowY: [466, 482], expect: "condensed", apply: flow("1800") },
+    { name: "第3 その2 ポンプ性能の吐出量（3 桁・5pt 以上なので縮めない）", form: "bekki3", route: SPRINKLER, page: 1, text: "900", cell: [293.64, 304.2], rowY: [466, 482], expect: "plain", apply: flow("900") },
 ]
 
-// 1 頁目: 値の文字のかたまり（位置）と、横の倍率（Tz）がページに書かれているか
+// 指定の頁: 値の文字のかたまり（位置）と、横の倍率（Tz）がページに書かれているか
 const MEASURE = String.raw`
 import fitz, json, re, sys
-pdf, value = sys.argv[1], sys.argv[2]
-p = fitz.open(pdf)[0]
+pdf, value, page = sys.argv[1], sys.argv[2], int(sys.argv[3])
+p = fitz.open(pdf)[page]
 spans = []
 for b in p.get_text("rawdict")["blocks"]:
     for l in b.get("lines", []):
@@ -51,8 +61,8 @@ tz = [float(m) for m in re.findall(rb"([0-9.]+) Tz", p.read_contents())]
 full = "".join(p.get_text().split()).count(value)
 print(json.dumps({"spans": spans, "tz": [v for v in tz if v < 100], "full": full}))
 `
-const measure = (pdf, value) => {
-    const r = spawnSync(PY, ["-c", MEASURE, pdf, value], { encoding: "utf8", env: { ...process.env, PYTHONIOENCODING: "utf-8" } })
+const measure = (pdf, value, page = 0) => {
+    const r = spawnSync(PY, ["-c", MEASURE, pdf, value, String(page)], { encoding: "utf8", env: { ...process.env, PYTHONIOENCODING: "utf-8" } })
     if (r.status !== 0) throw new Error(r.stderr)
     // ★PyMuPDF の版によっては import fitz の警告が標準出力に出る。最後の行だけ読む
     return JSON.parse(r.stdout.trim().split("\n").pop())
@@ -69,12 +79,20 @@ async function run() {
         const payload = JSON.parse(fs.readFileSync(`tmp/pdf-realistic/${c.form}_test.payload.json`, "utf8"))
         // ★他の行の長い値で別の警告が混ざらないよう、この行以外の不良内容・措置内容は空にする
         for (const k of Object.keys(payload)) if (k.endsWith("_rows")) payload[k] = payload[k].map((r) => ({ ...r, bad_content: "", action_content: "" }))
-        payload.page1_rows[c.row] = { ...payload.page1_rows[c.row], judgment: "否", bad_content: c.text }
-        const pdf = path.join(OUT, `${c.form}-${c.expect}.pdf`)
-        const res = await runRoutePdf({ routePath: c.route, payload, outPdfPath: pdf })
+        if (c.apply) c.apply(payload)
+        else payload.page1_rows[c.row] = { ...payload.page1_rows[c.row], judgment: "否", bad_content: c.text }
+        const pdf = path.join(OUT, `${c.form}-${c.expect}-${CASES.indexOf(c)}.pdf`)
+        // ★runRoutePdf は 200 以外を例外で返す（切り詰めた値は FIT_FAILED の 422 になる）。指摘に直して続ける
+        let res
+        try {
+            res = await runRoutePdf({ routePath: c.route, payload, outPdfPath: pdf })
+        } catch (e) {
+            problems.push(`${c.name}: PDF が出ない（${e.status ?? e.message}）`)
+            continue
+        }
         if (res.status !== 200) { problems.push(`${c.name}: PDF が出ない（${res.status}）`); continue }
         const small = (warnings(res.headers)?.belowMin ?? []).filter((w) => w.text === c.text)
-        const m = measure(pdf, c.text)
+        const m = measure(pdf, c.text, c.page ?? 0)
         // その行（縦の範囲）の、値のかたまりだけを見る（同じページのほかの欄の 1 字を拾わない）
         const own = m.spans.filter(([, , y0, , y1]) => (y0 + y1) / 2 >= c.rowY[0] && (y0 + y1) / 2 <= c.rowY[1])
         const inCell = own.length > 0 && own.every(([, x0, , x1]) => x0 >= c.cell[0] - 0.5 && x1 <= c.cell[1] + 0.5)
@@ -104,27 +122,32 @@ if (SELF_TEST) {
         for (const p of neg) console.log("   ", p)
         process.exit(1)
     }
-    const src = fs.readFileSync(HELPERS, "utf8")
+    // [ラベル, 書き換える箇所, 書き換え後, 出るはずの指摘, ファイル（既定は HELPERS）]
     const mutants = [
         ["長体をやめる（直す前）", "export const MIN_CONDENSE = 0.85", "export const MIN_CONDENSE = 1.01", "5pt 未満の警告が出る"],
         ["縮める下限を緩めすぎる（50%）", "export const MIN_CONDENSE = 0.85", "export const MIN_CONDENSE = 0.5", "15% を超えて横を縮めている"],
         ["収まる値まで縮める", "    if (width <= maxWidth) return 1\n", "    if (width <= maxWidth) return 0.95\n", "縮めなくてよい値を縮めている"],
+        // ★1 行の欄（全機能チェック 48）: 共通の段を外す／使う側の約束（切り詰めない・縮めて描く）を破る
+        ["1 行の欄で長体をやめる（直す前）", "    if (size >= ABSOLUTE_MIN_FONT_SIZE) return { size, condense: 1 }\n", "    if (size > 0) return { size, condense: 1 }\n", "第3 その2 ポンプ性能の吐出量（4 桁・1 行の欄で縮めて入る）: 5pt 未満の警告が出る"],
+        ["1 行の欄で縮めた値を切り詰める", "const textToDraw = condense < 1 ? normalized : truncateRunsToFitWidth(font, normalized", "const textToDraw = truncateRunsToFitWidth(font, normalized", "第3 その2 ポンプ性能の吐出量（4 桁・1 行の欄で縮めて入る）: PDF が出ない（422）", SPRINKLER],
+        ["1 行の欄で縮めずに 5pt で描く", "pageHeight - (textTopFromTop + baselineOffset), currentSize, condense)\n        }\n\n        const drawWrappedInCell", "pageHeight - (textTopFromTop + baselineOffset), currentSize)\n        }\n\n        const drawWrappedInCell", "第3 その2 ポンプ性能の吐出量（4 桁・1 行の欄で縮めて入る）: 横を縮めて入れていない", SPRINKLER],
     ]
     // ★process.exit は finally を飛ばす（書き換えたまま残る）。失敗は印だけ付けて、元に戻してから終わる
     let failed = false
-    try {
-        for (const [label, from, to, expect] of mutants) {
-            if (!src.includes(from)) { console.log(`自己診断: 書き換える箇所が ${HELPERS} に無い: ${from}`); failed = true; break }
-            fs.writeFileSync(HELPERS, src.replace(from, to), "utf8")
+    for (const [label, from, to, expect, file = HELPERS] of mutants) {
+        const src = fs.readFileSync(file, "utf8")
+        try {
+            if (src.split(from).length !== 2) { console.log(`自己診断: 書き換える箇所が ${file} にちょうど 1 つ無い: ${from}`); failed = true; break }
+            fs.writeFileSync(file, src.replace(from, to), "utf8")
             const got = await run()
             if (!got.some((p) => p.includes(expect))) { console.log(`自己診断: ${label} → 検出できない`); for (const p of got) console.log("   ", p); failed = true; break }
             console.log(`  陽性対照: ${label} → 検出`)
+        } finally {
+            fs.writeFileSync(file, src, "utf8")
         }
-    } finally {
-        fs.writeFileSync(HELPERS, src, "utf8")
     }
     if (failed) process.exit(1)
-    console.log(`  陰性対照: ${CASES.length} 通り（縮めて入る・5pt で入る・短い値・2 行に割れていた値・長すぎる値）`)
+    console.log(`  陰性対照: ${CASES.length} 通り（縮めて入る・5pt で入る・短い値・2 行に割れていた値・長すぎる値・1 行の欄の 4 桁と 3 桁）`)
     console.log("SELF_TEST_OK")
     process.exit(0)
 }

@@ -555,11 +555,12 @@ const CHECKS = [
     },
     {
         file: "check-condense-min-size.mjs", stage: "挙動", needsPdfs: true,
-        // ★排他。自己診断が src/lib/pdf-form-helpers.ts を一時的に書き換えるので、ほかの PDF の検査と同時に走らせない
+        // ★排他。自己診断が src/lib/pdf-form-helpers.ts と第3 の route.ts を一時的に書き換えるので、ほかの PDF の検査と同時に走らせない
         exclusive: true,
         why: "背の低い行で 1 行のまま 5pt を割る値を、5pt のまま横を縮めて（長体・最大 15%）入れているか。収まっている値は縮めない／"
             + "縮めても入らない値は今までどおり 5pt 未満の警告。★第6・第7 の不良内容（17〜18 字）が 4.6〜4.9pt まで縮んでいた"
-            + "（2026-10-20・本番の通しチェック。行の高さに 5pt の 2 行が入らない）",
+            + "（2026-10-20・本番の通しチェック。行の高さに 5pt の 2 行が入らない）。"
+            + "★1 行の欄も同じ（2026-11-11・全機能チェック 48）: 第3 その2 ポンプ性能の吐出量 4 桁が 4.3pt まで縮んでいた",
         runs: [
             { label: "自己診断", cmd: ["node", "scripts/check-condense-min-size.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
             { cmd: ["node", "scripts/check-condense-min-size.mjs"], sentinel: "CONDENSE_MIN_SIZE_OK" },

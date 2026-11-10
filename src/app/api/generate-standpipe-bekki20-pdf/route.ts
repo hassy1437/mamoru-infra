@@ -8,6 +8,7 @@ import path from "path"
 import { periodDateError,
 drawChoiceCircle, drawPeriodDate, drawTextInCell, drawTextRuns, drawWrappedTextInCell, formatJapaneseDateText, formatJudgment, cellAt, measureRuns, truncateRunsToFitWidth, parseDateParts, reportIfBelowMinSize, type CellDrawOptions, type DateAnchors, type ReportFonts, type CellRef, drawOrWrapWhenTiny,
     drawShiftedDown,
+    condenseSingleLine,
 } from "@/lib/pdf-form-helpers"
 import {
     buildFitError,
@@ -198,19 +199,23 @@ export async function POST(req: NextRequest) {
             const h = font.jp.heightAtSize(currentSize, { descender: true })
             if (h > maxHeight) currentSize = currentSize * (maxHeight / h)
             currentSize = Math.max(currentSize, options?.minFontSize ?? 3.5)
+            // ★5pt を割るなら 5pt のまま横を縮めて入れる（condenseSingleLine の約束 3 つ・全機能チェック 48）
+            const fitted = condenseSingleLine(font, normalized, currentSize, maxWidth, maxHeight)
+            currentSize = fitted.size
+            const condense = fitted.condense
             fonts.fit?.reportShrink(normalized, designSize, currentSize, options?.at)
             reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth, options?.at)
             // ★共有の truncateRunsToFitWidth に寄せた（8本目の複製だった）。
             //   自前版は cut が 0 まで落ちた場合の report(value, 0) を持たず、
             //   1文字も入らないときに情報が消えたまま 200 が返っていた。
-            const textToDraw = truncateRunsToFitWidth(font, normalized, currentSize, maxWidth,
+            const textToDraw = condense < 1 ? normalized : truncateRunsToFitWidth(font, normalized, currentSize, maxWidth,
                 cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at))
-            const textWidth = measureRuns(font, String(textToDraw ?? ""), currentSize)
+            const textWidth = measureRuns(font, String(textToDraw ?? ""), currentSize) * condense
             const textHeight = font.jp.heightAtSize(currentSize, { descender: true })
             let textX = cellX + paddingX
             if (options?.align === "center") textX = cellX + (cellW - textWidth) / 2
             const textTopFromTop = cellTopFromTop + (cellH - textHeight) / 2
-            drawTextRuns(page, font, String(textToDraw ?? ""), textX, pageHeight - (textTopFromTop + textHeight * 0.78), currentSize)
+            drawTextRuns(page, font, String(textToDraw ?? ""), textX, pageHeight - (textTopFromTop + textHeight * 0.78), currentSize, condense)
         }
 
         const drawDeviceMakerSingle = (text: unknown, page: PDFPage, pageH: number, cellX: number, cellW: number, cellTop: number, cellH: number, baseFontSize = 5.6) => {

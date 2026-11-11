@@ -9,6 +9,7 @@ import {
     CheckCircle2,
     ClipboardCheck,
     Copy,
+    FireExtinguisher,
     LayoutGrid,
     MapPin,
     Pencil,
@@ -69,6 +70,14 @@ export default async function PropertyDetailPage({
     const latestInspectionId = history.length > 0 ? history[0].id : null
     // ★点検履歴は、総括表の確認画面ではなく「続き」へ（点検者一覧表があれば点検票の一覧・src/lib/report-resume.ts）
     const itiranIds = await loadItiranIds(supabase, history.map((h) => h.id as string))
+    // ★消火器の台帳（2026-10-30）は消火器のある物件だけ（設置設備が空の物件は分からないので出す）
+    const equipment = p.equipment_types ?? []
+    const showExtinguishers = equipment.length === 0 || equipment.includes("消火器")
+    // ★入口に本数を出す（見取り図の入口と同じ形・2026-11-11）。表がまだ無い（DB を当てる前）ときは 0
+    const { data: extRows } = showExtinguishers
+        ? await supabase.from("extinguisher_groups").select("quantity").eq("property_id", id)
+        : { data: [] }
+    const extTotal = ((extRows ?? []) as { quantity: number }[]).reduce((s, r) => s + (r.quantity ?? 0), 0)
 
     return (
         <main className="min-h-screen bg-gray-50 py-10">
@@ -190,6 +199,25 @@ export default async function PropertyDetailPage({
                     </span>
                     <ArrowRight className="h-5 w-5 shrink-0 text-slate-400" aria-hidden="true" />
                 </Link>
+
+                {/* ★消火器の台帳（2026-10-30・入口は見取り図と並べて同じ大きさに 2026-11-11） */}
+                {showExtinguishers && (
+                    <Link
+                        href={`/properties/${id}/extinguishers`}
+                        className="flex min-h-16 items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 transition-colors hover:bg-slate-50 sm:px-6"
+                    >
+                        <span className="flex min-w-0 items-center gap-3">
+                            <FireExtinguisher className="h-6 w-6 shrink-0 text-blue-600" aria-hidden="true" />
+                            <span className="min-w-0">
+                                <span className="block text-lg font-bold text-slate-800">消火器の台帳</span>
+                                <span className="block text-sm text-slate-500">
+                                    {extTotal > 0 ? `${extTotal} 本・耐圧と交換の年を出す` : "まだありません（製造年と本数を入れる）"}
+                                </span>
+                            </span>
+                        </span>
+                        <ArrowRight className="h-5 w-5 shrink-0 text-slate-400" aria-hidden="true" />
+                    </Link>
+                )}
 
                 {/* 物件情報 */}
                 <div className="bg-white rounded-xl border border-slate-200 p-6">

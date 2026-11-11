@@ -26,7 +26,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { CheckCheck, Eye, FileDown, Loader2, Save } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { bekkiInspectionTypeDefault } from "@/lib/bekki-inspection-type"
-import { toDateInputValue } from "@/lib/date-utils"
+import { toDateInputValue, formatJstDateTime } from "@/lib/date-utils"
 import {
     normalizeBekkiInspectorNameForPayload,
     normalizeBekkiInspectorNameForState,
@@ -372,7 +372,7 @@ const formatSavedAt = (value?: string | null) => {
     if (!value) return null
     const date = new Date(value)
     if (Number.isNaN(date.getTime())) return null
-    return date.toLocaleString("ja-JP")
+    return formatJstDateTime(date)
 }
 
 const API_PATH = "/api/generate-halogen-bekki7-pdf"
@@ -502,7 +502,7 @@ export default function HalogenBekki7Form({
             return false
         }
 
-        setSaveMessage(`保存しました: ${new Date().toLocaleString("ja-JP")}`)
+        setSaveMessage(`保存しました: ${formatJstDateTime(new Date())}`)
         return true
     }, [itiranId, payload, propertyId, soukatsuId])
 
@@ -601,7 +601,7 @@ export default function HalogenBekki7Form({
         return () => { persistDraftRef.current(false) }
     }, [])
     // 自動保存: 入力が止まって 5 秒後と、別のアプリに切り替えた瞬間（src/hooks/use-auto-save.ts）
-    useAutoSave(payload, () => persistDraftRef.current(false), () => setSaveMessage(`自動保存済み: ${new Date().toLocaleString("ja-JP")}`))
+    useAutoSave(payload, () => persistDraftRef.current(false), () => setSaveMessage(`自動保存済み: ${formatJstDateTime(new Date())}`))
 
 
 

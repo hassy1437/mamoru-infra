@@ -19,7 +19,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { CheckCheck, Eye, FileDown, Loader2, Save } from "lucide-react"
 import { supabase } from "@/lib/supabase"
-import { toDateInputValue } from "@/lib/date-utils"
+import { toDateInputValue, formatJstDateTime } from "@/lib/date-utils"
 import {
     normalizeBekkiInspectorNameForPayload,
     normalizeBekkiInspectorNameForState,
@@ -228,7 +228,7 @@ const formatSavedAt = (value?: string | null) => {
     if (!value) return null
     const date = new Date(value)
     if (Number.isNaN(date.getTime())) return null
-    return date.toLocaleString("ja-JP")
+    return formatJstDateTime(date)
 }
 
 export default function ShokakiBekki1Form({
@@ -332,7 +332,7 @@ export default function ShokakiBekki1Form({
 
         // オフライン時はローカル保存で完了（Supabase 送信はスキップ）
         if (!navigator.onLine) {
-            setSaveMessage(`ローカル保存済み (オフライン): ${new Date().toLocaleString("ja-JP")}`)
+            setSaveMessage(`ローカル保存済み (オフライン): ${formatJstDateTime(new Date())}`)
             return true
         }
 
@@ -355,7 +355,7 @@ export default function ShokakiBekki1Form({
             return false
         }
 
-        setSaveMessage(`保存しました: ${new Date().toLocaleString("ja-JP")}`)
+        setSaveMessage(`保存しました: ${formatJstDateTime(new Date())}`)
         return true
     }, [itiranId, payload, propertyId, soukatsuId])
 
@@ -458,7 +458,7 @@ export default function ShokakiBekki1Form({
     }, [])
 
     // 自動保存: 入力が止まって 5 秒後と、別のアプリに切り替えた瞬間（src/hooks/use-auto-save.ts）
-    useAutoSave(payload, () => persistDraftRef.current(false), () => setSaveMessage(`自動保存済み: ${new Date().toLocaleString("ja-JP")}`))
+    useAutoSave(payload, () => persistDraftRef.current(false), () => setSaveMessage(`自動保存済み: ${formatJstDateTime(new Date())}`))
 
     // オフライン下書きの復元: ローカルがサーバー保存より新しければ復元（base と同優先ルール）。
     // 完了後に restoreReadyRef を立て、以降の自動保存を許可する。

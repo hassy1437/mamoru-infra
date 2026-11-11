@@ -76,7 +76,9 @@ export default function GsiMap({
     }, [jump])
 
     return (
-        <div className={`relative overflow-hidden rounded-lg border border-slate-200 bg-slate-100 ${className}`}>
+        // ★isolate: Leaflet の重なり順（z-index 400 など）を地図の中に閉じ込める。閉じ込めないと、
+        //   物件の画面の小さい地図のピンが、全画面の地図（z-50）の上に透けて出る（2026-11-11 に手元で再現）
+        <div className={`relative isolate overflow-hidden rounded-lg border border-slate-200 bg-slate-100 ${className}`}>
             <div ref={box} className="absolute inset-0 z-0" />
             {/* ★真ん中のピン（先が地図の真ん中を指す） */}
             <div className="pointer-events-none absolute left-1/2 top-1/2 z-[500] -translate-x-1/2 -translate-y-full" aria-hidden="true">

@@ -93,7 +93,7 @@ export function LicenseEditor({ value, onChange }: LicenseEditorProps) {
     // button への flex は OK（iOS で潰れるのはネイティブ control の input/select のみ）。
     // 縦中央寄せ＋leading-tight で、1行ラベルと2行ラベルが同じ高さで揃う。
     const tabClass = (active: boolean) =>
-        `flex-1 min-h-[44px] px-2 py-2 rounded-md border text-sm font-medium leading-tight flex flex-col items-center justify-center transition-colors ${active ? "bg-blue-600 border-blue-600 text-white" : "bg-white border-slate-300 text-slate-700"}`
+        `flex-1 min-h-[44px] px-2 py-2 rounded-md border text-sm font-medium leading-tight flex flex-col items-center justify-center transition-colors ${active ? "bg-brand-600 border-brand-600 text-white" : "bg-white border-slate-300 text-slate-700"}`
 
     return (
         <>

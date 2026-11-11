@@ -65,7 +65,7 @@ export default function EquipmentSettingsPage() {
     }
 
     return (
-        <main className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 p-6">
+        <main className="min-h-screen bg-gradient-to-br from-slate-50 via-brand-50 to-slate-100 p-6">
             <div className="max-w-2xl mx-auto space-y-6">
                 <Button
                     variant="ghost"
@@ -112,7 +112,7 @@ export default function EquipmentSettingsPage() {
                                     key={name}
                                     className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
                                         enabled?.includes(name)
-                                            ? "bg-blue-50 border-blue-400 text-blue-800"
+                                            ? "bg-brand-50 border-brand-400 text-brand-800"
                                             : "bg-white border-slate-200 text-slate-400 hover:bg-slate-50"
                                     }`}
                                 >
@@ -121,7 +121,7 @@ export default function EquipmentSettingsPage() {
                                         checked={enabled?.includes(name) ?? false}
                                         disabled={enabled === null}
                                         onChange={() => toggle(name)}
-                                        className="w-4 h-4 text-blue-600 rounded"
+                                        className="w-4 h-4 text-brand-600 rounded"
                                     />
                                     <span className="text-sm font-medium flex-1">
                                         <span className="text-xs text-slate-400 mr-1">

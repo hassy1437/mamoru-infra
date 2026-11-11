@@ -36,7 +36,7 @@ describe("主な操作のボタンの形（lib/action-button.ts）", () => {
 
     it("点検票の 3 つは今までの色のまま（保存＝濃い灰・プレビュー＝青・PDF＝緑）", () => {
         expect(SAVE_BUTTON).toContain("bg-slate-700")
-        expect(PREVIEW_BUTTON).toContain("bg-blue-600")
+        expect(PREVIEW_BUTTON).toContain("bg-brand-600")
         expect(DOWNLOAD_BUTTON).toContain("bg-emerald-600")
     })
 

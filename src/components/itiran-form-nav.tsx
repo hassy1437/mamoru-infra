@@ -57,13 +57,13 @@ export default function ItiranFormNav({
             ]} />
             <StepIndicator steps={[...INSPECTION_STEPS]} currentStep={3} />
             <div className="flex items-center justify-between gap-3 flex-wrap mt-2">
-                <Link href={hubHref} className="inline-flex min-h-11 items-center text-blue-600 hover:underline text-sm">
+                <Link href={hubHref} className="inline-flex min-h-11 items-center text-brand-600 hover:underline text-sm">
                     &larr; 点検票の一覧に戻る
                 </Link>
                 <Link
                     href={forwardHref}
                     className={`inline-flex min-h-11 items-center gap-2 px-4 py-2 text-white text-sm font-medium rounded-lg transition-colors ${
-                        isOutput ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"
+                        isOutput ? "bg-brand-600 hover:bg-brand-700" : "bg-cta-600 hover:bg-cta-700"
                     }`}
                 >
                     {forwardLabel}
@@ -84,13 +84,13 @@ export function ItiranFormNavBottom({ soukatsuId, itiranId, currentStepId, equip
     const { hubHref, isOutput, forwardHref, forwardLabel } = forwardOf(soukatsuId, itiranId, currentStepId, equipmentTypes)
     return (
         <nav aria-label="次の様式へ" className="mt-8 flex flex-col gap-2 pb-24 sm:flex-row sm:items-center sm:justify-between md:pb-0">
-            <Link href={hubHref} className="inline-flex min-h-11 items-center text-blue-600 hover:underline text-sm">
+            <Link href={hubHref} className="inline-flex min-h-11 items-center text-brand-600 hover:underline text-sm">
                 &larr; 点検票の一覧に戻る
             </Link>
             <Link
                 href={forwardHref}
                 className={`inline-flex min-h-11 items-center justify-center gap-2 px-4 py-2 text-white text-sm font-medium rounded-lg transition-colors ${
-                    isOutput ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"
+                    isOutput ? "bg-brand-600 hover:bg-brand-700" : "bg-cta-600 hover:bg-cta-700"
                 }`}
             >
                 {forwardLabel}

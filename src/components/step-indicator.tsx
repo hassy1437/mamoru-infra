@@ -30,9 +30,9 @@ export default function StepIndicator({ steps, currentStep }: StepIndicatorProps
                                 <div
                                     className={`flex items-center justify-center w-8 h-8 rounded-full border-2 text-sm font-bold transition-colors ${
                                         isCompleted
-                                            ? "bg-blue-600 border-blue-600 text-white"
+                                            ? "bg-brand-600 border-brand-600 text-white"
                                             : isCurrent
-                                                ? "border-blue-600 text-blue-600 bg-blue-50"
+                                                ? "border-brand-600 text-brand-600 bg-brand-50"
                                                 : "border-slate-300 text-slate-400 bg-white"
                                     }`}
                                 >
@@ -45,7 +45,7 @@ export default function StepIndicator({ steps, currentStep }: StepIndicatorProps
                                 <span
                                     className={`mt-1.5 text-xs font-medium text-center leading-tight max-w-[80px] ${
                                         isCurrent
-                                            ? "text-blue-600"
+                                            ? "text-brand-600"
                                             : isCompleted
                                                 ? "text-slate-600"
                                                 : "text-slate-400"
@@ -57,7 +57,7 @@ export default function StepIndicator({ steps, currentStep }: StepIndicatorProps
                             {!isLast && (
                                 <div
                                     className={`flex-1 h-0.5 mx-2 mt-[-16px] ${
-                                        isCompleted ? "bg-blue-600" : "bg-slate-200"
+                                        isCompleted ? "bg-brand-600" : "bg-slate-200"
                                     }`}
                                 />
                             )}

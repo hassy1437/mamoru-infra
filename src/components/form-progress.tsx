@@ -58,7 +58,7 @@ export default function FormProgress({ sections }: FormProgressProps) {
             <div className="flex items-center gap-3 max-w-4xl mx-auto">
                 <div className="flex-1 bg-slate-100 rounded-full h-1.5">
                     <div
-                        className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
+                        className="bg-brand-600 h-1.5 rounded-full transition-all duration-300"
                         style={{ width: `${progress}%` }}
                     />
                 </div>

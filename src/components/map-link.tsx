@@ -16,8 +16,8 @@ export default function MapLink(parts: AddressParts & { lat?: number | null; lng
     const href = nav ?? search
     const look =
         parts.variant === "button"
-            ? "inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 text-base font-bold text-white hover:bg-blue-700"
-            : "inline-flex min-h-11 items-center gap-1 text-sm font-medium text-blue-600 underline underline-offset-2 hover:no-underline"
+            ? "inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-brand-600 px-5 text-base font-bold text-white hover:bg-brand-700"
+            : "inline-flex min-h-11 items-center gap-1 text-sm font-medium text-brand-600 underline underline-offset-2 hover:no-underline"
     return (
         <a href={href} target="_blank" rel="noopener noreferrer" className={`${look} ${parts.className ?? ""}`}>
             {nav ? <Navigation className="h-4 w-4" aria-hidden="true" /> : null}

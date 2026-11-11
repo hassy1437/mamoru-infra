@@ -208,7 +208,7 @@ export default function PropertyForm({ property }: PropertyFormProps) {
     -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
     color:#334155; background:#f8fafc; }
   .spinner { width:40px; height:40px; border:4px solid #cbd5e1;
-    border-top-color:#2563eb; border-radius:50%;
+    border-top-color:#1f4d3a; border-radius:50%;
     animation:spin 0.8s linear infinite; margin-bottom:16px; }
   @keyframes spin { to { transform:rotate(360deg); } }
   .msg { font-size:15px; }
@@ -398,7 +398,7 @@ export default function PropertyForm({ property }: PropertyFormProps) {
                             className="max-w-xs"
                         />
                         {selectedEquipment.length > 0 && (
-                            <span className="text-sm text-blue-600 font-medium whitespace-nowrap">
+                            <span className="text-sm text-brand-600 font-medium whitespace-nowrap">
                                 {selectedEquipment.length}種類選択中
                             </span>
                         )}
@@ -428,7 +428,7 @@ export default function PropertyForm({ property }: PropertyFormProps) {
                                             key={name}
                                             className={`flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-all text-sm ${
                                                 selectedEquipment.includes(name)
-                                                    ? "bg-blue-50 border-blue-400 text-blue-800"
+                                                    ? "bg-brand-50 border-brand-400 text-brand-800"
                                                     : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
                                             }`}
                                         >
@@ -436,7 +436,7 @@ export default function PropertyForm({ property }: PropertyFormProps) {
                                                 type="checkbox"
                                                 checked={selectedEquipment.includes(name)}
                                                 onChange={() => toggleEquipment(name)}
-                                                className="w-4 h-4 text-blue-600 rounded shrink-0"
+                                                className="w-4 h-4 text-brand-600 rounded shrink-0"
                                             />
                                             <span className="font-medium leading-tight">{name}</span>
                                         </label>

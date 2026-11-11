@@ -43,7 +43,7 @@ export default async function EditSoukatsuPage({
     const isFinalized = finalizedData === true
 
     return (
-        <main className="min-h-screen bg-gray-50 py-10">
+        <main className="min-h-screen bg-canvas py-4 md:py-10">
             <div className="container mx-auto px-4">
                 <div className="mb-6 max-w-4xl mx-auto">
                     <Breadcrumb items={[
@@ -52,7 +52,7 @@ export default async function EditSoukatsuPage({
                         { label: "編集" },
                     ]} />
                     <h1 className="text-2xl font-bold text-slate-900 mt-2">総括表の編集</h1>
-                    <p className="text-slate-500 mt-1 text-sm">
+                    <p className="lead-note mt-0.5">
                         建物情報・届出者・点検日・設備ごとの点検結果（指摘なし／要改善）・総合判定・備考を修正できます。（点検票の行ごとの判定は、点検票（別記様式）で直します）
                     </p>
                 </div>

@@ -17,7 +17,7 @@ export default function InstrumentList({ items, today }: { items: MeasuringInstr
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                         <div className="min-w-0 sm:flex-1 space-y-1">
                             <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                                <Gauge className="w-4 h-4 text-blue-600 shrink-0" />
+                                <Gauge className="w-4 h-4 text-brand-600 shrink-0" />
                                 <span className="truncate">{i.name}</span>
                             </h2>
                             <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-sm text-slate-600">

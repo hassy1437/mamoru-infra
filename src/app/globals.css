@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+/*
+ * ★配色（2026-11-11・橋本さん「点検アプリデザインなんかダサい 緑をベースにかっこよく」）
+ *   土台は深い緑（マッチングサイトの業者の画面 #173A2C / #1F4D3A と同じ系統）。
+ *   主な操作（始める・点検開始など 1 画面に 1 つ）はオレンジ（cta・マッチングサイトの業者のボタンと同じ #C64B0D）。
+ *   「良」・保存できた などの明るい緑（emerald）と、「否」・消す の赤は意味の色なのでそのまま。
+ *   以前の青（blue / indigo）は brand に置き換えた。色の値はこのファイルだけで決める。
+ */
 :root {
   /* アプリはライトモード固定。OS のダークモード設定を拾わず常に白背景・黒文字。
    * color-scheme: light で iOS Safari 等のネイティブ input/select の暗色化も抑止する。 */
@@ -8,19 +15,19 @@
   --foreground: #0f172a;
   --card: #ffffff;
   --card-foreground: #0f172a;
-  --primary: #2563eb;
+  --primary: #1f4d3a;
   --primary-foreground: #ffffff;
-  --secondary: #f1f5f9;
+  --secondary: #eef3f0;
   --secondary-foreground: #0f172a;
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
-  --accent: #f1f5f9;
+  --muted: #eef3f0;
+  --muted-foreground: #5b6b63;
+  --accent: #eef3f0;
   --accent-foreground: #0f172a;
-  --destructive: #ef4444;
+  --destructive: #dc2626;
   --destructive-foreground: #ffffff;
-  --border: #e2e8f0;
-  --input: #e2e8f0;
-  --ring: #2563eb;
+  --border: #dde5e0;
+  --input: #d3ddd7;
+  --ring: #2a6248;
 }
 
 @theme inline {
@@ -41,6 +48,26 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  /* ★深い緑の段（50〜950）。以前の blue-* / indigo-* はこれに置き換えた */
+  --color-brand-50: #f1f6f3;
+  --color-brand-100: #dfece4;
+  --color-brand-200: #bfd8ca;
+  --color-brand-300: #93bca6;
+  --color-brand-400: #619a7e;
+  --color-brand-500: #3d7b5e;
+  --color-brand-600: #2a6248;
+  --color-brand-700: #1f4d3a;
+  --color-brand-800: #173a2c;
+  --color-brand-900: #10291f;
+  --color-brand-950: #0a1b14;
+  /* ★主な操作（1 画面に 1 つ）のオレンジ */
+  --color-cta-50: #fdf2ea;
+  --color-cta-100: #fbe0cd;
+  --color-cta-500: #dc5a17;
+  --color-cta-600: #c64b0d;
+  --color-cta-700: #a33d0a;
+  /* ★画面の地（真っ白の連続を避け、カードが浮くように少しだけ緑がかった灰色） */
+  --color-canvas: #f1f4f2;
   /* ★next/font/google を使わない。ビルドのたびに fonts.gstatic.com へ取りに行くため、
      取得に失敗するとデプロイ自体が止まる（2026-07-28 に実際に停止し、4コミットが本番へ
      出せなくなった）。
@@ -52,7 +79,8 @@
 }
 
 body {
-  background: var(--background);
+  /* ★地は少し緑がかった灰色（カードの白が浮くように・2026-11-11） */
+  background: var(--color-canvas);
   color: var(--foreground);
   font-family: "Noto Sans JP", "BIZ UDPGothic", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
 
@@ -238,5 +266,18 @@ input[type="week"] {
 @media (prefers-reduced-motion: reduce) {
   :is(button, a)[class*="rounded"]:is([class^="border"], [class*=" border"], [class^="bg-"], [class*=" bg-"]) {
     transition: none;
+  }
+}
+
+/*
+ * ★説明のための文（2026-11-11・橋本さん「画面上の説明文は必要なくなるので小さい文字にして 画面スペース有効活用して」）。
+ *   見出しの下の 1 行・カードの説明（CardDescription）に使う。本文・入力欄・金額・注意（取り消せない・期限）は小さくしない。
+ *   ★@layer components に置く＝ text-sm などを一緒に書いた所はそちらが勝つ（わざと大きくしたい所を潰さない）。
+ */
+@layer components {
+  .lead-note {
+    font-size: 0.78rem;
+    line-height: 1.55;
+    color: #5b6b63;
   }
 }

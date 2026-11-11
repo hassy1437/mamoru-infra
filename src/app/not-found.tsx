@@ -19,7 +19,7 @@ export default function NotFound() {
                 <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
                     <Link
                         href="/"
-                        className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-blue-600 px-6 text-sm font-semibold text-white transition-all hover:bg-blue-500 hover:scale-105"
+                        className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-brand-600 px-6 text-sm font-semibold text-white transition-all hover:bg-brand-500 hover:scale-105"
                     >
                         <Building2 className="h-4 w-4" />
                         トップページへ

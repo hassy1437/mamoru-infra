@@ -21,14 +21,14 @@ export default async function NewExtinguisherGroupPage({
     if (!property) return notFound()
 
     return (
-        <main className="min-h-screen bg-gray-50 py-10">
+        <main className="min-h-screen bg-canvas py-4 md:py-10">
             <div className="container mx-auto px-4">
                 <div className="mb-6 max-w-4xl mx-auto">
-                    <Link href={`/properties/${id}/extinguishers`} className="text-sm text-blue-600 hover:underline inline-flex min-h-11 items-center">
+                    <Link href={`/properties/${id}/extinguishers`} className="text-sm text-brand-600 hover:underline inline-flex min-h-11 items-center">
                         ← 消火器の台帳に戻る
                     </Link>
                     <h1 className="text-2xl font-bold text-slate-900 mt-2">消火器を入れる</h1>
-                    <p className="text-slate-500 mt-1 text-sm">{property.building_name as string}</p>
+                    <p className="lead-note mt-0.5">{property.building_name as string}</p>
                 </div>
                 <ExtinguisherGroupForm propertyId={id} thisYear={Number(jstTodayYmd().slice(0, 4))} />
             </div>

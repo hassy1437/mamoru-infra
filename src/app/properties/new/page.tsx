@@ -26,16 +26,16 @@ export default async function NewPropertyPage({
     }
 
     return (
-        <main className="min-h-screen bg-gray-50 py-10">
+        <main className="min-h-screen bg-canvas py-4 md:py-10">
             <div className="container mx-auto px-4">
                 <div className="mb-6 max-w-4xl mx-auto">
-                    <Link href="/properties" className="text-sm text-blue-600 hover:underline inline-flex min-h-11 items-center">
+                    <Link href="/properties" className="text-sm text-brand-600 hover:underline inline-flex min-h-11 items-center">
                         ← 物件一覧に戻る
                     </Link>
                     <h1 className="text-2xl font-bold text-slate-900 mt-2">
                         {sourceProperty ? "物件の複製" : "物件基本情報の登録"}
                     </h1>
-                    <p className="text-slate-500 mt-1 text-sm">
+                    <p className="lead-note mt-0.5">
                         {sourceProperty
                             ? "複製元の情報を転記しました。必要に応じて修正してください。"
                             : "届出者情報・建物情報・設置されている消防用設備等を登録します。"

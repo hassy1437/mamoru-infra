@@ -101,7 +101,7 @@ export default function PropertySearch({ items, mode, due }: PropertySearchProps
                             onClick={() => { setSort(o.key); setPage(0) }}
                             className={`min-h-11 flex-1 rounded-full border px-4 text-sm font-bold transition-colors sm:flex-none ${
                                 sort === o.key
-                                    ? "border-blue-600 bg-blue-600 text-white"
+                                    ? "border-brand-600 bg-brand-600 text-white"
                                     : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
                             }`}
                         >
@@ -126,7 +126,7 @@ export default function PropertySearch({ items, mode, due }: PropertySearchProps
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                             {mode === "properties" ? (
                                 <Link href={`/properties/${property.id}`} className="min-w-0 sm:flex-1">
-                                    <h2 className="text-lg font-bold text-slate-900 truncate hover:text-blue-600 transition-colors">
+                                    <h2 className="text-lg font-bold text-slate-900 truncate hover:text-brand-600 transition-colors">
                                         {property.building_name}
                                     </h2>
                                     <WithdrawnBadge property={property} />
@@ -147,7 +147,7 @@ export default function PropertySearch({ items, mode, due }: PropertySearchProps
                                 {mode === "inspection" ? (
                                     <Link
                                         href={`/inspection/new?propertyId=${property.id}`}
-                                        className="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors whitespace-nowrap w-full sm:w-auto"
+                                        className="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 bg-cta-600 hover:bg-cta-700 text-white font-medium rounded-lg transition-colors whitespace-nowrap w-full sm:w-auto"
                                     >
                                         <ClipboardCheck className="w-4 h-4" />
                                         この物件で点検開始
@@ -188,7 +188,7 @@ export default function PropertySearch({ items, mode, due }: PropertySearchProps
                                 onClick={() => setPage(i)}
                                 className={`w-8 h-8 text-sm rounded-lg transition-colors ${
                                     i === safePage
-                                        ? "bg-blue-600 text-white font-medium"
+                                        ? "bg-brand-600 text-white font-medium"
                                         : "hover:bg-slate-100 text-slate-600"
                                 }`}
                             >
@@ -226,7 +226,7 @@ function PropertyMeta({ property }: { property: Property }) {
 
 function EquipmentTags({ types, limit }: { types: string[]; limit?: number }) {
     const shown = limit ? types.slice(0, limit) : types
-    const colorClass = limit ? "bg-blue-50 text-blue-700" : "bg-emerald-50 text-emerald-700"
+    const colorClass = limit ? "bg-brand-50 text-brand-700" : "bg-emerald-50 text-emerald-700"
     return (
         <div className="mt-2 flex flex-wrap gap-1.5">
             {shown.map((eq) => (

@@ -62,7 +62,7 @@ export default function PropertyActionButtons({
                  以前は 編集（濃い灰）→ 複製 → 点検開始 → 削除（赤）の順で、赤い削除がいちばん目立っていた */}
             <Link
                 href={`/inspection/new?propertyId=${propertyId}`}
-                className="inline-flex min-h-11 items-center justify-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-lg transition-colors whitespace-nowrap"
+                className="inline-flex min-h-11 items-center justify-center gap-1.5 px-4 py-2 bg-cta-600 hover:bg-cta-700 text-white text-sm font-bold rounded-lg transition-colors whitespace-nowrap"
             >
                 <ClipboardCheck className="w-4 h-4" />
                 点検開始

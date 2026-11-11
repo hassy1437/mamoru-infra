@@ -46,8 +46,8 @@ export function InstallPrompt() {
 
     return (
         <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 z-50 bg-white rounded-2xl shadow-xl border border-slate-200 p-4 flex items-start gap-3">
-            <div className="flex-shrink-0 bg-blue-100 rounded-xl p-2.5">
-                <Download className="w-5 h-5 text-blue-600" />
+            <div className="flex-shrink-0 bg-brand-100 rounded-xl p-2.5">
+                <Download className="w-5 h-5 text-brand-600" />
             </div>
             <div className="flex-1 min-w-0">
                 <p className="font-medium text-sm text-slate-900">アプリをインストール</p>
@@ -58,7 +58,7 @@ export function InstallPrompt() {
                     <Button
                         size="sm"
                         onClick={handleInstall}
-                        className="bg-blue-600 hover:bg-blue-700 text-sm h-11 px-4"
+                        className="bg-brand-600 hover:bg-brand-700 text-sm h-11 px-4"
                     >
                         インストール
                     </Button>

@@ -204,7 +204,7 @@ export default function SoukatsuEditForm({ soukatsu, isDelivered, isFinalized }:
                                     <input type="radio" name="inspectionType" value={t}
                                         checked={inspectionType === t}
                                         onChange={(e) => setInspectionType(e.target.value)}
-                                        className="w-4 h-4 text-blue-600" />
+                                        className="w-4 h-4 text-brand-600" />
                                     <span>{t}</span>
                                 </label>
                             ))}
@@ -358,7 +358,7 @@ export default function SoukatsuEditForm({ soukatsu, isDelivered, isFinalized }:
                                     <input type="radio" name="overallJudgment" value={value}
                                         checked={overallJudgment === value}
                                         onChange={(e) => setOverallJudgment(e.target.value)}
-                                        className="w-4 h-4 text-blue-600" />
+                                        className="w-4 h-4 text-brand-600" />
                                     <span>{value || "未選択"}</span>
                                 </label>
                             ))}

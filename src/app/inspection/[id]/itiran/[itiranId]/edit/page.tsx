@@ -39,7 +39,7 @@ export default async function EditItiranPage({
     ]
 
     return (
-        <div className="min-h-screen bg-gray-100 py-8">
+        <div className="min-h-screen bg-canvas py-4 md:py-8">
             <div className="max-w-4xl mx-auto px-6 mb-6">
                 <Breadcrumb items={[
                     { label: "点検", href: "/inspection" },
@@ -50,7 +50,7 @@ export default async function EditItiranPage({
             </div>
             <div className="max-w-4xl mx-auto px-6 mb-6">
                 <h1 className="text-2xl font-bold text-gray-900">点検者一覧表の編集</h1>
-                <p className="text-gray-500 text-sm mt-1">点検者の資格情報を修正できます。</p>
+                <p className="lead-note mt-0.5">点検者の資格情報を修正できます。</p>
             </div>
             <ItiranForm
                 soukatsuId={id}

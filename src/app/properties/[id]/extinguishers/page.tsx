@@ -49,7 +49,7 @@ export default async function ExtinguisherLedgerPage({
     const kindCounts = EXTINGUISHER_KINDS.filter((k) => s.byKind[k.key] > 0).map((k) => `${k.label} ${s.byKind[k.key]}`)
 
     return (
-        <main className="min-h-screen bg-gray-50 py-10">
+        <main className="min-h-screen bg-canvas py-4 md:py-10">
             <div className="max-w-4xl mx-auto px-4 space-y-6">
                 <Breadcrumb items={[
                     { label: "物件一覧", href: "/properties" },
@@ -59,17 +59,17 @@ export default async function ExtinguisherLedgerPage({
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
                         <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                            <FireExtinguisher className="w-7 h-7 text-blue-600 shrink-0" />
+                            <FireExtinguisher className="w-7 h-7 text-brand-600 shrink-0" />
                             消火器の台帳
                         </h1>
-                        <p className="text-slate-500 mt-1 text-sm">
+                        <p className="lead-note mt-0.5">
                             1 回入れると年をまたいで残ります。{thisYear} 年の点検で何をするかを製造年から出します。
                         </p>
                     </div>
                     {!error && (
                         <Link
                             href={`/properties/${id}/extinguishers/new`}
-                            className="inline-flex items-center justify-center gap-2 px-4 py-2 min-h-11 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 w-full sm:w-auto"
+                            className="inline-flex items-center justify-center gap-2 px-4 py-2 min-h-11 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 w-full sm:w-auto"
                         >
                             <Plus className="w-4 h-4" />
                             行を足す
@@ -90,7 +90,7 @@ export default async function ExtinguisherLedgerPage({
                         <p className="text-slate-400 text-sm mb-6">同じ器種・方式・型式・製造年の消火器を 1 行にまとめ、本数を入れます。</p>
                         <Link
                             href={`/properties/${id}/extinguishers/new`}
-                            className="inline-flex items-center gap-2 px-5 py-2.5 min-h-11 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+                            className="inline-flex items-center gap-2 px-5 py-2.5 min-h-11 bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-lg transition-colors"
                         >
                             <Plus className="w-4 h-4" />
                             消火器を入れる

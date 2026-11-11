@@ -251,11 +251,11 @@ export default function SoukatsuForm({ property, previousData, copyFromId, sourc
                     </div>
                 </div>
             ) : property && (
-                <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
-                    <Building2 className="w-5 h-5 text-blue-600 shrink-0" />
+                <div className="flex items-center gap-3 bg-brand-50 border border-brand-200 rounded-lg px-4 py-3">
+                    <Building2 className="w-5 h-5 text-brand-600 shrink-0" />
                     <div className="text-sm">
-                        <span className="font-semibold text-blue-800">{property.building_name}</span>
-                        <span className="text-blue-600"> の情報を転記しました。必要に応じて修正してください。</span>
+                        <span className="font-semibold text-brand-800">{property.building_name}</span>
+                        <span className="text-brand-600"> の情報を転記しました。必要に応じて修正してください。</span>
                     </div>
                 </div>
             )}
@@ -298,7 +298,7 @@ export default function SoukatsuForm({ property, previousData, copyFromId, sourc
                                     value="機器点検"
                                     checked={inspectionType === "機器点検"}
                                     onChange={(e) => setInspectionType(e.target.value)}
-                                    className="w-4 h-4 text-blue-600"
+                                    className="w-4 h-4 text-brand-600"
                                 />
                                 <span>機器点検</span>
                             </label>
@@ -309,7 +309,7 @@ export default function SoukatsuForm({ property, previousData, copyFromId, sourc
                                     value="総合点検"
                                     checked={inspectionType === "総合点検"}
                                     onChange={(e) => setInspectionType(e.target.value)}
-                                    className="w-4 h-4 text-blue-600"
+                                    className="w-4 h-4 text-brand-600"
                                 />
                                 <span>総合点検</span>
                             </label>
@@ -545,7 +545,7 @@ export default function SoukatsuForm({ property, previousData, copyFromId, sourc
                                         value={value}
                                         checked={overallJudgment === value}
                                         onChange={(e) => setOverallJudgment(e.target.value)}
-                                        className="w-4 h-4 text-blue-600"
+                                        className="w-4 h-4 text-brand-600"
                                     />
                                     <span>{value || "未選択"}</span>
                                 </label>

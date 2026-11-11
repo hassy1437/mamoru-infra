@@ -67,7 +67,7 @@ export default async function ItiranDetailPage({
         : { href: outputHref, label: "結果出力へ" }
 
     return (
-        <div className="min-h-screen bg-gray-100 p-4 md:p-8">
+        <div className="min-h-screen bg-canvas p-4 md:p-8">
             <div className="max-w-[210mm] mx-auto mb-6">
                 <Breadcrumb items={[
                     { label: "点検", href: "/inspection" },
@@ -80,12 +80,12 @@ export default async function ItiranDetailPage({
                 {/* ★この画面の名前と、ここでやること（2026-10-21）。以前は見出しが無く、ほかの画面からは
                      「別記ハブ」「点検者」「別記」と別々の名前で呼ばれていた */}
                 <h1 className="mt-4 text-2xl font-bold text-slate-900">点検票（別記様式）の入力</h1>
-                <p className="mt-1 text-sm text-slate-600">
+                <p className="lead-note mt-0.5">
                     {soukatsu?.building_name ? `${soukatsu.building_name}・` : ""}設備ごとの点検票を入れます。全部入れたら「結果出力」で確定・PDF 出力・納品をします。
                 </p>
             </div>
             <div className="max-w-[210mm] mx-auto mb-6 flex justify-between items-center gap-3 flex-wrap">
-                <Link href={`/inspection/${id}`} className="text-blue-600 hover:underline inline-flex min-h-11 items-center">
+                <Link href={`/inspection/${id}`} className="text-brand-600 hover:underline inline-flex min-h-11 items-center">
                     &larr; 総括表に戻る
                 </Link>
                 {/* 補助アクション（小・弱く）。主動作は下の進捗カード上の主CTA1つに集約。 */}
@@ -128,7 +128,7 @@ export default async function ItiranDetailPage({
                 <Link
                     href={primaryCta.href}
                     className={`flex items-center justify-center gap-2 w-full px-6 py-4 rounded-xl text-white font-bold text-base shadow-sm transition-colors ${
-                        isComplete ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"
+                        isComplete ? "bg-brand-600 hover:bg-brand-700" : "bg-cta-600 hover:bg-cta-700"
                     }`}
                 >
                     {isComplete && <FileDown className="w-5 h-5" />}
@@ -157,7 +157,7 @@ export default async function ItiranDetailPage({
                     {/* プログレスバー */}
                     <div className="w-full bg-slate-100 rounded-full h-2.5">
                         <div
-                            className="bg-emerald-500 h-2.5 rounded-full transition-all duration-300"
+                            className="bg-brand-500 h-2.5 rounded-full transition-all duration-300"
                             style={{ width: `${progressPercent}%` }}
                         />
                     </div>
@@ -228,7 +228,7 @@ export default async function ItiranDetailPage({
                 <Link
                     href={primaryCta.href}
                     className={`flex items-center justify-center gap-2 w-full px-6 py-4 rounded-xl text-white font-bold text-base shadow-sm transition-colors ${
-                        isComplete ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"
+                        isComplete ? "bg-brand-600 hover:bg-brand-700" : "bg-cta-600 hover:bg-cta-700"
                     }`}
                 >
                     {isComplete && <FileDown className="w-5 h-5" />}
@@ -236,7 +236,7 @@ export default async function ItiranDetailPage({
                     <ArrowRight className="w-5 h-5" />
                 </Link>
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                    <Link href={`/inspection/${id}`} className="text-blue-600 hover:underline inline-flex min-h-11 items-center">
+                    <Link href={`/inspection/${id}`} className="text-brand-600 hover:underline inline-flex min-h-11 items-center">
                         &larr; 総括表に戻る
                     </Link>
                     {/* ★見取り図（地図などの改善 6）。点検しながら設備の場所を見る */}

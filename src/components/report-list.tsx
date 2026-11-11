@@ -34,7 +34,7 @@ function reportStage(r: ReportSummary): { key: Stage; label: string; cls: string
     if (r.form_type_count > 0)
         return { key: "forms", label: `様式${r.form_type_count}件`, cls: "bg-emerald-50 text-emerald-700" }
     if (r.has_itiran)
-        return { key: "itiran", label: "点検者済", cls: "bg-blue-50 text-blue-700" }
+        return { key: "itiran", label: "点検者済", cls: "bg-brand-50 text-brand-700" }
     return { key: "soukatsu", label: "総括表のみ", cls: "bg-slate-100 text-slate-500" }
 }
 
@@ -100,7 +100,7 @@ export default function ReportList({ reports }: { reports: ReportSummary[] }) {
             onClick={() => { setStageFilter(v); resetPage() }}
             className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
                 stageFilter === v
-                    ? "bg-blue-600 text-white border-blue-600 font-medium"
+                    ? "bg-brand-600 text-white border-brand-600 font-medium"
                     : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
             }`}
         >
@@ -148,13 +148,13 @@ export default function ReportList({ reports }: { reports: ReportSummary[] }) {
                             key={r.id}
                             // ★止まった所へ（点検者一覧表があれば点検票の一覧・2026-10-21）。以前は必ず総括表の確認画面だった
                             href={resumeTarget(r.id, r.itiran_id).href}
-                            className="block bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md hover:border-blue-200 transition-all group"
+                            className="block bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md hover:border-brand-200 transition-all group"
                         >
                             <div className="flex items-start justify-between gap-4">
                                 <div className="min-w-0 flex-1">
                                     {/* 建物名＋バッジ */}
                                     <div className="flex items-center gap-2 flex-wrap">
-                                        <h2 className="text-base font-bold text-slate-900 truncate group-hover:text-blue-700">
+                                        <h2 className="text-base font-bold text-slate-900 truncate group-hover:text-brand-700">
                                             {r.building_name}
                                         </h2>
                                         <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${stage.cls}`}>
@@ -207,7 +207,7 @@ export default function ReportList({ reports }: { reports: ReportSummary[] }) {
                                             {r.overall_judgment}
                                         </span>
                                     )}
-                                    <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all" />
+                                    <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-brand-500 group-hover:translate-x-0.5 transition-all" />
                                 </div>
                             </div>
                         </Link>
@@ -232,7 +232,7 @@ export default function ReportList({ reports }: { reports: ReportSummary[] }) {
                                 onClick={() => setPage(i)}
                                 className={`w-8 h-8 text-sm rounded-lg transition-colors ${
                                     i === safePage
-                                        ? "bg-blue-600 text-white font-medium"
+                                        ? "bg-brand-600 text-white font-medium"
                                         : "hover:bg-slate-100 text-slate-600"
                                 }`}
                             >

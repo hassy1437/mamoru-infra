@@ -94,7 +94,7 @@ export default function InstrumentPicker({
                 </Button>
             )}
             {open && (
-                <div className="space-y-3 rounded-lg border border-blue-200 bg-blue-50/40 p-3">
+                <div className="space-y-3 rounded-lg border border-brand-200 bg-brand-50/40 p-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                         <p className="text-sm font-medium">測定機器の台帳から選ぶ</p>
                         <div className="flex items-center gap-1">
@@ -103,7 +103,7 @@ export default function InstrumentPicker({
                                 読み直す
                             </Button>
                             {/* ★別のタブで開く（入力中の様式から離れない） */}
-                            <a href="/instruments" target="_blank" rel="noopener" className="inline-flex min-h-11 items-center gap-1 px-2 text-xs text-blue-600 hover:underline">
+                            <a href="/instruments" target="_blank" rel="noopener" className="inline-flex min-h-11 items-center gap-1 px-2 text-xs text-brand-600 hover:underline">
                                 台帳を開く
                                 <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
                             </a>

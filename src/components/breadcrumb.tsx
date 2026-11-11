@@ -21,7 +21,7 @@ export default function Breadcrumb({ items }: BreadcrumbProps) {
                     <Link
                         href="/tool"
                         aria-label="ホーム"
-                        className="flex min-h-11 md:min-h-0 items-center gap-1 text-slate-500 hover:text-blue-600 hover:bg-slate-50 rounded px-1.5 py-1 transition-colors"
+                        className="flex min-h-11 md:min-h-0 items-center gap-1 text-slate-500 hover:text-brand-600 hover:bg-slate-50 rounded px-1.5 py-1 transition-colors"
                     >
                         <Home className="w-4 h-4 shrink-0" />
                         <span>ホーム</span>
@@ -33,7 +33,7 @@ export default function Breadcrumb({ items }: BreadcrumbProps) {
                         {item.href ? (
                             <Link
                                 href={item.href}
-                                className="inline-flex min-h-11 md:min-h-0 items-center px-2 text-slate-500 hover:text-blue-600 transition-colors max-w-[160px]"
+                                className="inline-flex min-h-11 md:min-h-0 items-center px-2 text-slate-500 hover:text-brand-600 transition-colors max-w-[160px]"
                             >
                                 <span className="truncate">{item.label}</span>
                             </Link>

@@ -334,14 +334,14 @@ export default function FloorPlanBoard({
                                 onClick={() => chooseFloor(f)}
                                 className={`inline-flex min-h-12 min-w-14 shrink-0 items-center justify-center gap-1 rounded-full border px-4 text-base font-bold transition-colors ${
                                     floor === f
-                                        ? "border-blue-600 bg-blue-600 text-white"
+                                        ? "border-brand-600 bg-brand-600 text-white"
                                         : has
-                                            ? "border-blue-300 bg-blue-50 text-blue-800"
+                                            ? "border-brand-300 bg-brand-50 text-brand-800"
                                             : "border-slate-300 bg-white text-slate-600"
                                 }`}
                             >
                                 {f}
-                                {n > 0 && <span className={`rounded-full px-1.5 text-xs ${floor === f ? "bg-white/25" : "bg-blue-100"}`}>{n}</span>}
+                                {n > 0 && <span className={`rounded-full px-1.5 text-xs ${floor === f ? "bg-white/25" : "bg-brand-100"}`}>{n}</span>}
                             </button>
                         )
                     })}
@@ -423,7 +423,7 @@ export default function FloorPlanBoard({
                         </button>
                     </div>
 
-                    <div className="max-h-[65vh] overflow-auto rounded-lg border border-slate-200 bg-white">
+                    <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
                         {/* ★幅を倍にして拡大（印は 0〜1 の位置なので一緒に動く） */}
                         <div
                             ref={surface}

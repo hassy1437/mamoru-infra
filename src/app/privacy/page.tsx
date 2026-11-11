@@ -55,7 +55,7 @@ export default function PrivacyPage() {
 
                     <section className="space-y-3">
                         <h2 className="text-lg font-bold text-slate-900">4. データの保管</h2>
-                        <p>ユーザーデータはSupabase（クラウドデータベース）上に暗号化通信（HTTPS/TLS）を通じて保管されます。ユーザーごとにデータが分離され、他のユーザーからアクセスすることはできません。</p>
+                        <p>ユーザーデータはSupabase（クラウドデータベース）上に暗号化通信（HTTPS/TLS）を通じて保管されます。データは会社ごとに分けて保管され、同じ会社に招待された人だけが見られます。ほかの会社からは見られません。</p>
                     </section>
 
                     <section className="space-y-3">

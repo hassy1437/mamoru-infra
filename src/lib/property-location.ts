@@ -24,6 +24,8 @@ export const FALLBACK_CENTER: LatLng = { lat: 34.7025, lng: 135.4959 }
 export const FALLBACK_ZOOM = 11
 /** 建物を見る大きさ */
 export const BUILDING_ZOOM = 18
+/** 物件の画面の小さな地図の縮尺（★2026-11-11: 17 では建物の文字が大きく、周りの道が分からなかった → 1 段引いて 16） */
+export const PREVIEW_ZOOM = 16
 
 /** DB の決まりと同じ（日本の範囲・20261231160000） */
 export function isJapanLatLng(lat: unknown, lng: unknown): boolean {

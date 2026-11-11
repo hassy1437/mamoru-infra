@@ -160,6 +160,20 @@ export default async function PropertyDetailPage({
                             </Link>
                         )
                     })()}
+                    {/* ★延べ面積が空のまま報告書を作ると、最後の「確定」で初めて止まっていた（2026-11-11 の打ち合わせ）。
+                          マッチングで延床面積を「範囲」で選んだ物件は空で入るので、点検を始める前に知らせる */}
+                    {!p.total_floor_area && (
+                        <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                            <p>
+                                <span className="font-bold">延べ面積がまだ入っていません。</span>
+                                報告書の確定に必要です。
+                                <Link href={`/properties/${id}/edit`} className="ml-1 inline-flex min-h-11 items-center font-bold underline underline-offset-2">
+                                    物件を直す
+                                </Link>
+                            </p>
+                        </div>
+                    )}
                     <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                         <Link
                             href={`/inspection/new?propertyId=${id}`}

@@ -475,6 +475,10 @@ export default function SoukatsuForm({ property, previousData, copyFromId, sourc
                                 value={totalFloorArea}
                                 onChange={(e) => setTotalFloorArea(e.target.value)}
                             />
+                            {/* ★空のままだと最後の「確定」で止まる（2026-11-11）。入れる前から知らせる */}
+                            {!totalFloorArea && (
+                                <p className="text-sm font-medium text-amber-700">確定に必要です。現地で確かめて入れてください。</p>
+                            )}
                         </div>
                     </div>
                 </CardContent>

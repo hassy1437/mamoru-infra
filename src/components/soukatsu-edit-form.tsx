@@ -291,6 +291,10 @@ export default function SoukatsuEditForm({ soukatsu, isDelivered, isFinalized }:
                             <Label htmlFor="totalFloorArea">延べ面積 (㎡)</Label>
                             <Input id="totalFloorArea" type="number" inputMode="decimal" min="0" step="0.01"
                                 value={totalFloorArea} onChange={(e) => setTotalFloorArea(e.target.value)} />
+                            {/* ★空のままだと最後の「確定」で止まる（2026-11-11）。入れる前から知らせる */}
+                            {!totalFloorArea && (
+                                <p className="text-sm font-medium text-amber-700">確定に必要です。現地で確かめて入れてください。</p>
+                            )}
                         </div>
                     </div>
                 </CardContent>

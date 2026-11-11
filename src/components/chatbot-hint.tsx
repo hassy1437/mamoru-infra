@@ -94,7 +94,8 @@ export default function ChatbotHint() {
                     ? "opacity-100 translate-y-0"
                     : "opacity-0 translate-y-2 pointer-events-none"
             }`}
-            style={{ zIndex: visible ? 2147483646 : -1 }}
+            // ★画面の下に固定の帯がある画面では、その分だけ上げる（src/lib/use-bottom-bar-space.ts）
+            style={{ zIndex: visible ? 2147483646 : -1, marginBottom: "var(--mamoru-bottom-bar, 0px)" }}
         >
             {/* ★本体はタップを素通りさせる（押して何かが起きる場所ではない）。×だけ押せる */}
             <div className="pointer-events-none relative rounded-2xl border border-slate-200 bg-white px-3 py-2.5 sm:px-4 sm:py-3 shadow-xl">

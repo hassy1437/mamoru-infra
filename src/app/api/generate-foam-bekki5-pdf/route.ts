@@ -33,6 +33,7 @@ import {
     type CellAt,
     drawOrWrapWhenTiny,
     drawShiftedDown,
+    condenseSingleLine,
 } from "@/lib/pdf-form-helpers"
 
 /**
@@ -303,15 +304,19 @@ export async function POST(req: NextRequest) {
 
             currentSize = Math.max(currentSize, minFontSize)
 
+            // ★5pt を割るなら 5pt のまま横を縮めて入れる（condenseSingleLine の約束 3 つ・全機能チェック 48）
+            const fitted = condenseSingleLine(fonts, normalized, currentSize, maxWidth, maxHeight)
+            currentSize = fitted.size
+            const condense = fitted.condense
             fonts.fit?.reportShrink(normalized, designSize, currentSize, options?.at)
 
             reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth, options?.at)
 
-            const textToDraw = truncateToFitWidth(normalized, currentSize, maxWidth,
+            const textToDraw = condense < 1 ? normalized : truncateToFitWidth(normalized, currentSize, maxWidth,
                 cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at))
             if (!textToDraw) return
 
-            const textWidth = measureRuns(fonts, String(textToDraw ?? ""), currentSize)
+            const textWidth = measureRuns(fonts, String(textToDraw ?? ""), currentSize) * condense
             const textHeight = fonts.jp.heightAtSize(currentSize, { descender: true })
             let textX = cellX + paddingX
             if (options?.align === "center") {
@@ -321,7 +326,7 @@ export async function POST(req: NextRequest) {
             const baselineOffset = textHeight * 0.78
             const baselineFromTop = options?.baselineY ?? textTopFromTop + baselineOffset
 
-            drawTextRuns(page, fonts, String(textToDraw ?? ""), textX, pageHeight - baselineFromTop, currentSize)
+            drawTextRuns(page, fonts, String(textToDraw ?? ""), textX, pageHeight - baselineFromTop, currentSize, condense)
         }
 
         const drawWrappedInCell = (
@@ -421,8 +426,8 @@ export async function POST(req: NextRequest) {
         // 点検種別: テンプレートに「機器・総合」が刷り込まれているので文字を重ねず○で囲む。
         // ○の座標はテンプレートPDFの文字を実測（様式ごとに位置が違う）。
         drawChoiceCircle(page1, p1Height, fonts, body.inspection_type || "機器・総合", [
-            { label: "機器", cx: 134.58, cy: 171.25, rx: 18.76, ry: 8.03 },
-            { label: "総合", cx: 200.22, cy: 171.25, rx: 18.76, ry: 7.78 },
+            { label: "機器", cx: 134.58, cy: 171.25, rx: 18.76, ry: 8.28 },
+            { label: "総合", cx: 200.22, cy: 171.25, rx: 18.76, ry: 8.03 },
         ], undefined, { column: "inspection_type" })
         if (parseDateParts(body.period_start) || parseDateParts(body.period_end)) {
             drawPeriodDate({ page: page1, pageHeight: p1Height, fonts, dateValue: body.period_start, anchors: PERIOD_START_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 8.1 })

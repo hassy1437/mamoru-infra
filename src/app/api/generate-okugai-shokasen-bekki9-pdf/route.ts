@@ -30,6 +30,7 @@ import {
     type CellAt,
     drawOrWrapWhenTiny,
     drawShiftedDown,
+    condenseSingleLine,
 } from "@/lib/pdf-form-helpers"
 
 /**
@@ -239,22 +240,26 @@ export async function POST(req: NextRequest) {
 
             currentSize = Math.max(currentSize, minFontSize)
 
+            // ★5pt を割るなら 5pt のまま横を縮めて入れる（condenseSingleLine の約束 3 つ・全機能チェック 48）
+            const fitted = condenseSingleLine(fonts, normalized, currentSize, maxWidth, maxHeight)
+            currentSize = fitted.size
+            const condense = fitted.condense
             fonts.fit?.reportShrink(normalized, designSize, currentSize, options?.at)
 
             reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth, options?.at)
 
-            const textToDraw = truncateToFitWidth(normalized, currentSize, maxWidth,
+            const textToDraw = condense < 1 ? normalized : truncateToFitWidth(normalized, currentSize, maxWidth,
                 cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at))
             if (!textToDraw) return
 
-            const textWidth = measureRuns(fonts, String(textToDraw ?? ""), currentSize)
+            const textWidth = measureRuns(fonts, String(textToDraw ?? ""), currentSize) * condense
             const textHeight = fonts.jp.heightAtSize(currentSize, { descender: true })
             let textX = cellX + paddingX
             if (options?.align === "center") textX = cellX + (cellW - textWidth) / 2
             const textTop = cellTopFromTop + (cellH - textHeight) / 2
             const baselineOffset = textHeight * 0.78
 
-            drawTextRuns(page, fonts, String(textToDraw ?? ""), textX, pageHeight - (textTop + baselineOffset), currentSize)
+            drawTextRuns(page, fonts, String(textToDraw ?? ""), textX, pageHeight - (textTop + baselineOffset), currentSize, condense)
         }
 
         const drawWrappedInCell = (
@@ -327,8 +332,8 @@ export async function POST(req: NextRequest) {
         // 点検種別: テンプレートに「機器・総合」が刷り込まれているので文字を重ねず○で囲む。
         // ○の座標はテンプレートPDFの文字を実測（様式ごとに位置が違う）。
         drawChoiceCircle(page1, p1Height, fonts, body.inspection_type || "機器・総合", [
-            { label: "機器", cx: 132, cy: 171.85, rx: 16.9, ry: 7.78 },
-            { label: "総合", cx: 186.77, cy: 171.85, rx: 16.96, ry: 7.53 },
+            { label: "機器", cx: 132, cy: 171.85, rx: 16.9, ry: 8.03 },
+            { label: "総合", cx: 186.77, cy: 171.85, rx: 16.96, ry: 7.78 },
         ], undefined, { column: "inspection_type" })
 
         if (parseDateParts(body.period_start) || parseDateParts(body.period_end)) {
@@ -412,7 +417,7 @@ export async function POST(req: NextRequest) {
         // PAGE2 row 7「遠隔操作部 / 機能（専用・兼用）」: 公式PDF刷り込みの選択を丸囲み
         drawChoiceCircle(page2, p2Height, fonts, body.page2_rows?.[7]?.content ?? "", [
             { label: "専用", cx: 237.24, cy: 210, rx: 14, ry: 7 },
-            { label: "兼用", cx: 279.3, cy: 210.13, rx: 14.01, ry: 7.28 },
+            { label: "兼用", cx: 279.3, cy: 210.38, rx: 13.76, ry: 7.28 },
         ], undefined, { rowsKey: "page2_rows", row: 7, column: "content" })
 
         // PAGE2 row 21「ポンプ / 性能（MPa・L/min）」: 吐出圧力(MPa)/吐出量(L/min) を分割描画

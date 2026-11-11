@@ -42,8 +42,16 @@ const ADDRESSEE_PRINTED = { x0: 82.4, y0: 107.3, x1: 256.4, y1: 119.3 }
 const ADDRESSEE_BASELINE = 117.58
 /** 宛名の右端（「殿」の左端 268.4 の 4pt 手前） */
 const FIRE_DEPARTMENT_RIGHT_X = 264
-/** 敬称の無い宛名を描く上の行（y=95）の右端（日付の年の数字・左端 約 379 の手前） */
+/** 敬称の無い宛名を描く上の行の右端（日付の年の数字・左端 約 379 の手前） */
 const FIRE_DEPARTMENT_NAME_ONLY_RIGHT_X = 370
+/**
+ * 敬称の無い宛名を描く上の行のベースライン＝日付の行（年の数字）と同じ 100.68（2026-11-11・全機能チェック 49）。
+ *   ★以前は 95 で、12pt の字の上端（約 84.4）が表題の字の下端（85.0）に接していた（宛名が 8 字を超えて表題の下に掛かるとき）。
+ *   雛形の実測（288dpi のインク）: 表題 y 74.0–85.0（x 160.8〜）／宛名の刷り込み y 107.75〜。その間の左側（x 66〜378）は白。
+ *   100.68 なら 12pt の字は 約 90.3–101.6 で、上に 約 5pt・下に 約 6pt 空く（間のほぼ真ん中）。日付とも同じ行にそろう
+ *   見張り: scripts/check-houkoku-layout.mjs（表題・刷り込みとの上下の隙間を描いて測る）
+ */
+const FIRE_DEPARTMENT_NAME_ONLY_BASELINE = 100.68
 
 const toText = (value: unknown) => {
     if (value === null || value === undefined) return undefined
@@ -177,8 +185,9 @@ export async function POST(req: NextRequest) {
         //   （lib/soukatsu-cover.ts）、刷り込み「消防長（消防署長）（市町村長）」を白で覆って、その行に「〇〇消防署長」を描く。
         //   「殿」の刷り込みは残す。以前は表題の下の別の行（y=95）に名前だけを描き、刷り込みが全部残っていた。
         //   ★宛名が空なら覆わない（刷り込みのまま・手書き用）。
-        //   ★末尾に敬称の無い宛名（10/20 より前の自由入力・敬称を選ばなかった）は覆わず、以前と同じ上の行（y=95）に
-        //     名前だけを描く。覆うと刷り込みの敬称が全部消え、敬称の無い宛名になる（手で○を付けることもできなくなる）。
+        //   ★末尾に敬称の無い宛名（10/20 より前の自由入力・敬称を選ばなかった）は覆わず、表題と刷り込みの間の上の行
+        //     （日付と同じ高さ・FIRE_DEPARTMENT_NAME_ONLY_BASELINE）に名前だけを描く。
+        //     覆うと刷り込みの敬称が全部消え、敬称の無い宛名になる（手で○を付けることもできなくなる）。
         // ★印字する宛名は lib の printedFireDepartment（画面の「表紙の印字：」と同じ関数）。
         //   名前の終わりと敬称の始まりが重なるときは重ねない（「大阪市北消防署」＋「消防署長」→「大阪市北消防署長」・2026-11-08 定期テスト 26）
         const fireDepartment = printedFireDepartment(toText(body.fire_department_name))
@@ -192,7 +201,7 @@ export async function POST(req: NextRequest) {
             })
             draw(fireDepartment, 70.4, ADDRESSEE_BASELINE, 12, FIRE_DEPARTMENT_RIGHT_X - 70.4)
         } else if (fireDepartment) {
-            draw(fireDepartment, 70.4, 95, 12, FIRE_DEPARTMENT_NAME_ONLY_RIGHT_X - 70.4)
+            draw(fireDepartment, 70.4, FIRE_DEPARTMENT_NAME_ONLY_BASELINE, 12, FIRE_DEPARTMENT_NAME_ONLY_RIGHT_X - 70.4)
         }
 
         // ★右端は各行の記入用の下線の右端（テンプレート実測・2026-10-07）。

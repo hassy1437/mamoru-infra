@@ -28,6 +28,7 @@ drawPeriodDate,
     drawOrWrapWhenTiny,
     SINGLE_LINE_FIT_DEFAULTS,
     drawShiftedDown,
+    CHOICE_CIRCLE_BORDER,
 } from "@/lib/pdf-form-helpers"
 
 /**
@@ -244,7 +245,7 @@ export async function POST(req: NextRequest) {
                     xScale: choice.rx,
                     yScale: choice.ry,
                     borderColor: rgb(0, 0, 0),
-                    borderWidth: 0.7,
+                    borderWidth: CHOICE_CIRCLE_BORDER,
                 })
             }
 

@@ -22,6 +22,7 @@ import {
     type CellAt,
     drawOrWrapWhenTiny,
     drawShiftedDown,
+    condenseSingleLine,
 } from "@/lib/pdf-form-helpers"
 import {
     buildFitError,
@@ -271,15 +272,19 @@ export async function POST(req: NextRequest) {
 
             currentSize = Math.max(currentSize, minFontSize)
 
+            // ★5pt を割るなら 5pt のまま横を縮めて入れる（condenseSingleLine の約束 3 つ・全機能チェック 48）
+            const fitted = condenseSingleLine(fonts, normalized, currentSize, maxWidth, maxHeight)
+            currentSize = fitted.size
+            const condense = fitted.condense
             fonts.fit?.reportShrink(normalized, designSize, currentSize, options?.at)
 
             reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth, options?.at)
 
-            const textToDraw = truncateToFitWidth(normalized, currentSize, maxWidth,
+            const textToDraw = condense < 1 ? normalized : truncateToFitWidth(normalized, currentSize, maxWidth,
                 cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at))
             if (!textToDraw) return
 
-            const textWidth = measureRuns(fonts, String(textToDraw ?? ""), currentSize)
+            const textWidth = measureRuns(fonts, String(textToDraw ?? ""), currentSize) * condense
             const textHeight = fonts.jp.heightAtSize(currentSize, { descender: true })
             let textX = cellX + paddingX
             if (options?.align === "center") {
@@ -288,7 +293,7 @@ export async function POST(req: NextRequest) {
             const textTopFromTop = cellTopFromTop + (cellH - textHeight) / 2
             const baselineOffset = textHeight * 0.78
 
-            drawTextRuns(page, fonts, String(textToDraw ?? ""), textX, pageHeight - (textTopFromTop + baselineOffset), currentSize)
+            drawTextRuns(page, fonts, String(textToDraw ?? ""), textX, pageHeight - (textTopFromTop + baselineOffset), currentSize, condense)
         }
 
         const drawInCellWithFont = (
@@ -318,20 +323,24 @@ export async function POST(req: NextRequest) {
             const h = font.jp.heightAtSize(currentSize, { descender: true })
             if (h > maxHeight) currentSize = currentSize * (maxHeight / h)
             currentSize = Math.max(currentSize, minFontSize)
+            // ★5pt を割るなら 5pt のまま横を縮めて入れる（condenseSingleLine の約束 3 つ・全機能チェック 48）
+            const fitted = condenseSingleLine(font, normalized, currentSize, maxWidth, maxHeight)
+            currentSize = fitted.size
+            const condense = fitted.condense
             fonts.fit?.reportShrink(normalized, designSize, currentSize, options?.at)
             reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth, options?.at)
             // ★共有の truncateRunsToFitWidth に寄せた（8本目の複製だった）。
             //   自前版は cut が 0 まで落ちた場合の report(value, 0) を持たず、
             //   1文字も入らないときに情報が消えたまま 200 が返っていた。
-            const textToDraw = truncateRunsToFitWidth(font, normalized, currentSize, maxWidth,
+            const textToDraw = condense < 1 ? normalized : truncateRunsToFitWidth(font, normalized, currentSize, maxWidth,
                 cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at))
-            const textWidth = measureRuns(font, String(textToDraw ?? ""), currentSize)
+            const textWidth = measureRuns(font, String(textToDraw ?? ""), currentSize) * condense
             const textHeight = font.jp.heightAtSize(currentSize, { descender: true })
             let textX = cellX + paddingX
             if (options?.align === "center") textX = cellX + (cellW - textWidth) / 2
             const textTopFromTop = cellTopFromTop + (cellH - textHeight) / 2
             const baselineOffset = textHeight * 0.78
-            drawTextRuns(page, font, String(textToDraw ?? ""), textX, pageHeight - (textTopFromTop + baselineOffset), currentSize)
+            drawTextRuns(page, font, String(textToDraw ?? ""), textX, pageHeight - (textTopFromTop + baselineOffset), currentSize, condense)
         }
 
         const drawWrappedInCell = (
@@ -405,8 +414,8 @@ export async function POST(req: NextRequest) {
         //   （初期値は様式10 と同じ決め方＝中心は 2 文字の幅と高さの中央・横半径＝幅の半分＋2.5・縦半径＝高さの半分＋2.75。
         //   刷り込みに触れないよう solve-choice-circle-geometry.py で調整した値）。★ヘッダーの位置の補正（headerShiftY など）は通さない。
         drawChoiceCircle(page1, p1Height, fonts, body.inspection_type || "機器・総合", [
-            { label: "機器", cx: 132.36, cy: 169.45, rx: 17.27, ry: 7.78 },
-            { label: "総合", cx: 187.74, cy: 169.45, rx: 16.96, ry: 7.78 },
+            { label: "機器", cx: 132.36, cy: 169.7, rx: 17.52, ry: 7.78 },
+            { label: "総合", cx: 187.74, cy: 169.45, rx: 17.21, ry: 7.53 },
         ], undefined, { column: "inspection_type" })
         if (parseDateParts(body.period_start) || parseDateParts(body.period_end)) {
             drawPeriodDate({ page: page1, pageHeight: p1Height, fonts, dateValue: body.period_start, anchors: PERIOD_START_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 7.9 })
@@ -525,7 +534,8 @@ export async function POST(req: NextRequest) {
             // ★空欄はテンプレート実測で 293.64–304.20（10.56pt）。294/9 は実測より 1.56pt 狭かった。
             //   ただし実測に直しても4桁（例「1800」）は 5.0pt 以上では物理的に入らない
             //   （4桁 × 0.556em × 5.0pt = 11.12pt > 10.56pt）。刷り込みが両端を規定しており
-            //   広げようが無いので、桁数の多い吐出量は下限を割る。★様式側の制約として要相談。
+            //   広げようが無いので、4 桁は 5pt のまま横を縮めて入れる（condenseSingleLine・2026-11-11 全機能チェック 48。
+            //   それまでは 4.3pt＝字の高さ 約 1mm で描いていた）。見張り: scripts/check-condense-min-size.mjs
             const drawFlowVal = (v: string) => drawInCellWithFont(page2, p2Height, fonts, v, 293.64, perfTop, 10.56, perfH, 6.0, { paddingX: 0.5 })
 
             if (perfRow3.flow_value) {

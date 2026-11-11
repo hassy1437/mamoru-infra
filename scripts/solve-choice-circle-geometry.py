@@ -18,6 +18,8 @@
 #   1. ○は語を★横に包含する（cx-rx ≦ 語の左端 / 語の右端 ≦ cx+rx）
 #   2. ○は★左右の隣の選択肢の語に触れない
 #   3. ★刷り込みのインクとの重なりが 0（文字・罫線・図形のすべて）
+#      ★2026-11-11（全機能チェック 47）から「CLEAR_PX だけ太らせた刷り込み」と重ならない＝隙間を残す。
+#        線の太さは CHOICE_CIRCLE_BORDER（0.5）。直接描く TYPE_CHOICES も同じ物差しで解く
 #
 # ■ ★変化は小さいほうを選ぶ
 #   ★ベースラインの差分を小さく保つため、いまの値からの動きが
@@ -54,16 +56,10 @@ cc = importlib.util.module_from_spec(_s)
 _s.loader.exec_module(cc)
 
 S = cc.DRAW_SCALE
-DEFAULT_BORDER = 0.7
 # ★隣の語との間に必ず残す隙間。★0 にすると「触れていないが1画素も空いていない」
 #   状態になり、ラスタライズの丸めで接触に転ぶ。
 NEIGHBOR_GAP = 0.5
 STEP = 0.25          # ★探索の刻み（pt）
-
-
-def border_of(src: str) -> float:
-    m = re.search(r"drawChoiceCircle\([^)]*?,\s*([\d.]+)\s*\)", src, re.S)
-    return float(m.group(1)) if m else DEFAULT_BORDER
 
 
 def fast_overlap(tpl_ink, cx, cy, rx, ry, b) -> int:
@@ -98,7 +94,7 @@ def glyph_y(page, word, cy, cx, rx):
     return (top, bot) if top is not None else None
 
 
-def solve_one(ink, page, label, cx, cy, rx, ry, border, left_x, right_x):
+def solve_one(ink, page, label, cx, cy, rx, ry, border, left_x, right_x, clear=None):
     """重なり0の (cx, cy, rx, ry) を探す。見つからなければ None。
 
     ★探索の範囲
@@ -130,7 +126,10 @@ def solve_one(ink, page, label, cx, cy, rx, ry, border, left_x, right_x):
 
     best = None
     cand_cx = sorted({round(cx, 2), round((wx0 + wx1) / 2, 2)})
-    cand_cy = sorted({round(cy, 2), round((wy0 + wy1) / 2, 2)})
+    # ★cy は いまの値と、語の上下の中心 ±1pt（0.25 刻み）。★隙間を残すと上下どちらかに寄せないと
+    #   解けない欄がある（2026-11-11・中心だけでは 43 個 → ±1pt で 19 個まで減った試算）
+    wc = (wy0 + wy1) / 2
+    cand_cy = sorted({round(cy, 2)} | {round(wc + d * STEP, 2) for d in range(-4, 5)})
     n_rx = int((rx_max - rx_min) / STEP) + 1
     for ncx in cand_cx:
         for ncy in cand_cy:
@@ -151,7 +150,7 @@ def solve_one(ink, page, label, cx, cy, rx, ry, border, left_x, right_x):
                         #   ★解析的な楕円と、描画側の線の作り方・にじみが違うため。
                         #   ＝ ★採る前に本物で確かめる。★ここを省くと、
                         #     ★「直したのに検査が赤」で戻ってくる。
-                        if cc.circle_overlap_px(page, ncx, ncy, nrx, nry, border) < cc.INK_LIMIT:
+                        if cc.circle_overlap_px(page, ncx, ncy, nrx, nry, border, clear) < cc.INK_LIMIT:
                             cost = (abs(nrx - rx) + abs(nry - ry)
                                     + abs(ncx - cx) + abs(ncy - cy))
                             if best is None or cost < best[0]:
@@ -184,14 +183,15 @@ def run():
     rows = []
     for route in sorted(glob.glob("src/app/api/*-pdf/route.ts")):
         src = io.open(route, encoding="utf-8").read()
-        if "drawChoiceCircle(" not in src:
+        if not cc.has_choice_circles(src):
             continue
         name = os.path.basename(os.path.dirname(route)).replace("generate-", "").replace("-pdf", "")
-        border = border_of(src)
+        border = cc.CIRCLE_BORDER
         doc = fitz.open(template_of(route))
-        for pno, marks in cc.call_constants(src):
+        for pno, marks in cc.all_constants(src):
             page = doc[pno - 1]
-            ink = cc._ink(page)
+            # ★隙間（CLEAR_PX）だけ太らせた刷り込み。★速い探索も本物の検算も同じものと重ねる
+            ink = cc.tpl_ink(page)
             for label, cx, cy, rx, ry in marks:
                 # ★いま重なっていない定数は★触らない。
                 #   ★触るとベースラインの差分が増えるだけで、得るものが無い。
@@ -203,6 +203,15 @@ def run():
                     continue
                 lx, rxn = neighbours(page, marks, label, cy)
                 sol, why = solve_one(ink, page, label, cx, cy, rx, ry, border, lx, rxn)
+                if sol is None:
+                    # ★第 2 段（2026-11-11）: 隙間を残せない欄でも、★重ならない位置があればそちらを採る
+                    #   （接するだけ＜重なる）。★隙間が無いので KNOWN_TIGHT_CELLS には残す
+                    raw_now = cc.circle_overlap_px(page, cx, cy, rx, ry, border, 0)
+                    if raw_now >= cc.INK_LIMIT:
+                        sol0, why0 = solve_one(cc.tpl_ink(page, 0), page, label, cx, cy, rx, ry,
+                                               border, lx, rxn, clear=0)
+                        if sol0 is not None:
+                            sol, why = sol0, "★隙間は残せない（重ならない位置だけ）／" + why0
                 rows.append((route, name, pno, label, border, cx, cy, rx, ry, sol, why, now))
         doc.close()
     return rows
@@ -285,7 +294,8 @@ def main() -> int:
             continue
         ncx, ncy, nrx, nry = sol
         doc = fitz.open(template_of(route))
-        px = cc.circle_overlap_px(doc[pno - 1], ncx, ncy, nrx, nry, b)
+        clear = 0 if str(_w).startswith("★隙間は残せない") else None
+        px = cc.circle_overlap_px(doc[pno - 1], ncx, ncy, nrx, nry, b, clear)
         doc.close()
         if px >= cc.INK_LIMIT:
             ng += 1

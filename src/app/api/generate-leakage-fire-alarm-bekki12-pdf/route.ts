@@ -28,6 +28,8 @@ import {
     type CellAt,
     drawOrWrapWhenTiny,
     drawShiftedDown,
+    condenseSingleLine,
+    CHOICE_CIRCLE_BORDER,
 } from "@/lib/pdf-form-helpers"
 
 /**
@@ -132,8 +134,8 @@ const PERIOD_ROW = { top: 170.0, h: 16.5 }
 const TYPE_CHOICES = [
     // ★2026-08-25: テンプレートの実測から解き直した（重なり 229px / 230px → 0px）。
     //   ★rx を広げ、ry を縮める。★縦だけでは解けない（角で字を切っていた）。
-    { label: "機器", cx: 137.9, cy: 177.6, rx: 19.14, ry: 7.28 },
-    { label: "総合", cx: 196.5, cy: 177.6, rx: 18.32, ry: 7.28 },
+    { label: "機器", cx: 137.9, cy: 177.86, rx: 19.14, ry: 7.28 },
+    { label: "総合", cx: 196.5, cy: 177.86, rx: 18.32, ry: 7.28 },
 ]
 
 // 点検者ブロック。セル内に「氏名」「社名」「TEL」「住所」が印字されているため、
@@ -245,14 +247,18 @@ export async function POST(req: NextRequest) {
             const heightAtCurrent = fonts.jp.heightAtSize(currentSize, { descender: true })
             if (heightAtCurrent > maxHeight) currentSize *= maxHeight / heightAtCurrent
             currentSize = Math.max(currentSize, minFontSize)
+            // ★5pt を割るなら 5pt のまま横を縮めて入れる（condenseSingleLine の約束 3 つ・全機能チェック 48）
+            const fitted = condenseSingleLine(fonts, normalized, currentSize, maxWidth, maxHeight)
+            currentSize = fitted.size
+            const condense = fitted.condense
             fonts.fit?.reportShrink(normalized, designSize, currentSize, options?.at)
             reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth, options?.at)
 
-            const textToDraw = truncateToFitWidth(normalized, currentSize, maxWidth,
+            const textToDraw = condense < 1 ? normalized : truncateToFitWidth(normalized, currentSize, maxWidth,
                 cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at))
             if (!textToDraw) return
 
-            const textWidth = measureRuns(fonts, String(textToDraw ?? ""), currentSize)
+            const textWidth = measureRuns(fonts, String(textToDraw ?? ""), currentSize) * condense
             const textHeight = fonts.jp.heightAtSize(currentSize, { descender: true })
             let textX = cellX + paddingX
             if (options?.align === "center") textX = cellX + (cellW - textWidth) / 2
@@ -260,7 +266,7 @@ export async function POST(req: NextRequest) {
             const textTop = cellTopFromTop + (cellH - textHeight) / 2
             const baselineOffset = textHeight * 0.78
 
-            drawTextRuns(page, fonts, String(textToDraw ?? ""), textX, pageHeight - (textTop + baselineOffset), currentSize)
+            drawTextRuns(page, fonts, String(textToDraw ?? ""), textX, pageHeight - (textTop + baselineOffset), currentSize, condense)
         }
 
         const drawWrappedInCell = (
@@ -337,7 +343,7 @@ export async function POST(req: NextRequest) {
                     xScale: choice.rx,
                     yScale: choice.ry,
                     borderColor: rgb(0, 0, 0),
-                    borderWidth: 0.7,
+                    borderWidth: CHOICE_CIRCLE_BORDER,
                 })
             }
 

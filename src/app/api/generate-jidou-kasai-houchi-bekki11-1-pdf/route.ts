@@ -29,6 +29,7 @@ import {
     type CellRef,
     type CellAt,
     drawOrWrapWhenTiny,
+    condenseSingleLine,
 } from "@/lib/pdf-form-helpers"
 import { normalizeInspectorNameValue, normalizeWitnessValue } from "@/lib/bekki-header-normalization"
 import { AUTO_TEST_ATTR, isRowActive } from "@/lib/auto-test-rows"
@@ -216,19 +217,23 @@ export async function POST(req: NextRequest) {
             const heightAtCurrent = fonts.jp.heightAtSize(currentSize, { descender: true })
             if (heightAtCurrent > maxHeight) currentSize *= maxHeight / heightAtCurrent
             currentSize = Math.max(currentSize, minFontSize)
+            // ★5pt を割るなら 5pt のまま横を縮めて入れる（condenseSingleLine の約束 3 つ・全機能チェック 48）
+            const fitted = condenseSingleLine(fonts, normalized, currentSize, maxWidth, maxHeight)
+            currentSize = fitted.size
+            const condense = fitted.condense
             fonts.fit?.reportShrink(normalized, designSize, currentSize, options?.at)
             reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth, options?.at)
-            const textToDraw = truncateToFitWidth(normalized, currentSize, maxWidth,
+            const textToDraw = condense < 1 ? normalized : truncateToFitWidth(normalized, currentSize, maxWidth,
                 cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at))
             if (!textToDraw) return
 
-            const textWidth = measureRuns(fonts, String(textToDraw ?? ""), currentSize)
+            const textWidth = measureRuns(fonts, String(textToDraw ?? ""), currentSize) * condense
             const textHeight = fonts.jp.heightAtSize(currentSize, { descender: true })
             let textX = cellX + paddingX
             if (options?.align === "center") textX = cellX + (cellW - textWidth) / 2
             const textTop = cellTopFromTop + (cellH - textHeight) / 2
             const baselineOffset = textHeight * 0.78
-            drawTextRuns(page, fonts, String(textToDraw ?? ""), textX, pageHeight - (textTop + baselineOffset), currentSize)
+            drawTextRuns(page, fonts, String(textToDraw ?? ""), textX, pageHeight - (textTop + baselineOffset), currentSize, condense)
         }
 
         const drawWrappedInCell = (
@@ -287,19 +292,23 @@ export async function POST(req: NextRequest) {
             const h = font.jp.heightAtSize(currentSize, { descender: true })
             if (h > maxHeight) currentSize = currentSize * (maxHeight / h)
             currentSize = Math.max(currentSize, minFontSize)
+            // ★5pt を割るなら 5pt のまま横を縮めて入れる（condenseSingleLine の約束 3 つ・全機能チェック 48）
+            const fitted = condenseSingleLine(font, normalized, currentSize, maxWidth, maxHeight)
+            currentSize = fitted.size
+            const condense = fitted.condense
             fonts.fit?.reportShrink(normalized, designSize, currentSize, options?.at)
             reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth, options?.at)
             // ★共有の truncateRunsToFitWidth に寄せた（8本目の複製だった）。
             //   自前版は cut が 0 まで落ちた場合の report(value, 0) を持たず、
             //   1文字も入らないときに情報が消えたまま 200 が返っていた。
-            const textToDraw = truncateRunsToFitWidth(font, normalized, currentSize, maxWidth,
+            const textToDraw = condense < 1 ? normalized : truncateRunsToFitWidth(font, normalized, currentSize, maxWidth,
                 cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at))
-            const textWidth = measureRuns(font, String(textToDraw ?? ""), currentSize)
+            const textWidth = measureRuns(font, String(textToDraw ?? ""), currentSize) * condense
             const textHeight = font.jp.heightAtSize(currentSize, { descender: true })
             let textX = cellX + paddingX
             if (options?.align === "center") textX = cellX + (cellW - textWidth) / 2
             const textTopFromTop = cellTopFromTop + (cellH - textHeight) / 2
-            drawTextRuns(page, font, String(textToDraw ?? ""), textX, pageHeight - (textTopFromTop + textHeight * 0.78), currentSize)
+            drawTextRuns(page, font, String(textToDraw ?? ""), textX, pageHeight - (textTopFromTop + textHeight * 0.78), currentSize, condense)
         }
 
         const drawDeviceMakerSingle = (text: unknown, page: PDFPage, pageH: number, cellX: number, cellW: number, cellTop: number, cellH: number, baseFontSize = 6.0) => {
@@ -427,7 +436,7 @@ export async function POST(req: NextRequest) {
             { label: "差動", cx: 242.52, cy: 209.57, rx: 10.42, ry: 6.82 },
             { label: "定温", cx: 262.26, cy: 209.57, rx: 10.36, ry: 6.57 },
             { label: "熱アナログ", cx: 317.4, cy: 209.57, rx: 22.18, ry: 10.57 },
-        ], 0.8, { rowsKey: "page2_rows", row: 5, column: "content" })
+        ], undefined, { rowsKey: "page2_rows", row: 5, column: "content" })
         }
         // P2 Row 9: スポット型(煙) — イオン 光電 アナログ
         if (p2Rows[9]) {
@@ -435,14 +444,14 @@ export async function POST(req: NextRequest) {
             { label: "イオン", cx: 249.12, cy: 301.09, rx: 17.84, ry: 6.03 },
             { label: "光電", cx: 280.63, cy: 301.09, rx: 13.01, ry: 8.03 },
             { label: "アナログ", cx: 317.41, cy: 301.09, rx: 23.01, ry: 9.78 },
-        ], 0.8, { rowsKey: "page2_rows", row: 9, column: "content" })
+        ], undefined, { rowsKey: "page2_rows", row: 9, column: "content" })
         }
         // P2 Row 11: 炎感知器 — 赤外線 紫外線
         if (p2Rows[11]) {
             drawChoiceCircle(page2, p2Height, fonts, p2Rows[11].content ?? "", [
             { label: "赤外線", cx: 264.86, cy: 347.05, rx: 18.34, ry: 8.28 },
             { label: "紫外線", cx: 306.93, cy: 347.05, rx: 18.28, ry: 8.78 },
-        ], 0.8, { rowsKey: "page2_rows", row: 11, column: "content" })
+        ], undefined, { rowsKey: "page2_rows", row: 11, column: "content" })
         }
         // P2 Row 22: 鳴動方式 — 一斉 区分 相互 再鳴動
         if (p2Rows[22]) {
@@ -451,7 +460,7 @@ export async function POST(req: NextRequest) {
             { label: "区分", cx: 269.16, cy: 600.33, rx: 11.98, ry: 7.00 },
             { label: "相互", cx: 292.91, cy: 600.33, rx: 11.98, ry: 7.00 },
             { label: "再鳴動", cx: 321.59, cy: 600.33, rx: 16.78, ry: 7.5 },
-        ], 0.8, { rowsKey: "page2_rows", row: 22, column: "content" })
+        ], undefined, { rowsKey: "page2_rows", row: 22, column: "content" })
         }
 
         // 7行目「総合点検」は全幅の刷り込み見出し行。以前はこのルートだけ独自の

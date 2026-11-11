@@ -13,6 +13,8 @@
 //   3. 宛名（2026-10-19・★2026-10-20 に刷り込みの行へ移した・録音 102）: 刷り込み「消防長（消防署長）（市町村長）」を
 //      白で覆い、その行に描く。右端が「殿」の左端より 2pt 以上手前・7pt 以上の大きさ。★宛名が空なら覆わない（手書き用）
 //      ★末尾に敬称の無い宛名は覆わず、上の行に名前だけ（右端が日付の年の左端より 4pt 以上手前・7pt 以上）
+//      ★上の行は表題と宛名の刷り込みの間。字のインクが表題の下端・刷り込みの上端から 2pt 以上離れる
+//        （2026-11-11・全機能チェック 49: y=95 に描いていて 12pt の字が表題に接していた。字の位置は描いた PDF を 288dpi で測る）
 //      画面の上限（lib/soukatsu-cover.ts の FIRE_DEPARTMENT_NAME_MAX）いっぱいの全角で描いて測る
 //   4. 宛名の名前の終わりと敬称の始まりが重なる（「大阪市北消防署」＋「消防署長」）: 重ねずに「大阪市北消防署長」と描く
 //      （2026-11-08・定期テスト 26。画面の「表紙の印字：」と同じ lib の printedFireDepartment を通す）
@@ -59,6 +61,8 @@ const CASES = [
     // ★末尾に敬称の無い宛名（10/20 より前の自由入力・敬称を選ばなかった）: 刷り込みは覆わず、上の行に名前だけ。
     //   長さは以前の画面の上限（全角 30 字）
     ["敬称なし", { ...BASE, notifier_address: "大阪市北区梅田1-1-1", notifier_name: "検証防災株式会社", building_address: "大阪市北区梅田1-1-1", building_name: "検証ビル", fire_department_name: "消".repeat(30) }],
+    // ★縮まない長さ（12pt のまま・表題の下 x 160〜 に掛かる 20 字）。字がいちばん大きく、表題との上下の隙間がいちばん狭い
+    ["敬称なし（12pt）", { ...BASE, notifier_address: "大阪市北区梅田1-1-1", notifier_name: "検証防災株式会社", building_address: "大阪市北区梅田1-1-1", building_name: "検証ビル", fire_department_name: "消".repeat(20) }],
     // ★名前「大阪市北消防署」＋敬称「消防署長」を画面でつないだ値（2026-11-08・定期テスト 26）。重ねずに描く
     ["重なる宛名", { ...BASE, notifier_address: "大阪市北区梅田1-1-1", notifier_name: "検証防災株式会社", building_address: "大阪市北区梅田1-1-1", building_name: "検証ビル", fire_department_name: "大阪市北消防署消防署長" }],
 ]
@@ -102,6 +106,30 @@ res["upper"] = {"right": round(max((s["bbox"][2] for s in upper), default=0), 2)
                 "size": round(min((s["size"] for s in upper), default=0), 2),
                 "text": "".join(s["text"] for s in upper)[:12]}
 res["yearLeft"] = round(min((s["bbox"][0] for s in year), default=0), 2)
+# ★上の行の字と、表題（上）・宛名の刷り込み（下）の間の隙間（2026-11-11・全機能チェック 49）。
+#   span の bbox は字の外枠（ascender〜descender）でインクより大きいので、描いた PDF と雛形を同じ解像度で描いて差をとる。
+#   ★雛形にない画素＝アプリが描いた字。x は左の縦罫線（64.9）の内側〜日付の年の手前、y は表題の上〜刷り込みの行の下
+import numpy as np
+DPI = 288; K = 72 / DPI
+clip = fitz.Rect(66, 70, 378, 112)
+def ink(pg):
+    pix = pg.get_pixmap(dpi=DPI, clip=clip, colorspace=fitz.csGRAY, alpha=False)
+    return np.frombuffer(pix.samples, np.uint8).reshape(pix.height, pix.stride)[:, :pix.width] < 200
+ti, oi = ink(tpl), ink(out)
+app = oi & ~ti
+def band(mask, y0, y1):
+    r0, r1 = int((y0 - clip.y0) / K), int((y1 - clip.y0) / K)
+    m = np.zeros_like(mask); m[r0:r1] = mask[r0:r1]
+    rows, cols = np.where(m)
+    if not len(rows): return None
+    return {"y0": clip.y0 + rows.min() * K, "y1": clip.y0 + (rows.max() + 1) * K,
+            "x0": clip.x0 + cols.min() * K, "x1": clip.x0 + (cols.max() + 1) * K}
+title, printed, mine = band(ti, 70, 88), band(ti, 104, 112), band(app, 70, 106)
+def gap(top, bottom):
+    # 横に重なるときだけ（表題は x 160 から。短い宛名は表題の下に掛からない）
+    if not top or not bottom or top["x1"] <= bottom["x0"] or bottom["x1"] <= top["x0"]: return None
+    return round(bottom["y0"] - top["y1"], 2)
+res["upperGap"] = {"title": gap(title, mine), "printed": gap(mine, printed), "found": bool(title and printed)}
 # 白で覆っているか（塗りが白の矩形が刷り込みの文字の範囲をすべて含む）
 covered = False
 if pb:
@@ -155,14 +183,22 @@ async function measure(routePath) {
             if (m.covered) problems.push("宛名が空なのに刷り込みを白で覆っている（手書きできない）")
             if (m.name.right) problems.push(`宛名が空なのに宛名の行に何か描いている「${m.name.text}」`)
             if (m.upper.right) problems.push(`宛名が空なのに上の行に何か描いている「${m.upper.text}」`)
-        } else if (label === "敬称なし") {
-            if (m.covered) problems.push("敬称なし: 刷り込みを白で覆っている（敬称が全部消える）")
-            if (m.name.right) problems.push(`敬称なし: 刷り込みの行に描いている「${m.name.text}」`)
-            if (!m.upper.right) problems.push("敬称なし: 宛名が描かれていない（上の行）")
-            else if (!m.yearLeft) problems.push("敬称なし: 日付（年）が描かれていない")
+        } else if (label.startsWith("敬称なし")) {
+            if (m.covered) problems.push(`${label}: 刷り込みを白で覆っている（敬称が全部消える）`)
+            if (m.name.right) problems.push(`${label}: 刷り込みの行に描いている「${m.name.text}」`)
+            if (!m.upper.right) problems.push(`${label}: 宛名が描かれていない（上の行）`)
+            else if (!m.yearLeft) problems.push(`${label}: 日付（年）が描かれていない`)
             else {
-                if (m.upper.right > m.yearLeft - 4) problems.push(`敬称なし: 宛名の右端 ${m.upper.right} が日付（年）の左端 ${m.yearLeft} に重なる・近すぎる「${m.upper.text}」`)
-                if (m.upper.size < 7) problems.push(`敬称なし: 宛名が ${m.upper.size}pt まで縮んでいる（下限 7pt）「${m.upper.text}」`)
+                if (m.upper.right > m.yearLeft - 4) problems.push(`${label}: 宛名の右端 ${m.upper.right} が日付（年）の左端 ${m.yearLeft} に重なる・近すぎる「${m.upper.text}」`)
+                if (m.upper.size < 7) problems.push(`${label}: 宛名が ${m.upper.size}pt まで縮んでいる（下限 7pt）「${m.upper.text}」`)
+                // ★上下の隙間（2pt 以上）。★表題の下に掛からない（横に重ならない）ときは null で、表題の側は測らない
+                const g = m.upperGap
+                if (!g.found) problems.push(`${label}: 雛形の表題・宛名の刷り込みのインクが見つからない`)
+                else {
+                    if (g.title === null) problems.push(`${label}: 宛名が表題の下に掛かっていない（表題との隙間を測れない・値を長くする）`)
+                    else if (g.title < 2) problems.push(`${label}: 宛名と表題の間が ${g.title}pt しかない（2pt 以上）「${m.upper.text}」`)
+                    if (g.printed === null || g.printed < 2) problems.push(`${label}: 宛名と下の刷り込み「消防長…」の間が ${g.printed}pt しかない（2pt 以上）「${m.upper.text}」`)
+                }
             }
         } else if (!m.name.right) problems.push(`${label}: 宛名が描かれていない`)
         else {
@@ -200,8 +236,11 @@ if (SELF_TEST) {
         ["刷り込みを白で覆わない（直す前）", "firstPage.drawRectangle({", "void ({", "白で覆っていない"],
         ["宛名が空でも覆う（手書きできない）", "if (fireDepartment && splitFireDepartment(fireDepartment).title) {", "if (true) {", "宛名が空なのに刷り込みを白で覆っている"],
         ["敬称が無くても覆う（敬称が全部消える）", "if (fireDepartment && splitFireDepartment(fireDepartment).title) {", "if (fireDepartment) {", "敬称なし: 刷り込みを白で覆っている"],
-        ["敬称の無い宛名の幅を決めない", "draw(fireDepartment, 70.4, 95, 12, FIRE_DEPARTMENT_NAME_ONLY_RIGHT_X - 70.4)", "draw(fireDepartment, 70.4, 95, 12)", "敬称なし: 宛名の右端"],
-        ["敬称の無い宛名を描かない", "draw(fireDepartment, 70.4, 95, 12, FIRE_DEPARTMENT_NAME_ONLY_RIGHT_X - 70.4)", "void 0", "敬称なし: 宛名が描かれていない"],
+        ["敬称の無い宛名の幅を決めない", "draw(fireDepartment, 70.4, FIRE_DEPARTMENT_NAME_ONLY_BASELINE, 12, FIRE_DEPARTMENT_NAME_ONLY_RIGHT_X - 70.4)", "draw(fireDepartment, 70.4, FIRE_DEPARTMENT_NAME_ONLY_BASELINE, 12)", "敬称なし: 宛名の右端"],
+        ["敬称の無い宛名を描かない", "draw(fireDepartment, 70.4, FIRE_DEPARTMENT_NAME_ONLY_BASELINE, 12, FIRE_DEPARTMENT_NAME_ONLY_RIGHT_X - 70.4)", "void 0", "敬称なし: 宛名が描かれていない"],
+        // ★2026-11-11（全機能チェック 49）: 表題に接していた高さ・刷り込みに寄せすぎた高さ
+        ["敬称の無い宛名を y=95 に描く（直す前・表題に接する）", "const FIRE_DEPARTMENT_NAME_ONLY_BASELINE = 100.68", "const FIRE_DEPARTMENT_NAME_ONLY_BASELINE = 95", "敬称なし（12pt）: 宛名と表題の間"],
+        ["敬称の無い宛名を下の刷り込みに寄せる", "const FIRE_DEPARTMENT_NAME_ONLY_BASELINE = 100.68", "const FIRE_DEPARTMENT_NAME_ONLY_BASELINE = 106.5", "敬称なし（12pt）: 宛名と下の刷り込み"],
         ["宛名を重ねたまま描く（直す前）", "const fireDepartment = printedFireDepartment(toText(body.fire_department_name))", "const fireDepartment = toText(body.fire_department_name)", "重なる宛名"],
         ["所在地・名称・用途を上寄せに戻す", 'verticalAlign: "center" | "top" = "center"', 'verticalAlign: "center" | "top" = "top"', "所在地（1 行）の縦の中心"],
     ]
@@ -214,13 +253,13 @@ if (SELF_TEST) {
         }
         console.log(`  陽性対照: ${label} → 検出`)
     }
-    console.log("  陰性対照: 短い値・長い値の両方で、届出者は下線の内側・所在地等は欄の中央・宛名は刷り込みを覆って「殿」の手前・宛名なしは刷り込みのまま・敬称なしは上の行で日付の手前・重なる宛名は重ねない")
+    console.log("  陰性対照: 短い値・長い値の両方で、届出者は下線の内側・所在地等は欄の中央・宛名は刷り込みを覆って「殿」の手前・宛名なしは刷り込みのまま・敬称なしは上の行で日付の手前・表題と刷り込みから 2pt 以上・重なる宛名は重ねない")
     console.log("SELF_TEST_OK")
     process.exit(0)
 }
 
 const problems = await measure(ROUTE)
-console.log(`報告書の値の置き場所を検査: 届出者 3 行（下線の右端）・所在地/名称/用途（縦の中央）・宛名（刷り込みを覆い「殿」の手前・全角 ${NAME_MAX} 字・空なら覆わない・敬称なしは上の行・重なる宛名は重ねない）× 短い値・長い値・宛名なし・敬称なし・重なる宛名`)
+console.log(`報告書の値の置き場所を検査: 届出者 3 行（下線の右端）・所在地/名称/用途（縦の中央）・宛名（刷り込みを覆い「殿」の手前・全角 ${NAME_MAX} 字・空なら覆わない・敬称なしは上の行で表題と刷り込みから 2pt 以上・重なる宛名は重ねない）× 短い値・長い値・宛名なし・敬称なし（30 字・12pt の 20 字）・重なる宛名`)
 if (problems.length) {
     console.log("★NG:")
     for (const p of problems) console.log("   ", p)

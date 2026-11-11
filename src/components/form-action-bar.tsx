@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { Eye, Loader2, Save } from "lucide-react"
+import { useBottomBarSpace } from "@/lib/use-bottom-bar-space"
 
 type Section = { title: string; el: Element }
 
@@ -37,6 +38,8 @@ export default function FormActionBar({
     error?: string | null
 }) {
     const [sections, setSections] = useState<Section[]>([])
+    // ★帯の高さ（右下の相談の丸いボタンを帯の上に上げる・md 以上は帯が隠れるので 0）
+    const barRef = useBottomBarSpace()
     const collect = useCallback(() => {
         const found = [...document.querySelectorAll("[data-form-action-root] h3")]
             .map((el) => ({ title: (el.textContent ?? "").replace(/\s+/g, " ").trim(), el }))
@@ -60,6 +63,7 @@ export default function FormActionBar({
             <div
                 role="region"
                 aria-label="保存とプレビュー"
+                ref={barRef}
                 className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-3 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] shadow-[0_-2px_8px_rgba(15,23,42,0.06)] backdrop-blur md:hidden"
             >
                 <div className="flex items-center gap-2">

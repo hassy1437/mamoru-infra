@@ -63,6 +63,8 @@ export default async function RootLayout({
             <NavigationProgress />
           </Suspense>
           {children}
+          {/* ★右下の相談の丸いボタンに、画面の一番下の文やボタンが隠れないよう、最後に余白を足す（2026-11-11） */}
+          <div aria-hidden="true" className="h-20" />
           {/* スマホ・タブレットの PDF プレビュー（全画面・ページ全体を表示）。src/lib/pdf-preview-mode.ts */}
           <PdfPreviewHost />
         </AuthProvider>
@@ -93,7 +95,7 @@ export default async function RootLayout({
                 animation: mamoru-chatbot-pulse 2.5s ease-in-out infinite;
                 /* embed.min.js のデフォルト位置に依存せず明示固定 (iOS Safari のロード遅延フラッシュ対策) */
                 position: fixed !important;
-                bottom: max(1rem, env(safe-area-inset-bottom, 1rem)) !important;
+                bottom: calc(max(1rem, env(safe-area-inset-bottom, 1rem)) + var(--mamoru-bottom-bar, 0px)) !important;
                 right: max(1rem, env(safe-area-inset-right, 1rem)) !important;
                 top: auto !important;
                 left: auto !important;
@@ -101,7 +103,7 @@ export default async function RootLayout({
               #dify-chatbot-bubble-window {
                 position: fixed !important;
                 top: auto !important;
-                bottom: 5rem !important;
+                bottom: calc(5rem + var(--mamoru-bottom-bar, 0px)) !important;
                 right: 1rem !important;
                 left: auto !important;
                 /* 拡大時の inline style (min-width:24rem; width:48%; min-height:43.75rem; height:88%) を !important で上書き。

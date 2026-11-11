@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { PDF_INVALID_BODY, PdfBodyError, readPdfBody } from "@/lib/pdf-route-body"
-import { PDFDocument, type PDFPage, StandardFonts } from "pdf-lib"
+import { PDFDocument, type PDFPage, StandardFonts, rgb } from "pdf-lib"
 import {
     buildFitError,
     createFitCollector,
@@ -12,7 +12,7 @@ import fontkit from "@pdf-lib/fontkit"
 import { DEVICE_TABLE_ROWS_PER_COLUMN, resolveDeviceTable } from "@/lib/bekki-device-table"
 import fs from "fs"
 import path from "path"
-import { periodDateError,
+import { CHOICE_CIRCLE_BORDER, periodDateError,
 drawPeriodDate, drawTextInCell, drawWrappedTextInCell, formatJapaneseDateText, formatJudgment, parseDateParts, type CellDrawOptions, type DateAnchors, type ReportFonts, type CellRef, drawOrWrapWhenTiny, SINGLE_LINE_FIT_DEFAULTS,
     drawShiftedDown,
 } from "@/lib/pdf-form-helpers"
@@ -71,6 +71,12 @@ type ResultColumns = {
 }
 
 const P1_ROW_BOUNDS = [335.76, 353.76, 371.76, 389.76, 407.76, 425.76, 443.76, 461.76, 479.76, 497.76, 515.76, 533.76, 551.76, 569.76, 587.76]
+
+// ★この様式は点検種別セルに「機　器」だけが印字されている（総合の選択肢が無い＝機器点検用）。
+//   第13 と同じく「機器」を丸で囲む（全機能チェック 52・2026-11-11 に A でそろえた）。座標は solve-choice-circle-geometry で解いた値
+const TYPE_CHOICES = [
+    { label: "機器", cx: 164.16, cy: 179.65, rx: 19.0, ry: 8.0 }, // 機 148.32-158.88 / 器 169.44-180.0
+]
 
 const PERIOD_ROW = { top: 167.04, h: 26.16 }
 // baseline は刷り込み「年」のベースライン（テンプレート p1 の実測値）。
@@ -178,6 +184,19 @@ export async function POST(req: NextRequest) {
             drawInCell(page, pageHeight, body.fire_manager, 432.6, 114.48, 96.96, 26.28, 7.3)
             drawInCell(page, pageHeight, body.location, 114.6, 140.76, 275.52, 26.28, 7.8)
             drawInCell(page, pageHeight, body.witness, 432.6, 140.76, 96.96, 26.28, 7.3)
+            // ★点検種別: 刷り込みの「機器」を丸で囲む（第13 と同じ・全機能チェック 52）
+            const inspectionType = String(body.inspection_type ?? "").trim() || "機器"
+            for (const choice of TYPE_CHOICES) {
+                if (!inspectionType.includes(choice.label)) continue
+                page.drawEllipse({
+                    x: choice.cx,
+                    y: pageHeight - choice.cy,
+                    xScale: choice.rx,
+                    yScale: choice.ry,
+                    borderColor: rgb(0, 0, 0),
+                    borderWidth: CHOICE_CIRCLE_BORDER,
+                })
+            }
             // 点検種別: この様式は総合点検が無く、テンプレートに「機器」だけが刷り込まれている
             // （正典の Word でもセルの中身は「機器」のみ）。選ぶものが無いので描かない。
             const canDrawSplitPeriod =

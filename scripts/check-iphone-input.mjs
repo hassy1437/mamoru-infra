@@ -163,7 +163,7 @@ if (SELF_TEST) {
         ["帯の余白を外す", mut(NAV, "pb-24 sm:flex-row", "sm:flex-row"), "余白を取っていない"],
         ["第6 の下の「次へ」を外す", mut(FORM_PAGES.find((f) => f.includes("/inert-gas/")), "<ItiranFormNavBottom\n", "<ItiranFormNavBottomX\n"), "いちばん下に「次へ」が無い"],
         ["写真の見出しを横並びに戻す", mut(CAMERA, '<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">', '<div className="flex items-center justify-between">'), "縦に折れる"],
-        ["戻るリンクを小さく戻す", mut(NAV, 'className="inline-flex min-h-11 items-center text-blue-600', 'className="text-blue-600'), "点検票の一覧に戻る"],
+        ["戻るリンクを小さく戻す", mut(NAV, 'className="inline-flex min-h-11 items-center text-brand-600', 'className="text-brand-600'), "点検票の一覧に戻る"],
         ["一番下の保存ボタンを小さく戻す", mut(FORMS[5], "onClick={handleSave} disabled={busy} className={SAVE_BUTTON}", 'onClick={handleSave} disabled={busy} className="bg-slate-700"'), "一番下のボタン（handleSave）"],
         ["主な操作のボタンを小さく戻す", mut(ACTION, "h-auto min-h-14 w-full ", "h-auto min-h-10 w-full "), "高さ 56px"],
         ["総括表の指摘なし・要改善を小さく戻す", mut(SOUKATSU_RESULT, "inline-flex min-h-11 md:min-h-0 items-center gap-1 px-3", "inline-flex items-center gap-1 px-3"), "指摘なし・要改善"],

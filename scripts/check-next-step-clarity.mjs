@@ -61,7 +61,9 @@ function wiring(files) {
         if (at.some((i) => i < 0) || at.some((i, k) => k > 0 && i < at[k - 1])) problems.push(`${f}: ${msg}`)
     }
     // ホーム
-    order(F.tool, ["① 物件を登録する", "② 点検を始める", "<ResumeReports />", "{/* Summary Cards */}"], "はじめに押すボタン（① 物件を登録する・② 点検を始める）と「続きから」が件数より上に無い")
+    // ★2026-11-11 の緑の見た目で、件数は上の帯（<section>）の小さな 2 つの札にした。はじめに押すボタンは帯のすぐ下（帯にかぶせる）。
+    //   ＝ 見張るのは「件数の帯 → ① → ② → 続きから → ほかのメニュー」の順（以前は件数の大きな札がボタンより上にあり、iPhone の最初の画面に入らなかった）
+    order(F.tool, ["</section>", ">① 物件を登録する<", ">② 点検を始める<", "<ResumeReports />", "{menu.map("], "はじめに押すボタン（① 物件を登録する・② 点検を始める）と「続きから」が、件数の帯のすぐ下・ほかのメニューより上に無い")
     hasNot(F.tool, /物件基本情報の入力|消防設備点検スタート/, "ホームのボタンの名前が以前のまま（何をする所か分からない）")
     // 物件
     has(F.propForm, /router\.push\(savedId \? `\/properties\/\$\{savedId\}` : "\/properties"\)/, "物件を保存したあと、その物件の画面へ行かない（一覧に戻る）")
@@ -119,7 +121,7 @@ if (SELF_TEST) {
         return { ...files, [f]: next }
     }
     const cases = [
-        ["ホームのボタンを件数の下に戻す", mut(F.tool, "<ResumeReports />", "{/* Summary Cards */}<ResumeReports />"), "続きから"],
+        ["ホームの「続きから」をメニューの下に回す", mut(F.tool, /<ResumeReports \/>([\s\S]*?)<\/main>/, "$1<ResumeReports /></main>"), "続きから"],
         ["物件の保存のあと一覧に戻す", mut(F.propForm, 'router.push(savedId ? `/properties/${savedId}` : "/properties")', 'router.push("/properties")'), "その物件の画面へ行かない"],
         ["点検者一覧表の入力画面の行き先を外す", mut(F.itiranPage, "if (existing) redirect(", "if (false) redirect("), "2 つ目ができる"],
         ["保存ボタンを「保存してプレビューへ」に戻す", mut(F.itiranForm, '"保存して点検票の入力へ"', '"保存してプレビューへ"'), "プレビューへ"],

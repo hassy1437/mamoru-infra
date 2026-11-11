@@ -35,6 +35,7 @@ drawPeriodDate,
     drawShiftedDown,
     condenseSingleLine,
 } from "@/lib/pdf-form-helpers"
+import { drawInspectorFields, inspectorBox } from "@/lib/pdf-inspector-field"
 
 /**
  * テストデータ生成が読む「数値しか入らない欄」の宣言。
@@ -236,6 +237,7 @@ export async function POST(req: NextRequest) {
             const textHeight = font.jp.heightAtSize(currentSize, { descender: true })
             let textX = cellX + paddingX
             if (options?.align === "center") textX = cellX + (cellW - textWidth) / 2
+            else if (options?.align === "right") textX = cellX + cellW - paddingX - textWidth
             const textTopFromTop = cellTopFromTop + (cellH - textHeight) / 2
             drawTextRuns(page, font, String(textToDraw ?? ""), textX, pageHeight - (textTopFromTop + textHeight * 0.78), currentSize, condense)
         }
@@ -330,12 +332,16 @@ export async function POST(req: NextRequest) {
                 }
         }
 
-            // 刷り込みに重ねない: 前置ラベル「氏名」(-143.9) の右から（テンプレート実測）
-            drawInCell(page, pageHeight, body.inspector_name, 143.9, 181.2, 62.4, 52.56, 6.7)
-            // 刷り込みに重ねない: 「TEL」(406.4-) の手前まで（テンプレート実測）
-            drawInCell(page, pageHeight, body.inspector_company, 302.4, 181.2, 104.0, 26.28, 6.4)
-            drawInCell(page, pageHeight, body.inspector_tel, 422.4, 181.2, 107.64, 26.28, 6.3)
-            drawInCell(page, pageHeight, body.inspector_address, 302.4, 207.48, 227.64, 26.28, 6.2)
+            // ★点検者の欄は、刷り込みの見出し（氏名・社名・TEL・住所）と同じ高さに 8pt で描く（全機能チェック 51・src/lib/pdf-inspector-field.ts）。
+            //   inspectorBox(見出しの右端, 見出しのベースライン, 値の右の限り, 欄の下端)。見出しの位置は雛形の実測
+            drawInspectorFields(page, pageHeight, fonts, {
+                name: body.inspector_name, company: body.inspector_company, tel: body.inspector_tel, address: body.inspector_address,
+            }, {
+                name: inspectorBox(143.88, 194.88, 206.3, 233.76),
+                company: inspectorBox(301.44, 192.24, 401.44, 207.48),
+                tel: inspectorBox(422.28, 192.24, 530.04, 207.48),
+                address: inspectorBox(301.44, 218.52, 530.04, 233.76),
+            })
         }
 
         drawHeader(page1, p1Height)

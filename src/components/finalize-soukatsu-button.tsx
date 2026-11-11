@@ -16,6 +16,7 @@ import {
     type FinalizationPreview,
     type FinalizationRow,
 } from "@/lib/finalization"
+import { formatJstDateTime } from "@/lib/date-utils"
 
 /**
  * 総括表の「確定」。
@@ -140,7 +141,7 @@ export default function FinalizeSoukatsuButton({
                 <dl className="mt-2 space-y-1 text-sm text-emerald-900">
                     <div className="flex gap-2">
                         <dt className="w-24 shrink-0 text-emerald-700">最終確定</dt>
-                        <dd>{new Date(last.acted_at).toLocaleString("ja-JP")}</dd>
+                        <dd>{formatJstDateTime(last.acted_at)}</dd>
                     </div>
                     <div className="flex gap-2">
                         <dt className="w-24 shrink-0 text-emerald-700">確定した回数</dt>
@@ -330,7 +331,7 @@ export default function FinalizeSoukatsuButton({
                                         {d.inspection_type}
                                     </p>
                                     <p className="mt-0.5 text-xs text-slate-600">
-                                        確定日時 {new Date(d.finalized_at).toLocaleString("ja-JP")}
+                                        確定日時 {formatJstDateTime(d.finalized_at)}
                                     </p>
                                     <p className="mt-0.5 text-xs text-slate-600">
                                         設備：{d.equipment_codes.join("、") || "(なし)"}

@@ -35,6 +35,7 @@ import {
     drawShiftedDown,
     condenseSingleLine,
 } from "@/lib/pdf-form-helpers"
+import { drawInspectorFields, inspectorBox } from "@/lib/pdf-inspector-field"
 
 /**
  * テストデータ生成が読む「数値しか入らない欄」の宣言。
@@ -108,7 +109,7 @@ type Bekki5Payload = {
 }
 
 type DrawOptions = {
-    align?: "left" | "center"
+    align?: "left" | "center" | "right"
     paddingX?: number
     paddingY?: number
     minFontSize?: number
@@ -321,6 +322,8 @@ export async function POST(req: NextRequest) {
             let textX = cellX + paddingX
             if (options?.align === "center") {
                 textX = cellX + (cellW - textWidth) / 2
+            } else if (options?.align === "right") {
+                textX = cellX + cellW - paddingX - textWidth
             }
             const textTopFromTop = cellTopFromTop + (cellH - textHeight) / 2
             const baselineOffset = textHeight * 0.78
@@ -434,11 +437,16 @@ export async function POST(req: NextRequest) {
             drawPeriodDate({ page: page1, pageHeight: p1Height, fonts, dateValue: body.period_end, anchors: PERIOD_END_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 8.1 })
         }
 
-        // 刷り込みに重ねない: 前置ラベル氏名(-139.4) の右から（テンプレート実測）
-        drawInCell(page1, p1Height, body.inspector_name, 139.94, 181, 81.06, 56, 8.2)
-        drawInCell(page1, p1Height, body.inspector_company, 312, 181, 105, 28, 8.2)
-        drawInCell(page1, p1Height, body.inspector_tel, 433, 181, 95, 28, 8.2)
-        drawInCell(page1, p1Height, body.inspector_address, 312, 209, 216, 28, 8.0)
+        // ★点検者の欄は、刷り込みの見出し（氏名・社名・TEL・住所）と同じ高さに 8pt で描く（全機能チェック 51・src/lib/pdf-inspector-field.ts）。
+        //   inspectorBox(見出しの右端, 見出しのベースライン, 値の右の限り, 欄の下端)。見出しの位置は雛形の実測
+        drawInspectorFields(page1, p1Height, fonts, {
+            name: body.inspector_name, company: body.inspector_company, tel: body.inspector_tel, address: body.inspector_address,
+        }, {
+            name: inspectorBox(139.44, 194.88, 221.0, 237),
+            company: inspectorBox(311.4, 194.16, 411.4, 209),
+            tel: inspectorBox(432.24, 194.16, 528, 209),
+            address: inspectorBox(311.4, 222.12, 528, 237),
+        })
 
         // equipment_name はテンプレートに印刷済みのため描画しない。
         // この帯は「点検設備名」の行見出しの下に ポンプ / 電動機 / 泡消火薬剤混合装置 が
@@ -474,14 +482,18 @@ export async function POST(req: NextRequest) {
                     2: { x: 222.0, w: 75.96 },   // 刷り込み「ｍ3」(297.96) の手前で止める
             13: { x: 222.0, w: 79.2 },   // 刷り込み「Ａ」(301.20) の手前で止める
             17: { x: 222.0, w: 58.2 },   // 刷り込み「種接地」(280.20) の手前で止める
-        })
+        }, new Set([11])) // row 11: 電圧・電流は下で単位の直前に右寄せで描く
 
-        // 電圧計・電流計 (row 11): 「Ｖ」と「Ａ」の間に電流値を描画
+        // 電圧計・電流計 (row 11): 「Ｖ」(248.8) の前に電圧値、「Ｖ」(右端 259.3) と「Ａ」(301.3) の間に電流値
+        // ★値は単位の直前に右寄せ（全機能チェック 50・左に寄せると電流の値が「Ｖ」にくっついて読めた）
         const voltRow5 = p1Rows5[11]
-        if (voltRow5?.current_value) {
+        if (voltRow5) {
             const voltTop = P1_ROW_BOUNDS[11]
             const voltH = P1_ROW_BOUNDS[12] - P1_ROW_BOUNDS[11]
-            drawInCell(page1, p1Height, voltRow5.current_value, 261, voltTop, 38, voltH, 6.8)
+            drawInCell(page1, p1Height, voltRow5.content, 222, voltTop, 25, voltH, 6.7,
+                { align: "right", paddingX: 1, at: { rowsKey: "page1_rows", row: 11, column: "content" } })
+            drawInCell(page1, p1Height, voltRow5.current_value, 261, voltTop, 38, voltH, 6.8,
+                { align: "right", paddingX: 1, at: { rowsKey: "page1_rows", row: 11, column: "current_value" } })
         }
 
         const p2Rows5 = body.page2_rows ?? []
@@ -516,8 +528,9 @@ export async function POST(req: NextRequest) {
             const pH = P2_ROW_BOUNDS[20] - P2_ROW_BOUNDS[19]
             const pContent = normalizeText(perfRow5.content)
             const pFlow = normalizeText(perfRow5.flow_value)
-            const drawMpa  = (v: string) => { if (v) drawInCell(page2, p2Height, v, 215, pTop, 28, pH, 6.5, { paddingX: 1 }) }
-            const drawLmin = (v: string) => { if (v) drawInCell(page2, p2Height, v, 260, pTop, 20, pH, 6.5, { paddingX: 1 }) }
+            // ★値は単位の直前に右寄せ（全機能チェック 50）。雛形の実測: 「MPa」243.5・「a」の右端 259.3・「L/min」280.3
+            const drawMpa  = (v: string) => { if (v) drawInCell(page2, p2Height, v, 215, pTop, 27.5, pH, 6.5, { align: "right", paddingX: 1 }) }
+            const drawLmin = (v: string) => { if (v) drawInCell(page2, p2Height, v, 260, pTop, 19.5, pH, 6.5, { align: "right", paddingX: 1.5 }) }
             if (pFlow) {
                 drawMpa(pContent); drawLmin(pFlow)
             } else if (pContent.includes("/")) {
@@ -587,9 +600,10 @@ export async function POST(req: NextRequest) {
             // ★左へ拡張（2026-08-01）: 左の制約は刷り込み（「…形」右端 210.00）ではなく
             //   縦罫線 215.04 のほう。罫線から 0.5pt 空けて 215.54 から始める（罫線を越えない）。
             //   右端 235.0 は刷り込みに 0.20pt まで接しているので動かさない。使える幅 17.00 → 18.46pt。
-            const drawLen = (v: string) => { if (v) drawInCell(page3, p3Height, v, 215.54, hValTop, 19.46, hValH, 6.5, { paddingX: 0.5 }) }
-            const drawCnt = (v: string) => { if (v) drawInCell(page3, p3Height, v, 257, hValTop, 20, hValH, 6.0, { paddingX: 0.5 }) }
-            const drawDia = (v: string) => { if (v) drawInCell(page3, p3Height, v, 288, hValTop, 10, hValH, 6.0, { paddingX: 0 }) }
+            // ★値は単位の直前に右寄せ（全機能チェック 50）。雛形の実測: 「ｍ」235.2・「×」の右端 256.3・「本」277.3〜287.9・「mm」298.3
+            const drawLen = (v: string) => { if (v) drawInCell(page3, p3Height, v, 215.54, hValTop, 19.46, hValH, 6.5, { align: "right", paddingX: 1.5 }) }
+            const drawCnt = (v: string) => { if (v) drawInCell(page3, p3Height, v, 257, hValTop, 20, hValH, 6.0, { align: "right", paddingX: 1.8 }) }
+            const drawDia = (v: string) => { if (v) drawInCell(page3, p3Height, v, 288, hValTop, 10, hValH, 6.0, { align: "right", paddingX: 1.3 }) }
             if (hCount || nDia) {
                 drawLen(hContent); drawCnt(hCount); drawDia(nDia)
             } else if (hContent.includes("/")) {

@@ -10,6 +10,7 @@ import {
     deletePhoto,
     type LocalPhoto,
 } from "@/lib/local-draft"
+import { formatJstDateTime } from "@/lib/date-utils"
 
 interface CameraInputProps {
     itiranId: string
@@ -151,7 +152,7 @@ export default function CameraInput({ itiranId }: CameraInputProps) {
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <p className="text-[10px] text-slate-400 px-1">
-                                        {new Date(photo.createdAt).toLocaleString("ja-JP")}
+                                        {formatJstDateTime(photo.createdAt)}
                                     </p>
                                     <button
                                         type="button"

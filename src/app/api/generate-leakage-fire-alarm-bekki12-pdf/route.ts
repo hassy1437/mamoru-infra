@@ -31,6 +31,7 @@ import {
     condenseSingleLine,
     CHOICE_CIRCLE_BORDER,
 } from "@/lib/pdf-form-helpers"
+import { drawInspectorFields, inspectorBox } from "@/lib/pdf-inspector-field"
 
 /**
  * テストデータ生成が読む「数値しか入らない欄」の宣言。
@@ -83,7 +84,7 @@ type Bekki12Payload = {
 }
 
 type DrawOptions = {
-    align?: "left" | "center"
+    align?: "left" | "center" | "right"
     paddingX?: number
     paddingY?: number
     minFontSize?: number
@@ -137,15 +138,6 @@ const TYPE_CHOICES = [
     { label: "機器", cx: 137.9, cy: 177.86, rx: 19.14, ry: 7.28 },
     { label: "総合", cx: 196.5, cy: 177.86, rx: 18.32, ry: 7.28 },
 ]
-
-// 点検者ブロック。セル内に「氏名」「社名」「TEL」「住所」が印字されているため、
-// 値はその右の空きに置き、上下位置は印字ラベルの中心に合わせる。
-const INSPECTOR = {
-    name: { x: 147.0, top: 189.6, w: 67.6, h: 14.0 },
-    company: { x: 310.0, top: 187.0, w: 99.0, h: 14.0 },
-    tel: { x: 430.0, top: 187.0, w: 97.6, h: 14.0 },
-    address: { x: 310.0, top: 213.2, w: 217.6, h: 14.0 },
-}
 
 // 年/月/日は印字文字の左端に右寄せで置く（実測: 年317.2 月348.7 日380.2 / 年432.7 月464.3 日495.8）。
 // 旧値は bekki11-2 の座標を流用したもので、月・日が印字に重なっていた。
@@ -262,6 +254,7 @@ export async function POST(req: NextRequest) {
             const textHeight = fonts.jp.heightAtSize(currentSize, { descender: true })
             let textX = cellX + paddingX
             if (options?.align === "center") textX = cellX + (cellW - textWidth) / 2
+            else if (options?.align === "right") textX = cellX + cellW - paddingX - textWidth
 
             const textTop = cellTopFromTop + (cellH - textHeight) / 2
             const baselineOffset = textHeight * 0.78
@@ -352,10 +345,16 @@ export async function POST(req: NextRequest) {
                 drawPeriodDate({ page: page, pageHeight: pageHeight, fonts, dateValue: body.period_end, anchors: PERIOD_END_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 6.8 })
         }
 
-            drawInCell(page, pageHeight, body.inspector_name, INSPECTOR.name.x, INSPECTOR.name.top, INSPECTOR.name.w, INSPECTOR.name.h, 7.2)
-            drawInCell(page, pageHeight, body.inspector_company, INSPECTOR.company.x, INSPECTOR.company.top, INSPECTOR.company.w, INSPECTOR.company.h, 7.0)
-            drawInCell(page, pageHeight, body.inspector_tel, INSPECTOR.tel.x, INSPECTOR.tel.top, INSPECTOR.tel.w, INSPECTOR.tel.h, 7.0)
-            drawInCell(page, pageHeight, body.inspector_address, INSPECTOR.address.x, INSPECTOR.address.top, INSPECTOR.address.w, INSPECTOR.address.h, 6.8)
+            // ★点検者の欄は、刷り込みの見出し（氏名・社名・TEL・住所）と同じ高さに 8pt で描く（全機能チェック 51・src/lib/pdf-inspector-field.ts）。
+            //   inspectorBox(見出しの右端, 見出しのベースライン, 値の右の限り, 欄の下端)。見出しの位置は雛形の実測
+            drawInspectorFields(page, pageHeight, fonts, {
+                name: body.inspector_name, company: body.inspector_company, tel: body.inspector_tel, address: body.inspector_address,
+            }, {
+                name: inspectorBox(143.88, 200.4, 214.6, 214.4),
+                company: inspectorBox(306.72, 197.76, 406.72, 212.54),
+                tel: inspectorBox(427.56, 197.76, 527.6, 212.54),
+                address: inspectorBox(306.72, 224.04, 527.6, 238.04),
+            })
         }
 
         drawHeader(page1, p1Height)

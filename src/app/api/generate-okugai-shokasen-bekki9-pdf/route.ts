@@ -32,6 +32,7 @@ import {
     drawShiftedDown,
     condenseSingleLine,
 } from "@/lib/pdf-form-helpers"
+import { drawInspectorFields, inspectorBox } from "@/lib/pdf-inspector-field"
 
 /**
  * テストデータ生成が読む「数値しか入らない欄」の宣言。
@@ -94,7 +95,7 @@ type Bekki9Payload = {
 }
 
 type DrawOptions = {
-    align?: "left" | "center"
+    align?: "left" | "center" | "right"
     paddingX?: number
     paddingY?: number
     minFontSize?: number
@@ -256,6 +257,7 @@ export async function POST(req: NextRequest) {
             const textHeight = fonts.jp.heightAtSize(currentSize, { descender: true })
             let textX = cellX + paddingX
             if (options?.align === "center") textX = cellX + (cellW - textWidth) / 2
+            else if (options?.align === "right") textX = cellX + cellW - paddingX - textWidth
             const textTop = cellTopFromTop + (cellH - textHeight) / 2
             const baselineOffset = textHeight * 0.78
 
@@ -341,12 +343,16 @@ export async function POST(req: NextRequest) {
             drawPeriodDate({ page: page1, pageHeight: p1Height, fonts, dateValue: body.period_end, anchors: PERIOD_END_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 7.7 })
         }
 
-        // 刷り込みに重ねない: 前置ラベル氏名(-138.7) の右から（テンプレート実測）
-        drawInCell(page1, p1Height, body.inspector_name, 139.22, 182.67, 68.78, 52.0, 7.7)
-        // 刷り込みに重ねない: 後続のTEL(406.4-) の手前まで（テンプレート実測）
-        drawInCell(page1, p1Height, body.inspector_company, 307.33, 182.67, 98.57, 26.0, 7.4)
-        drawInCell(page1, p1Height, body.inspector_tel, 439.33, 182.67, 90.0, 26.0, 7.4)
-        drawInCell(page1, p1Height, body.inspector_address, 307.33, 208.67, 222.0, 26.0, 7.3)
+        // ★点検者の欄は、刷り込みの見出し（氏名・社名・TEL・住所）と同じ高さに 8pt で描く（全機能チェック 51・src/lib/pdf-inspector-field.ts）。
+        //   inspectorBox(見出しの右端, 見出しのベースライン, 値の右の限り, 欄の下端)。見出しの位置は雛形の実測
+        drawInspectorFields(page1, p1Height, fonts, {
+            name: body.inspector_name, company: body.inspector_company, tel: body.inspector_tel, address: body.inspector_address,
+        }, {
+            name: inspectorBox(138.72, 193.8, 208.0, 234.67),
+            company: inspectorBox(290.88, 193.8, 401.44, 208.67),
+            tel: inspectorBox(422.16, 193.8, 529.33, 208.67),
+            address: inspectorBox(290.88, 220.08, 529.33, 234.67),
+        })
 
         // The left cells here are fixed labels (ポンチE/ 電動橁E, so avoid overwriting them.
         // ★製造者名/型式等の値セル（テンプレート罫線・印字グリフから実測 2026-07-24）。
@@ -383,14 +389,18 @@ export async function POST(req: NextRequest) {
                     1: { x: 208.0, w: 80.48 },   // 刷り込み「ｍP3」(288.48) の手前で止める
             12: { x: 208.0, w: 84.2 },   // 刷り込み「Ａ」(292.20) の手前で止める
             16: { x: 208.0, w: 63.2 },   // 刷り込み「種接地」(271.20) の手前で止める
-        })
+        }, new Set([10])) // row 10: 電圧・電流は下で単位の直前に右寄せで描く
 
-        // 電圧計・電流計 (row 10): 「Ｖ」と「Ａ」の間に電流値を描画
+        // 電圧計・電流計 (row 10): 「Ｖ」(250.2) の前に電圧値、「Ｖ」(右端 260.8) と「Ａ」(292.3) の間に電流値
+        // ★値は単位の直前に右寄せ（全機能チェック 50・左に寄せると電流の値が「Ｖ」にくっついて読めた）
         const voltRow9 = p1Rows9[10]
-        if (voltRow9?.current_value) {
+        if (voltRow9) {
             const voltTop = P1_ROW_BOUNDS[10]
             const voltH = P1_ROW_BOUNDS[11] - P1_ROW_BOUNDS[10]
-            drawInCell(page1, p1Height, voltRow9.current_value, 262, voltTop, 28, voltH, 6.5)
+            drawInCell(page1, p1Height, voltRow9.content, 208, voltTop, 41, voltH, 6.7,
+                { align: "right", paddingX: 1, at: { rowsKey: "page1_rows", row: 10, column: "content" } })
+            drawInCell(page1, p1Height, voltRow9.current_value, 262, voltTop, 29, voltH, 6.5,
+                { align: "right", paddingX: 1, at: { rowsKey: "page1_rows", row: 10, column: "current_value" } })
         }
 
         drawResultRows(page2, p2Height, body.page2_rows ?? [], P2_ROW_BOUNDS, {
@@ -428,9 +438,9 @@ export async function POST(req: NextRequest) {
             const pH = P2_ROW_BOUNDS[22] - P2_ROW_BOUNDS[21]
             const pContent = normalizeText(perfRow9.content)
             const pFlow = normalizeText(perfRow9.flow_value)
-            // 公式PDF実測: MPa@239.8(x1=255.6) / L/min@276.6。値は各ラベル前の空白に中央寄せ
-            const drawMpa = (v: string) => { if (v) drawInCell(page2, p2Height, v, 208, pTop, 31.8, pH, 6.0, { align: "center" }) }
-            const drawLmin = (v: string) => { if (v) drawInCell(page2, p2Height, v, 255.6, pTop, 21, pH, 6.0, { align: "center" }) }
+            // 公式PDF実測: MPa@239.8(x1=255.6) / L/min@276.6。★値は各ラベルの直前に右寄せ（全機能チェック 50・以前は空白の中央）
+            const drawMpa = (v: string) => { if (v) drawInCell(page2, p2Height, v, 208, pTop, 31.8, pH, 6.0, { align: "right", paddingX: 2.5 }) }
+            const drawLmin = (v: string) => { if (v) drawInCell(page2, p2Height, v, 255.6, pTop, 21, pH, 6.0, { align: "right", paddingX: 2.5 }) }
             if (pFlow) {
                 drawMpa(pContent); drawLmin(pFlow)
             } else if (pContent.includes("/")) {
@@ -484,9 +494,11 @@ export async function POST(req: NextRequest) {
             //   使える幅 13.11pt。和文2字は 12.00pt なので 6.0pt のまま縮まない
             //   （2026-08-01 以前の 11.60pt では 5.80pt に縮んでいた）。
             //   ★paddingX を変えるとこの安全余裕が消える。変えるなら x も見直すこと。
-            const drawLen = (v: string) => { if (v) drawInCell(page3, p3Height, v, 215.16, hValTop, 18.11, hValH, 6.0, { align: "center" }) }
-            const drawCnt = (v: string) => { if (v) drawInCell(page3, p3Height, v, 254.4, hValTop, 10.4, hValH, 6.0, { align: "center" }) }
-            const drawDia = (v: string) => { if (v) drawInCell(page3, p3Height, v, 275.4, hValTop, 15.7, hValH, 6.0, { align: "center" }) }
+            // ★値は単位の直前に右寄せ（全機能チェック 50・以前は空白の中央で、本数・口径が前の「×」「本」に寄って読めた）。
+            //   長さは上の安全余裕のため paddingX 既定（2.5）のまま。本数・口径は左が刷り込み（×・本）なので狭め（1.5・2）
+            const drawLen = (v: string) => { if (v) drawInCell(page3, p3Height, v, 215.16, hValTop, 18.11, hValH, 6.0, { align: "right" }) }
+            const drawCnt = (v: string) => { if (v) drawInCell(page3, p3Height, v, 254.4, hValTop, 10.4, hValH, 6.0, { align: "right", paddingX: 1.5 }) }
+            const drawDia = (v: string) => { if (v) drawInCell(page3, p3Height, v, 275.4, hValTop, 15.7, hValH, 6.0, { align: "right", paddingX: 2 }) }
             if (hCount || nDia) {
                 drawLen(hContent); drawCnt(hCount); drawDia(nDia)
             } else if (hContent.includes("/")) {

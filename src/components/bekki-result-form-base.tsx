@@ -19,7 +19,7 @@ import { toast } from "sonner"
 import { friendlyError } from "@/lib/error-messages"
 import { supabase } from "@/lib/supabase"
 import { loadDraftLocal, saveDraftLocal } from "@/lib/local-draft"
-import { toDateInputValue } from "@/lib/date-utils"
+import { toDateInputValue, formatJstDateTime } from "@/lib/date-utils"
 import { bekkiInspectionTypeDefault } from "@/lib/bekki-inspection-type"
 import {
     resolveDeviceTable,
@@ -206,7 +206,7 @@ const formatSavedAt = (value?: string | null) => {
     if (!value) return null
     const date = new Date(value)
     if (Number.isNaN(date.getTime())) return null
-    return date.toLocaleString("ja-JP")
+    return formatJstDateTime(date)
 }
 
 export default function BekkiResultFormBase({
@@ -347,7 +347,7 @@ export default function BekkiResultFormBase({
 
         // Try saving to Supabase (may fail if offline)
         if (!navigator.onLine) {
-            setSaveMessage(`ローカル保存済み (オフライン): ${new Date().toLocaleString("ja-JP")}`)
+            setSaveMessage(`ローカル保存済み (オフライン): ${formatJstDateTime(new Date())}`)
             return true
         }
 
@@ -373,7 +373,7 @@ export default function BekkiResultFormBase({
             return false
         }
 
-        setSaveMessage(`保存しました: ${new Date().toLocaleString("ja-JP")}`)
+        setSaveMessage(`保存しました: ${formatJstDateTime(new Date())}`)
         toast.success("保存しました")
         return true
     }, [dbTable, itiranId, payload, propertyId, soukatsuId])
@@ -471,7 +471,7 @@ export default function BekkiResultFormBase({
     useEffect(() => { persistDraftRef.current = persistDraft }, [persistDraft])
 
     // 自動保存: 入力が止まって 5 秒後と、別のアプリに切り替えた瞬間（src/hooks/use-auto-save.ts）
-    useAutoSave(payload, () => persistDraftRef.current(false), () => setSaveMessage(`自動保存済み: ${new Date().toLocaleString("ja-JP")}`))
+    useAutoSave(payload, () => persistDraftRef.current(false), () => setSaveMessage(`自動保存済み: ${formatJstDateTime(new Date())}`))
 
     // 復元完了フラグ: 復元前の自動保存（StrictMode の擬似アンマウントや復元前の離脱）で
     // 新しいローカル下書きをサーバー初期値で上書きしないためのガード。

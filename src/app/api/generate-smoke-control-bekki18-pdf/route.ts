@@ -15,6 +15,7 @@ import path from "path"
 import { blankPrintedRows, drawChoiceCircle, drawPeriodDate, drawTextInCell, drawWrappedTextInCell, formatJapaneseDateText, formatJudgment, parseDateParts, type CellDrawOptions, type DateAnchors, type ReportFonts, type CellRef, periodDateError, drawOrWrapWhenTiny, SINGLE_LINE_FIT_DEFAULTS,
     drawShiftedDown,
 } from "@/lib/pdf-form-helpers"
+import { drawInspectorFields, inspectorBox } from "@/lib/pdf-inspector-field"
 
 /**
  * テストデータ生成が読む「数値しか入らない欄」の宣言。
@@ -253,12 +254,16 @@ export async function POST(req: NextRequest) {
                 }
         }
 
-            // 刷り込みに重ねない: 前置ラベル氏名(-143.9) の右から（テンプレート実測）
-            drawInCell(page, pageHeight, body.inspector_name, 144.38, 181.8, 61.9, 49.92, 6.4)
-            // 刷り込みに重ねない: 後続のTEL(411.7-) の手前まで（テンプレート実測）
-            drawInCell(page, pageHeight, body.inspector_company, 302.28, 181.8, 108.92, 24.96, 6.0)
-            drawInCell(page, pageHeight, body.inspector_tel, 425.04, 181.8, 105.0, 24.96, 6.0)
-            drawInCell(page, pageHeight, body.inspector_address, 302.28, 206.76, 227.76, 24.96, 5.9)
+            // ★点検者の欄は、刷り込みの見出し（氏名・社名・TEL・住所）と同じ高さに 8pt で描く（全機能チェック 51・src/lib/pdf-inspector-field.ts）。
+            //   inspectorBox(見出しの右端, 見出しのベースライン, 値の右の限り, 欄の下端)。見出しの位置は雛形の実測
+            drawInspectorFields(page, pageHeight, fonts, {
+                name: body.inspector_name, company: body.inspector_company, tel: body.inspector_tel, address: body.inspector_address,
+            }, {
+                name: inspectorBox(143.88, 194.16, 206.28, 231.72),
+                company: inspectorBox(296.16, 192.12, 406.72, 206.76),
+                tel: inspectorBox(427.44, 192.12, 530.04, 206.76),
+                address: inspectorBox(296.16, 217.2, 530.04, 231.72),
+            })
 
             drawInCell(page, pageHeight, body.extra_fields?.smoke_machine_maker, 222.6, 231.72, 307.44, 17.04, 6.2)
             drawInCell(page, pageHeight, body.extra_fields?.smoke_machine_model, 222.6, 248.76, 307.44, 17.04, 6.2)

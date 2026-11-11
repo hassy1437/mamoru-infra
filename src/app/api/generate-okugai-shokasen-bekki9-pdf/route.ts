@@ -32,6 +32,7 @@ import {
     drawShiftedDown,
     condenseSingleLine,
 } from "@/lib/pdf-form-helpers"
+import { drawInspectorFields, inspectorBox } from "@/lib/pdf-inspector-field"
 
 /**
  * テストデータ生成が読む「数値しか入らない欄」の宣言。
@@ -342,12 +343,16 @@ export async function POST(req: NextRequest) {
             drawPeriodDate({ page: page1, pageHeight: p1Height, fonts, dateValue: body.period_end, anchors: PERIOD_END_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 7.7 })
         }
 
-        // 刷り込みに重ねない: 前置ラベル氏名(-138.7) の右から（テンプレート実測）
-        drawInCell(page1, p1Height, body.inspector_name, 139.22, 182.67, 68.78, 52.0, 7.7)
-        // 刷り込みに重ねない: 後続のTEL(406.4-) の手前まで（テンプレート実測）
-        drawInCell(page1, p1Height, body.inspector_company, 307.33, 182.67, 98.57, 26.0, 7.4)
-        drawInCell(page1, p1Height, body.inspector_tel, 439.33, 182.67, 90.0, 26.0, 7.4)
-        drawInCell(page1, p1Height, body.inspector_address, 307.33, 208.67, 222.0, 26.0, 7.3)
+        // ★点検者の欄は、刷り込みの見出し（氏名・社名・TEL・住所）と同じ高さに 8pt で描く（全機能チェック 51・src/lib/pdf-inspector-field.ts）。
+        //   inspectorBox(見出しの右端, 見出しのベースライン, 値の右の限り, 欄の下端)。見出しの位置は雛形の実測
+        drawInspectorFields(page1, p1Height, fonts, {
+            name: body.inspector_name, company: body.inspector_company, tel: body.inspector_tel, address: body.inspector_address,
+        }, {
+            name: inspectorBox(138.72, 193.8, 208.0, 234.67),
+            company: inspectorBox(290.88, 193.8, 401.44, 208.67),
+            tel: inspectorBox(422.16, 193.8, 529.33, 208.67),
+            address: inspectorBox(290.88, 220.08, 529.33, 234.67),
+        })
 
         // The left cells here are fixed labels (ポンチE/ 電動橁E, so avoid overwriting them.
         // ★製造者名/型式等の値セル（テンプレート罫線・印字グリフから実測 2026-07-24）。

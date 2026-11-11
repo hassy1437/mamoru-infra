@@ -10,6 +10,7 @@ drawChoiceCircle, drawPeriodDate, drawTextInCell, drawTextRuns, drawWrappedTextI
     drawShiftedDown,
     condenseSingleLine,
 } from "@/lib/pdf-form-helpers"
+import { drawInspectorFields, inspectorBox } from "@/lib/pdf-inspector-field"
 import {
     buildFitError,
     createFitCollector,
@@ -312,15 +313,16 @@ export async function POST(req: NextRequest) {
                 }
         }
 
-            // 刷り込みに重ねない: 前置ラベル氏名(-142.6) の右から（テンプレート実測）
-            drawInCell(page1, p1Height, body.inspector_name, 143.06, 185.04, 110.26, 55.56, 6.4)
-            // 社名: label x=321-342, TEL label x=426-442, right edge x=530
-            // 社名 data: after label (x=343) to before TEL label (x=425) → w=82
-            // TEL data: after TEL label (x=443) to right edge (x=530) → w=87
-            drawWrappedInCell(page1, p1Height, body.inspector_company, 343.0, 185.04, 82.0, 27.84, 5.8)
-            drawInCell(page1, p1Height, body.inspector_tel, 443.0, 185.04, 87.0, 27.84, 6.0)
-            // 住所: label x=321-342, right edge x=530
-            drawInCell(page1, p1Height, body.inspector_address, 343.0, 212.88, 187.0, 27.72, 5.9)
+            // ★点検者の欄は、刷り込みの見出し（氏名・社名・TEL・住所）と同じ高さに 8pt で描く（全機能チェック 51・src/lib/pdf-inspector-field.ts）。
+            //   inspectorBox(見出しの右端, 見出しのベースライン, 値の右の限り, 欄の下端)。見出しの位置は雛形の実測
+            drawInspectorFields(page1, p1Height, fonts, {
+                name: body.inspector_name, company: body.inspector_company, tel: body.inspector_tel, address: body.inspector_address,
+            }, {
+                name: inspectorBox(142.56, 196.08, 253.32, 240.6),
+                company: inspectorBox(342.12, 195.82, 421.13, 212.88),
+                tel: inspectorBox(441.85, 195.82, 530.0, 212.88),
+                address: inspectorBox(342.12, 223.68, 530.0, 240.6),
+            })
 
             drawInCell(page1, p1Height, body.extra_fields?.motor_maker, 222.24, 240.6, 105.6, 20.04, 6.0)
             drawInCellWithFont(page1, p1Height, fonts, body.extra_fields?.motor_model, 222.24, 260.64, 105.6, 20.04, 6.0, { paddingX: 2 })

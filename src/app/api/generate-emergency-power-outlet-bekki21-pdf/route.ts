@@ -13,9 +13,10 @@ import { DEVICE_TABLE_ROWS_PER_COLUMN, resolveDeviceTable } from "@/lib/bekki-de
 import fs from "fs"
 import path from "path"
 import { periodDateError,
-drawPeriodDate, drawTextInCell, drawTextInCellOrWrap, drawWrappedTextInCell, formatJapaneseDateText, formatJudgment, parseDateParts, type CellDrawOptions, type DateAnchors, type ReportFonts, type CellRef, drawOrWrapWhenTiny, SINGLE_LINE_FIT_DEFAULTS,
+drawPeriodDate, drawTextInCell, drawWrappedTextInCell, formatJapaneseDateText, formatJudgment, parseDateParts, type CellDrawOptions, type DateAnchors, type ReportFonts, type CellRef, drawOrWrapWhenTiny, SINGLE_LINE_FIT_DEFAULTS,
     drawShiftedDown,
 } from "@/lib/pdf-form-helpers"
+import { drawInspectorFields, inspectorBox } from "@/lib/pdf-inspector-field"
 
 /**
  * テストデータ生成が読む「数値しか入らない欄」の宣言。
@@ -212,16 +213,16 @@ export async function POST(req: NextRequest) {
                     })
                 }
         }
-            // 刷り込みに重ねない: 前置ラベル氏名(-142.6) の右から（テンプレート実測）
-            drawInCell(page, pageHeight, body.inspector_name, 143.06, 184.8, 110.02, 55.56, 6.4)
-            // 刷り込みに重ねない: 後続のTEL(426.1-) の手前まで（テンプレート実測）
-            // ★社名は、1 行では 5pt を割るときだけ 2 行にする（#22: 18 文字で 4.08pt だった）
-            drawTextInCellOrWrap({
-                page, pageHeight, fonts, text: body.inspector_company,
-                cellX: 347.16, cellTopFromTop: 184.8, cellW: 78.44, cellH: 27.84, fontSize: 6.0,
+            // ★点検者の欄は、刷り込みの見出し（氏名・社名・TEL・住所）と同じ高さに 8pt で描く（全機能チェック 51・src/lib/pdf-inspector-field.ts）。
+            //   inspectorBox(見出しの右端, 見出しのベースライン, 値の右の限り, 欄の下端)。見出しの位置は雛形の実測
+            drawInspectorFields(page, pageHeight, fonts, {
+                name: body.inspector_name, company: body.inspector_company, tel: body.inspector_tel, address: body.inspector_address,
+            }, {
+                name: inspectorBox(142.56, 196.08, 253.08, 240.36),
+                company: inspectorBox(342.12, 195.82, 421.13, 212.64),
+                tel: inspectorBox(441.85, 195.82, 529.8, 212.64),
+                address: inspectorBox(342.12, 223.68, 529.8, 240.36),
             })
-            drawInCell(page, pageHeight, body.inspector_tel, 441.96, 184.8, 87.84, 27.84, 6.0)
-            drawInCell(page, pageHeight, body.inspector_address, 347.16, 212.64, 182.64, 27.72, 5.9)
         }
 
         drawHeader(page1, p1Height)

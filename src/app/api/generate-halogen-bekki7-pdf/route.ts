@@ -32,6 +32,7 @@ import {
     drawShiftedDown,
     condenseSingleLine,
 } from "@/lib/pdf-form-helpers"
+import { drawInspectorFields, inspectorBox } from "@/lib/pdf-inspector-field"
 import { normalizeInspectorNameValue, normalizeWitnessValue } from "@/lib/bekki-header-normalization"
 
 /**
@@ -502,14 +503,16 @@ export async function POST(req: NextRequest) {
             drawPeriodDate({ page: page1, pageHeight: p1Height, fonts, dateValue: body.period_end, anchors: PERIOD_END_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 7.8 })
         }
 
-        // 刷り込みに重ねない: 点検者の行は 196.4-253.1。従来は 9.07pt 上で点検種別の行に食い込んでいた（テンプレート実測）
-        drawInCell(page1, p1Height, normalizedInspectorName, 136.0, 196.4, 69.33, 56.7, 7.8)
-        // 刷り込みに重ねない: 社名/TEL の行は 196.4-224.8（テンプレート実測）
-        drawInCell(page1, p1Height, body.inspector_company, 299.0, 196.4, 139.0, 28.4, 7.0)
-        // 刷り込みに重ねない: 社名/TEL の行は 196.4-224.8（テンプレート実測）
-        drawInCell(page1, p1Height, body.inspector_tel, 461.0, 196.4, 67.67, 28.4, 7.0)
-        // 刷り込みに重ねない: 住所の行は 224.8-253.1。従来は 14.8pt 上で2行にまたがっていた（テンプレート実測）
-        drawInCell(page1, p1Height, body.inspector_address, 299.0, 224.8, 229.67, 28.3, 7.0)
+        // ★点検者の欄は、刷り込みの見出し（氏名・社名・TEL・住所）と同じ高さに 8pt で描く（全機能チェック 51・src/lib/pdf-inspector-field.ts）。
+        //   inspectorBox(見出しの右端, 見出しのベースライン, 値の右の限り, 欄の下端)。見出しの位置は雛形の実測
+        drawInspectorFields(page1, p1Height, fonts, {
+            name: normalizedInspectorName, company: body.inspector_company, tel: body.inspector_tel, address: body.inspector_address,
+        }, {
+            name: inspectorBox(132.6, 210.72, 205.33, 253.1),
+            company: inspectorBox(295.32, 207.48, 437.32, 224.8),
+            tel: inspectorBox(458.16, 207.48, 528.67, 224.8),
+            address: inspectorBox(295.32, 235.8, 528.67, 253.1),
+        })
 
         drawResultRows(page1, p1Height, body.page1_rows ?? [], P1_ROW_BOUNDS, {
             rowsKey: "page1_rows",

@@ -8,8 +8,10 @@ import {
     drawWrappedTextInCell,
     measureRuns,
     SINGLE_LINE_FIT_DEFAULTS,
+    WRAPPED_FIT_DEFAULTS,
     type ReportFonts,
 } from "@/lib/pdf-form-helpers"
+import { wrapListItems } from "@/lib/pdf-list-wrap"
 import { buildFitError, createFitCollector, fitWarningHeader, logFitDebug, systemFitFailures } from "@/lib/pdf-fit-report"
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
@@ -265,10 +267,38 @@ export async function POST(req: NextRequest) {
         drawBeforeUnit(toText(body.floor_below), 332.16, 283.32, 381.54)
         drawBeforeUnit(toText(body.total_floor_area), 510.23, 413.87, 381.54)
 
-        const equipments = Array.isArray(body.equipment_types) ? body.equipment_types.join("、") : ""
+        const equipmentItems = Array.isArray(body.equipment_types) ? body.equipment_types.map((v) => String(v ?? "")) : []
         // 罫線 395.6–594.1 の実測。198.5pt ＝ 9pt で22行分。左のラベル列は縦中央寄せで、
         // 値の列はブロック全体を使う（他の欄と違い内部のラベル行分割が無い）
-        drawWrapped(equipments || undefined, tableX, 395.6, 380, 198.5, 9, "top")
+        // ★設備名の途中で行を折らない（全機能チェック 51・「不活性ガス／消火設備」と折れていた）。
+        //   設備名ごとに行へ詰め、入らない名前は次の行へ送る（src/lib/pdf-list-wrap.ts）。
+        //   9pt で入りきらないときだけ、折り返しと同じ決まり（0.3pt ずつ・4.5pt まで）で縮める。
+        //   それでも入らなければ従来の字の単位の折り返しに任せる（入りきらない報告も従来どおり）
+        {
+            const cellX = tableX, cellTop = 395.6, cellW = 380, cellH = 198.5
+            const padX = WRAPPED_FIT_DEFAULTS.paddingX, padY = WRAPPED_FIT_DEFAULTS.paddingY, gap = WRAPPED_FIT_DEFAULTS.lineGap
+            const maxWidth = cellW - padX * 2
+            let size = 9
+            let lines = wrapListItems(fonts, equipmentItems, size, maxWidth)
+            while (lines.length * (size + gap) > cellH - padY * 2 && size > WRAPPED_FIT_DEFAULTS.minFontSize) {
+                size = Math.round((size - 0.3) * 10) / 10
+                lines = wrapListItems(fonts, equipmentItems, size, maxWidth)
+            }
+            const joined = equipmentItems.map((v) => v.trim()).filter(Boolean).join("、")
+            if (lines.length * (size + gap) <= cellH - padY * 2) {
+                fonts.fit?.reportShrink(joined, 9, size, { column: "equipment_types" })
+                let top = cellTop + padY
+                for (const line of lines) {
+                    const textHeight = fonts.jp.heightAtSize(size, { descender: true })
+                    const lineHeight = size + gap
+                    drawTextRuns(firstPage, fonts, line, cellX + padX,
+                        height - (top + (lineHeight - textHeight) / 2 + textHeight * 0.78), size)
+                    top += lineHeight
+                }
+            } else {
+                drawWrapped(joined || undefined, cellX, cellTop, cellW, cellH, 9, "top")
+            }
+        }
 
         // ⑧ 枠に収まらなかった項目があればPDFを返さずに一覧を返す（他25本と同じ扱いにする）。
         // ★入れる前に測った: 現実値セット 0件 / 長文セット 0件。既存の出力は落ちない。

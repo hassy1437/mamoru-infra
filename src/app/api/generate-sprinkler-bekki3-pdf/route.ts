@@ -24,6 +24,7 @@ import {
     drawShiftedDown,
     condenseSingleLine,
 } from "@/lib/pdf-form-helpers"
+import { drawInspectorFields, inspectorBox } from "@/lib/pdf-inspector-field"
 import {
     buildFitError,
     createFitCollector,
@@ -425,14 +426,16 @@ export async function POST(req: NextRequest) {
             drawPeriodDate({ page: page1, pageHeight: p1Height, fonts, dateValue: body.period_end, anchors: PERIOD_END_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 7.9 })
         }
 
-        // 刷り込みに重ねない: 前置ラベル氏名(-139.0) の右から（テンプレート実測）
-        drawInCell(page1, p1Height, body.inspector_name, 139.5, 179, 66.5, 42, 8.2)
-        // 「社名」ラベル x=276.6-297.7 の右から開始 → x=299, w=424-299-2=123
-        drawInCell(page1, p1Height, body.inspector_company, 299, 179, 123, 21, 8.2)
-        // 「TEL」ラベル x=423.7-455.3 の右から開始 → x=457, w=530-457-3=70
-        drawInCell(page1, p1Height, body.inspector_tel, 457, 179, 70, 21, 8.2)
-        // 「住所」ラベル x=276.6-297.7 の右から開始 → x=299, w=530-299-3=228
-        drawInCell(page1, p1Height, body.inspector_address, 299, 200, 228, 21, 8.0)
+        // ★点検者の欄は、刷り込みの見出し（氏名・社名・TEL・住所）と同じ高さに 8pt で描く（全機能チェック 51・src/lib/pdf-inspector-field.ts）。
+        //   inspectorBox(見出しの右端, 見出しのベースライン, 値の右の限り, 欄の下端)。見出しの位置は雛形の実測
+        drawInspectorFields(page1, p1Height, fonts, {
+            name: body.inspector_name, company: body.inspector_company, tel: body.inspector_tel, address: body.inspector_address,
+        }, {
+            name: inspectorBox(138.97, 190.2, 206.0, 221),
+            company: inspectorBox(297.72, 189.96, 418.7, 200),
+            tel: inspectorBox(455.3, 189.96, 527, 200),
+            address: inspectorBox(297.72, 210.96, 527, 221),
+        })
 
         // equipment_name はテンプレートに印刷済みのため描画しない
         // ポンプ「製造者名」ラベル x=162-205 の右から: x=206, 列右端x=317, w=317-206-3=108

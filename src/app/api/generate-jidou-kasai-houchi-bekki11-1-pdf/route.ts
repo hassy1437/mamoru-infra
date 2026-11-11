@@ -31,6 +31,7 @@ import {
     drawOrWrapWhenTiny,
     condenseSingleLine,
 } from "@/lib/pdf-form-helpers"
+import { drawInspectorFields, inspectorBox } from "@/lib/pdf-inspector-field"
 import { normalizeInspectorNameValue, normalizeWitnessValue } from "@/lib/bekki-header-normalization"
 import { AUTO_TEST_ATTR, isRowActive } from "@/lib/auto-test-rows"
 import { BEKKI_ROW_LABELS } from "@/lib/bekki-row-labels"
@@ -394,10 +395,16 @@ export async function POST(req: NextRequest) {
             drawPeriodDate({ page: page1, pageHeight: p1Height, fonts, dateValue: body.period_start, anchors: PERIOD_START_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 7.0 })
             drawPeriodDate({ page: page1, pageHeight: p1Height, fonts, dateValue: body.period_end, anchors: PERIOD_END_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 7.0 })
         }
-        drawInCell(page1, p1Height, normalizedInspectorName, 148.0, 176.0, 74.0, 48.0, 7.0)
-        drawWrappedInCell(page1, p1Height, body.inspector_company, 310.72, 176.0, 86.0, 24.0, 6.2)
-        drawInCell(page1, p1Height, body.inspector_tel, 420.0, 176.0, 109.33, 24.0, 6.4)
-        drawInCell(page1, p1Height, body.inspector_address, 310.72, 200.0, 218.61, 24.0, 6.3)
+        // ★点検者の欄は、刷り込みの見出し（氏名・社名・TEL・住所）と同じ高さに 8pt で描く（全機能チェック 51・src/lib/pdf-inspector-field.ts）。
+        //   inspectorBox(見出しの右端, 見出しのベースライン, 値の右の限り, 欄の下端)。見出しの位置は雛形の実測
+        drawInspectorFields(page1, p1Height, fonts, {
+            name: normalizedInspectorName, company: body.inspector_company, tel: body.inspector_tel, address: body.inspector_address,
+        }, {
+            name: inspectorBox(143.88, 188.16, 222.0, 224.0),
+            company: inspectorBox(306.72, 186.6, 396.16, 200.0),
+            tel: inspectorBox(416.88, 186.6, 529.33, 200.0),
+            address: inspectorBox(306.72, 210.6, 529.33, 224.0),
+        })
 
         // 受信機: 製造者名 row (y=224.5-238.6), 型式等 row (y=238.6-252.5)
         // Data cell: x=265 (after label text) to x=529.6

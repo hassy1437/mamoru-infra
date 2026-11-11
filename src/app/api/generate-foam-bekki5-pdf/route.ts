@@ -35,6 +35,7 @@ import {
     drawShiftedDown,
     condenseSingleLine,
 } from "@/lib/pdf-form-helpers"
+import { drawInspectorFields, inspectorBox } from "@/lib/pdf-inspector-field"
 
 /**
  * テストデータ生成が読む「数値しか入らない欄」の宣言。
@@ -436,11 +437,16 @@ export async function POST(req: NextRequest) {
             drawPeriodDate({ page: page1, pageHeight: p1Height, fonts, dateValue: body.period_end, anchors: PERIOD_END_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 8.1 })
         }
 
-        // 刷り込みに重ねない: 前置ラベル氏名(-139.4) の右から（テンプレート実測）
-        drawInCell(page1, p1Height, body.inspector_name, 139.94, 181, 81.06, 56, 8.2)
-        drawInCell(page1, p1Height, body.inspector_company, 312, 181, 105, 28, 8.2)
-        drawInCell(page1, p1Height, body.inspector_tel, 433, 181, 95, 28, 8.2)
-        drawInCell(page1, p1Height, body.inspector_address, 312, 209, 216, 28, 8.0)
+        // ★点検者の欄は、刷り込みの見出し（氏名・社名・TEL・住所）と同じ高さに 8pt で描く（全機能チェック 51・src/lib/pdf-inspector-field.ts）。
+        //   inspectorBox(見出しの右端, 見出しのベースライン, 値の右の限り, 欄の下端)。見出しの位置は雛形の実測
+        drawInspectorFields(page1, p1Height, fonts, {
+            name: body.inspector_name, company: body.inspector_company, tel: body.inspector_tel, address: body.inspector_address,
+        }, {
+            name: inspectorBox(139.44, 194.88, 221.0, 237),
+            company: inspectorBox(311.4, 194.16, 411.4, 209),
+            tel: inspectorBox(432.24, 194.16, 528, 209),
+            address: inspectorBox(311.4, 222.12, 528, 237),
+        })
 
         // equipment_name はテンプレートに印刷済みのため描画しない。
         // この帯は「点検設備名」の行見出しの下に ポンプ / 電動機 / 泡消火薬剤混合装置 が

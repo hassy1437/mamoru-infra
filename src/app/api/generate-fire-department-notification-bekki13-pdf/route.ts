@@ -16,7 +16,6 @@ import {
     periodDateError,
 drawPeriodDate,
     drawTextInCell,
-    drawTextInCellOrWrap,
     drawWrappedTextInCell,
     formatJapaneseDateText,
     parseDateParts,
@@ -30,6 +29,7 @@ drawPeriodDate,
     drawShiftedDown,
     CHOICE_CIRCLE_BORDER,
 } from "@/lib/pdf-form-helpers"
+import { drawInspectorFields, inspectorBox } from "@/lib/pdf-inspector-field"
 
 /**
  * テストデータ生成が読む「数値しか入らない欄」の宣言。
@@ -117,15 +117,6 @@ const PERIOD_ROW = { top: 157.3, h: 18.6 }
 const TYPE_CHOICES = [
     { label: "機器", cx: 161.8, cy: 166.0, rx: 19.0, ry: 8.0 }, // 機 145.9-156.5 / 器 167.0-177.6
 ]
-
-// 点検者ブロック。セル内に「氏名」「社名」「TEL」「住所」が印字されているため、
-// 値はその右の空きに置き、上下位置は印字ラベルの中心に合わせる。
-const INSPECTOR = {
-    name: { x: 147.0, top: 178.8, w: 56.9, h: 14.0 }, // 氏名 122.6-143.8 の右、セル右端 205.9
-    company: { x: 299.0, top: 176.3, w: 89.0, h: 14.0 }, // 社名 274.9-296.0 の右、TEL 390.5 の手前
-    tel: { x: 409.0, top: 176.3, w: 118.4, h: 14.0 }, // TEL 390.5-406.2 の右、セル右端 529.4
-    address: { x: 299.0, top: 202.2, w: 228.4, h: 14.0 }, // 住所 274.9-296.0 の右
-}
 
 // baseline は刷り込み「年」のベースライン（テンプレート p1 の実測値）。
 // ★これが無いとセル矩形の中央に置くことになり、刷り込みと高さが揃わない。
@@ -279,15 +270,16 @@ export async function POST(req: NextRequest) {
                 }
         }
 
-            drawInCell(page, pageHeight, body.inspector_name, INSPECTOR.name.x, INSPECTOR.name.top, INSPECTOR.name.w, INSPECTOR.name.h, 7.0)
-            // ★社名は、1 行では 5pt を割るときだけ 2 行にする（#22: 18 文字で 4.67pt だった）
-            drawTextInCellOrWrap({
-                page, pageHeight, fonts, text: body.inspector_company,
-                cellX: INSPECTOR.company.x, cellTopFromTop: INSPECTOR.company.top,
-                cellW: INSPECTOR.company.w, cellH: INSPECTOR.company.h, fontSize: 6.8,
+            // ★点検者の欄は、刷り込みの見出し（氏名・社名・TEL・住所）と同じ高さに 8pt で描く（全機能チェック 51・src/lib/pdf-inspector-field.ts）。
+            //   inspectorBox(見出しの右端, 見出しのベースライン, 値の右の限り, 欄の下端)。見出しの位置は雛形の実測
+            drawInspectorFields(page, pageHeight, fonts, {
+                name: body.inspector_name, company: body.inspector_company, tel: body.inspector_tel, address: body.inspector_address,
+            }, {
+                name: inspectorBox(143.76, 189.6, 203.9, 203.6),
+                company: inspectorBox(296.04, 187.08, 385.5, 201.5),
+                tel: inspectorBox(406.22, 187.08, 527.4, 201.5),
+                address: inspectorBox(296.04, 213.0, 527.4, 227.0),
             })
-            drawInCell(page, pageHeight, body.inspector_tel, INSPECTOR.tel.x, INSPECTOR.tel.top, INSPECTOR.tel.w, INSPECTOR.tel.h, 6.8)
-            drawInCell(page, pageHeight, body.inspector_address, INSPECTOR.address.x, INSPECTOR.address.top, INSPECTOR.address.w, INSPECTOR.address.h, 6.6)
         }
 
         drawHeader(page1, p1Height)

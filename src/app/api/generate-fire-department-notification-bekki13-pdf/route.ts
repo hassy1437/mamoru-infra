@@ -227,9 +227,9 @@ export async function POST(req: NextRequest) {
             drawInCell(page, pageHeight, body.fire_manager, HEADER.rightX, HEADER.nameRow.top, HEADER.rightW, HEADER.nameRow.h, 7.6)
             drawInCell(page, pageHeight, body.location, HEADER.valueX, HEADER.locationRow.top, HEADER.valueW, HEADER.locationRow.h, 8.0)
             drawInCell(page, pageHeight, body.witness, HEADER.rightX, HEADER.locationRow.top, HEADER.rightW, HEADER.locationRow.h, 7.6)
-            const inspectionType = String(body.inspection_type ?? "").trim() || "機器"
+            // ★点検種別: この様式は「機器」しか刷られていない＝機器点検の票なので、いつも「機器」を丸で囲む。
+            //   総括表が総合点検でも同じ（定期テスト 第7回 60・以前は値に「機器」を含むときだけで、総合点検の報告書では丸が無かった）
             for (const choice of TYPE_CHOICES) {
-                if (!inspectionType.includes(choice.label)) continue
                 page.drawEllipse({
                     x: choice.cx,
                     y: pageHeight - choice.cy,

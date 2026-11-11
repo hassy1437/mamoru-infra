@@ -43,3 +43,11 @@ export function bekkiInspectionTypeDefault(soukatsuInspectionType: string | null
     const t = (soukatsuInspectionType ?? "").replace(/\s+/g, " ").trim()
     return t || BEKKI_INSPECTION_TYPE_FALLBACK
 }
+
+/**
+ * 点検種別の欄に「機器」しか刷られていない様式（第13・16・17・19・21・22）の点検種別（定期テスト 第7回 60・2026-11-12）。
+ * ★紙は機器点検の票なので、総括表が「総合点検」でも「機器点検」に固める。
+ *   以前は総括表の値（総合点検）がそのまま写り、PDF の「機器」に丸が付かなかった（52 の丸は機器点検の報告書のときだけ付いていた）。
+ *   画面は選ぶ欄を出さずに「機器点検」と見せ（bekki-result-form-base の kikiOnly）、PDF はいつも「機器」に丸（6 様式の route）。
+ */
+export const BEKKI_KIKI_ONLY_INSPECTION_TYPE = "機器点検"

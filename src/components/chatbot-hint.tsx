@@ -89,7 +89,7 @@ export default function ChatbotHint() {
     return (
         <div
             aria-live="polite"
-            className={`fixed bottom-20 right-3 sm:bottom-[6rem] sm:right-4 max-w-[12rem] sm:max-w-[16rem] transition-all duration-500 ${
+            className={`fixed bottom-20 right-3 sm:bottom-[6rem] sm:right-4 max-w-[14rem] sm:max-w-[16rem] transition-all duration-500 ${
                 visible
                     ? "opacity-100 translate-y-0"
                     : "opacity-0 translate-y-2 pointer-events-none"
@@ -110,10 +110,11 @@ export default function ChatbotHint() {
                         <X className="h-3.5 w-3.5" />
                     </span>
                 </button>
-                <p className="text-[11px] sm:text-xs font-bold text-slate-900">
-                    お困りですか？ 💬
+                {/* ★絵文字は使わない・スマホでも見出し 14px・説明 12px（2026-11-12・定期テスト 第7回 64。以前は「💬」と 11px・10px） */}
+                <p className="text-sm font-bold text-slate-900">
+                    お困りですか？
                 </p>
-                <p className="mt-0.5 sm:mt-1 text-[10px] sm:text-[11px] leading-snug sm:leading-relaxed text-slate-600">
+                <p className="mt-1 text-xs leading-relaxed text-slate-600">
                     こちらからチャットで質問できます（個人の情報・物件の住所は入力しないでください）
                 </p>
                 {/* Pointer tail toward the Dify button */}

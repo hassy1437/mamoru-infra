@@ -51,6 +51,7 @@ export default function FireWaterBekki17Form(props: Props) {
             title="消防用水点検票（別記様式17）"
             iframeTitle="消防用水点検票（別記様式17）PDFプレビュー"
             apiPath="/api/generate-fire-water-bekki17-pdf"
+            kikiOnly
             dbTable="inspection_fire_water_bekki17"
             downloadFilenamePrefix="消防用水点検票"
             sections={[

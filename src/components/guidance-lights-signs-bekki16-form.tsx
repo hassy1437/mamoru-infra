@@ -66,6 +66,7 @@ export default function GuidanceLightsSignsBekki16Form(props: Props) {
             title="誘導灯及び誘導標識点検票（別記様式16）"
             iframeTitle="誘導灯及び誘導標識点検票（別記様式16）PDFプレビュー"
             apiPath="/api/generate-guidance-lights-signs-bekki16-pdf"
+            kikiOnly
             dbTable="inspection_guidance_lights_signs_bekki16"
             downloadFilenamePrefix="誘導灯及び誘導標識点検票"
             sections={[

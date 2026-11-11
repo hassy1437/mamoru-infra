@@ -245,7 +245,8 @@ function wiring({ lib }, { forms, base, button }) {
     }
     // 共通ベース（15 様式）
     if (!base.includes("form={bekkiFormNameOfApiRoute(apiPath) ?? apiPath}")) problems.push("共通ベース: 様式名を apiPath から渡していない")
-    if (!base.includes("inspectionType={inspectionType}")) problems.push("共通ベース: 点検種別を渡していない（機器点検だけでも総合点検の行に入る）")
+    // ★共通ベースは「機器」だけの様式で「機器点検」に固めた値（shownInspectionType）を渡す（2026-11-12・定期テスト 第7回 60）
+    if (!base.includes("inspectionType={shownInspectionType}")) problems.push("共通ベース: 点検種別を渡していない（機器点検だけでも総合点検の行に入る）")
     if (!base.includes("hiddenRow: s.hiddenRow")) problems.push("共通ベース: 畳んだ行（hiddenRow）を渡していない（見ていない行に○が付く）")
     if (!/sections=\{sections\.map\(\(s\) => \(\{ key: s\.key, labels: s\.labels, rows: rowsByKey\[s\.key\]/.test(base)) problems.push("共通ベース: 全部の表を渡していない")
     if (!/for \(const section of sections\) next\[section\.key\] = applyBulkGood\(prev\[section\.key\], targets\[section\.key\]\)/.test(base)) problems.push("共通ベース: 全部の表に適用していない")

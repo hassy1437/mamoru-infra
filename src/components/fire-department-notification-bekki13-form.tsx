@@ -99,6 +99,7 @@ export default function FireDepartmentNotificationBekki13Form(props: Props) {
             title="消防機関へ通報する火災報知設備点検票（別記様式13）"
             iframeTitle="消防機関へ通報する火災報知設備点検票（別記様式13）PDFプレビュー"
             apiPath="/api/generate-fire-department-notification-bekki13-pdf"
+            kikiOnly
             dbTable="inspection_fire_department_notification_bekki13"
             downloadFilenamePrefix="消防機関へ通報する火災報知設備点検票"
             sections={[

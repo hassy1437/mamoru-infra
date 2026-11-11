@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest"
 
 import { BEKKI_ROW_LABELS } from "@/lib/bekki-row-labels"
 import { isAutoTestRow } from "@/lib/auto-test-rows"
-import { checkReportReadiness, readinessFixHref, SOUKATSU_JUDGMENT_MISMATCH_MESSAGE } from "@/lib/report-readiness"
+import { checkReportReadiness, readinessFixHref, SOUKATSU_BAD_WITHOUT_BEKKI_BAD_MESSAGE, SOUKATSU_JUDGMENT_MISMATCH_MESSAGE } from "@/lib/report-readiness"
 import { isBadResult } from "@/lib/soukatsu-equipment"
-import { countPrintedBadRows, findSoukatsuJudgmentMismatches } from "@/lib/soukatsu-judgment-consistency"
+import { countPrintedBadRows, findSoukatsuBadWithoutBekkiBad, findSoukatsuJudgmentMismatches } from "@/lib/soukatsu-judgment-consistency"
 
 /**
  * 総括表の判定と点検票の「否」の食い違い（2026-11-08・定期テスト 21）。
@@ -58,7 +58,7 @@ describe("findSoukatsuJudgmentMismatches", () => {
         expect(found).toEqual([{ equipment: "消火器", stepId: "shokaki", badRows: 1 }])
     })
 
-    it("総括表が「要改善」・「該当なし」なら比べない／逆向き（総括表は要改善・点検票は全部良）も知らせない", () => {
+    it("総括表が「要改善」・「該当なし」なら比べない（逆向きは findSoukatsuBadWithoutBekkiBad で見る）", () => {
         const payloads = { shokaki: shokaki([1]), "evacuation-equipment": { page1_rows: rows(3) } }
         expect(findSoukatsuJudgmentMismatches([{ name: "消火器", result: "要改善" }], payloads)).toEqual([])
         expect(findSoukatsuJudgmentMismatches([{ name: "消火器", result: "該当なし" }], payloads)).toEqual([])
@@ -74,6 +74,28 @@ describe("findSoukatsuJudgmentMismatches", () => {
     it("設備名で様式と突き合わせる（「非常警報器具・設備」→ 別記14）", () => {
         const found = findSoukatsuJudgmentMismatches([{ name: "非常警報器具・設備", result: "指摘なし" }], { "emergency-alarm": { page1_rows: [{ judgment: "否" }] } })
         expect(found.map((m) => m.stepId)).toEqual(["emergency-alarm"])
+    })
+})
+
+describe("findSoukatsuBadWithoutBekkiBad（逆向き・定期テスト 第7回 61）", () => {
+    it("総括表で「要改善」なのに点検票に「否」が 1 つも無い設備だけを返す", () => {
+        const found = findSoukatsuBadWithoutBekkiBad(
+            [{ name: "消火器", result: "要改善" }, { name: "避難器具", result: "要改善" }, { name: "誘導灯及び誘導標識", result: "指摘なし" }],
+            { shokaki: shokaki(), "evacuation-equipment": { page1_rows: rows(3, [1]) }, "guidance-lights-signs": { page1_rows: rows(3) } },
+        )
+        expect(found).toEqual([{ equipment: "消火器", stepIds: ["shokaki"] }])
+    })
+
+    it("点検票をまだ保存していない設備・配列でない点検結果は見ない", () => {
+        expect(findSoukatsuBadWithoutBekkiBad([{ name: "消火器", result: "要改善" }], {})).toEqual([])
+        expect(findSoukatsuBadWithoutBekkiBad([{ name: "消火器", result: "要改善" }], undefined)).toEqual([])
+        expect(findSoukatsuBadWithoutBekkiBad("消火器", { shokaki: shokaki() })).toEqual([])
+    })
+
+    it("見出し行の「否」（紙に出ない）は「否」に数えない＝知らせる", () => {
+        const heading = JIDOU.page3_rows.findIndex((l) => l.includes("見出し行"))
+        const found = findSoukatsuBadWithoutBekkiBad([{ name: "自動火災報知設備", result: "要改善" }], { "jidou-kasai-houchi": { page3_rows: rows(JIDOU.page3_rows.length, [heading]) } })
+        expect(found.map((m) => m.equipment)).toEqual(["自動火災報知設備"])
     })
 })
 
@@ -94,6 +116,15 @@ describe("確定前の確認（checkReportReadiness）の注意", () => {
         // ★確定・納品のあとも総括表は編集できるので、リンクはいつも作れる（結果出力の画面・総括表の確認の画面の両方）
         expect(readinessFixHref(r.warnings[0].fix, { soukatsuId: "s1", itiranId: "i1" })).toBe("/inspection/s1/edit#equipment-results")
         expect(readinessFixHref(r.warnings[0].fix, { soukatsuId: "s1", itiranId: null })).toBe("/inspection/s1/edit#equipment-results")
+    })
+
+    it("逆向きは注意（確定は止めない）・設備名つき・直す画面はその点検票", () => {
+        const r = checkReportReadiness({ soukatsu: { ...soukatsu, equipment_results: [{ name: "消火器", result: "要改善", bad_detail: "封の脱落" }] }, bekkiPayloads: { shokaki: shokaki() } })
+        expect(r.canFinalize).toBe(true)
+        expect(r.warnings).toEqual([
+            expect.objectContaining({ id: "soukatsu_judgment_reverse", label: "総括表の判定", message: SOUKATSU_BAD_WITHOUT_BEKKI_BAD_MESSAGE, details: ["消火器"], fix: { kind: "bekki", stepId: "shokaki" } }),
+        ])
+        expect(readinessFixHref(r.warnings[0].fix, { soukatsuId: "s1", itiranId: "i1" })).toBe("/inspection/s1/itiran/i1/shokaki")
     })
 
     it("別記の中身を渡さないとき（確定の前の総括表だけ）は見ない", () => {

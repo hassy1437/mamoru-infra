@@ -47,6 +47,7 @@ export default function EmergencyPowerOutletBekki21Form(props: Props) {
             title="非常コンセント設備点検票（別記様式21）"
             iframeTitle="非常コンセント設備点検票（別記様式21）PDFプレビュー"
             apiPath="/api/generate-emergency-power-outlet-bekki21-pdf"
+            kikiOnly
             dbTable="inspection_emergency_power_outlet_bekki21"
             downloadFilenamePrefix="非常コンセント設備点検票"
             sections={[{

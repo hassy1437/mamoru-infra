@@ -205,9 +205,9 @@ export default async function PropertyDetailPage({
                     <span className="flex min-w-0 items-center gap-3">
                         <LayoutGrid className="h-6 w-6 shrink-0 text-blue-600" aria-hidden="true" />
                         <span className="min-w-0">
-                            <span className="block text-lg font-bold text-slate-800">見取り図</span>
+                            <span className="block text-lg font-bold text-slate-800">消防設備プロット図</span>
                             <span className="block text-sm text-slate-500">
-                                {planIds.length > 0 ? `${planIds.length} 階・印 ${pinCount ?? 0} 個` : "まだありません（撮って印を付ける）"}
+                                {planIds.length > 0 ? `${planIds.length} 階・印 ${pinCount ?? 0} 個` : "まだありません（図を撮って設備を置く）"}
                             </span>
                         </span>
                     </span>

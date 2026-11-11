@@ -176,7 +176,7 @@ export default function FloorPlanBoard({
         }
         setSending(false)
         if (sent) toast.success(`覚えていた印を ${sent} 個 送りました`)
-        if (dropped) toast.error(`送れなかった印が ${dropped} 個ありました（見取り図が撮り直された・消された など）`)
+        if (dropped) toast.error(`送れなかった印が ${dropped} 個ありました（図が撮り直された・消された など）`)
         if (manual && !sent && !dropped) toast.error("まだ電波がありません")
     }, [plans])
 
@@ -318,7 +318,7 @@ export default function FloorPlanBoard({
 
     return (
         <div className="space-y-3">
-            <h1 className="text-xl font-bold text-slate-900">見取り図</h1>
+            <h1 className="text-xl font-bold text-slate-900">消防設備プロット図</h1>
 
             {/* 階（★横に流して選ぶ・印がある階は数を出す） */}
             <div className="-mx-4 overflow-x-auto px-4" role="group" aria-label="階">
@@ -353,7 +353,7 @@ export default function FloorPlanBoard({
 
             {!plan ? (
                 <div className="space-y-3 rounded-xl border-2 border-dashed border-slate-300 bg-white p-6 text-center">
-                    <p className="text-base font-bold text-slate-700">{floor} の見取り図はまだありません</p>
+                    <p className="text-base font-bold text-slate-700">{floor} の図はまだありません</p>
                     <p className="text-sm text-slate-500">階の避難経路図などを撮る</p>
                     <div className="grid gap-2 sm:grid-cols-2">
                         <button
@@ -433,7 +433,7 @@ export default function FloorPlanBoard({
                         >
                             {plan.imageUrl ? (
                                 // eslint-disable-next-line @next/next/no-img-element -- 非公開の置き場の期限つき URL（next/image の最適化に通さない）
-                                <img src={plan.imageUrl} alt={`${floor} の見取り図`} draggable={false} className="pointer-events-none h-full w-full object-contain" />
+                                <img src={plan.imageUrl} alt={`${floor} の消防設備プロット図`} draggable={false} className="pointer-events-none h-full w-full object-contain" />
                             ) : (
                                 <div className="flex h-full w-full items-center justify-center bg-slate-100 text-sm text-slate-500">写真を読み込めませんでした（撮り直してください）</div>
                             )}

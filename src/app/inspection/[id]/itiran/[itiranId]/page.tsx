@@ -104,7 +104,7 @@ export default async function ItiranDetailPage({
                             className="inline-flex min-h-11 items-center gap-2 px-3 py-1.5 border border-slate-300 hover:bg-slate-50 text-slate-600 text-sm font-medium rounded-lg transition-colors"
                         >
                             <LayoutGrid className="w-4 h-4" />
-                            見取り図
+                            プロット図
                         </Link>
                     ) : null}
                     <ItiranPdfButton data={record} buildingName={soukatsu?.building_name} canDownload={canDownloadPdf(finalization)} gateMessage={pdfGateMessage(finalization)} />
@@ -246,7 +246,7 @@ export default async function ItiranDetailPage({
                             className="inline-flex min-h-11 items-center gap-2 px-3 py-1.5 border border-slate-300 hover:bg-slate-50 text-slate-600 text-sm font-medium rounded-lg transition-colors"
                         >
                             <LayoutGrid className="w-4 h-4" />
-                            見取り図
+                            プロット図
                         </Link>
                     ) : null}
                     <ItiranPdfButton data={record} buildingName={soukatsu?.building_name} canDownload={canDownloadPdf(finalization)} gateMessage={pdfGateMessage(finalization)} />

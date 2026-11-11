@@ -9,7 +9,7 @@ import { floorsFor, isFloorPlanKind } from "@/lib/floor-plan-kinds"
  * 物件の見取り図と設備の印（地図などの改善 6・2026-11-11）。
  * ★会社の人なら見られる（RLS・20261231170000）。写真は非公開の置き場から 1 時間だけの URL で出す
  */
-export const metadata = { title: "見取り図 | Mamoru Infra" }
+export const metadata = { title: "消防設備プロット図 | Mamoru Infra" }
 
 const SIGNED_URL_SECONDS = 60 * 60
 
@@ -60,7 +60,7 @@ export default async function FloorPlansPage({ params, searchParams }: { params:
                 <Breadcrumb items={[
                     { label: "物件一覧", href: "/properties" },
                     { label: property.building_name ?? "物件", href: `/properties/${id}` },
-                    { label: "見取り図" },
+                    { label: "消防設備プロット図" },
                 ]} />
                 <FloorPlanBoard
                     propertyId={id}

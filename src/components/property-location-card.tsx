@@ -10,6 +10,7 @@ import MapLink from "@/components/map-link"
 import { supabase } from "@/lib/supabase"
 import {
     BUILDING_ZOOM,
+    PREVIEW_ZOOM,
     FALLBACK_CENTER,
     FALLBACK_ZOOM,
     HERE_ERROR,
@@ -102,7 +103,7 @@ export default function PropertyLocationCard({
 
             {saved ? (
                 <div className="space-y-3">
-                    <GsiMap key={`${saved.lat},${saved.lng}`} center={saved} zoom={BUILDING_ZOOM - 1} interactive={false} className="h-40" />
+                    <GsiMap key={`${saved.lat},${saved.lng}`} center={saved} zoom={PREVIEW_ZOOM} interactive={false} className="h-40" />
                     <div className="grid grid-cols-2 gap-2">
                         <MapLink prefecture={null} municipality={null} address={address} lat={saved.lat} lng={saved.lng} variant="button" />
                         <button

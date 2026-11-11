@@ -5,6 +5,7 @@ import { AlertTriangle, Camera, CloudOff, ImagePlus, Loader2, RotateCcw, Trash2,
 import { toast } from "sonner"
 
 import { supabase } from "@/lib/supabase"
+import { useBottomBarSpace } from "@/lib/use-bottom-bar-space"
 import {
     KIND_BY_KEY,
     clamp01,
@@ -118,6 +119,8 @@ export default function FloorPlanBoard({
     const camera = useRef<HTMLInputElement>(null)
     const library = useRef<HTMLInputElement>(null)
     const surface = useRef<HTMLDivElement>(null)
+    // ★設備のボタンの帯の高さ（右下の相談の丸いボタンを帯の上に上げる）
+    const barRef = useBottomBarSpace()
     const [sending, setSending] = useState(false)
 
     // ★端末に覚えている（まだ送れていない）印。localStorage が変わったら描き直す
@@ -485,11 +488,24 @@ export default function FloorPlanBoard({
                         </div>
                     </div>
 
-                    {/* 設備のボタン（★画面の下に固定・押したものが選ばれたまま＝続けて置ける） */}
-                    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] backdrop-blur">
-                        <p className="px-4 pb-1 text-center text-sm font-bold text-slate-700" aria-live="polite">
-                            {kind ? `図をタップして「${KIND_BY_KEY[kind].label}」を置く` : "設備を選んで、図をタップ"}
-                        </p>
+                    {/* 設備のボタン（★画面の下に固定・押したものが選ばれたまま＝続けて置ける。押し直しても外れない） */}
+                    <div ref={barRef} className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] backdrop-blur">
+                        {/* ★同じ設備のボタンを押し直しても外れない（続けて置くときに外れて、タップしても印が付かなかった・2026-11-11）。
+                              やめるときは右の「やめる」 */}
+                        <div className="flex items-center justify-center gap-3 px-4 pb-1">
+                            <p className="text-center text-sm font-bold text-slate-700" aria-live="polite">
+                                {kind ? `図をタップして「${KIND_BY_KEY[kind].label}」を置く` : "設備を選んで、図をタップ"}
+                            </p>
+                            {kind && (
+                                <button
+                                    type="button"
+                                    onClick={() => setKind(null)}
+                                    className="inline-flex min-h-9 shrink-0 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-slate-600"
+                                >
+                                    やめる
+                                </button>
+                            )}
+                        </div>
                         <div className="overflow-x-auto px-3">
                             {/* ★右に余白（右下の相談ボタンに最後のボタンが隠れないよう、横に送って出せるように） */}
                             <div className="mx-auto flex w-max gap-2 pr-16" role="group" aria-label="設備">
@@ -498,7 +514,7 @@ export default function FloorPlanBoard({
                                         key={k.key}
                                         type="button"
                                         aria-pressed={kind === k.key}
-                                        onClick={() => setKind(kind === k.key ? null : k.key)}
+                                        onClick={() => setKind(k.key)}
                                         className={`relative flex min-h-16 w-[4.5rem] shrink-0 flex-col items-center justify-center gap-1 rounded-xl border-2 px-1 text-xs font-bold ${
                                             kind === k.key ? "border-slate-900 bg-slate-100 text-slate-900" : "border-slate-200 bg-white text-slate-700"
                                         }`}

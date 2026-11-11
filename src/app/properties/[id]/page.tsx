@@ -9,6 +9,7 @@ import {
     CheckCircle2,
     ClipboardCheck,
     Copy,
+    LayoutGrid,
     MapPin,
     Pencil,
     Plus,
@@ -20,6 +21,11 @@ import MapLink from "@/components/map-link"
 import WithdrawnMatchNotice from "@/components/withdrawn-match-notice"
 import { withdrawnAtOf, type MatchLink } from "@/lib/match-withdrawn"
 import { loadItiranIds, resumeTarget } from "@/lib/report-resume"
+import NextInspectionBand from "@/components/next-inspection-band"
+import PropertyLocationCard from "@/components/property-location-card"
+import { locationOf } from "@/lib/property-location"
+import { manualRecordOf, nextInspection, type InspectionRecord } from "@/lib/next-inspection"
+import LastInspectionPicker from "@/components/last-inspection-picker"
 
 export default async function PropertyDetailPage({
     params,
@@ -49,6 +55,17 @@ export default async function PropertyDetailPage({
         .order("inspection_date", { ascending: false })
 
     const history = inspections ?? []
+
+    // ★次の点検（総括表＋月だけ選んだ前回の点検）
+    const manual = manualRecordOf(p)
+    const next = nextInspection([...(history as InspectionRecord[]), ...(manual ? [manual] : [])])
+
+    // ★見取り図（地図などの改善 6）。表がまだ無い（DB を当てる前）ときは 0 として出す
+    const { data: planRows } = await supabase.from("floor_plans").select("id").eq("property_id", id)
+    const planIds = ((planRows ?? []) as { id: string }[]).map((r) => r.id)
+    const { count: pinCount } = planIds.length
+        ? await supabase.from("floor_plan_pins").select("id", { count: "exact", head: true }).in("floor_plan_id", planIds)
+        : { count: 0 }
     const latestInspectionId = history.length > 0 ? history[0].id : null
     // ★点検履歴は、総括表の確認画面ではなく「続き」へ（点検者一覧表があれば点検票の一覧・src/lib/report-resume.ts）
     const itiranIds = await loadItiranIds(supabase, history.map((h) => h.id as string))
@@ -74,7 +91,7 @@ export default async function PropertyDetailPage({
                                     <MapPin className="w-3.5 h-3.5 shrink-0" />
                                     <span className="truncate">{p.building_address}</span>
                                     {/* ★Google マップ（2026-09-22）。住所は本人の物件のもの */}
-                                    <MapLink prefecture={null} municipality={null} address={p.building_address} className="shrink-0" />
+                                    <MapLink prefecture={null} municipality={null} address={p.building_address} lat={p.location_lat} lng={p.location_lng} className="shrink-0" />
                                 </div>
                                 <div className="flex items-center gap-1.5 min-w-0">
                                     <User className="w-3.5 h-3.5 shrink-0" />
@@ -99,6 +116,18 @@ export default async function PropertyDetailPage({
                             </Link>
                         </div>
                     </div>
+                </div>
+
+                {/* ★次の点検まであと○日（地図などの改善 7）。総括表の点検日から。
+                     総括表がまだ無い・月だけ選んだ記録が前回のときは「前回の点検を選ぶ／直す」をボタンで */}
+                <div id="next-inspection" className="scroll-mt-4 space-y-2">
+                    <NextInspectionBand next={next} size="lg" />
+                    {(history.length === 0 || next?.approx) && (
+                        <LastInspectionPicker
+                            propertyId={id}
+                            current={p.last_inspection_month && p.last_inspection_kind ? { month: p.last_inspection_month, kind: p.last_inspection_kind } : null}
+                        />
+                    )}
                 </div>
 
                 {/* ★次にやること（点検を始める・作りかけの続き）を物件情報より上に（2026-10-21・次に進む方法の洗い出し）。
@@ -141,6 +170,26 @@ export default async function PropertyDetailPage({
                         )}
                     </div>
                 </div>
+
+                {/* ★現場の位置（地図などの改善 3）。いまここ・地図で選ぶ・ナビ */}
+                <PropertyLocationCard propertyId={id} address={p.building_address ?? ""} location={locationOf(p)} />
+
+                {/* ★見取り図（地図などの改善 6）。階ごとの図に設備の印 */}
+                <Link
+                    href={`/properties/${id}/floor-plans`}
+                    className="flex min-h-16 items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 transition-colors hover:bg-slate-50 sm:px-6"
+                >
+                    <span className="flex min-w-0 items-center gap-3">
+                        <LayoutGrid className="h-6 w-6 shrink-0 text-blue-600" aria-hidden="true" />
+                        <span className="min-w-0">
+                            <span className="block text-lg font-bold text-slate-800">見取り図</span>
+                            <span className="block text-sm text-slate-500">
+                                {planIds.length > 0 ? `${planIds.length} 階・印 ${pinCount ?? 0} 個` : "まだありません（撮って印を付ける）"}
+                            </span>
+                        </span>
+                    </span>
+                    <ArrowRight className="h-5 w-5 shrink-0 text-slate-400" aria-hidden="true" />
+                </Link>
 
                 {/* 物件情報 */}
                 <div className="bg-white rounded-xl border border-slate-200 p-6">

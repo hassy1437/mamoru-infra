@@ -7,7 +7,7 @@ import ItiranPdfPreviewCollapsible from "@/components/itiran-pdf-preview-collaps
 import StepIndicator from "@/components/step-indicator"
 import { INSPECTION_STEPS } from "@/lib/inspection-steps"
 import Breadcrumb from "@/components/breadcrumb"
-import { ArrowRight, CheckCircle2, Circle, CircleDot, FileDown, Pencil } from "lucide-react"
+import { ArrowRight, CheckCircle2, Circle, CircleDot, FileDown, LayoutGrid, Pencil } from "lucide-react"
 import { getEquipmentProgress } from "@/lib/inspection-progress"
 import WithdrawnMatchNotice from "@/components/withdrawn-match-notice"
 import { withdrawnAtOf } from "@/lib/match-withdrawn"
@@ -97,6 +97,16 @@ export default async function ItiranDetailPage({
                         <Pencil className="w-4 h-4" />
                         点検者を編集
                     </Link>
+                    {/* ★見取り図（地図などの改善 6）。点検しながら設備の場所を見る */}
+                    {soukatsu?.property_id ? (
+                        <Link
+                            href={`/properties/${soukatsu.property_id}/floor-plans`}
+                            className="inline-flex min-h-11 items-center gap-2 px-3 py-1.5 border border-slate-300 hover:bg-slate-50 text-slate-600 text-sm font-medium rounded-lg transition-colors"
+                        >
+                            <LayoutGrid className="w-4 h-4" />
+                            見取り図
+                        </Link>
+                    ) : null}
                     <ItiranPdfButton data={record} buildingName={soukatsu?.building_name} canDownload={canDownloadPdf(finalization)} gateMessage={pdfGateMessage(finalization)} />
                 </div>
             </div>
@@ -229,6 +239,16 @@ export default async function ItiranDetailPage({
                     <Link href={`/inspection/${id}`} className="text-blue-600 hover:underline inline-flex min-h-11 items-center">
                         &larr; 総括表に戻る
                     </Link>
+                    {/* ★見取り図（地図などの改善 6）。点検しながら設備の場所を見る */}
+                    {soukatsu?.property_id ? (
+                        <Link
+                            href={`/properties/${soukatsu.property_id}/floor-plans`}
+                            className="inline-flex min-h-11 items-center gap-2 px-3 py-1.5 border border-slate-300 hover:bg-slate-50 text-slate-600 text-sm font-medium rounded-lg transition-colors"
+                        >
+                            <LayoutGrid className="w-4 h-4" />
+                            見取り図
+                        </Link>
+                    ) : null}
                     <ItiranPdfButton data={record} buildingName={soukatsu?.building_name} canDownload={canDownloadPdf(finalization)} gateMessage={pdfGateMessage(finalization)} />
                 </div>
             </div>

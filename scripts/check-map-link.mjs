@@ -68,6 +68,8 @@ function staticCheck(root = ROOT) {
     const rel = (p) => path.relative(root, p).replace(/\\/g, "/")
     const users = walk(path.join(root, "src"))
         .filter((f) => rel(f) !== COMPONENT && rel(f) !== LIB_REL)
+        // ★単体テストは画面に出ない（URL の形を確かめるだけ）
+        .filter((f) => !/\.test\.tsx?$/.test(f))
         .filter((f) => /<MapLink\b|googleMapsSearchUrl\(|googleMapsDirectionsUrl\(/.test(fs.readFileSync(f, "utf8")))
         .map(rel)
     for (const u of users) {

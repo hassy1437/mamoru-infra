@@ -53,7 +53,7 @@ export async function geocodeAddress(address: string, signal?: AbortSignal): Pro
     const q = address.replace(/\s+/g, " ").trim()
     if (!q) return null
     try {
-        const res = await fetch(GSI_ADDRESS_SEARCH + encodeURIComponent(q), { signal })
+        const res = await fetch(GSI_ADDRESS_SEARCH + encodeURIComponent(q), { signal }) // fetch-ok: 国土地理院の住所検索（PDF ではない・押したときだけ）
         if (!res.ok) return null
         return parseGsiAddressSearch(await res.json())
     } catch {

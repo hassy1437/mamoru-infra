@@ -176,6 +176,8 @@ export async function POST(req: NextRequest) {
             cols: ResultColumns,
             sizes?: { content?: number; judgment?: number; bad?: number; action?: number },
             contentOverrides?: Record<number, { x: number; w: number }>,
+            /** 単位の直前に右寄せで 1 行に描く行（全機能チェック 50）。★Set にしない（静的検査は Set を「描かない行」と読む） */
+            rightAlignRows: readonly number[] = [],
         ) => {
             for (let i = 0; i < rowBounds.length - 1; i += 1) {
                 const row = rows[i]
@@ -187,7 +189,12 @@ export async function POST(req: NextRequest) {
                 const ref = (column: string): CellRef => ({ rowsKey: cols.rowsKey, row: i, column })
                 const cx = contentOverrides?.[i]?.x ?? cols.contentX
                 const cw = contentOverrides?.[i]?.w ?? cols.contentW
-                drawWrappedInCell(page, pageHeight, row.content, cx, top, cw, h, sizes?.content ?? 6.2, ref("content"))
+                if (rightAlignRows.includes(i)) {
+                    // ★単位の直前に右寄せする欄（全機能チェック 50）は 1 行で描く
+                    drawInCell(page, pageHeight, row.content, cx, top, cw, h, sizes?.content ?? 6.2, { align: "right", paddingX: 1, at: ref("content") })
+                } else {
+                    drawWrappedInCell(page, pageHeight, row.content, cx, top, cw, h, sizes?.content ?? 6.2, ref("content"))
+                }
                 drawInCell(page, pageHeight, formatJudgment(row.judgment), cols.judgmentX, top, cols.judgmentW, h, sizes?.judgment ?? 7.2, {
                     align: "center",
                 })
@@ -278,9 +285,10 @@ export async function POST(req: NextRequest) {
             { content: 5.8, judgment: 6.8, bad: 5.8, action: 5.8 },
             {
                 // Pre-4: 公式PDFの単位印字（Ｖ/Ａ）と重ならないよう content cell を狭める
-                15: { x: 222.6, w: 50 },  // 電圧計・電流計: Ｖ(x=274.9)前まで
+                15: { x: 222.6, w: 51 },  // 電圧計・電流計: Ｖ(x=274.9)の直前まで（右寄せは下の [15]・全機能チェック 50）
                 17: { x: 222.6, w: 97 },  // ヒューズ類: Ａ(x=322.3)前まで
             },
+            [15],
         )
 
         // Pre-4: 電圧計・電流計 (row 15) — 電流値(A)を Ｖ印字後、Ａ印字前に描画
@@ -288,7 +296,9 @@ export async function POST(req: NextRequest) {
         if (voltRow18?.current_value) {
             const vTop = P1_ROW_BOUNDS[15]
             const vH = P1_ROW_BOUNDS[16] - P1_ROW_BOUNDS[15]
-            drawInCell(page1, p1Height, voltRow18.current_value, 287, vTop, 33, vH, 5.8)
+            // ★Ｖ(右端 285.5)と Ａ(322.3)の間で、Ａの直前に右寄せ（全機能チェック 50・左に寄せると「Ｖ」にくっついて読めた）
+            drawInCell(page1, p1Height, voltRow18.current_value, 287, vTop, 34, vH, 5.8,
+                { align: "right", paddingX: 1, at: { rowsKey: "page1_rows", row: 15, column: "current_value" } })
         }
 
         // 刷り込みの見出し行には描かない: p2 行13 = 刷り込み「総合点検」（テンプレート実測）

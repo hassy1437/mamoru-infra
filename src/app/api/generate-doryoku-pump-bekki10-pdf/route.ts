@@ -77,7 +77,7 @@ type Bekki10Payload = {
 }
 
 type DrawOptions = {
-    align?: "left" | "center"
+    align?: "left" | "center" | "right"
     paddingX?: number
     paddingY?: number
     minFontSize?: number
@@ -225,6 +225,7 @@ export async function POST(req: NextRequest) {
             const textHeight = fonts.jp.heightAtSize(currentSize, { descender: true })
             let textX = cellX + paddingX
             if (options?.align === "center") textX = cellX + (cellW - textWidth) / 2
+            else if (options?.align === "right") textX = cellX + cellW - paddingX - textWidth
             const textTop = cellTopFromTop + (cellH - textHeight) / 2
             const baselineOffset = textHeight * 0.78
             drawTextRuns(page, fonts, String(textToDraw ?? ""), textX, pageHeight - (textTop + baselineOffset), currentSize, condense)
@@ -337,7 +338,7 @@ export async function POST(req: NextRequest) {
 
         // PAGE2 row 3「積載器具 / ホース・ノズル等 / 外形」: 長さ(m)/本数/口径(mm) を分割描画
         // 公式PDF実測: ｍ@238.4 / ×@248.9(x1=259.4) / 本@275.2(x1=285.7) / mm@296.2。content列左=217。
-        // 新キー優先（content=長さ, hose_count=本数, nozzle_dia=口径）→ "/" 分割 → 単一content の3段fallback。値は各空白に中央寄せ
+        // 新キー優先（content=長さ, hose_count=本数, nozzle_dia=口径）→ "/" 分割 → 単一content の3段fallback。値は各単位の直前に右寄せ
         const hoseRow10 = body.page2_rows?.[3]
         if (hoseRow10) {
             const hTop = P2_ROW_BOUNDS[3]
@@ -351,7 +352,8 @@ export async function POST(req: NextRequest) {
             //   口径は 10.5pt しか無い。既定の 2.5×2 だと使える幅が 5.5pt ＝ 2桁（「25」）が
             //   入らず 4.95pt まで縮んで絶対下限 5.0pt を割る。1.0 なら 8.5pt 使えて 6.0pt のまま入る。
             //   ★同じ対処を bekki12 の感度範囲では既に入れてあり、ここに届いていなかった。
-            const NARROW = { align: "center", paddingX: 1.0 } as const
+            // ★値は単位の直前に右寄せ（全機能チェック 50・以前は空白の中央で、本数・口径が前の「×」「本」に寄って読めた）
+            const NARROW = { align: "right", paddingX: 1.0 } as const
             const drawLen = (v: string) => { if (v) drawInCell(page2, p2Height, v, 217, hValTop, 21.4, hValH, 6.0, NARROW) }
             const drawCnt = (v: string) => { if (v) drawInCell(page2, p2Height, v, 259.4, hValTop, 15.8, hValH, 6.0, NARROW) }
             const drawDia = (v: string) => { if (v) drawInCell(page2, p2Height, v, 285.7, hValTop, 10.5, hValH, 6.0, NARROW) }

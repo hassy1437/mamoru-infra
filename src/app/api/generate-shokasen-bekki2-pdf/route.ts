@@ -97,7 +97,7 @@ type Bekki2Payload = {
 }
 
 type DrawOptions = {
-    align?: "left" | "center"
+    align?: "left" | "center" | "right"
     paddingX?: number
     paddingY?: number
     minFontSize?: number
@@ -266,6 +266,8 @@ export async function POST(req: NextRequest) {
             let textX = cellX + paddingX
             if (options?.align === "center") {
                 textX = cellX + (cellW - textWidth) / 2
+            } else if (options?.align === "right") {
+                textX = cellX + cellW - paddingX - textWidth
             }
             const textTopFromTop = cellTopFromTop + (cellH - textHeight) / 2
             const baselineOffset = textHeight * 0.78
@@ -317,6 +319,7 @@ export async function POST(req: NextRequest) {
             const textHeight = font.jp.heightAtSize(currentSize, { descender: true })
             let textX = cellX + paddingX
             if (options?.align === "center") textX = cellX + (cellW - textWidth) / 2
+            else if (options?.align === "right") textX = cellX + cellW - paddingX - textWidth
             const textTopFromTop = cellTopFromTop + (cellH - textHeight) / 2
             const baselineOffset = textHeight * 0.78
             drawTextRuns(page, font, String(textToDraw ?? ""), textX, pageHeight - (textTopFromTop + baselineOffset), currentSize, condense)
@@ -441,20 +444,23 @@ export async function POST(req: NextRequest) {
             const voltTop = P1_ROW_BOUNDS[10]
             const voltH = P1_ROW_BOUNDS[11] - P1_ROW_BOUNDS[10]
             const voltContent = normalizeText(voltRow.content)
+            // ★値は単位の直前に右寄せ（全機能チェック 50・左に寄せると電流の値が「Ｖ」にくっついて「Ｖ15.5」と読めた）
+            const drawVolt = (v: unknown) => drawInCellWithFont(page1, p1Height, fonts, v, 239, voltTop, 34, voltH, 6.8, { align: "right", paddingX: 1 })
+            const drawAmp = (v: unknown) => drawInCellWithFont(page1, p1Height, fonts, v, 289, voltTop, 36, voltH, 6.8, { align: "right", paddingX: 1 })
 
             if (voltRow.current_value) {
                 // 明示的フィールド: content=電圧, current_value=電流
-                drawWrappedInCell(page1, p1Height, voltContent, 239, voltTop, 34, voltH, 6.8)
-                drawWrappedInCell(page1, p1Height, voltRow.current_value, 289, voltTop, 36, voltH, 6.8)
+                drawVolt(voltContent)
+                drawAmp(voltRow.current_value)
             } else if (voltContent.includes("/")) {
                 // "AC200/15.5" → "AC200" before V, "15.5" before A
                 const slashIdx = voltContent.indexOf("/")
                 const voltage = voltContent.slice(0, slashIdx).trim()
                 const current = voltContent.slice(slashIdx + 1).trim()
-                drawWrappedInCell(page1, p1Height, voltage, 239, voltTop, 34, voltH, 6.8)
-                drawWrappedInCell(page1, p1Height, current, 289, voltTop, 36, voltH, 6.8)
+                drawVolt(voltage)
+                drawAmp(current)
             } else if (voltContent) {
-                drawWrappedInCell(page1, p1Height, voltContent, 239, voltTop, 34, voltH, 6.8)
+                drawVolt(voltContent)
             }
         }
 
@@ -484,8 +490,9 @@ export async function POST(req: NextRequest) {
             const perfH = P2_ROW_BOUNDS[25] - P2_ROW_BOUNDS[24]
             const perfContent = normalizeText(perfRow.content)
 
-            const drawMpaVal = (v: string) => drawWrappedInCell(page2, p2Height, v, 239, perfTop, 27, perfH, 6.8)
-            const drawFlowVal = (v: string) => drawInCellWithFont(page2, p2Height, fonts, v, 297, perfTop, 15, perfH, 6.5, { paddingX: 1 })
+            // ★値は単位の直前に右寄せ（全機能チェック 50）。雛形の実測: 「MPa」の左端 268.7・「a」の右端 284.5・「L/min」の左端 310.7
+            const drawMpaVal = (v: string) => drawInCellWithFont(page2, p2Height, fonts, v, 239, perfTop, 28, perfH, 6.8, { align: "right", paddingX: 1 })
+            const drawFlowVal = (v: string) => drawInCellWithFont(page2, p2Height, fonts, v, 286, perfTop, 24, perfH, 6.5, { align: "right", paddingX: 1 })
 
             if (perfRow.flow_value) {
                 // 明示的フィールド: content=MPa値, flow_value=L/min値
@@ -539,17 +546,18 @@ export async function POST(req: NextRequest) {
             const hValH = hH / 2 + 2
             const parts = hCount || nDia ? [hContent, hCount, nDia] : hContent.split("/")
             if (parts.length >= 3) {
-                // ホース長(m): 「m」(x=264.6)の左
-                drawInCellWithFont(page3, p3Height, fonts, parts[0]?.trim(), 244, hValTop, 20, hValH, 6.5, { paddingX: 0.5 })
-                // 本数: 「×」(x=285.7)と「本」(x=301.4)の間
-                drawInCellWithFont(page3, p3Height, fonts, parts[1]?.trim(), 287, hValTop, 12, hValH, 6.0, { paddingX: 0 })
-                // ノズル径(mm): 「本」(x=312)と「mm」(x=327.7)の間
-                drawInCellWithFont(page3, p3Height, fonts, parts[2]?.trim(), 313, hValTop, 14, hValH, 6.0, { paddingX: 0 })
+                // ★値は単位の直前に右寄せ（全機能チェック 50・左に寄せると口径が「本」にくっついて「本25」と読めた）
+                // ホース長(m): 「ｍ」(x=264.6)の左
+                drawInCellWithFont(page3, p3Height, fonts, parts[0]?.trim(), 244, hValTop, 20, hValH, 6.5, { align: "right", paddingX: 1.5 })
+                // 本数: 「×」(右端 285.7)と「本」(x=301.4)の間
+                drawInCellWithFont(page3, p3Height, fonts, parts[1]?.trim(), 287, hValTop, 12, hValH, 6.0, { align: "right", paddingX: 0.5 })
+                // ノズル径(mm): 「本」(右端 312.0)と「mm」(x=327.7)の間
+                drawInCellWithFont(page3, p3Height, fonts, parts[2]?.trim(), 313, hValTop, 14, hValH, 6.0, { align: "right", paddingX: 1.5 })
             } else if (parts.length === 2) {
-                drawInCellWithFont(page3, p3Height, fonts, parts[0]?.trim(), 244, hValTop, 20, hValH, 6.5, { paddingX: 0.5 })
-                drawInCellWithFont(page3, p3Height, fonts, parts[1]?.trim(), 313, hValTop, 14, hValH, 6.0, { paddingX: 0 })
+                drawInCellWithFont(page3, p3Height, fonts, parts[0]?.trim(), 244, hValTop, 20, hValH, 6.5, { align: "right", paddingX: 1.5 })
+                drawInCellWithFont(page3, p3Height, fonts, parts[1]?.trim(), 313, hValTop, 14, hValH, 6.0, { align: "right", paddingX: 1.5 })
             } else if (hContent) {
-                drawInCellWithFont(page3, p3Height, fonts, hContent, 244, hValTop, 20, hValH, 6.5, { paddingX: 0.5 })
+                drawInCellWithFont(page3, p3Height, fonts, hContent, 244, hValTop, 20, hValH, 6.5, { align: "right", paddingX: 1.5 })
             }
         }
 

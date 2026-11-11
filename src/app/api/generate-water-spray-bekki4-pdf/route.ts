@@ -96,7 +96,7 @@ type Bekki4Payload = {
 }
 
 type DrawOptions = {
-    align?: "left" | "center"
+    align?: "left" | "center" | "right"
     paddingX?: number
     paddingY?: number
     minFontSize?: number
@@ -266,6 +266,8 @@ export async function POST(req: NextRequest) {
             let textX = cellX + paddingX
             if (options?.align === "center") {
                 textX = cellX + (cellW - textWidth) / 2
+            } else if (options?.align === "right") {
+                textX = cellX + cellW - paddingX - textWidth
             }
             const textTopFromTop = cellTopFromTop + (cellH - textHeight) / 2
             const baselineOffset = textHeight * 0.78
@@ -315,6 +317,7 @@ export async function POST(req: NextRequest) {
             const textHeight = font.jp.heightAtSize(currentSize, { descender: true })
             let textX = cellX + paddingX
             if (options?.align === "center") textX = cellX + (cellW - textWidth) / 2
+            else if (options?.align === "right") textX = cellX + cellW - paddingX - textWidth
             const textTopFromTop = cellTopFromTop + (cellH - textHeight) / 2
             const baselineOffset = textHeight * 0.78
             drawTextRuns(page, font, String(textToDraw ?? ""), textX, pageHeight - (textTopFromTop + baselineOffset), currentSize, condense)
@@ -448,18 +451,21 @@ export async function POST(req: NextRequest) {
             const voltTop = P1_ROW_BOUNDS[10]
             const voltH = P1_ROW_BOUNDS[11] - P1_ROW_BOUNDS[10]
             const voltContent = normalizeText(voltRow4.content)
+            // ★値は単位の直前に右寄せ（全機能チェック 50・左に寄せると電流の値が「Ｖ」にくっついて読めた）
+            const drawVolt = (v: unknown) => drawInCellWithFont(page1, p1Height, fonts, v, 238, voltTop, 36, voltH, 6.7, { align: "right", paddingX: 1 })
+            const drawAmp = (v: unknown) => drawInCellWithFont(page1, p1Height, fonts, v, 286, voltTop, 40, voltH, 6.7, { align: "right", paddingX: 1 })
 
             if (voltRow4.current_value) {
-                drawWrappedInCell(page1, p1Height, voltContent, 238, voltTop, 36, voltH, 6.7)
-                drawWrappedInCell(page1, p1Height, voltRow4.current_value, 286, voltTop, 40, voltH, 6.7)
+                drawVolt(voltContent)
+                drawAmp(voltRow4.current_value)
             } else if (voltContent.includes("/")) {
                 const slashIdx = voltContent.indexOf("/")
                 const voltage = voltContent.slice(0, slashIdx).trim()
                 const current = voltContent.slice(slashIdx + 1).trim()
-                drawWrappedInCell(page1, p1Height, voltage, 238, voltTop, 36, voltH, 6.7)
-                drawWrappedInCell(page1, p1Height, current, 286, voltTop, 40, voltH, 6.7)
+                drawVolt(voltage)
+                drawAmp(current)
             } else if (voltContent) {
-                drawWrappedInCell(page1, p1Height, voltContent, 238, voltTop, 36, voltH, 6.7)
+                drawVolt(voltContent)
             }
         }
 
@@ -515,8 +521,9 @@ export async function POST(req: NextRequest) {
             const perfH = P2_ROW_BOUNDS[20] - P2_ROW_BOUNDS[19]
             const perfContent = normalizeText(perfRow4.content)
 
-            const drawMpaVal = (v: string) => drawWrappedInCell(page2, p2Height, v, 234, perfTop, 36, perfH, 6.7)
-            const drawFlowVal = (v: string) => drawInCellWithFont(page2, p2Height, fonts, v, 292, perfTop, 15, perfH, 6.5, { paddingX: 1 })
+            // ★値は単位の直前に右寄せ（全機能チェック 50）。雛形の実測: 「MPa」の左端 271.6・「a」の右端 287.4・「L/min」の左端 308.4
+            const drawMpaVal = (v: string) => drawInCellWithFont(page2, p2Height, fonts, v, 234, perfTop, 36, perfH, 6.7, { align: "right", paddingX: 1 })
+            const drawFlowVal = (v: string) => drawInCellWithFont(page2, p2Height, fonts, v, 289, perfTop, 18.5, perfH, 6.5, { align: "right", paddingX: 1 })
 
             if (perfRow4.flow_value) {
                 if (perfContent) drawMpaVal(perfContent)

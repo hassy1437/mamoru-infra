@@ -123,7 +123,7 @@ export const drawTextRuns = (
 export type CellDrawOptions = {
     /** どの欄の何行目のどの列か（行ループ・専用描画が渡す） */
     at?: CellRef
-    align?: "left" | "center"
+    align?: "left" | "center" | "right"
     paddingX?: number
     paddingY?: number
     minFontSize?: number
@@ -574,7 +574,9 @@ export const drawTextInCell = ({
     const textX =
         options?.align === "center"
             ? cellX + (cellW - textWidth) / 2
-            : cellX + paddingX
+            : options?.align === "right"
+                ? cellX + cellW - paddingX - textWidth
+                : cellX + paddingX
 
     drawTextRuns(
         page,

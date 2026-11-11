@@ -87,7 +87,7 @@ type BekkiPayload = {
 }
 
 type DrawOptions = {
-    align?: "left" | "center"
+    align?: "left" | "center" | "right"
     paddingX?: number
     paddingY?: number
     minFontSize?: number
@@ -268,6 +268,8 @@ export async function POST(req: NextRequest) {
 
             if (options?.align === "center") {
                 textX = cellX + (cellW - textWidth) / 2 + xOffset
+            } else if (options?.align === "right") {
+                textX = cellX + cellW - paddingX - textWidth + xOffset
             }
 
             const textTopFromTop = cellTopFromTop + (cellH - textHeight) / 2 + yOffset

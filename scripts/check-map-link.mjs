@@ -36,6 +36,7 @@ const COMPONENT = "src/components/map-link.tsx"
 const ALLOWED = new Map([
     ["src/components/property-search.tsx", "物件一覧（/properties・/inspection）。物件は RLS で本人だけ。現場へ向かうときに開く入口"],
     ["src/app/properties/[id]/page.tsx", "物件の詳細。同上。編集・複製・点検開始の前に住所を確かめる画面"],
+    ["src/components/property-location-card.tsx", "物件の詳細の「現場の位置」（地図などの改善 3・2026-11-11）。同じ画面の部品。位置があれば「ナビ」"],
 ])
 
 function walk(dir, out = []) {
@@ -67,7 +68,7 @@ function staticCheck(root = ROOT) {
     const rel = (p) => path.relative(root, p).replace(/\\/g, "/")
     const users = walk(path.join(root, "src"))
         .filter((f) => rel(f) !== COMPONENT && rel(f) !== LIB_REL)
-        .filter((f) => /<MapLink\b|googleMapsSearchUrl\(/.test(fs.readFileSync(f, "utf8")))
+        .filter((f) => /<MapLink\b|googleMapsSearchUrl\(|googleMapsDirectionsUrl\(/.test(fs.readFileSync(f, "utf8")))
         .map(rel)
     for (const u of users) {
         if (!ALLOWED.has(u)) problems.push(`${u}: 地図リンクを使っているが、住所を見せてよい相手か決めていない（ALLOWED に理由つきで足すこと）`)
@@ -78,7 +79,7 @@ function staticCheck(root = ROOT) {
     const comp = fs.readFileSync(path.join(root, COMPONENT), "utf8")
     if (!/target="_blank"/.test(comp)) problems.push(`${COMPONENT}: target="_blank" が無い（新しいタブで開く）`)
     if (!/rel="noopener/.test(comp)) problems.push(`${COMPONENT}: rel="noopener…" が無い`)
-    if (!/if \(!href\) return null/.test(comp)) problems.push(`${COMPONENT}: address が無いときに描かない分岐が無い`)
+    if (!/if \(!(href|search)\) return null/.test(comp)) problems.push(`${COMPONENT}: address が無いときに描かない分岐が無い`)
     return { problems, users }
 }
 
@@ -90,6 +91,14 @@ async function behaviour(lib) {
     if (url && /[?&]key=/.test(url)) problems.push("URL に API キーのパラメータがある")
     if (lib.googleMapsSearchUrl({ prefecture: "大阪府", municipality: "大阪市", address: null }) !== null) problems.push("番地が無いのに URL を作っている（null）")
     if (lib.googleMapsSearchUrl({ prefecture: "大阪府", municipality: "大阪市", address: "  " }) !== null) problems.push("番地が空白なのに URL を作っている")
+    // ★現場の位置があるときの経路（地図などの改善 3）
+    if (lib.googleMapsDirectionsUrl) {
+        const nav = lib.googleMapsDirectionsUrl(34.698402, 135.499878)
+        if (nav !== "https://www.google.com/maps/dir/?api=1&destination=34.698402,135.499878") problems.push(`経路の URL の形が違う: ${nav}`)
+        if (nav && /[?&]key=/.test(nav)) problems.push("経路の URL に API キーのパラメータがある")
+        if (lib.googleMapsDirectionsUrl(51.5, -0.12) !== null) problems.push("日本の外の位置で経路を作っている（null）")
+        if (lib.googleMapsDirectionsUrl(34.7, null) !== null) problems.push("片方だけの位置で経路を作っている（null）")
+    }
     return problems
 }
 

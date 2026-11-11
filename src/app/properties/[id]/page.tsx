@@ -21,6 +21,8 @@ import WithdrawnMatchNotice from "@/components/withdrawn-match-notice"
 import { withdrawnAtOf, type MatchLink } from "@/lib/match-withdrawn"
 import { loadItiranIds, resumeTarget } from "@/lib/report-resume"
 import NextInspectionBand from "@/components/next-inspection-band"
+import PropertyLocationCard from "@/components/property-location-card"
+import { locationOf } from "@/lib/property-location"
 import { nextInspection } from "@/lib/next-inspection"
 
 export default async function PropertyDetailPage({
@@ -76,7 +78,7 @@ export default async function PropertyDetailPage({
                                     <MapPin className="w-3.5 h-3.5 shrink-0" />
                                     <span className="truncate">{p.building_address}</span>
                                     {/* ★Google マップ（2026-09-22）。住所は本人の物件のもの */}
-                                    <MapLink prefecture={null} municipality={null} address={p.building_address} className="shrink-0" />
+                                    <MapLink prefecture={null} municipality={null} address={p.building_address} lat={p.location_lat} lng={p.location_lng} className="shrink-0" />
                                 </div>
                                 <div className="flex items-center gap-1.5 min-w-0">
                                     <User className="w-3.5 h-3.5 shrink-0" />
@@ -146,6 +148,9 @@ export default async function PropertyDetailPage({
                         )}
                     </div>
                 </div>
+
+                {/* ★現場の位置（地図などの改善 3）。いまここ・地図で選ぶ・ナビ */}
+                <PropertyLocationCard propertyId={id} address={p.building_address ?? ""} location={locationOf(p)} />
 
                 {/* 物件情報 */}
                 <div className="bg-white rounded-xl border border-slate-200 p-6">

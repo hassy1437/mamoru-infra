@@ -166,7 +166,7 @@ export default function PropertySearch({ items, mode, due }: PropertySearchProps
                             ★カードの本体は Link なので、その外に置く（a の入れ子にしない）。
                             住所は RLS で本人しか読めない＝画面に住所が出る相手にだけ出ている。
                         */}
-                        <MapLink prefecture={null} municipality={null} address={property.building_address} className="mt-3" />
+                        <MapLink prefecture={null} municipality={null} address={property.building_address} lat={property.location_lat} lng={property.location_lng} className="mt-3" />
                     </div>
                 ))}
             </div>

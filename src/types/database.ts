@@ -31,6 +31,9 @@ export interface Database {
                     floor_below: number | null
                     total_floor_area: number | null
                     equipment_types: string[]
+                    /** 現場の位置（20261231160000・地図などの改善 3）。どちらも空か、どちらも値 */
+                    location_lat: number | null
+                    location_lng: number | null
                 }
                 Insert: {
                     id?: string
@@ -53,6 +56,9 @@ export interface Database {
                     floor_below?: number | null
                     total_floor_area?: number | null
                     equipment_types?: string[]
+                    /** 現場の位置（20261231160000・地図などの改善 3）。どちらも空か、どちらも値 */
+                    location_lat?: number | null
+                    location_lng?: number | null
                 }
                 Update: {
                     id?: string
@@ -75,6 +81,9 @@ export interface Database {
                     floor_below?: number | null
                     total_floor_area?: number | null
                     equipment_types?: string[]
+                    /** 現場の位置（20261231160000・地図などの改善 3）。どちらも空か、どちらも値 */
+                    location_lat?: number | null
+                    location_lng?: number | null
                 }
             }
             inspection_reports: {

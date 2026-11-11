@@ -32,3 +32,17 @@ export function googleMapsSearchUrl(parts: AddressParts): string | null {
     const query = `${parts.prefecture ?? ""}${parts.municipality ?? ""}${address}`.replace(/\s+/g, " ").trim()
     return GOOGLE_MAPS_SEARCH + encodeURIComponent(query)
 }
+
+/**
+ * ★現場の位置（緯度・経度）があるときの道案内（Google マップの「経路」・地図などの改善 3・2026-11-11）。
+ *   ★点検アプリだけ（マッチング側には位置の列が無い）。キーの要らない Maps URLs（dir）:
+ *   https://www.google.com/maps/dir/?api=1&destination=<緯度>,<経度>
+ *   ★住所より確か（大きい敷地・入口が裏の建物）。日本の外・片方だけなら null（住所の検索に戻る）
+ */
+export const GOOGLE_MAPS_DIRECTIONS = "https://www.google.com/maps/dir/?api=1&destination="
+
+export function googleMapsDirectionsUrl(lat: number | null | undefined, lng: number | null | undefined): string | null {
+    if (typeof lat !== "number" || typeof lng !== "number" || !Number.isFinite(lat) || !Number.isFinite(lng)) return null
+    if (lat < 20 || lat > 46 || lng < 122 || lng > 154) return null
+    return `${GOOGLE_MAPS_DIRECTIONS}${lat.toFixed(6)},${lng.toFixed(6)}`
+}

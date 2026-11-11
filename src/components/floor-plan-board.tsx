@@ -177,17 +177,21 @@ export default function FloorPlanBoard({
         if (manual && !sent && !dropped) toast.error("まだ電波がありません")
     }, [plans])
 
-    // ★電波が戻ったら送る・開いたときにも 1 回送る
+    // ★電波が戻ったら送る・開いたときにも 1 回送る。
+    //   いちばん新しい flush を ref で呼ぶ（開いたときの flush は見取り図がまだ無い一覧を持っていて、
+    //   あとで撮った階の印を送れなかった・2026-11-11 に手元で再現）
+    const flushRef = useRef(flush)
     useEffect(() => {
-        const onOnline = () => void flush()
+        flushRef.current = flush
+    }, [flush])
+    useEffect(() => {
+        const onOnline = () => void flushRef.current()
         window.addEventListener("online", onOnline)
-        const t = window.setTimeout(() => void flush(), 500)
+        const t = window.setTimeout(() => void flushRef.current(), 500)
         return () => {
             window.removeEventListener("online", onOnline)
             window.clearTimeout(t)
         }
-        // ★開いたときだけ（flush は plans が変わるたびに作り直されるが、送り直しは online で十分）
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     const chooseFloor = (f: string) => {
@@ -487,7 +491,8 @@ export default function FloorPlanBoard({
                             {kind ? `図をタップして「${KIND_BY_KEY[kind].label}」を置く` : "設備を選んで、図をタップ"}
                         </p>
                         <div className="overflow-x-auto px-3">
-                            <div className="mx-auto flex w-max gap-2" role="group" aria-label="設備">
+                            {/* ★右に余白（右下の相談ボタンに最後のボタンが隠れないよう、横に送って出せるように） */}
+                            <div className="mx-auto flex w-max gap-2 pr-16" role="group" aria-label="設備">
                                 {palette.map((k) => (
                                     <button
                                         key={k.key}

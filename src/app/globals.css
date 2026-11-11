@@ -203,3 +203,40 @@ input[type="week"] {
     animation: attention-blink 1.2s ease-in-out 4;
   }
 }
+
+/*
+ * ★ボタンを全部立体に（2026-11-11・橋本さん「ボタンを全て立体に」）。
+ *   角の丸い・枠か塗りのある <button> と、ボタンの形をした <a> に、下の縁（厚み）と押したときの沈みを付ける。
+ *   ・縁の色は紺の半透明（どの色のボタンにも合う）。塗りの濃いボタンは .btn-press（色に合わせた縁）のまま
+ *   ・Tailwind の影と焦点の輪（ring）は消さない（同じ box-shadow に重ねる）
+ *   ・形がボタンでないもの（選ぶ欄・チェック・タブ）と .no-3d は外す
+ *   ・枠・塗りは「クラスの頭」で見る（hover:bg-… だけのパンくず・文字のリンクは浮かせない）
+ *   ・処理中（aria-busy）は沈んだまま。押せないとき（disabled）は縁を薄く
+ */
+:is(button, a)[class*="rounded"]:is([class^="border"], [class*=" border"], [class^="bg-"], [class*=" bg-"]):not(.btn-press):not(.no-3d):not([role="combobox"]):not([role="checkbox"]):not([role="radio"]):not([role="switch"]):not([role="tab"]):not([role="menuitem"]) {
+  --btn3d-edge: 0 3px 0 rgb(15 35 65 / 0.28);
+  box-shadow:
+    var(--tw-inset-shadow, 0 0 #0000),
+    var(--tw-inset-ring-shadow, 0 0 #0000),
+    var(--tw-ring-offset-shadow, 0 0 #0000),
+    var(--tw-ring-shadow, 0 0 #0000),
+    var(--tw-shadow, 0 0 #0000),
+    var(--btn3d-edge);
+  transition:
+    transform 80ms ease-out,
+    box-shadow 80ms ease-out,
+    background-color 150ms ease-out,
+    color 150ms ease-out;
+}
+:is(button, a)[class*="rounded"]:is([class^="border"], [class*=" border"], [class^="bg-"], [class*=" bg-"]):not(.btn-press):not(.no-3d):not([role="combobox"]):not([role="checkbox"]):not([role="radio"]):not([role="switch"]):not([role="tab"]):not([role="menuitem"]):is(:active, [aria-busy="true"]):not(:disabled):not([aria-disabled="true"]) {
+  --btn3d-edge: 0 1px 0 rgb(15 35 65 / 0.28);
+  transform: translateY(2px);
+}
+:is(button, a)[class*="rounded"]:is([class^="border"], [class*=" border"], [class^="bg-"], [class*=" bg-"]):not(.btn-press):not(.no-3d):is(:disabled, [aria-disabled="true"]) {
+  --btn3d-edge: 0 1px 0 rgb(15 35 65 / 0.15);
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(button, a)[class*="rounded"]:is([class^="border"], [class*=" border"], [class^="bg-"], [class*=" bg-"]) {
+    transition: none;
+  }
+}

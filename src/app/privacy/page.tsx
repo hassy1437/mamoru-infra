@@ -23,7 +23,8 @@ export default function PrivacyPage() {
             <main className="mx-auto max-w-4xl px-4 py-12">
                 <h1 className="mb-8 text-3xl font-bold text-slate-900">プライバシーポリシー</h1>
                 <div className="prose prose-slate max-w-none space-y-6 text-sm leading-relaxed text-slate-700">
-                    <p>最終更新日: 2026年10月9日</p>
+                    {/* ★地図・見取り図（地図などの改善 3・6）を足した日。公開する日がずれたら、その日に直す（山本さんの確認のあと） */}
+                    <p>最終更新日: 2026年11月11日</p>
 
                     <section className="space-y-3">
                         <h2 className="text-lg font-bold text-slate-900">1. 収集する情報</h2>
@@ -31,6 +32,7 @@ export default function PrivacyPage() {
                         <ul className="list-disc pl-6 space-y-1">
                             <li><strong>アカウント情報</strong>: メールアドレス、パスワード（暗号化して保存）</li>
                             <li><strong>点検データ</strong>: 物件情報、点検結果、撮影写真など、ユーザーが入力した情報</li>
+                            <li><strong>物件の位置と見取り図</strong>: 物件の現場の位置（緯度・経度）、前回の点検の月、階ごとの見取り図の写真と、その上に付けた設備の印。同じ会社の利用者だけが見られます</li>
                             <li><strong>利用ログ</strong>: アクセス日時、利用機能の情報、点検の画面を操作していた時間（1 分単位。入力した内容は含みません。報告書の作成にかかる時間を把握し、サービスの改善に使います）</li>
                         </ul>
                     </section>
@@ -59,17 +61,28 @@ export default function PrivacyPage() {
                     <section className="space-y-3">
                         <h2 className="text-lg font-bold text-slate-900">5. ローカルデータ</h2>
                         <p>オフライン利用時のデータはブラウザのIndexedDBに保存されます。このデータは端末上にのみ存在し、サーバーには自動送信されません。</p>
+                        <p>電波の無い場所で付けた見取り図の印は、送るまでの間だけブラウザ（localStorage）に保存し、通信できるようになったら送って消します。</p>
                     </section>
 
                     <section className="space-y-3">
-                        <h2 className="text-lg font-bold text-slate-900">6. データの削除</h2>
+                        <h2 className="text-lg font-bold text-slate-900">6. 地図と位置</h2>
+                        <ul className="list-disc pl-6 space-y-1">
+                            <li>地図の表示に国土地理院の地図を使います。地図を表示するとき、表示している場所の地図の画像を国土地理院から読み込みます。</li>
+                            <li>「地図で選ぶ」「住所の場所」を押したときは、物件の住所を国土地理院の住所検索に送り、位置を調べます。</li>
+                            <li>端末の位置は「いまここ」を押したときだけ取得し、物件の位置として保存します。利用者の位置の記録は残しません。</li>
+                            <li>「ナビ」「地図で開く」を押すと Google マップが開き、物件の位置または住所が Google に渡ります。</li>
+                        </ul>
+                    </section>
+
+                    <section className="space-y-3">
+                        <h2 className="text-lg font-bold text-slate-900">7. データの削除</h2>
                         {/* ★「関連する全てのデータを速やかに削除」と書いていたが、そうする仕組みが無かった（第3編の読み合わせ・2026-10-17）。
                             web のプライバシーポリシーに一本化するまでの間、事実どおりに書く */}
                         <p>アカウントの削除をご希望の場合は、運営までご連絡ください。点検の記録や報告書、ご請求の記録など、法令や料金のお支払い・紛争への対応のために必要な情報は、その目的に必要な期間保存したうえで削除します。</p>
                     </section>
 
                     <section className="space-y-3">
-                        <h2 className="text-lg font-bold text-slate-900">7. お問い合わせ</h2>
+                        <h2 className="text-lg font-bold text-slate-900">8. お問い合わせ</h2>
                         <p>プライバシーに関するお問い合わせは、お問い合わせページからご連絡ください。</p>
                     </section>
                 </div>

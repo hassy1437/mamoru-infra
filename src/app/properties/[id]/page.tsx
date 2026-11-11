@@ -24,7 +24,8 @@ import { loadItiranIds, resumeTarget } from "@/lib/report-resume"
 import NextInspectionBand from "@/components/next-inspection-band"
 import PropertyLocationCard from "@/components/property-location-card"
 import { locationOf } from "@/lib/property-location"
-import { nextInspection } from "@/lib/next-inspection"
+import { manualRecordOf, nextInspection, type InspectionRecord } from "@/lib/next-inspection"
+import LastInspectionPicker from "@/components/last-inspection-picker"
 
 export default async function PropertyDetailPage({
     params,
@@ -54,6 +55,10 @@ export default async function PropertyDetailPage({
         .order("inspection_date", { ascending: false })
 
     const history = inspections ?? []
+
+    // ★次の点検（総括表＋月だけ選んだ前回の点検）
+    const manual = manualRecordOf(p)
+    const next = nextInspection([...(history as InspectionRecord[]), ...(manual ? [manual] : [])])
 
     // ★見取り図（地図などの改善 6）。表がまだ無い（DB を当てる前）ときは 0 として出す
     const { data: planRows } = await supabase.from("floor_plans").select("id").eq("property_id", id)
@@ -113,8 +118,17 @@ export default async function PropertyDetailPage({
                     </div>
                 </div>
 
-                {/* ★次の点検まであと○日（地図などの改善 7）。総括表の点検日から */}
-                <NextInspectionBand next={nextInspection(history)} size="lg" />
+                {/* ★次の点検まであと○日（地図などの改善 7）。総括表の点検日から。
+                     総括表がまだ無い・月だけ選んだ記録が前回のときは「前回の点検を選ぶ／直す」をボタンで */}
+                <div id="next-inspection" className="scroll-mt-4 space-y-2">
+                    <NextInspectionBand next={next} size="lg" />
+                    {(history.length === 0 || next?.approx) && (
+                        <LastInspectionPicker
+                            propertyId={id}
+                            current={p.last_inspection_month && p.last_inspection_kind ? { month: p.last_inspection_month, kind: p.last_inspection_kind } : null}
+                        />
+                    )}
+                </div>
 
                 {/* ★次にやること（点検を始める・作りかけの続き）を物件情報より上に（2026-10-21・次に進む方法の洗い出し）。
                      以前は物件情報の下（iPhone で 2 画面目）にあり、上には「編集」「複製」しか見えなかった */}

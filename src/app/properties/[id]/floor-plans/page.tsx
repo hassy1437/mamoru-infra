@@ -32,9 +32,9 @@ export default async function FloorPlansPage({ params, searchParams }: { params:
     const rows = (planRows ?? []) as { id: string; floor: string; image_path: string; image_width: number; image_height: number }[]
 
     const { data: pinRows } = rows.length
-        ? await supabase.from("floor_plan_pins").select("id, floor_plan_id, kind, x, y").in("floor_plan_id", rows.map((r) => r.id))
+        ? await supabase.from("floor_plan_pins").select("id, floor_plan_id, kind, x, y, defect").in("floor_plan_id", rows.map((r) => r.id))
         : { data: [] }
-    const pins = ((pinRows ?? []) as { id: string; floor_plan_id: string; kind: string; x: number; y: number }[]).filter((p) => isFloorPlanKind(p.kind))
+    const pins = ((pinRows ?? []) as { id: string; floor_plan_id: string; kind: string; x: number; y: number; defect: boolean | null }[]).filter((p) => isFloorPlanKind(p.kind))
 
     // ★写真は 1 時間だけの URL（置き場は非公開）
     const signed = rows.length
@@ -49,7 +49,7 @@ export default async function FloorPlansPage({ params, searchParams }: { params:
         imageUrl: urlOf.get(r.image_path) ?? null,
         width: r.image_width,
         height: r.image_height,
-        pins: pins.filter((p) => p.floor_plan_id === r.id).map((p) => ({ id: p.id, kind: p.kind as BoardPlan["pins"][number]["kind"], x: p.x, y: p.y })),
+        pins: pins.filter((p) => p.floor_plan_id === r.id).map((p) => ({ id: p.id, kind: p.kind as BoardPlan["pins"][number]["kind"], x: p.x, y: p.y, defect: Boolean(p.defect) })),
     }))
     const floors = floorsFor(property.floor_above, property.floor_below, rows.map((r) => r.floor))
     const initialFloor = wanted && floors.includes(wanted) ? wanted : floors.includes("1F") ? "1F" : floors[0]

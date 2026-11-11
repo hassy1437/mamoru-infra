@@ -1,4 +1,5 @@
-import { AlertTriangle, CalendarCheck, CalendarClock, Clock } from "lucide-react"
+import Link from "next/link"
+import { AlertTriangle, CalendarCheck, CalendarClock, ChevronRight, Clock } from "lucide-react"
 
 import { formatYmdJa, type NextInspection } from "@/lib/next-inspection"
 
@@ -15,8 +16,37 @@ const STYLE = {
     planned: { box: "border-blue-200 bg-blue-50 text-blue-800", Icon: CalendarClock },
 } as const
 
-export default function NextInspectionBand({ next, size = "md", className = "" }: { next: NextInspection | undefined | null; size?: "md" | "lg"; className?: string }) {
+export default function NextInspectionBand({
+    next,
+    size = "md",
+    className = "",
+    pickHref,
+}: {
+    next: NextInspection | undefined | null
+    size?: "md" | "lg"
+    className?: string
+    /** ★記録が無いとき、前回の点検を選ぶ所へ飛ぶ（物件一覧のカード） */
+    pickHref?: string
+}) {
     const big = size === "lg" ? "text-3xl" : "text-2xl"
+    if (!next && pickHref) {
+        return (
+            <Link
+                href={pickHref}
+                data-next-inspection="none"
+                className={`flex min-h-11 items-center justify-between gap-2 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-sm font-bold text-slate-500 hover:bg-slate-50 ${className}`}
+            >
+                <span className="flex items-center gap-2">
+                    <CalendarClock className="h-4 w-4 shrink-0" aria-hidden="true" />
+                    次の点検: 記録なし
+                </span>
+                <span className="inline-flex items-center gap-0.5 text-blue-700">
+                    前回を選ぶ
+                    <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                </span>
+            </Link>
+        )
+    }
     if (!next) {
         return (
             <div data-next-inspection="none" className={`flex min-h-11 items-center gap-2 rounded-lg border border-dashed border-slate-200 px-3 py-2 text-sm text-slate-400 ${className}`}>
@@ -50,7 +80,7 @@ export default function NextInspectionBand({ next, size = "md", className = "" }
             </span>
             <span className="min-w-0 text-right text-xs font-medium leading-tight sm:text-sm">
                 <span className="block">{next.kind}点検</span>
-                <span className="block whitespace-nowrap">{formatYmdJa(next.date)}</span>
+                <span className="block whitespace-nowrap">{formatYmdJa(next.date, next.approx)}</span>
             </span>
         </div>
     )

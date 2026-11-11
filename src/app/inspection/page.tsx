@@ -15,7 +15,7 @@ export default async function InspectionPage() {
 
     const list = (properties ?? []) as Property[]
     // ★次の点検まであと○日（地図などの改善 7）
-    const due = list.length > 0 ? await loadNextInspections(supabase) : {}
+    const due = list.length > 0 ? await loadNextInspections(supabase, list) : {}
 
     return (
         <main className="min-h-screen bg-gray-50 py-10">

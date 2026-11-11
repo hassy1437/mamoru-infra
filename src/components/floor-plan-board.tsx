@@ -1,7 +1,7 @@
 "use client"
 
-import { useRef, useState, type MouseEvent } from "react"
-import { Camera, ImagePlus, Loader2, RotateCcw, Trash2, X } from "lucide-react"
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type MouseEvent } from "react"
+import { AlertTriangle, Camera, CloudOff, ImagePlus, Loader2, RotateCcw, Trash2, X } from "lucide-react"
 import { toast } from "sonner"
 
 import { supabase } from "@/lib/supabase"
@@ -14,15 +14,17 @@ import {
     type FloorPlanKind,
     type FloorPlanKindInfo,
 } from "@/lib/floor-plan-kinds"
+import { isOfflineError, pendingSnapshot, readPending, subscribePending, writePending, type PendingPin } from "@/lib/floor-plan-queue"
 
 /**
  * 見取り図と設備の印（地図などの改善 6・2026-11-11）。
  * ★使うのは現場の職人さん（作業しながら）。字は打たない:
- *   階を選ぶ → 見取り図を撮る → 下の設備を選ぶ → 図をタップで印。印をタップ →「消す」
+ *   階を選ぶ → 見取り図を撮る → 下の設備を選ぶ → 図をタップで印。印をタップ →「不良」「消す」
+ * ★電波の無い所で置いた印は端末に覚えて、電波が戻ったら送る（src/lib/floor-plan-queue.ts）
  * 種類・階の決まりは src/lib/floor-plan-kinds.ts。DB は inspection.floor_plans / floor_plan_pins（20261231170000）。
  */
 
-export type BoardPin = { id: string; kind: FloorPlanKind; x: number; y: number }
+export type BoardPin = { id: string; kind: FloorPlanKind; x: number; y: number; defect: boolean; pending?: boolean }
 export type BoardPlan = {
     id: string
     floor: string
@@ -77,11 +79,16 @@ async function shrink(file: File): Promise<{ blob: Blob; width: number; height: 
     throw new Error("too_large")
 }
 
-function PinMark({ info, size = "md" }: { info: FloorPlanKindInfo; size?: "sm" | "md" }) {
+function PinMark({ info, size = "md", defect = false, pending = false }: { info: FloorPlanKindInfo; size?: "sm" | "md"; defect?: boolean; pending?: boolean }) {
     const box = size === "sm" ? "h-6 w-6 text-[11px]" : "h-7 w-7 text-xs"
+    // ★不良は赤い太い輪と「!」・送っていない印は点線の輪（色だけに頼らない）
+    const ring = defect ? "ring-4 ring-red-600" : pending ? "outline-2 outline-dashed outline-slate-900" : ""
     return (
-        <span className={`inline-flex ${box} shrink-0 items-center justify-center rounded-full border-2 border-white font-bold text-white shadow ${info.bg}`} aria-hidden="true">
+        <span className={`relative inline-flex ${box} shrink-0 items-center justify-center rounded-full border-2 border-white font-bold text-white shadow ${info.bg} ${ring}`} aria-hidden="true">
             {info.mark}
+            {defect && (
+                <span className="absolute -right-2 -top-2 inline-flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[10px] font-extrabold text-white">!</span>
+            )}
         </span>
     )
 }
@@ -111,15 +118,77 @@ export default function FloorPlanBoard({
     const camera = useRef<HTMLInputElement>(null)
     const library = useRef<HTMLInputElement>(null)
     const surface = useRef<HTMLDivElement>(null)
+    const [sending, setSending] = useState(false)
+
+    // ★端末に覚えている（まだ送れていない）印。localStorage が変わったら描き直す
+    const planIds = useMemo(() => plans.map((p) => p.id), [plans])
+    const snapshot = useSyncExternalStore(subscribePending, () => pendingSnapshot(planIds), () => "[]")
+    const pendingByPlan = useMemo(() => {
+        const out = new Map<string, PendingPin[]>()
+        if (snapshot === "[]") return out
+        for (const id of planIds) {
+            const list = readPending(id)
+            if (list.length) out.set(id, list)
+        }
+        return out
+    }, [snapshot, planIds])
+    const pendingCount = [...pendingByPlan.values()].reduce((n, l) => n + l.length, 0)
 
     const plan = plans.find((p) => p.floor === floor) ?? null
+    const shownPins: BoardPin[] = plan
+        ? [...plan.pins, ...(pendingByPlan.get(plan.id) ?? []).map((q) => ({ id: q.tempId, kind: q.kind, x: q.x, y: q.y, defect: q.defect, pending: true }))]
+        : []
     const { main, more } = kindsFor(equipmentTypes)
     const palette = showMore ? [...main, ...more] : main
-    const counts = countByKind(plan?.pins ?? [])
+    const counts = countByKind(shownPins)
     const pinCount = (f: string) => plans.find((p) => p.floor === f)?.pins.length ?? 0
 
     const updatePins = (planId: string, fn: (pins: BoardPin[]) => BoardPin[]) =>
         setPlans((prev) => prev.map((p) => (p.id === planId ? { ...p, pins: fn(p.pins) } : p)))
+
+    /** 覚えている印を送る（電波が戻ったとき・開いたとき・「いま送る」） */
+    const flush = useCallback(async (manual = false) => {
+        const ids = plans.map((p) => p.id)
+        const all = ids.flatMap((id) => readPending(id))
+        if (all.length === 0) return
+        setSending(true)
+        let sent = 0
+        let dropped = 0
+        for (const q of all) {
+            const { data, error } = await supabase
+                .from("floor_plan_pins")
+                .insert({ floor_plan_id: q.planId, kind: q.kind, x: q.x, y: q.y, defect: q.defect })
+                .select("id")
+                .single()
+            if (error || !data) {
+                if (isOfflineError(error)) break
+                // ★電波でない理由（見取り図が消された・権限が無い）→ 捨てて知らせる
+                dropped += 1
+            } else {
+                sent += 1
+                const saved: BoardPin = { id: data.id as string, kind: q.kind, x: q.x, y: q.y, defect: q.defect }
+                setPlans((prev) => prev.map((p) => (p.id === q.planId ? { ...p, pins: [...p.pins, saved] } : p)))
+            }
+            writePending(q.planId, readPending(q.planId).filter((r) => r.tempId !== q.tempId))
+        }
+        setSending(false)
+        if (sent) toast.success(`覚えていた印を ${sent} 個 送りました`)
+        if (dropped) toast.error(`送れなかった印が ${dropped} 個ありました（見取り図が撮り直された・消された など）`)
+        if (manual && !sent && !dropped) toast.error("まだ電波がありません")
+    }, [plans])
+
+    // ★電波が戻ったら送る・開いたときにも 1 回送る
+    useEffect(() => {
+        const onOnline = () => void flush()
+        window.addEventListener("online", onOnline)
+        const t = window.setTimeout(() => void flush(), 500)
+        return () => {
+            window.removeEventListener("online", onOnline)
+            window.clearTimeout(t)
+        }
+        // ★開いたときだけ（flush は plans が変わるたびに作り直されるが、送り直しは online で十分）
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
 
     const chooseFloor = (f: string) => {
         setFloor(f)
@@ -133,7 +202,8 @@ export default function FloorPlanBoard({
     const onFile = async (file: File | undefined) => {
         if (!file) return
         const old = plan
-        if (old && old.pins.length > 0 && !window.confirm(`この階の印 ${old.pins.length} 個も消えます。撮り直しますか？`)) return
+        const oldCount = old ? old.pins.length + (pendingByPlan.get(old.id)?.length ?? 0) : 0
+        if (old && oldCount > 0 && !window.confirm(`この階の印 ${oldCount} 個も消えます。撮り直しますか？`)) return
         setBusy(true)
         try {
             const { blob, width, height } = await shrink(file)
@@ -149,6 +219,7 @@ export default function FloorPlanBoard({
                 }
                 await supabase.from("floor_plan_pins").delete().eq("floor_plan_id", old.id)
                 await supabase.storage.from("floor-plans").remove([old.imagePath])
+                writePending(old.id, []) // ★撮り直したら、覚えていた印も捨てる（位置が合わない）
                 planId = old.id
             } else {
                 const { data, error } = await supabase
@@ -175,11 +246,30 @@ export default function FloorPlanBoard({
 
     const removePin = async (planId: string, pin: BoardPin) => {
         setOpenPin(null)
+        if (pin.pending) {
+            writePending(planId, readPending(planId).filter((q) => q.tempId !== pin.id))
+            return
+        }
         updatePins(planId, (pins) => pins.filter((p) => p.id !== pin.id))
         const { error } = await supabase.from("floor_plan_pins").delete().eq("id", pin.id)
         if (error) {
             updatePins(planId, (pins) => [...pins, pin])
             toast.error("消せませんでした。電波のある所でもう一度")
+        }
+    }
+
+    /** 不良の目印を付ける・外す */
+    const toggleDefect = async (planId: string, pin: BoardPin) => {
+        const next = !pin.defect
+        if (pin.pending) {
+            writePending(planId, readPending(planId).map((q) => (q.tempId === pin.id ? { ...q, defect: next } : q)))
+            return
+        }
+        updatePins(planId, (pins) => pins.map((p) => (p.id === pin.id ? { ...p, defect: next } : p)))
+        const { error } = await supabase.from("floor_plan_pins").update({ defect: next }).eq("id", pin.id)
+        if (error) {
+            updatePins(planId, (pins) => pins.map((p) => (p.id === pin.id ? { ...p, defect: pin.defect } : p)))
+            toast.error("変えられませんでした。電波のある所でもう一度")
         }
     }
 
@@ -197,12 +287,17 @@ export default function FloorPlanBoard({
         if (!rect || rect.width === 0 || rect.height === 0) return
         const x = clamp01((e.clientX - rect.left) / rect.width)
         const y = clamp01((e.clientY - rect.top) / rect.height)
-        const temp: BoardPin = { id: `tmp-${crypto.randomUUID()}`, kind, x, y }
+        const temp: BoardPin = { id: `tmp-${crypto.randomUUID()}`, kind, x, y, defect: false }
         const planId = plan.id
         updatePins(planId, (pins) => [...pins, temp])
         const { data, error } = await supabase.from("floor_plan_pins").insert({ floor_plan_id: planId, kind, x, y }).select("id").single()
         if (error || !data) {
             updatePins(planId, (pins) => pins.filter((p) => p.id !== temp.id))
+            // ★電波が無い → 端末に覚えて、あとで送る（書けなければ「もう一度」）
+            if (isOfflineError(error) && writePending(planId, [...readPending(planId), { tempId: temp.id, planId, kind, x, y, defect: false }])) {
+                toast(`電波なし: ${KIND_BY_KEY[kind].label}を覚えました（あとで送ります）`, { duration: 2500 })
+                return
+            }
             toast.error("置けませんでした。電波のある所でもう一度")
             return
         }
@@ -277,6 +372,24 @@ export default function FloorPlanBoard({
                 </div>
             ) : (
                 <>
+                    {pendingCount > 0 && (
+                        <div className="flex items-center justify-between gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-bold text-amber-900" role="status">
+                            <span className="flex items-center gap-2">
+                                <CloudOff className="h-5 w-5 shrink-0" aria-hidden="true" />
+                                まだ送っていない印 {pendingCount} 個
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => void flush(true)}
+                                disabled={sending}
+                                aria-busy={sending}
+                                className="inline-flex min-h-11 items-center gap-1 rounded-lg bg-amber-600 px-3 text-white disabled:cursor-wait"
+                            >
+                                {sending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
+                                いま送る
+                            </button>
+                        </div>
+                    )}
                     <div className="flex items-center justify-between gap-2">
                         <div className="flex gap-1" role="group" aria-label="大きさ">
                             {ZOOMS.map((z) => (
@@ -317,7 +430,7 @@ export default function FloorPlanBoard({
                             ) : (
                                 <div className="flex h-full w-full items-center justify-center bg-slate-100 text-sm text-slate-500">写真を読み込めませんでした（撮り直してください）</div>
                             )}
-                            {plan.pins.map((p) => {
+                            {shownPins.map((p) => {
                                 const info = KIND_BY_KEY[p.kind]
                                 const open = openPin === p.id
                                 return (
@@ -325,14 +438,25 @@ export default function FloorPlanBoard({
                                         <button
                                             type="button"
                                             onClick={(e) => { e.stopPropagation(); setOpenPin(open ? null : p.id) }}
-                                            className={`flex h-10 w-10 items-center justify-center rounded-full ${p.id.startsWith("tmp-") ? "opacity-60" : ""}`}
-                                            aria-label={`${info.label}の印`}
+                                            className={`flex h-10 w-10 items-center justify-center rounded-full ${p.id.startsWith("tmp-") && !p.pending ? "opacity-60" : ""}`}
+                                            aria-label={`${info.label}の印${p.defect ? "（不良）" : ""}${p.pending ? "（まだ送っていない）" : ""}`}
                                         >
-                                            <PinMark info={info} />
+                                            <PinMark info={info} defect={p.defect} pending={p.pending} />
                                         </button>
                                         {open && (
                                             <div className="absolute left-1/2 top-full z-10 mt-1 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-lg border border-slate-200 bg-white p-1 shadow-lg">
                                                 <span className="px-2 text-sm font-bold text-slate-700">{info.label}</span>
+                                                <button
+                                                    type="button"
+                                                    aria-pressed={p.defect}
+                                                    onClick={(e) => { e.stopPropagation(); void toggleDefect(plan.id, p) }}
+                                                    className={`inline-flex min-h-11 items-center gap-1 rounded-md px-3 text-sm font-bold ${
+                                                        p.defect ? "bg-red-600 text-white" : "border border-red-300 bg-white text-red-700"
+                                                    }`}
+                                                >
+                                                    <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+                                                    不良
+                                                </button>
                                                 <button
                                                     type="button"
                                                     onClick={(e) => { e.stopPropagation(); void removePin(plan.id, p) }}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { addMonthsYmd, daysBetween, dueSortKey, formatYmdJa, nextInspection, nextInspectionByProperty } from "./next-inspection"
+import { addMonthsYmd, daysBetween, dueSortKey, formatYmdJa, manualRecordOf, nextInspection, nextInspectionByProperty, recentMonths } from "./next-inspection"
 
 const TODAY = "2026-11-11"
 
@@ -69,5 +69,41 @@ describe("次の点検の日（地図などの改善 7）", () => {
     })
     it("日付の書き方は「2027年4月1日」", () => {
         expect(formatYmdJa("2027-04-01")).toBe("2027年4月1日")
+    })
+
+    it("★月だけ選んだ前回の点検でも出す（日は目安＝「○月ごろ」）", () => {
+        const manual = manualRecordOf({ last_inspection_month: "2026-05-01", last_inspection_kind: "総合点検" })!
+        const n = nextInspection([manual], TODAY)
+        expect(n).toMatchObject({ date: "2026-11-01", kind: "機器", approx: true, level: "over" })
+        expect(formatYmdJa(n!.date, n!.approx)).toBe("2026年11月ごろ")
+        expect(manualRecordOf({ last_inspection_month: "2026-05-01", last_inspection_kind: null })).toBeNull()
+    })
+    it("★総括表のほうが新しければ、そちらが前回（目安ではなくなる）", () => {
+        const manual = manualRecordOf({ last_inspection_month: "2026-03-01", last_inspection_kind: "総合点検" })!
+        const n = nextInspection([manual, { inspection_date: "2026-09-10", inspection_type: "機器点検" }], TODAY)
+        // 機器 9/10 + 6 か月 = 2027-03-10 ／ 総合 3/1 + 1 年 = 2027-03-01（早い）→ 総合は月だけの記録から＝目安
+        expect(n).toMatchObject({ date: "2027-03-01", kind: "総合", approx: true })
+        const n2 = nextInspection([manual, { inspection_date: "2026-09-10", inspection_type: "総合点検" }], TODAY)
+        expect(n2).toMatchObject({ date: "2027-03-10", kind: "機器", approx: false })
+    })
+    it("先の月を選んだ記録は使わない・総括表がある物件にも足せる", () => {
+        expect(nextInspection([manualRecordOf({ last_inspection_month: "2026-12-01", last_inspection_kind: "機器点検" })!], TODAY)).toBeNull()
+        const m = nextInspectionByProperty([{ property_id: "a", inspection_date: "2026-06-01", inspection_type: "総合点検" }], TODAY, [
+            { id: "b", last_inspection_month: "2026-08-01", last_inspection_kind: "機器点検" },
+            { id: "c", last_inspection_month: null, last_inspection_kind: null },
+        ])
+        expect([...m.keys()].sort()).toEqual(["a", "b"])
+        expect(m.get("b")).toMatchObject({ date: "2027-02-01", approx: true })
+        expect(m.get("a")?.approx).toBe(false)
+    })
+    it("月のボタン: 今月から前へ・値は月の 1 日・年をまたぐ", () => {
+        const ms = recentMonths("2026-02-15", 4)
+        expect(ms).toEqual([
+            { value: "2026-02-01", label: "2026年2月" },
+            { value: "2026-01-01", label: "2026年1月" },
+            { value: "2025-12-01", label: "2025年12月" },
+            { value: "2025-11-01", label: "2025年11月" },
+        ])
+        expect(recentMonths("2026-02-15", 1, 12)).toEqual([{ value: "2025-02-01", label: "2025年2月" }])
     })
 })

@@ -122,7 +122,7 @@ export default function PropertySearch({ items, mode, due }: PropertySearchProps
                         className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow"
                     >
                         {/* ★次の点検（地図などの改善 7）。カードのいちばん上に置き、名前より先に目に入るように */}
-                        {due && <NextInspectionBand next={due[property.id]} className="mb-3" />}
+                        {due && <NextInspectionBand next={due[property.id]} pickHref={`/properties/${property.id}#next-inspection`} className="mb-3" />}
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                             {mode === "properties" ? (
                                 <Link href={`/properties/${property.id}`} className="min-w-0 sm:flex-1">

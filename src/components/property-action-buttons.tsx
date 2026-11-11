@@ -30,12 +30,18 @@ export default function PropertyActionButtons({
         // ★消すと総括表の property_id が NULL になり（ON DELETE SET NULL）、別記の入力ページは 404、
         //   一括 PDF からも別記が落ちる（総括表は残る）。★確認文で先に伝える（2026-09-23・総点検 B4）。
         const confirmed = window.confirm(
-            `「${propertyName || "この物件"}」を削除しますか？\nこの物件の報告書（別記）も表示できなくなります。\nこの操作は取り消せません。`
+            `「${propertyName || "この物件"}」を削除しますか？\nこの物件の報告書（別記）も表示できなくなります。見取り図と印も消えます。\nこの操作は取り消せません。`
         )
 
         if (!confirmed) return
 
         setDeleting(true)
+        // ★見取り図の写真を先に置き場から消す（表の行は物件から CASCADE で消えるが、置き場のファイルは SQL から消せない・
+        //   地図などの改善 6）。★表がまだ無い（DB を当てる前）・読めないときは飛ばす
+        const { data: plans } = await supabase.from("floor_plans").select("image_path").eq("property_id", propertyId)
+        const paths = ((plans ?? []) as { image_path: string }[]).map((p) => p.image_path).filter(Boolean)
+        if (paths.length) await supabase.storage.from("floor-plans").remove(paths)
+
         const { error } = await supabase
             .from("properties")
             .delete()

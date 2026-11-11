@@ -9,6 +9,7 @@ import {
     CheckCircle2,
     ClipboardCheck,
     Copy,
+    LayoutGrid,
     MapPin,
     Pencil,
     Plus,
@@ -53,6 +54,13 @@ export default async function PropertyDetailPage({
         .order("inspection_date", { ascending: false })
 
     const history = inspections ?? []
+
+    // ★見取り図（地図などの改善 6）。表がまだ無い（DB を当てる前）ときは 0 として出す
+    const { data: planRows } = await supabase.from("floor_plans").select("id").eq("property_id", id)
+    const planIds = ((planRows ?? []) as { id: string }[]).map((r) => r.id)
+    const { count: pinCount } = planIds.length
+        ? await supabase.from("floor_plan_pins").select("id", { count: "exact", head: true }).in("floor_plan_id", planIds)
+        : { count: 0 }
     const latestInspectionId = history.length > 0 ? history[0].id : null
     // ★点検履歴は、総括表の確認画面ではなく「続き」へ（点検者一覧表があれば点検票の一覧・src/lib/report-resume.ts）
     const itiranIds = await loadItiranIds(supabase, history.map((h) => h.id as string))
@@ -151,6 +159,23 @@ export default async function PropertyDetailPage({
 
                 {/* ★現場の位置（地図などの改善 3）。いまここ・地図で選ぶ・ナビ */}
                 <PropertyLocationCard propertyId={id} address={p.building_address ?? ""} location={locationOf(p)} />
+
+                {/* ★見取り図（地図などの改善 6）。階ごとの図に設備の印 */}
+                <Link
+                    href={`/properties/${id}/floor-plans`}
+                    className="flex min-h-16 items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 transition-colors hover:bg-slate-50 sm:px-6"
+                >
+                    <span className="flex min-w-0 items-center gap-3">
+                        <LayoutGrid className="h-6 w-6 shrink-0 text-blue-600" aria-hidden="true" />
+                        <span className="min-w-0">
+                            <span className="block text-lg font-bold text-slate-800">見取り図</span>
+                            <span className="block text-sm text-slate-500">
+                                {planIds.length > 0 ? `${planIds.length} 階・印 ${pinCount ?? 0} 個` : "まだありません（撮って印を付ける）"}
+                            </span>
+                        </span>
+                    </span>
+                    <ArrowRight className="h-5 w-5 shrink-0 text-slate-400" aria-hidden="true" />
+                </Link>
 
                 {/* 物件情報 */}
                 <div className="bg-white rounded-xl border border-slate-200 p-6">

@@ -8,11 +8,21 @@ import type { Property } from "@/types/database"
 import PropertyActionButtons from "@/components/property-action-buttons"
 import MapLink from "@/components/map-link"
 import { withdrawnAtOf, type MatchLink } from "@/lib/match-withdrawn"
+import NextInspectionBand from "@/components/next-inspection-band"
+import { dueSortKey, type NextInspection } from "@/lib/next-inspection"
 
 interface PropertySearchProps {
     items: Property[]
     mode: "inspection" | "properties"
+    /** 物件 ID → 次の点検（src/lib/next-inspection.ts・地図などの改善 7）。渡したときだけ帯と並べ替えを出す */
+    due?: Record<string, NextInspection>
 }
+
+type SortKey = "due" | "new"
+const SORTS: { key: SortKey; label: string }[] = [
+    { key: "due", label: "点検が近い順" },
+    { key: "new", label: "登録が新しい順" },
+]
 
 const ITEMS_PER_PAGE = 20
 
@@ -36,19 +46,28 @@ function WithdrawnBadge({ property }: { property: Property }) {
     )
 }
 
-export default function PropertySearch({ items, mode }: PropertySearchProps) {
+export default function PropertySearch({ items, mode, due }: PropertySearchProps) {
     const [query, setQuery] = useState("")
     const [page, setPage] = useState(0)
+    // ★点検の帯があるときは「点検が近い順」から（過ぎた物件がいちばん上）。並びはタップで切り替える
+    const [sort, setSort] = useState<SortKey>(due ? "due" : "new")
 
     const filtered = useMemo(() => {
         const q = query.trim().toLowerCase()
-        if (!q) return items
-        return items.filter((item) =>
-            [item.building_name, item.building_address, item.notifier_name].some(
-                (v) => typeof v === "string" && v.toLowerCase().includes(q)
+        const hit = !q
+            ? items
+            : items.filter((item) =>
+                [item.building_name, item.building_address, item.notifier_name].some(
+                    (v) => typeof v === "string" && v.toLowerCase().includes(q)
+                )
             )
-        )
-    }, [items, query])
+        if (!due || sort === "new") return hit
+        // ★安定ソート（同じ残り日数なら登録が新しい順のまま）
+        return [...hit].sort((a, b) => {
+            const ka = dueSortKey(due[a.id]), kb = dueSortKey(due[b.id])
+            return ka === kb ? 0 : ka < kb ? -1 : 1
+        })
+    }, [items, query, due, sort])
 
     // Derive page from filtered results; clamp page to valid range
     const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
@@ -72,6 +91,25 @@ export default function PropertySearch({ items, mode }: PropertySearchProps) {
                     </span>
                 )}
             </div>
+            {due && (
+                <div className="mb-4 flex gap-2" role="group" aria-label="並べ方">
+                    {SORTS.map((o) => (
+                        <button
+                            key={o.key}
+                            type="button"
+                            aria-pressed={sort === o.key}
+                            onClick={() => { setSort(o.key); setPage(0) }}
+                            className={`min-h-11 flex-1 rounded-full border px-4 text-sm font-bold transition-colors sm:flex-none ${
+                                sort === o.key
+                                    ? "border-blue-600 bg-blue-600 text-white"
+                                    : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                            }`}
+                        >
+                            {o.label}
+                        </button>
+                    ))}
+                </div>
+            )}
             <div className="space-y-4">
                 {filtered.length === 0 && (
                     <p className="text-center py-10 text-slate-400 text-sm">
@@ -83,6 +121,8 @@ export default function PropertySearch({ items, mode }: PropertySearchProps) {
                         key={property.id}
                         className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow"
                     >
+                        {/* ★次の点検（地図などの改善 7）。カードのいちばん上に置き、名前より先に目に入るように */}
+                        {due && <NextInspectionBand next={due[property.id]} className="mb-3" />}
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                             {mode === "properties" ? (
                                 <Link href={`/properties/${property.id}`} className="min-w-0 sm:flex-1">

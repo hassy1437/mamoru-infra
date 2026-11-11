@@ -20,6 +20,8 @@ import MapLink from "@/components/map-link"
 import WithdrawnMatchNotice from "@/components/withdrawn-match-notice"
 import { withdrawnAtOf, type MatchLink } from "@/lib/match-withdrawn"
 import { loadItiranIds, resumeTarget } from "@/lib/report-resume"
+import NextInspectionBand from "@/components/next-inspection-band"
+import { nextInspection } from "@/lib/next-inspection"
 
 export default async function PropertyDetailPage({
     params,
@@ -100,6 +102,9 @@ export default async function PropertyDetailPage({
                         </div>
                     </div>
                 </div>
+
+                {/* ★次の点検まであと○日（地図などの改善 7）。総括表の点検日から */}
+                <NextInspectionBand next={nextInspection(history)} size="lg" />
 
                 {/* ★次にやること（点検を始める・作りかけの続き）を物件情報より上に（2026-10-21・次に進む方法の洗い出し）。
                      以前は物件情報の下（iPhone で 2 画面目）にあり、上には「編集」「複製」しか見えなかった */}

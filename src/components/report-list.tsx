@@ -40,8 +40,9 @@ function reportStage(r: ReportSummary): { key: Stage; label: string; cls: string
 
 const ITEMS_PER_PAGE = 20
 
+// ★日本時間に固定する（定期テストの 53）。サーバ（UTC）とブラウザで同じ日付になり、日本時間の 0〜9 時に前日へずれない
 const fmtDate = (s: string | null) =>
-    s ? new Date(s).toLocaleDateString("ja-JP", { year: "numeric", month: "2-digit", day: "2-digit" }) : "—"
+    s ? new Date(s).toLocaleDateString("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }) : "—"
 
 type StageFilter = "all" | "incomplete" | "forms"
 

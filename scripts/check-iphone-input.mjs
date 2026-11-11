@@ -37,6 +37,9 @@ const DEVICE = "src/components/device-table-inputs.tsx"
 const LICENSE = "src/components/license-editor.tsx"
 const SHOKAKI = "src/components/shokaki-bekki1-form.tsx"
 const SOUKATSU = "src/components/soukatsu-form.tsx"
+// ★総括表の「指摘なし・要改善」のボタンは作成と編集で共有の部品（2026-11-09・編集でも判定を変えられるようになった）
+const SOUKATSU_RESULT = "src/components/soukatsu-equipment-details.tsx"
+const SOUKATSU_EDIT = "src/components/soukatsu-edit-form.tsx"
 const CHOICE = "src/components/bekki-choice-checkboxes.tsx"
 const ACTION = "src/lib/action-button.ts"
 const NUMERIC_PLACEHOLDERS = ["吐出量(L/min)", "吐出圧力(MPa)", "電流(A)", "電圧(V)", "設定圧力(MPa)", "作動圧力(MPa)", "長さ(m)", "長さ", "口径(mm)", "口径",
@@ -44,7 +47,7 @@ const NUMERIC_PLACEHOLDERS = ["吐出量(L/min)", "吐出圧力(MPa)", "電流(A
 const FORM_PAGES = fs.readdirSync(path.join(ROOT, "src/app/inspection/[id]/itiran/[itiranId]"), { withFileTypes: true })
     .filter((d) => d.isDirectory() && fs.existsSync(path.join(ROOT, "src/app/inspection/[id]/itiran/[itiranId]", d.name, "page.tsx")))
     .map((d) => `src/app/inspection/[id]/itiran/[itiranId]/${d.name}/page.tsx`)
-const ALL = [...new Set([...FORMS, CSS, JUDGE, BAR, AUTO, CAMERA, CRUMB, NAV, MEASURE, ITIRAN, DEVICE, LICENSE, SOUKATSU, CHOICE, ACTION, ...FORM_PAGES])]
+const ALL = [...new Set([...FORMS, CSS, JUDGE, BAR, AUTO, CAMERA, CRUMB, NAV, MEASURE, ITIRAN, DEVICE, LICENSE, SOUKATSU, SOUKATSU_RESULT, SOUKATSU_EDIT, CHOICE, ACTION, ...FORM_PAGES])]
 
 /** <Input ... /> を 1 つずつ（属性に => があるので正規表現の [^>] では切れない） */
 const inputsOf = (src) => {
@@ -118,7 +121,8 @@ function check(files) {
     // ★上と下の 2 か所（下は 2026-10-20 から）。どちらも 44px
     const backLinks = [...files[NAV].matchAll(/<Link href=\{hubHref\} className="([^"]*)"/g)].map((m) => m[1])
     if (backLinks.length < 2 || backLinks.some((c) => !/\bmin-h-11\b/.test(c))) problems.push(`${NAV}: 「← 点検票の一覧に戻る」が 44px 未満（上・下）`)
-    if (!/className=\{`inline-flex min-h-11 md:min-h-0 items-center gap-1 px-3 py-1\.5 text-xs font-medium rounded-full/.test(files[SOUKATSU])) problems.push(`${SOUKATSU}: 総括表の「指摘なし・要改善」がスマホで 44px 未満`)
+    if (!/className=\{`inline-flex min-h-11 md:min-h-0 items-center gap-1 px-3 py-1\.5 text-xs font-medium rounded-full/.test(files[SOUKATSU_RESULT])) problems.push(`${SOUKATSU_RESULT}: 総括表の「指摘なし・要改善」がスマホで 44px 未満`)
+    for (const f of [SOUKATSU, SOUKATSU_EDIT]) if (!/<EquipmentResultButtons\n/.test(files[f])) problems.push(`${f}: 総括表の「指摘なし・要改善」が共有のボタン（44px）を使っていない`)
     if (!/<label key=\{opt\.value\} className="inline-flex min-h-11 md:min-h-8 /.test(files[CHOICE])) problems.push(`${CHOICE}: 選ぶ欄（専用・兼用など）がスマホで 44px 未満`)
     // 8. 英数字の欄
     for (const [f, re, label] of [[DEVICE, /<Input \{\.\.\.CODE_INPUT_PROPS\} placeholder="型式"/g, "測定機器の型式"], [LICENSE, /<Input \{\.\.\.CODE_INPUT_PROPS\}[^\n]*placeholder="交付番号"/g, "交付番号"]]) {
@@ -162,7 +166,8 @@ if (SELF_TEST) {
         ["戻るリンクを小さく戻す", mut(NAV, 'className="inline-flex min-h-11 items-center text-blue-600', 'className="text-blue-600'), "点検票の一覧に戻る"],
         ["一番下の保存ボタンを小さく戻す", mut(FORMS[5], "onClick={handleSave} disabled={busy} className={SAVE_BUTTON}", 'onClick={handleSave} disabled={busy} className="bg-slate-700"'), "一番下のボタン（handleSave）"],
         ["主な操作のボタンを小さく戻す", mut(ACTION, "h-auto min-h-14 w-full ", "h-auto min-h-10 w-full "), "高さ 56px"],
-        ["総括表の指摘なし・要改善を小さく戻す", mut(SOUKATSU, "inline-flex min-h-11 md:min-h-0 items-center gap-1 px-3", "inline-flex items-center gap-1 px-3"), "指摘なし・要改善"],
+        ["総括表の指摘なし・要改善を小さく戻す", mut(SOUKATSU_RESULT, "inline-flex min-h-11 md:min-h-0 items-center gap-1 px-3", "inline-flex items-center gap-1 px-3"), "指摘なし・要改善"],
+        ["総括表の編集の画面が共有のボタンを使わない", mut(SOUKATSU_EDIT, "<EquipmentResultButtons\n", "<EquipmentResultButtonsX\n"), "共有のボタン"],
         ["型式の自動修正を戻す", mut(DEVICE, '<Input {...CODE_INPUT_PROPS} placeholder="型式"', '<Input placeholder="型式"'), "測定機器の型式"],
     ]
     for (const [label, m, expect] of mutants) {

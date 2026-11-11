@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
+import { safeNextPath } from "@/lib/safe-next"
 import { Button } from "@/components/ui/button"
 import { ACTION_BUTTON_FULL } from "@/lib/action-button"
 import { Input } from "@/components/ui/input"
@@ -53,7 +54,8 @@ export default function SignupPage() {
             return
         }
 
-        router.push("/tool")
+        // ★招待の画面から来たときは、そこへ戻す（ログインの画面と同じく、このアプリの中の相対パスだけ・2026-11-08）
+        router.push(safeNextPath(new URLSearchParams(window.location.search).get("redirectTo")))
         router.refresh()
     }
 

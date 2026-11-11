@@ -1,7 +1,7 @@
 import Link from "next/link"
 import type { ReactNode } from "react"
 import { AlertCircle, AlertTriangle, CheckCircle2, ChevronRight, ClipboardCheck, XCircle } from "lucide-react"
-import { groupReadinessByFix, readinessFixHref, type ReadinessFix, type ReadinessItem, type ReportReadiness } from "@/lib/report-readiness"
+import { groupReadinessByFix, readinessBoxTitle, readinessFixHref, type ReadinessFix, type ReadinessItem, type ReportReadiness } from "@/lib/report-readiness"
 
 /**
  * 確定前・出力前の不備チェックの表示（src/lib/report-readiness.ts・2026-10-19・打合せ #101）。
@@ -78,7 +78,7 @@ export default function ReportReadinessBox({
             <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 id="report-readiness-title" className="flex items-center gap-2 font-bold text-slate-900">
                     <ClipboardCheck className="h-5 w-5 shrink-0 text-teal-700" />
-                    {mode === "finalize" ? "確定前の確認" : "出力前の確認"}
+                    {readinessBoxTitle(mode)}
                 </h2>
                 <p className="text-xs text-slate-500">
                     必須 {required.length} 項目中 {okItems.length} 項目 OK ／ 注意 {warnings.length} 件

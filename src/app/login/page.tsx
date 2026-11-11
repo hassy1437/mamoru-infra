@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import { markMyPasswordSet } from "@/lib/password-mark"
-import { safeNextPath } from "@/lib/safe-next"
+import { DEFAULT_AFTER_LOGIN, safeNextPath } from "@/lib/safe-next"
 import { Button } from "@/components/ui/button"
 import { ACTION_BUTTON_FULL } from "@/lib/action-button"
 import { Input } from "@/components/ui/input"
@@ -103,7 +103,11 @@ function LoginForm() {
                 </form>
                 <p className="mt-4 text-center text-sm text-slate-600">
                     アカウントをお持ちでない方は{" "}
-                    <Link href="/signup" className="text-blue-600 hover:underline">
+                    {/* ★招待の画面から来たときは、新規登録のあとも招待の画面へ戻す（2026-11-08） */}
+                    <Link
+                        href={redirectTo === DEFAULT_AFTER_LOGIN ? "/signup" : `/signup?redirectTo=${encodeURIComponent(redirectTo)}`}
+                        className="text-blue-600 hover:underline"
+                    >
                         新規登録
                     </Link>
                 </p>

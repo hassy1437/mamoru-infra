@@ -10,14 +10,13 @@ export default async function EditSoukatsuPage({
 }: {
     params: Promise<{ id: string }>
 }) {
-    const { supabase, user } = await getAuthenticatedClient()
+    const { supabase } = await getAuthenticatedClient()
     const { id } = await params
 
     const { data: soukatsu } = await supabase
         .from("inspection_soukatsu")
         .select("*")
         .eq("id", id)
-        .eq("user_id", user.id)
         .single()
     if (!soukatsu) return notFound()
 
@@ -54,7 +53,7 @@ export default async function EditSoukatsuPage({
                     ]} />
                     <h1 className="text-2xl font-bold text-slate-900 mt-2">総括表の編集</h1>
                     <p className="text-slate-500 mt-1 text-sm">
-                        建物情報・届出者・点検日・総合判定・備考を修正できます。（各設備の点検結果は別記様式で編集します）
+                        建物情報・届出者・点検日・設備ごとの点検結果（指摘なし／要改善）・総合判定・備考を修正できます。（点検票の行ごとの判定は、点検票（別記様式）で直します）
                     </p>
                 </div>
                 <SoukatsuEditForm

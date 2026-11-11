@@ -27,7 +27,9 @@ import {
     type CellAt,
     drawOrWrapWhenTiny,
     drawShiftedDown,
+    condenseSingleLine,
 } from "@/lib/pdf-form-helpers"
+import { drawInspectorFields, inspectorBox } from "@/lib/pdf-inspector-field"
 
 type MarkKey = "A" | "B" | "C" | "D" | "E" | "F"
 
@@ -86,7 +88,7 @@ type BekkiPayload = {
 }
 
 type DrawOptions = {
-    align?: "left" | "center"
+    align?: "left" | "center" | "right"
     paddingX?: number
     paddingY?: number
     minFontSize?: number
@@ -247,15 +249,19 @@ export async function POST(req: NextRequest) {
 
             currentSize = Math.max(currentSize, minFontSize)
 
+            // ★5pt を割るなら 5pt のまま横を縮めて入れる（condenseSingleLine の約束 3 つ・全機能チェック 48）
+            const fitted = condenseSingleLine(fonts, normalized, currentSize, maxWidth, maxHeight)
+            currentSize = fitted.size
+            const condense = fitted.condense
             fonts.fit?.reportShrink(normalized, designSize, currentSize, options?.at)
 
             reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth, options?.at)
 
-            const textToDraw = truncateToFitWidth(normalized, currentSize, maxWidth,
+            const textToDraw = condense < 1 ? normalized : truncateToFitWidth(normalized, currentSize, maxWidth,
                 cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at))
             if (!textToDraw) return
 
-            const textWidth = measureRuns(fonts, String(textToDraw ?? ""), currentSize)
+            const textWidth = measureRuns(fonts, String(textToDraw ?? ""), currentSize) * condense
             const textHeight = fonts.jp.heightAtSize(currentSize, { descender: true })
             const xOffset = options?.xOffset ?? 0
             const yOffset = options?.yOffset ?? 0
@@ -263,12 +269,14 @@ export async function POST(req: NextRequest) {
 
             if (options?.align === "center") {
                 textX = cellX + (cellW - textWidth) / 2 + xOffset
+            } else if (options?.align === "right") {
+                textX = cellX + cellW - paddingX - textWidth + xOffset
             }
 
             const textTopFromTop = cellTopFromTop + (cellH - textHeight) / 2 + yOffset
             const baselineOffset = textHeight * 0.78
 
-            drawTextRuns(page, fonts, String(textToDraw ?? ""), textX, pageHeight - (textTopFromTop + baselineOffset), currentSize)
+            drawTextRuns(page, fonts, String(textToDraw ?? ""), textX, pageHeight - (textTopFromTop + baselineOffset), currentSize, condense)
         }
 
         const drawWrappedInCell = (
@@ -328,11 +336,16 @@ export async function POST(req: NextRequest) {
             drawPeriodDate({ page: page1, pageHeight: p1Height, fonts, dateValue: body.period_end, anchors: PERIOD_END_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 8.1 })
         }
 
-        // 刷り込みに重ねない: 前置ラベル氏名(-143.9) の右から（テンプレート実測）
-        drawInCell(page1, p1Height, body.inspector_name, 144.4, 187.44, 61.64, 56.4, 8.8)
-        drawInCell(page1, p1Height, body.inspector_company, 291.0, 187.44, 100.0, 28.44, 8.6)
-        drawInCell(page1, p1Height, body.inspector_tel, 411.84, 187.44, 117.72, 28.44, 8.6)
-        drawInCell(page1, p1Height, body.inspector_address, 291.0, 215.88, 237.0, 27.96, 8.4)
+        // ★点検者の欄は、刷り込みの見出し（氏名・社名・TEL・住所）と同じ高さに 8pt で描く（全機能チェック 51・src/lib/pdf-inspector-field.ts）。
+        //   inspectorBox(見出しの右端, 見出しのベースライン, 値の右の限り, 欄の下端)。見出しの位置は雛形の実測
+        drawInspectorFields(page1, p1Height, fonts, {
+            name: body.inspector_name, company: body.inspector_company, tel: body.inspector_tel, address: body.inspector_address,
+        }, {
+            name: inspectorBox(143.88, 202.8, 206.04, 243.84),
+            company: inspectorBox(288.24, 199.32, 388.25, 215.88),
+            tel: inspectorBox(409.09, 199.32, 529.56, 215.88),
+            address: inspectorBox(288.24, 227.52, 528.0, 243.84),
+        })
 
         const rows1 = body.page1_rows ?? []
         for (let i = 0; i < Math.min(rows1.length, P1_ROW_BOUNDS.length - 1); i += 1) {

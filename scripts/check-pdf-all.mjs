@@ -379,7 +379,8 @@ const CHECKS = [
         why: "報告書（様式第1）の届出者欄が記入用の下線の右端を越えないか・所在地/名称/用途が欄の縦の中央にあるか"
             + "（短い値・長い値で実際に描いて測る。罫線は雛形から毎回測る）。"
             + "★報告書は別記用の検査の外で、下線の先へ 15pt はみ出し・値が上の罫線に張りついたまま出ていた（2026-10-07）。"
-            + "宛名が日付（年）に重ならないか（画面の上限いっぱいの全角で・2026-10-19）",
+            + "宛名が日付（年）に重ならないか（画面の上限いっぱいの全角で・2026-10-19）。"
+            + "敬称の無い宛名が表題・刷り込みから 2pt 以上離れているか（2026-11-11・全機能チェック 49: 表題に接していた）",
         runs: [
             { label: "自己診断", cmd: ["node", "scripts/check-houkoku-layout.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
             { cmd: ["node", "scripts/check-houkoku-layout.mjs"], sentinel: "HOUKOKU_LAYOUT_OK" },
@@ -555,11 +556,12 @@ const CHECKS = [
     },
     {
         file: "check-condense-min-size.mjs", stage: "挙動", needsPdfs: true,
-        // ★排他。自己診断が src/lib/pdf-form-helpers.ts を一時的に書き換えるので、ほかの PDF の検査と同時に走らせない
+        // ★排他。自己診断が src/lib/pdf-form-helpers.ts と第3 の route.ts を一時的に書き換えるので、ほかの PDF の検査と同時に走らせない
         exclusive: true,
         why: "背の低い行で 1 行のまま 5pt を割る値を、5pt のまま横を縮めて（長体・最大 15%）入れているか。収まっている値は縮めない／"
             + "縮めても入らない値は今までどおり 5pt 未満の警告。★第6・第7 の不良内容（17〜18 字）が 4.6〜4.9pt まで縮んでいた"
-            + "（2026-10-20・本番の通しチェック。行の高さに 5pt の 2 行が入らない）",
+            + "（2026-10-20・本番の通しチェック。行の高さに 5pt の 2 行が入らない）。"
+            + "★1 行の欄も同じ（2026-11-11・全機能チェック 48）: 第3 その2 ポンプ性能の吐出量 4 桁が 4.3pt まで縮んでいた",
         runs: [
             { label: "自己診断", cmd: ["node", "scripts/check-condense-min-size.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
             { cmd: ["node", "scripts/check-condense-min-size.mjs"], sentinel: "CONDENSE_MIN_SIZE_OK" },
@@ -737,8 +739,9 @@ const CHECKS = [
     },
     {
         file: "check-soukatsu-details.mjs", stage: "挙動",
-        why: "総括表の不良内容・措置内容・立会者が、入力の整理・編集の突き合わせ（設備名と判定を消さない）・PDF の行と欄まで届くか。"
-            + "★空欄は正常なピクセルなので画像では出ない種類（画面に入力欄が無く常に空欄だった #28）",
+        why: "総括表の不良内容・措置内容・立会者が、入力の整理・編集の突き合わせ（設備名を消さない・判定は指摘なし⇄要改善だけ変える）・PDF の行と欄まで届くか。"
+            + "★空欄は正常なピクセルなので画像では出ない種類（画面に入力欄が無く常に空欄だった #28）。"
+            + "★判定は 2026-11-09 から編集でも変えられる（点検票に「否」があるのに総括表を直せなかった・定期テスト 21）",
         runs: [
             { label: "自己診断", cmd: ["node", "scripts/check-soukatsu-details.mjs", "--self-test"], sentinel: "SELF_TEST_OK" },
             { cmd: ["node", "scripts/check-soukatsu-details.mjs"], sentinel: "SOUKATSU_DETAILS_OK" },
@@ -975,6 +978,7 @@ const CHECKS = [
         file: "check-nameplate-eval.mjs", stage: "静的",
         why: "銘板の読み取り（src/lib/nameplate-reading.ts）と評価の集計（scripts/nameplate-eval/）の自己診断（2026-10-23）。"
             + "★正誤の決め方・集計が狂うと、危ないモデルを「合格」と読む。★返す形が Claude の制限を外れると本番で毎回 400。"
+            + "★2026-10-30: Gemini・GPT の呼び方（偽の返事）・形の確かめ・段階方式の集計も見る。"
             + "★PDF とは無関係だが、scripts/check-* はここに載せる決まり",
         runs: [
             { cmd: ["node", "--experimental-strip-types", "scripts/check-nameplate-eval.mjs"], sentinel: "NAMEPLATE_EVAL_OK" },

@@ -1,6 +1,6 @@
 ﻿import { NextRequest, NextResponse } from "next/server"
 import { PDF_INVALID_BODY, PdfBodyError, readPdfBody } from "@/lib/pdf-route-body"
-import { PDFDocument, type PDFPage, StandardFonts } from "pdf-lib"
+import { PDFDocument, type PDFPage, StandardFonts, rgb } from "pdf-lib"
 import {
     buildFitError,
     createFitCollector,
@@ -13,6 +13,7 @@ import { DEVICE_TABLE_ROWS_PER_COLUMN, resolveDeviceTable } from "@/lib/bekki-de
 import fs from "fs"
 import path from "path"
 import {
+    CHOICE_CIRCLE_BORDER,
     periodDateError,
 drawPeriodDate,
     drawTextInCell,
@@ -31,7 +32,9 @@ drawPeriodDate,
     type CellRef,
     drawOrWrapWhenTiny,
     drawShiftedDown,
+    condenseSingleLine,
 } from "@/lib/pdf-form-helpers"
+import { drawInspectorFields, inspectorBox } from "@/lib/pdf-inspector-field"
 
 /**
  * テストデータ生成が読む「数値しか入らない欄」の宣言。
@@ -100,6 +103,12 @@ const P1_ROW_BOUNDS = [
 
 const P2_ROW_BOUNDS = [
     77.88, 103.08, 128.64, 154.08, 179.64, 205.08, 230.64, 256.08, 281.64, 307.08, 332.64,
+]
+
+// ★この様式は点検種別セルに「機　器」だけが印字されている（総合の選択肢が無い＝機器点検用）。
+//   第13 と同じく「機器」を丸で囲む（全機能チェック 52・2026-11-11 に A でそろえた）。座標は solve-choice-circle-geometry で解いた値
+const TYPE_CHOICES = [
+    { label: "機器", cx: 188.04, cy: 161.89, rx: 36.06, ry: 9.28 }, // 機 156.48-167.04 / 器 209.04-219.6
 ]
 
 const PERIOD_ROW = { top: 151.8, h: 21.48 }
@@ -209,19 +218,24 @@ export async function POST(req: NextRequest) {
             const h = font.jp.heightAtSize(currentSize, { descender: true })
             if (h > maxHeight) currentSize = currentSize * (maxHeight / h)
             currentSize = Math.max(currentSize, options?.minFontSize ?? 3.5)
+            // ★5pt を割るなら 5pt のまま横を縮めて入れる（condenseSingleLine の約束 3 つ・全機能チェック 48）
+            const fitted = condenseSingleLine(font, normalized, currentSize, maxWidth, maxHeight)
+            currentSize = fitted.size
+            const condense = fitted.condense
             fonts.fit?.reportShrink(normalized, designSize, currentSize, options?.at)
             reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth, options?.at)
             // ★共有の truncateRunsToFitWidth に寄せた（8本目の複製だった）。
             //   自前版は cut が 0 まで落ちた場合の report(value, 0) を持たず、
             //   1文字も入らないときに情報が消えたまま 200 が返っていた。
-            const textToDraw = truncateRunsToFitWidth(font, normalized, currentSize, maxWidth,
+            const textToDraw = condense < 1 ? normalized : truncateRunsToFitWidth(font, normalized, currentSize, maxWidth,
                 cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at))
-            const textWidth = measureRuns(font, String(textToDraw ?? ""), currentSize)
+            const textWidth = measureRuns(font, String(textToDraw ?? ""), currentSize) * condense
             const textHeight = font.jp.heightAtSize(currentSize, { descender: true })
             let textX = cellX + paddingX
             if (options?.align === "center") textX = cellX + (cellW - textWidth) / 2
+            else if (options?.align === "right") textX = cellX + cellW - paddingX - textWidth
             const textTopFromTop = cellTopFromTop + (cellH - textHeight) / 2
-            drawTextRuns(page, font, String(textToDraw ?? ""), textX, pageHeight - (textTopFromTop + textHeight * 0.78), currentSize)
+            drawTextRuns(page, font, String(textToDraw ?? ""), textX, pageHeight - (textTopFromTop + textHeight * 0.78), currentSize, condense)
         }
 
         const drawDeviceMakerSingle = (text: unknown, page: PDFPage, pageH: number, cellX: number, cellW: number, cellTop: number, cellH: number, baseFontSize = 5.6) => {
@@ -286,6 +300,19 @@ export async function POST(req: NextRequest) {
             drawInCell(page, pageHeight, body.fire_manager, 411.48, 95.64, 118.92, 27.84, 7.4)
             drawInCell(page, pageHeight, body.location, 122.64, 123.48, 241.08, 28.32, 8.0)
             drawInCell(page, pageHeight, body.witness, 411.48, 123.48, 118.92, 28.32, 7.4)
+            // ★点検種別: 刷り込みの「機器」を丸で囲む（第13 と同じ・全機能チェック 52）
+            const inspectionType = String(body.inspection_type ?? "").trim() || "機器"
+            for (const choice of TYPE_CHOICES) {
+                if (!inspectionType.includes(choice.label)) continue
+                page.drawEllipse({
+                    x: choice.cx,
+                    y: pageHeight - choice.cy,
+                    xScale: choice.rx,
+                    yScale: choice.ry,
+                    borderColor: rgb(0, 0, 0),
+                    borderWidth: CHOICE_CIRCLE_BORDER,
+                })
+            }
             // 点検種別はテンプレートに「機　器」が印刷済みのため描画不要
 
             const canDrawSplitPeriod =
@@ -318,13 +345,16 @@ export async function POST(req: NextRequest) {
                 }
         }
 
-            // 刷り込みに重ねない: 前置ラベル氏名(-149.0) の右から（テンプレート実測）
-            drawInCell(page, pageHeight, body.inspector_name, 149.54, 173.28, 103.9, 56.76, 6.7)
-            // 社名: label ends x≈349, TEL label starts x≈411 → data x=349, w=62
-            // TEL: label ends x≈428, right edge x=530 → data x=428, w=102
-            drawWrappedInCell(page, pageHeight, body.inspector_company, 349.2, 173.0, 62.0, 26.3, 6.0)
-            drawInCell(page, pageHeight, body.inspector_tel, 428.4, 173.0, 101.5, 26.3, 6.2)
-            drawInCell(page, pageHeight, body.inspector_address, 349.2, 199.56, 181.2, 30.48, 6.1)
+            // ★点検者の欄は、刷り込みの見出し（氏名・社名・TEL・住所）と同じ高さに 8pt で描く（全機能チェック 51・src/lib/pdf-inspector-field.ts）。
+            //   inspectorBox(見出しの右端, 見出しのベースライン, 値の右の限り, 欄の下端)。見出しの位置は雛形の実測
+            drawInspectorFields(page, pageHeight, fonts, {
+                name: body.inspector_name, company: body.inspector_company, tel: body.inspector_tel, address: body.inspector_address,
+            }, {
+                name: inspectorBox(149.04, 188.64, 253.44, 230.04),
+                company: inspectorBox(348.6, 184.32, 406.6, 199.3),
+                tel: inspectorBox(427.32, 184.32, 529.9, 199.3),
+                address: inspectorBox(348.6, 212.28, 530.4, 230.04),
+            })
         }
 
         drawHeader(page1, p1Height)

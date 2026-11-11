@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { PDF_INVALID_BODY, PdfBodyError, readPdfBody } from "@/lib/pdf-route-body"
-import { PDFDocument, type PDFPage, StandardFonts } from "pdf-lib"
+import { PDFDocument, type PDFPage, StandardFonts, rgb } from "pdf-lib"
 import {
     buildFitError,
     createFitCollector,
@@ -12,9 +12,10 @@ import fontkit from "@pdf-lib/fontkit"
 import { DEVICE_TABLE_ROWS_PER_COLUMN, resolveDeviceTable } from "@/lib/bekki-device-table"
 import fs from "fs"
 import path from "path"
-import { blankPrintedRows, drawPeriodDate, drawTextInCell, drawWrappedTextInCell, formatJapaneseDateText, formatJudgment, parseDateParts, type CellDrawOptions, type DateAnchors, type ReportFonts, type CellRef, periodDateError, drawOrWrapWhenTiny, SINGLE_LINE_FIT_DEFAULTS,
+import { CHOICE_CIRCLE_BORDER, blankPrintedRows, drawPeriodDate, drawTextInCell, drawWrappedTextInCell, formatJapaneseDateText, formatJudgment, parseDateParts, type CellDrawOptions, type DateAnchors, type ReportFonts, type CellRef, periodDateError, drawOrWrapWhenTiny, SINGLE_LINE_FIT_DEFAULTS,
     drawShiftedDown,
 } from "@/lib/pdf-form-helpers"
+import { drawInspectorFields, inspectorBox } from "@/lib/pdf-inspector-field"
 
 /**
  * テストデータ生成が読む「数値しか入らない欄」の宣言。
@@ -71,6 +72,12 @@ type ResultColumns = {
 }
 
 const P1_ROW_BOUNDS = [270.72, 290.76, 310.8, 330.72, 350.76, 370.8, 390.72, 410.76, 430.8, 450.72, 470.76]
+
+// ★この様式は点検種別セルに「機　器」だけが印字されている（総合の選択肢が無い＝機器点検用）。
+//   第13 と同じく「機器」を丸で囲む（全機能チェック 52・2026-11-11 に A でそろえた）。座標は solve-choice-circle-geometry で解いた値
+const TYPE_CHOICES = [
+    { label: "機器", cx: 167.16, cy: 172.09, rx: 19.0, ry: 8.0 }, // 機 151.32-161.88 / 器 172.44-183.0
+]
 
 const PERIOD_ROW = { top: 162.72, h: 20.04 }
 // baseline は刷り込み「年」のベースライン（テンプレート p1 の実測値）。
@@ -187,6 +194,19 @@ export async function POST(req: NextRequest) {
             drawInCell(page, pageHeight, body.fire_manager, 432.6, 114.72, 97.44, 24.0, 7.4)
             drawInCell(page, pageHeight, body.location, 117.6, 138.72, 272.52, 24.0, 8.0)
             drawInCell(page, pageHeight, body.witness, 432.6, 138.72, 97.44, 24.0, 7.4)
+            // ★点検種別: 刷り込みの「機器」を丸で囲む（第13 と同じ・全機能チェック 52）
+            const inspectionType = String(body.inspection_type ?? "").trim() || "機器"
+            for (const choice of TYPE_CHOICES) {
+                if (!inspectionType.includes(choice.label)) continue
+                page.drawEllipse({
+                    x: choice.cx,
+                    y: pageHeight - choice.cy,
+                    xScale: choice.rx,
+                    yScale: choice.ry,
+                    borderColor: rgb(0, 0, 0),
+                    borderWidth: CHOICE_CIRCLE_BORDER,
+                })
+            }
             // 点検種別: この様式は総合点検が無く、テンプレートに「機器」だけが刷り込まれている
             // （正典の Word でもセルの中身は「機器」のみ）。選ぶものが無いので描かない。
             const canDrawSplitPeriod =
@@ -218,12 +238,16 @@ export async function POST(req: NextRequest) {
                     })
                 }
         }
-            // 刷り込みに重ねない: 前置ラベル氏名(-143.9) の右から（テンプレート実測）
-            drawInCell(page, pageHeight, body.inspector_name, 144.38, 182.76, 72.46, 48.0, 6.7)
-            // 刷り込みに重ねない: 後続のTEL(427.4-) の手前まで（テンプレート実測）
-            drawInCell(page, pageHeight, body.inspector_company, 302.4, 182.76, 124.5, 24.0, 6.3)
-            drawInCell(page, pageHeight, body.inspector_tel, 444.0, 182.76, 86.04, 24.0, 6.3)
-            drawInCell(page, pageHeight, body.inspector_address, 302.4, 206.76, 227.64, 24.0, 6.2)
+            // ★点検者の欄は、刷り込みの見出し（氏名・社名・TEL・住所）と同じ高さに 8pt で描く（全機能チェック 51・src/lib/pdf-inspector-field.ts）。
+            //   inspectorBox(見出しの右端, 見出しのベースライン, 値の右の限り, 欄の下端)。見出しの位置は雛形の実測
+            drawInspectorFields(page, pageHeight, fonts, {
+                name: body.inspector_name, company: body.inspector_company, tel: body.inspector_tel, address: body.inspector_address,
+            }, {
+                name: inspectorBox(143.88, 194.16, 216.84, 230.76),
+                company: inspectorBox(301.44, 192.6, 422.44, 206.76),
+                tel: inspectorBox(443.28, 192.6, 530.04, 206.76),
+                address: inspectorBox(301.44, 216.6, 530.04, 230.76),
+            })
         }
 
         drawHeader(page1, p1Height)

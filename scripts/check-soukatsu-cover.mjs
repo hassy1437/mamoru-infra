@@ -10,6 +10,8 @@
 //   1. 表紙へ渡す値（build-merged-report.ts）: report_date は総括表の report_date・宛名を渡す・点検日を渡さない
 //   2. 作る画面・直す画面の両方: 欄を出し、保存に入れる
 //   3. 作る画面: 報告年月日を★今日（日本時間）で始める（2026-10-20・録音 102 で「空で始める」から変えた）。★点検日では始めない
+//   4. 宛名の印字: 画面の「表紙の印字：」と PDF（api/generate-pdf）が同じ関数（lib の printedFireDepartment）を通す
+//      （名前の終わりと敬称の始まりが重なるときは重ねない・2026-11-08 定期テスト 26。重ねない振る舞いは単体テストと check-houkoku-layout が見る）
 //
 // 使い方: node scripts/check-soukatsu-cover.mjs [--self-test]
 import fs from "fs"
@@ -18,6 +20,8 @@ import path from "path"
 const MERGE = "src/lib/build-merged-report.ts"
 const NEW_FORM = "src/components/soukatsu-form.tsx"
 const EDIT_FORM = "src/components/soukatsu-edit-form.tsx"
+const COVER_INPUTS = "src/components/soukatsu-cover-inputs.tsx"
+const COVER_ROUTE = "src/app/api/generate-pdf/route.ts"
 const read = (f) => fs.readFileSync(path.join(process.cwd(), f), "utf8")
 
 const judge = (files) => {
@@ -38,10 +42,15 @@ const judge = (files) => {
     // ★2026-10-20（録音 102・橋本さんの決定）: 今日（日本時間）で始める。点検日で始めると、点検日を印字していた元の誤りに戻る
     if (!/const \[reportDate, setReportDate\] = useState\(\(\) => jstTodayYmd\(\)\)/.test(files[NEW_FORM]))
         problems.push(`${NEW_FORM}: 報告年月日を今日（日本時間・jstTodayYmd）で始めていない（点検日では始めない）`)
+    // ★宛名の印字は画面と PDF で同じ関数（片方だけ直すと、画面は「大阪市北消防署長」・PDF は「大阪市北消防署消防署長」になる）
+    if (!/const printed = printedFireDepartment\(fireDepartmentName\)/.test(files[COVER_INPUTS]))
+        problems.push(`${COVER_INPUTS}: 「表紙の印字：」を printedFireDepartment で作っていない（PDF と違う宛名を見せる）`)
+    if (!/const fireDepartment = printedFireDepartment\(toText\(body\.fire_department_name\)\)/.test(files[COVER_ROUTE]))
+        problems.push(`${COVER_ROUTE}: 表紙の宛名を printedFireDepartment で作っていない（画面と違う宛名を印字する）`)
     return problems
 }
 
-const files = Object.fromEntries([MERGE, NEW_FORM, EDIT_FORM].map((f) => [f, read(f)]))
+const files = Object.fromEntries([MERGE, NEW_FORM, EDIT_FORM, COVER_INPUTS, COVER_ROUTE].map((f) => [f, read(f)]))
 
 if (process.argv.includes("--self-test")) {
     if (judge(files).length) {
@@ -56,6 +65,8 @@ if (process.argv.includes("--self-test")) {
         ["直す画面で保存しない", EDIT_FORM, "...coverFieldsForSave(reportDate, fireDepartmentName),", "", `${EDIT_FORM}: 保存に`],
         ["直す画面で欄を出さない", EDIT_FORM, "<SoukatsuCoverInputs", "<div", `${EDIT_FORM}: 表紙の欄`],
         ["報告年月日を点検日で始める", NEW_FORM, "const [reportDate, setReportDate] = useState(() => jstTodayYmd())", "const [reportDate, setReportDate] = useState(initialInspectionDate)", "今日（日本時間・jstTodayYmd）で始めていない"],
+        ["画面の印字を名前と敬称をつないだだけに戻す", COVER_INPUTS, "const printed = printedFireDepartment(fireDepartmentName)", "const printed = joinFireDepartment(name, title)", "表紙の印字："],
+        ["PDF の宛名を保存の値のまま描く", COVER_ROUTE, "const fireDepartment = printedFireDepartment(toText(body.fire_department_name))", "const fireDepartment = toText(body.fire_department_name)", "画面と違う宛名"],
         ["報告年月日を空で始める（録音 101 の決定に戻る）", NEW_FORM, "const [reportDate, setReportDate] = useState(() => jstTodayYmd())", 'const [reportDate, setReportDate] = useState("")', "今日（日本時間・jstTodayYmd）で始めていない"],
     ]
     for (const [label, file, from, to, expect] of mutants) {
@@ -70,13 +81,13 @@ if (process.argv.includes("--self-test")) {
         }
         console.log(`  陽性対照: ${label} → 検出`)
     }
-    console.log("  陰性対照: 表紙へ総括表の報告年月日・宛名を渡し、作る画面・直す画面の両方で保存する")
+    console.log("  陰性対照: 表紙へ総括表の報告年月日・宛名を渡し、作る画面・直す画面の両方で保存する・宛名の印字は画面と PDF で同じ関数")
     console.log("SELF_TEST_OK")
     process.exit(0)
 }
 
 const problems = judge(files)
-console.log("表紙の報告年月日・宛名のつなぎを検査（表紙へ渡す値・作る画面・直す画面）")
+console.log("表紙の報告年月日・宛名のつなぎを検査（表紙へ渡す値・作る画面・直す画面・宛名の印字）")
 if (problems.length) {
     console.log("★NG:")
     for (const p of problems) console.log("   ", p)

@@ -8,7 +8,9 @@ import path from "path"
 import { periodDateError,
 drawChoiceCircle, drawPeriodDate, drawTextInCell, drawTextRuns, drawWrappedTextInCell, formatJapaneseDateText, formatJudgment, cellAt, measureRuns, truncateRunsToFitWidth, parseDateParts, reportIfBelowMinSize, type CellDrawOptions, type DateAnchors, type ReportFonts, type CellRef, drawOrWrapWhenTiny,
     drawShiftedDown,
+    condenseSingleLine,
 } from "@/lib/pdf-form-helpers"
+import { drawInspectorFields, inspectorBox } from "@/lib/pdf-inspector-field"
 import {
     buildFitError,
     createFitCollector,
@@ -198,19 +200,24 @@ export async function POST(req: NextRequest) {
             const h = font.jp.heightAtSize(currentSize, { descender: true })
             if (h > maxHeight) currentSize = currentSize * (maxHeight / h)
             currentSize = Math.max(currentSize, options?.minFontSize ?? 3.5)
+            // ★5pt を割るなら 5pt のまま横を縮めて入れる（condenseSingleLine の約束 3 つ・全機能チェック 48）
+            const fitted = condenseSingleLine(font, normalized, currentSize, maxWidth, maxHeight)
+            currentSize = fitted.size
+            const condense = fitted.condense
             fonts.fit?.reportShrink(normalized, designSize, currentSize, options?.at)
             reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth, options?.at)
             // ★共有の truncateRunsToFitWidth に寄せた（8本目の複製だった）。
             //   自前版は cut が 0 まで落ちた場合の report(value, 0) を持たず、
             //   1文字も入らないときに情報が消えたまま 200 が返っていた。
-            const textToDraw = truncateRunsToFitWidth(font, normalized, currentSize, maxWidth,
+            const textToDraw = condense < 1 ? normalized : truncateRunsToFitWidth(font, normalized, currentSize, maxWidth,
                 cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at))
-            const textWidth = measureRuns(font, String(textToDraw ?? ""), currentSize)
+            const textWidth = measureRuns(font, String(textToDraw ?? ""), currentSize) * condense
             const textHeight = font.jp.heightAtSize(currentSize, { descender: true })
             let textX = cellX + paddingX
             if (options?.align === "center") textX = cellX + (cellW - textWidth) / 2
+            else if (options?.align === "right") textX = cellX + cellW - paddingX - textWidth
             const textTopFromTop = cellTopFromTop + (cellH - textHeight) / 2
-            drawTextRuns(page, font, String(textToDraw ?? ""), textX, pageHeight - (textTopFromTop + textHeight * 0.78), currentSize)
+            drawTextRuns(page, font, String(textToDraw ?? ""), textX, pageHeight - (textTopFromTop + textHeight * 0.78), currentSize, condense)
         }
 
         const drawDeviceMakerSingle = (text: unknown, page: PDFPage, pageH: number, cellX: number, cellW: number, cellTop: number, cellH: number, baseFontSize = 5.6) => {
@@ -306,15 +313,16 @@ export async function POST(req: NextRequest) {
                 }
         }
 
-            // 刷り込みに重ねない: 前置ラベル氏名(-142.6) の右から（テンプレート実測）
-            drawInCell(page1, p1Height, body.inspector_name, 143.06, 185.04, 110.26, 55.56, 6.4)
-            // 社名: label x=321-342, TEL label x=426-442, right edge x=530
-            // 社名 data: after label (x=343) to before TEL label (x=425) → w=82
-            // TEL data: after TEL label (x=443) to right edge (x=530) → w=87
-            drawWrappedInCell(page1, p1Height, body.inspector_company, 343.0, 185.04, 82.0, 27.84, 5.8)
-            drawInCell(page1, p1Height, body.inspector_tel, 443.0, 185.04, 87.0, 27.84, 6.0)
-            // 住所: label x=321-342, right edge x=530
-            drawInCell(page1, p1Height, body.inspector_address, 343.0, 212.88, 187.0, 27.72, 5.9)
+            // ★点検者の欄は、刷り込みの見出し（氏名・社名・TEL・住所）と同じ高さに 8pt で描く（全機能チェック 51・src/lib/pdf-inspector-field.ts）。
+            //   inspectorBox(見出しの右端, 見出しのベースライン, 値の右の限り, 欄の下端)。見出しの位置は雛形の実測
+            drawInspectorFields(page1, p1Height, fonts, {
+                name: body.inspector_name, company: body.inspector_company, tel: body.inspector_tel, address: body.inspector_address,
+            }, {
+                name: inspectorBox(142.56, 196.08, 253.32, 240.6),
+                company: inspectorBox(342.12, 195.82, 421.13, 212.88),
+                tel: inspectorBox(441.85, 195.82, 530.0, 212.88),
+                address: inspectorBox(342.12, 223.68, 530.0, 240.6),
+            })
 
             drawInCell(page1, p1Height, body.extra_fields?.motor_maker, 222.24, 240.6, 105.6, 20.04, 6.0)
             drawInCellWithFont(page1, p1Height, fonts, body.extra_fields?.motor_model, 222.24, 260.64, 105.6, 20.04, 6.0, { paddingX: 2 })
@@ -352,7 +360,8 @@ export async function POST(req: NextRequest) {
 
         // === P1 Row 7: ホース・ノズル (長さｍ × 本数本 ／ ノズル径mm) ===
         // 公式PDF実測: ｍ@247.6 / ×(x1=268.6) / 本@289.6(x1=300.1) / mm@321。content列左=222.24。
-        // 新キー優先（content=長さ, hose_count=本数, nozzle_dia=口径）→ "/" 分割 → 単一content。値は各空白に中央寄せ
+        // 新キー優先（content=長さ, hose_count=本数, nozzle_dia=口径）→ "/" 分割 → 単一content。
+        // ★値は各単位の直前に右寄せ（全機能チェック 50・以前は空白の中央で、本数・口径が前の「×」「本」に寄って読めた）
         const p1Rows = body.page1_rows ?? []
         const hoseRow = p1Rows[7]
         if (hoseRow) {
@@ -363,9 +372,9 @@ export async function POST(req: NextRequest) {
             const hContent = normalizeText(hoseRow.content)
             const hCount = normalizeText(hoseRow.hose_count)
             const nDia = normalizeText(hoseRow.nozzle_dia)
-            const drawLen = (v: string) => { if (v) drawInCellWithFont(page1, p1Height, fonts, v, 222.24, hValTop, 25.4, hValH, 6.0, { align: "center" }) }
-            const drawCnt = (v: string) => { if (v) drawInCellWithFont(page1, p1Height, fonts, v, 268.6, hValTop, 21, hValH, 6.0, { align: "center" }) }
-            const drawDia = (v: string) => { if (v) drawInCellWithFont(page1, p1Height, fonts, v, 300.1, hValTop, 20.9, hValH, 6.0, { align: "center" }) }
+            const drawLen = (v: string) => { if (v) drawInCellWithFont(page1, p1Height, fonts, v, 222.24, hValTop, 25.4, hValH, 6.0, { align: "right", paddingX: 2.5 }) }
+            const drawCnt = (v: string) => { if (v) drawInCellWithFont(page1, p1Height, fonts, v, 268.6, hValTop, 21, hValH, 6.0, { align: "right", paddingX: 2.5 }) }
+            const drawDia = (v: string) => { if (v) drawInCellWithFont(page1, p1Height, fonts, v, 300.1, hValTop, 20.9, hValH, 6.0, { align: "right", paddingX: 2.5 }) }
             if (hCount || nDia) {
                 drawLen(hContent); drawCnt(hCount); drawDia(nDia)
             } else if (hContent.includes("/")) {
@@ -386,17 +395,18 @@ export async function POST(req: NextRequest) {
             const aValue = normalizeText(voltRow.current_value)
             if (aValue) {
                 // 新方式: content=電圧(V), current_value=電流(A)（bekki18/21 と同じ2欄入力）
-                drawInCellWithFont(page1, p1Height, fonts, vContent, 222, vTop, 48, vH, 6.0, { paddingX: 1 })
-                drawInCellWithFont(page1, p1Height, fonts, aValue, 280, vTop, 42, vH, 6.0, { paddingX: 1 })
+                // ★値は単位の直前に右寄せ（全機能チェック 50・左に寄せると電流が「Ｖ」にくっついて「V5.2」と読めた）
+                drawInCellWithFont(page1, p1Height, fonts, vContent, 222, vTop, 48, vH, 6.0, { align: "right", paddingX: 2.5 })
+                drawInCellWithFont(page1, p1Height, fonts, aValue, 280, vTop, 42, vH, 6.0, { align: "right", paddingX: 2.5 })
             } else if (vContent.includes("/")) {
                 // 後方互換: 旧スラッシュ手入力データ "100/5" を分割
                 const parts = vContent.split("/")
                 // V value: x=222 to before V label (x=270)
-                drawInCellWithFont(page1, p1Height, fonts, parts[0]?.trim(), 222, vTop, 48, vH, 6.0, { paddingX: 1 })
+                drawInCellWithFont(page1, p1Height, fonts, parts[0]?.trim(), 222, vTop, 48, vH, 6.0, { align: "right", paddingX: 2.5 })
                 // A value: after V label to before A label (x=270-323)
-                drawInCellWithFont(page1, p1Height, fonts, parts[1]?.trim(), 280, vTop, 42, vH, 6.0, { paddingX: 1 })
+                drawInCellWithFont(page1, p1Height, fonts, parts[1]?.trim(), 280, vTop, 42, vH, 6.0, { align: "right", paddingX: 2.5 })
             } else if (vContent) {
-                drawInCellWithFont(page1, p1Height, fonts, vContent, 222, vTop, 48, vH, 6.0, { paddingX: 1 })
+                drawInCellWithFont(page1, p1Height, fonts, vContent, 222, vTop, 48, vH, 6.0, { align: "right", paddingX: 2.5 })
             }
         }
 
@@ -407,20 +417,20 @@ export async function POST(req: NextRequest) {
             drawChoiceCircle(page2, p2Height, fonts, funcRow.content ?? "", [
                 { label: "専用", cx: 259, cy: 220.09, rx: 16.1, ry: 5.78 },
                 { label: "兼用", cx: 301, cy: 220.09, rx: 16.03, ry: 6.78 },
-            ], 0.8, { rowsKey: "page2_rows", row: 7, column: "content" })
+            ], undefined, { rowsKey: "page2_rows", row: 7, column: "content" })
         }
 
         // === P2 Row 18: 性能 (吐出圧力MPa / 吐出量L/min) ===
         // 公式PDF実測: MPa@259.9(x1=275.8) / L/min@307.3。content列左=222.24。
-        // 新キー優先（content=MPa, flow_value=L/min）→ "/" 分割 → 単一content。値は各空白に中央寄せ
+        // 新キー優先（content=MPa, flow_value=L/min）→ "/" 分割 → 単一content。★値は各単位の直前に右寄せ（全機能チェック 50）
         const perfRow = p2Rows[18]
         if (perfRow) {
             const pTop = P2_ROW_BOUNDS[18]
             const pH = P2_ROW_BOUNDS[19] - pTop
             const pContent = normalizeText(perfRow.content)
             const pFlow = normalizeText(perfRow.flow_value)
-            const drawMpa = (v: string) => { if (v) drawInCellWithFont(page2, p2Height, fonts, v, 222.24, pTop, 37.7, pH, 6.0, { align: "center" }) }
-            const drawLmin = (v: string) => { if (v) drawInCellWithFont(page2, p2Height, fonts, v, 275.8, pTop, 31.5, pH, 6.0, { align: "center" }) }
+            const drawMpa = (v: string) => { if (v) drawInCellWithFont(page2, p2Height, fonts, v, 222.24, pTop, 37.7, pH, 6.0, { align: "right", paddingX: 2.5 }) }
+            const drawLmin = (v: string) => { if (v) drawInCellWithFont(page2, p2Height, fonts, v, 275.8, pTop, 31.5, pH, 6.0, { align: "right", paddingX: 2.5 }) }
             if (pFlow) {
                 drawMpa(pContent); drawLmin(pFlow)
             } else if (pContent.includes("/")) {

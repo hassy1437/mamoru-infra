@@ -31,7 +31,9 @@ import {
     type CellAt,
     drawOrWrapWhenTiny,
     drawShiftedDown,
+    condenseSingleLine,
 } from "@/lib/pdf-form-helpers"
+import { drawInspectorFields, inspectorBox } from "@/lib/pdf-inspector-field"
 
 /**
  * テストデータ生成が読む「数値しか入らない欄」の宣言。
@@ -124,7 +126,7 @@ type Bekki8Payload = {
 }
 
 type DrawOptions = {
-    align?: "left" | "center"
+    align?: "left" | "center" | "right"
     paddingX?: number
     paddingY?: number
     minFontSize?: number
@@ -293,24 +295,30 @@ export async function POST(req: NextRequest) {
 
             currentSize = Math.max(currentSize, minFontSize)
 
+            // ★5pt を割るなら 5pt のまま横を縮めて入れる（condenseSingleLine の約束 3 つ・全機能チェック 48）
+            const fitted = condenseSingleLine(fonts, normalized, currentSize, maxWidth, maxHeight)
+            currentSize = fitted.size
+            const condense = fitted.condense
             fonts.fit?.reportShrink(normalized, designSize, currentSize, options?.at)
 
             reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth, options?.at)
 
-            const textToDraw = truncateToFitWidth(normalized, currentSize, maxWidth,
+            const textToDraw = condense < 1 ? normalized : truncateToFitWidth(normalized, currentSize, maxWidth,
                 cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at))
             if (!textToDraw) return
 
-            const textWidth = measureRuns(fonts, String(textToDraw ?? ""), currentSize)
+            const textWidth = measureRuns(fonts, String(textToDraw ?? ""), currentSize) * condense
             const textHeight = fonts.jp.heightAtSize(currentSize, { descender: true })
             let textX = cellX + paddingX
             if (options?.align === "center") {
                 textX = cellX + (cellW - textWidth) / 2
+            } else if (options?.align === "right") {
+                textX = cellX + cellW - paddingX - textWidth
             }
             const textTop = cellTopFromTop + (cellH - textHeight) / 2
             const baselineOffset = textHeight * 0.78
 
-            drawTextRuns(page, fonts, String(textToDraw ?? ""), textX, pageHeight - (textTop + baselineOffset), currentSize)
+            drawTextRuns(page, fonts, String(textToDraw ?? ""), textX, pageHeight - (textTop + baselineOffset), currentSize, condense)
         }
 
         const drawWrappedInCell = (
@@ -502,10 +510,16 @@ export async function POST(req: NextRequest) {
         //   印字: 氏名 116.0-137.2 / 社名 273.6-294.7 / TEL 441.7-457.6 / 住所 273.6-294.7
         //   旧値は社名・住所を 263.33 から描いており、印字「社名/住所」に重なった上に
         //   罫線 268.1 を越えていた。
-        drawInCell(page1, p1Height, body.inspector_name, 140.0, 176.4, 69.8, 24.5, 8.0)
-        drawInCell(page1, p1Height, body.inspector_company, 297.0, 176.4, 142.7, 24.5, 7.8)
-        drawInCell(page1, p1Height, body.inspector_tel, 460.0, 176.4, 68.1, 24.5, 7.8)
-        drawInCell(page1, p1Height, body.inspector_address, 297.0, 201.4, 231.1, 24.4, 7.6)
+        // ★点検者の欄は、刷り込みの見出し（氏名・社名・TEL・住所）と同じ高さに 8pt で描く（全機能チェック 51・src/lib/pdf-inspector-field.ts）。
+        //   inspectorBox(見出しの右端, 見出しのベースライン, 値の右の限り, 欄の下端)。見出しの位置は雛形の実測
+        drawInspectorFields(page1, p1Height, fonts, {
+            name: body.inspector_name, company: body.inspector_company, tel: body.inspector_tel, address: body.inspector_address,
+        }, {
+            name: inspectorBox(137.16, 186.72, 209.8, 200.9),
+            company: inspectorBox(294.72, 186.96, 436.72, 200.9),
+            tel: inspectorBox(457.56, 186.96, 528.1, 200.9),
+            address: inspectorBox(294.72, 211.92, 528.1, 225.8),
+        })
 
         drawResultRows(page1, p1Height, body.page1_rows ?? [], P1_ROW_BOUNDS, {
             rowsKey: "page1_rows",
@@ -536,7 +550,7 @@ export async function POST(req: NextRequest) {
         // PAGE2 row 26「起動装置 / 自動式 / 火災感知装置（専用・兼用）」: 公式PDF刷り込みの選択を丸囲み
         drawChoiceCircle(page2, p2Height, fonts, body.page2_rows?.[26]?.content ?? "", [
             { label: "専用", cx: 258, cy: 438.95, rx: 14.96, ry: 5.48 },
-            { label: "兼用", cx: 297.95, cy: 438.9, rx: 14, ry: 7 },
+            { label: "兼用", cx: 297.95, cy: 439.2, rx: 14.47, ry: 5.73 },
         ], undefined, { rowsKey: "page2_rows", row: 26, column: "content" })
 
         drawResultRows(page3, p3Height, body.page3_rows ?? [], P3_ROW_BOUNDS, {

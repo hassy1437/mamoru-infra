@@ -16,6 +16,7 @@ import { periodDateError,
 drawChoiceCircle, drawPeriodDate, drawTextInCell, drawWrappedTextInCell, formatJapaneseDateText, formatJudgment, parseDateParts, type CellDrawOptions, type DateAnchors, type ReportFonts, type CellRef, drawOrWrapWhenTiny, SINGLE_LINE_FIT_DEFAULTS,
     drawShiftedDown,
 } from "@/lib/pdf-form-helpers"
+import { drawInspectorFields, inspectorBox } from "@/lib/pdf-inspector-field"
 import { normalizeInspectorNameValue, normalizeWitnessValue } from "@/lib/bekki-header-normalization"
 
 /**
@@ -216,8 +217,8 @@ export async function POST(req: NextRequest) {
             //   （初期値は様式10 と同じ決め方。★この欄は罫線が語に近く、触れずに囲む値が無い＝探索で重なりが最小の値。
             //   check-choice-clearance.py の KNOWN_TIGHT_CELLS に名指しで登録）。★ヘッダーの位置の補正（headerShiftY など）は通さない。
             drawChoiceCircle(page1, p1Height, fonts, body.inspection_type || "機器・総合", [
-                { label: "機器", cx: 137.16, cy: 174.52, rx: 18.90, ry: 6.50 },
-                { label: "総合", cx: 191.93, cy: 174.52, rx: 18.96, ry: 6.50 },
+                { label: "機器", cx: 137.16, cy: 174.52, rx: 18.9, ry: 6.78 },
+                { label: "総合", cx: 191.93, cy: 174.52, rx: 18.96, ry: 6.53 },
             ], undefined, { column: "inspection_type" })
             const canDrawSplitPeriod =
                 (!body.period_start || Boolean(parseDateParts(body.period_start))) &&
@@ -248,10 +249,16 @@ export async function POST(req: NextRequest) {
                     })
                 }
         }
-            drawInCell(page1, p1Height, normalizedInspectorName, 148.0, y(176.0), 68.5, 48.0, 7.0)
-            drawInCell(page1, p1Height, body.inspector_company, 305.44, y(176.0), 97.0, 24.0, 6.2)
-            drawInCell(page1, p1Height, body.inspector_tel, 426.28, y(176.0), 103.05, 24.0, 6.4)
-            drawInCell(page1, p1Height, body.inspector_address, 305.44, y(200.0), 223.89, 24.0, 6.3)
+            // ★点検者の欄は、刷り込みの見出し（氏名・社名・TEL・住所）と同じ高さに 8pt で描く（全機能チェック 51・src/lib/pdf-inspector-field.ts）。
+            //   inspectorBox(見出しの右端, 見出しのベースライン, 値の右の限り, 欄の下端)。見出しの位置は雛形の実測
+            drawInspectorFields(page1, p1Height, fonts, {
+                name: normalizedInspectorName, company: body.inspector_company, tel: body.inspector_tel, address: body.inspector_address,
+            }, {
+                name: inspectorBox(143.88, 196.2, 216.5, 228.0),
+                company: inspectorBox(301.44, 193.68, 401.44, 204.0),
+                tel: inspectorBox(422.28, 193.68, 529.33, 204.0),
+                address: inspectorBox(301.44, 219.6, 529.33, 228.0),
+            })
         }
 
         drawHeader()
@@ -285,8 +292,8 @@ export async function POST(req: NextRequest) {
         // 文字を重ねず、該当する語を○で囲む（座標はテンプレートPDFの文字を実測）。
         drawChoiceCircle(page1, p1Height, fonts, body.page1_rows?.[23]?.content ?? "", [
             { label: "一斉", cx: 237.48, cy: 676.05, rx: 11.98, ry: 6.25 },
-            { label: "区分", cx: 261.05, cy: 676.05, rx: 11.67, ry: 6.75 },
-            { label: "相互", cx: 284.69, cy: 676.05, rx: 11.67, ry: 6.75 },
+            { label: "区分", cx: 261.05, cy: 676.05, rx: 11.92, ry: 6.5 },
+            { label: "相互", cx: 284.69, cy: 676.05, rx: 12.17, ry: 6.5 },
             { label: "再鳴動", cx: 313.01, cy: 676.05, rx: 17.72, ry: 6.75 },
         ], undefined, { rowsKey: "page1_rows", row: 23, column: "content" })
 

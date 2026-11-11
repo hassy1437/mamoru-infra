@@ -8,14 +8,16 @@ import {
     drawWrappedTextInCell,
     measureRuns,
     SINGLE_LINE_FIT_DEFAULTS,
+    WRAPPED_FIT_DEFAULTS,
     type ReportFonts,
 } from "@/lib/pdf-form-helpers"
+import { wrapListItems } from "@/lib/pdf-list-wrap"
 import { buildFitError, createFitCollector, fitWarningHeader, logFitDebug, systemFitFailures } from "@/lib/pdf-fit-report"
 import fontkit from "@pdf-lib/fontkit"
 import fs from "fs"
 import path from "path"
 import { formatUsageShort } from "@/lib/usage-categories"
-import { splitFireDepartment } from "@/lib/soukatsu-cover"
+import { printedFireDepartment, splitFireDepartment } from "@/lib/soukatsu-cover"
 
 type GeneratePdfBody = {
     report_date?: string
@@ -42,8 +44,16 @@ const ADDRESSEE_PRINTED = { x0: 82.4, y0: 107.3, x1: 256.4, y1: 119.3 }
 const ADDRESSEE_BASELINE = 117.58
 /** 宛名の右端（「殿」の左端 268.4 の 4pt 手前） */
 const FIRE_DEPARTMENT_RIGHT_X = 264
-/** 敬称の無い宛名を描く上の行（y=95）の右端（日付の年の数字・左端 約 379 の手前） */
+/** 敬称の無い宛名を描く上の行の右端（日付の年の数字・左端 約 379 の手前） */
 const FIRE_DEPARTMENT_NAME_ONLY_RIGHT_X = 370
+/**
+ * 敬称の無い宛名を描く上の行のベースライン＝日付の行（年の数字）と同じ 100.68（2026-11-11・全機能チェック 49）。
+ *   ★以前は 95 で、12pt の字の上端（約 84.4）が表題の字の下端（85.0）に接していた（宛名が 8 字を超えて表題の下に掛かるとき）。
+ *   雛形の実測（288dpi のインク）: 表題 y 74.0–85.0（x 160.8〜）／宛名の刷り込み y 107.75〜。その間の左側（x 66〜378）は白。
+ *   100.68 なら 12pt の字は 約 90.3–101.6 で、上に 約 5pt・下に 約 6pt 空く（間のほぼ真ん中）。日付とも同じ行にそろう
+ *   見張り: scripts/check-houkoku-layout.mjs（表題・刷り込みとの上下の隙間を描いて測る）
+ */
+const FIRE_DEPARTMENT_NAME_ONLY_BASELINE = 100.68
 
 const toText = (value: unknown) => {
     if (value === null || value === undefined) return undefined
@@ -177,9 +187,12 @@ export async function POST(req: NextRequest) {
         //   （lib/soukatsu-cover.ts）、刷り込み「消防長（消防署長）（市町村長）」を白で覆って、その行に「〇〇消防署長」を描く。
         //   「殿」の刷り込みは残す。以前は表題の下の別の行（y=95）に名前だけを描き、刷り込みが全部残っていた。
         //   ★宛名が空なら覆わない（刷り込みのまま・手書き用）。
-        //   ★末尾に敬称の無い宛名（10/20 より前の自由入力・敬称を選ばなかった）は覆わず、以前と同じ上の行（y=95）に
-        //     名前だけを描く。覆うと刷り込みの敬称が全部消え、敬称の無い宛名になる（手で○を付けることもできなくなる）。
-        const fireDepartment = toText(body.fire_department_name)
+        //   ★末尾に敬称の無い宛名（10/20 より前の自由入力・敬称を選ばなかった）は覆わず、表題と刷り込みの間の上の行
+        //     （日付と同じ高さ・FIRE_DEPARTMENT_NAME_ONLY_BASELINE）に名前だけを描く。
+        //     覆うと刷り込みの敬称が全部消え、敬称の無い宛名になる（手で○を付けることもできなくなる）。
+        // ★印字する宛名は lib の printedFireDepartment（画面の「表紙の印字：」と同じ関数）。
+        //   名前の終わりと敬称の始まりが重なるときは重ねない（「大阪市北消防署」＋「消防署長」→「大阪市北消防署長」・2026-11-08 定期テスト 26）
+        const fireDepartment = printedFireDepartment(toText(body.fire_department_name))
         if (fireDepartment && splitFireDepartment(fireDepartment).title) {
             firstPage.drawRectangle({
                 x: ADDRESSEE_PRINTED.x0 - 1,
@@ -190,7 +203,7 @@ export async function POST(req: NextRequest) {
             })
             draw(fireDepartment, 70.4, ADDRESSEE_BASELINE, 12, FIRE_DEPARTMENT_RIGHT_X - 70.4)
         } else if (fireDepartment) {
-            draw(fireDepartment, 70.4, 95, 12, FIRE_DEPARTMENT_NAME_ONLY_RIGHT_X - 70.4)
+            draw(fireDepartment, 70.4, FIRE_DEPARTMENT_NAME_ONLY_BASELINE, 12, FIRE_DEPARTMENT_NAME_ONLY_RIGHT_X - 70.4)
         }
 
         // ★右端は各行の記入用の下線の右端（テンプレート実測・2026-10-07）。
@@ -254,10 +267,38 @@ export async function POST(req: NextRequest) {
         drawBeforeUnit(toText(body.floor_below), 332.16, 283.32, 381.54)
         drawBeforeUnit(toText(body.total_floor_area), 510.23, 413.87, 381.54)
 
-        const equipments = Array.isArray(body.equipment_types) ? body.equipment_types.join("、") : ""
+        const equipmentItems = Array.isArray(body.equipment_types) ? body.equipment_types.map((v) => String(v ?? "")) : []
         // 罫線 395.6–594.1 の実測。198.5pt ＝ 9pt で22行分。左のラベル列は縦中央寄せで、
         // 値の列はブロック全体を使う（他の欄と違い内部のラベル行分割が無い）
-        drawWrapped(equipments || undefined, tableX, 395.6, 380, 198.5, 9, "top")
+        // ★設備名の途中で行を折らない（全機能チェック 51・「不活性ガス／消火設備」と折れていた）。
+        //   設備名ごとに行へ詰め、入らない名前は次の行へ送る（src/lib/pdf-list-wrap.ts）。
+        //   9pt で入りきらないときだけ、折り返しと同じ決まり（0.3pt ずつ・4.5pt まで）で縮める。
+        //   それでも入らなければ従来の字の単位の折り返しに任せる（入りきらない報告も従来どおり）
+        {
+            const cellX = tableX, cellTop = 395.6, cellW = 380, cellH = 198.5
+            const padX = WRAPPED_FIT_DEFAULTS.paddingX, padY = WRAPPED_FIT_DEFAULTS.paddingY, gap = WRAPPED_FIT_DEFAULTS.lineGap
+            const maxWidth = cellW - padX * 2
+            let size = 9
+            let lines = wrapListItems(fonts, equipmentItems, size, maxWidth)
+            while (lines.length * (size + gap) > cellH - padY * 2 && size > WRAPPED_FIT_DEFAULTS.minFontSize) {
+                size = Math.round((size - 0.3) * 10) / 10
+                lines = wrapListItems(fonts, equipmentItems, size, maxWidth)
+            }
+            const joined = equipmentItems.map((v) => v.trim()).filter(Boolean).join("、")
+            if (lines.length * (size + gap) <= cellH - padY * 2) {
+                fonts.fit?.reportShrink(joined, 9, size, { column: "equipment_types" })
+                let top = cellTop + padY
+                for (const line of lines) {
+                    const textHeight = fonts.jp.heightAtSize(size, { descender: true })
+                    const lineHeight = size + gap
+                    drawTextRuns(firstPage, fonts, line, cellX + padX,
+                        height - (top + (lineHeight - textHeight) / 2 + textHeight * 0.78), size)
+                    top += lineHeight
+                }
+            } else {
+                drawWrapped(joined || undefined, cellX, cellTop, cellW, cellH, 9, "top")
+            }
+        }
 
         // ⑧ 枠に収まらなかった項目があればPDFを返さずに一覧を返す（他25本と同じ扱いにする）。
         // ★入れる前に測った: 現実値セット 0件 / 長文セット 0件。既存の出力は落ちない。

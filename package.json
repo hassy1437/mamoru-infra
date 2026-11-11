@@ -21,6 +21,7 @@
     "@supabase/supabase-js": "^2.87.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "leaflet": "^1.9.4",
     "lucide-react": "^0.556.0",
     "next": "16.4.2",
     "pdf-lib": "^1.17.1",
@@ -33,6 +34,7 @@
   "devDependencies": {
     "@playwright/test": "^1.60.0",
     "@tailwindcss/postcss": "^4",
+    "@types/leaflet": "^1.9.12",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

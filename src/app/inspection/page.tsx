@@ -3,17 +3,19 @@ import Link from "next/link"
 import { Building2, ClipboardCheck, Plus } from "lucide-react"
 import type { Property } from "@/types/database"
 import PropertySearch from "@/components/property-search"
+import { loadNextInspections } from "@/lib/next-inspection"
 import ResumeReports from "@/components/resume-reports"
 
 export default async function InspectionPage() {
-    const { supabase, user } = await getAuthenticatedClient()
+    const { supabase } = await getAuthenticatedClient()
     const { data: properties } = await supabase
         .from("properties")
         .select("*")
-        .eq("user_id", user.id)
         .order("created_at", { ascending: false })
 
     const list = (properties ?? []) as Property[]
+    // ★次の点検まであと○日（地図などの改善 7）
+    const due = list.length > 0 ? await loadNextInspections(supabase, list) : {}
 
     return (
         <main className="min-h-screen bg-gray-50 py-10">
@@ -69,7 +71,7 @@ export default async function InspectionPage() {
                 {list.length > 0 && (
                     <>
                         <h2 className="mb-2 text-sm font-semibold text-slate-600">新しく始める物件を選ぶ</h2>
-                        <PropertySearch items={list} mode="inspection" />
+                        <PropertySearch items={list} mode="inspection" due={due} />
                     </>
                 )}
             </div>

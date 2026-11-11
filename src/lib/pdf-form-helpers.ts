@@ -123,7 +123,7 @@ export const drawTextRuns = (
 export type CellDrawOptions = {
     /** どの欄の何行目のどの列か（行ループ・専用描画が渡す） */
     at?: CellRef
-    align?: "left" | "center"
+    align?: "left" | "center" | "right"
     paddingX?: number
     paddingY?: number
     minFontSize?: number
@@ -412,6 +412,34 @@ export const condenseToMinSize = (fonts: ReportFonts, text: string, maxWidth: nu
 }
 
 /**
+ * 1 行の欄（折り返さない欄）で 5pt を割るとき、5pt のまま横を縮めて入るならそうする（2026-11-11・全機能チェック 48）。
+ *
+ * ■ なぜ要るか
+ *   長体は drawWrappedTextInCell（折り返す欄）にしか無く、1 行の欄は 5pt を割ってもそのまま小さく描いていた。
+ *   第3 その2 ポンプ「性能」の吐出量（4 桁）が 4.3pt（字の高さ 約 1mm）まで縮んでいた。
+ *   刷り込みの「MPa」と「L/min」が欄の両端を決めていて、欄は広げられない。
+ * ■ 決まりは折り返す欄と同じ（MIN_CONDENSE）
+ *   - 5pt を割り、5pt のまま横を 85% 以上に縮めれば入るときだけ。5pt 以上の値の見た目は変わらない
+ *   - 縮めても入らない値は今までどおり（小さく描いて 5pt 未満の警告を出す）
+ * ■ 使う側の約束（★1 行の欄を描く関数は様式ごとに複製があるので、全部が同じ 3 つを守る）
+ *   1. condense < 1 のときは切り詰めない（切り詰めは縮める前の幅で測るので、入る値まで削る）
+ *   2. 中央寄せの幅は measureRuns × condense
+ *   3. drawTextRuns に condense を渡す
+ *   見張り: scripts/check-condense-min-size.mjs（第3 その2 の吐出量）
+ */
+export const condenseSingleLine = (
+    fonts: ReportFonts,
+    text: string,
+    size: number,
+    maxWidth: number,
+    maxHeight: number,
+): { size: number; condense: number } => {
+    if (size >= ABSOLUTE_MIN_FONT_SIZE) return { size, condense: 1 }
+    const c = condenseToMinSize(fonts, text, maxWidth, maxHeight)
+    return c === null ? { size, condense: 1 } : { size: ABSOLUTE_MIN_FONT_SIZE, condense: c }
+}
+
+/**
  * 下限より小さく描かれる場合に「収まらなかった」として報告する。
  * fits は下限サイズなら何文字入るかで、業者に「何文字まで」を示すために使う。
  */
@@ -522,24 +550,33 @@ export const drawTextInCell = ({
 
     const maxWidth = Math.max(1, cellW - paddingX * 2)
 
-    const currentSize = singleLineFitSize({
+    let currentSize = singleLineFitSize({
         fonts, text: normalized, cellW, cellH, fontSize,
         paddingX, paddingY, minFontSize, maxFontSize: options?.maxFontSize,
     })
+    // ★5pt を割るなら 5pt のまま横を縮めて入れる（condenseSingleLine・全機能チェック 48）
+    const fitted = condenseSingleLine(fonts, normalized, currentSize, maxWidth, Math.max(1, cellH - paddingY * 2))
+    currentSize = fitted.size
+    const condense = fitted.condense
 
     fonts.fit?.reportShrink(normalized, designSize, currentSize, options?.at)
     reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth, options?.at)
 
-    const textToDraw = truncateRunsToFitWidth(fonts, normalized, currentSize, maxWidth,
-        cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at))
+    // ★縮めて入れた値は切り詰めない（幅は縮めたあとで測る・切り詰めは縮める前の幅で測るので全部落ちる）
+    const textToDraw = condense < 1
+        ? normalized
+        : truncateRunsToFitWidth(fonts, normalized, currentSize, maxWidth,
+            cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at))
     if (!textToDraw) return
 
-    const textWidth = measureRuns(fonts, textToDraw, currentSize)
+    const textWidth = measureRuns(fonts, textToDraw, currentSize) * condense
     const textHeight = fonts.jp.heightAtSize(currentSize, { descender: true })
     const textX =
         options?.align === "center"
             ? cellX + (cellW - textWidth) / 2
-            : cellX + paddingX
+            : options?.align === "right"
+                ? cellX + cellW - paddingX - textWidth
+                : cellX + paddingX
 
     drawTextRuns(
         page,
@@ -551,6 +588,7 @@ export const drawTextInCell = ({
         //   ベースラインを直接指定しないと値ごとに上下がばらつく。
         baselineY !== undefined ? pageHeight - baselineY : getBaselineY(pageHeight, textHeight, cellTopFromTop, cellH),
         currentSize,
+        condense,
     )
 }
 
@@ -1010,6 +1048,20 @@ export const drawPeriodDate = ({
 export type ChoiceMark = { label: string; cx: number; cy: number; rx: number; ry: number }
 
 /**
+ * 選択肢を囲む○の線の太さ（2026-11-11・全機能チェック 47）。0.7〜0.8 → 0.5。
+ *
+ * ■ なぜ細くしたか
+ *   1200dpi で測ると、描く○ 88 個のうち 54 個が刷り込み（罫線・字）から 0.3pt 未満・17 個は重なっていた。
+ *   行の高さが字の高さとほぼ同じ欄が多く、○を小さくするだけでは罫線から離れない。線を細くすると、
+ *   同じ大きさの○でも罫線までの隙間が線の太さの半分だけ増える（0.7 → 0.5 で 0.1pt）。
+ * ■ 1 つの値にする
+ *   様式ごとに渡さない。直接 drawEllipse で描く○（第11の2・第12・第13 の TYPE_CHOICES）もこの値を使う。
+ *   scripts/check-choice-clearance.py と solve-choice-circle-geometry.py がこの値を読んで測る（写しを持たない）。
+ *   判定の○（総括表の良・不良）は選択肢ではないので対象外。
+ */
+export const CHOICE_CIRCLE_BORDER = 0.5
+
+/**
  * 刷り込まれた選択肢を○で囲む。
  *
  * ★選択肢欄に文字を重ね書きしてはいけない（Phase 1）。テンプレートが
@@ -1028,7 +1080,7 @@ export const drawChoiceCircle = (
     fonts: ReportFonts,
     value: unknown,
     choices: ChoiceMark[],
-    borderWidth = 0.7,
+    borderWidth = CHOICE_CIRCLE_BORDER,
     /**
      * どの欄の値か（行の選択肢なら rowsKey・row・column、見出しの選択肢なら column）。
      * ★不一致の警告を位置で帰属させる。値で当てると「専用」「一斉」のように

@@ -8,8 +8,8 @@
  *
  * ■ ★どこに出すか（住所が見える相手にだけ）
  *   URL に住所がそのまま入る。＝ ★住所を見せてよい相手にしか出さない。
- *   点検アプリの物件は RLS が user_id = 本人（inspection.properties の rls_properties）なので、
- *   画面に住所が出る相手＝物件の持ち主だけ。★マッチング側と同じ考え方（画面に住所が出る相手にだけ）。
+ *   点検アプリの物件は RLS が「会社の人なら」（inspection.properties の rls_properties・20261231120000）なので、
+ *   画面に住所が出る相手＝物件の持ち主の会社の人だけ。★マッチング側と同じ考え方（画面に住所が出る相手にだけ）。
  *   出す画面は scripts/check-map-link.mjs の一覧で固定している。
  *
  * ■ URL の形
@@ -31,4 +31,18 @@ export function googleMapsSearchUrl(parts: AddressParts): string | null {
     if (!address) return null
     const query = `${parts.prefecture ?? ""}${parts.municipality ?? ""}${address}`.replace(/\s+/g, " ").trim()
     return GOOGLE_MAPS_SEARCH + encodeURIComponent(query)
+}
+
+/**
+ * ★現場の位置（緯度・経度）があるときの道案内（Google マップの「経路」・地図などの改善 3・2026-11-11）。
+ *   ★点検アプリだけ（マッチング側には位置の列が無い）。キーの要らない Maps URLs（dir）:
+ *   https://www.google.com/maps/dir/?api=1&destination=<緯度>,<経度>
+ *   ★住所より確か（大きい敷地・入口が裏の建物）。日本の外・片方だけなら null（住所の検索に戻る）
+ */
+export const GOOGLE_MAPS_DIRECTIONS = "https://www.google.com/maps/dir/?api=1&destination="
+
+export function googleMapsDirectionsUrl(lat: number | null | undefined, lng: number | null | undefined): string | null {
+    if (typeof lat !== "number" || typeof lng !== "number" || !Number.isFinite(lat) || !Number.isFinite(lng)) return null
+    if (lat < 20 || lat > 46 || lng < 122 || lng > 154) return null
+    return `${GOOGLE_MAPS_DIRECTIONS}${lat.toFixed(6)},${lng.toFixed(6)}`
 }

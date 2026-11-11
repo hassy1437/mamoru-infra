@@ -117,3 +117,25 @@ export function formatJstYmd(at: string | number | Date): string {
 export function jstTodayYmd(now: Date = new Date()): string {
     return formatJstYmd(now)
 }
+
+const JST_DATE_TIME = new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+})
+
+/**
+ * 日時を日本時間の「2026/11/11 16:05:09」に（以前の toLocaleString("ja-JP") と同じ見た目）。読めなければ空。
+ * ■ ★時間帯を Asia/Tokyo に決め打ちする（全機能チェック 59）
+ *   以前は時間帯を書いていなかったため、サーバ（世界標準時）とブラウザ（日本時間）で「最終保存:」の時刻が
+ *   9 時間ずれ、保存したことのある点検票を開くと画面の組み直し（hydration）のエラーが出た。
+ */
+export function formatJstDateTime(at: string | number | Date): string {
+    const d = new Date(at)
+    if (Number.isNaN(d.getTime())) return ""
+    return JST_DATE_TIME.format(d)
+}

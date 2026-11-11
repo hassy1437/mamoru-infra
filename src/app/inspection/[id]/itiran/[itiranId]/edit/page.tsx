@@ -13,7 +13,7 @@ export default async function EditItiranPage({
     params: Promise<{ id: string; itiranId: string }>
 }) {
     const { id, itiranId } = await params
-    const { supabase, user } = await getAuthenticatedClient()
+    const { supabase } = await getAuthenticatedClient()
 
     // 編集対象 itiran（自ユーザー分のみ）。
     // ★URL整合: soukatsu_id も一致させる。/inspection/<A>/itiran/<B>/edit で B が別報告書の
@@ -23,7 +23,6 @@ export default async function EditItiranPage({
         .select("*")
         .eq("id", itiranId)
         .eq("soukatsu_id", id)
-        .eq("user_id", user.id)
         .single()
     if (!itiran) return notFound()
 
@@ -31,7 +30,6 @@ export default async function EditItiranPage({
     const { data: masters } = await supabase
         .from("inspectors")
         .select("*")
-        .eq("user_id", user.id)
         .order("updated_at", { ascending: false })
 
     // ★DB から入ってくる境目。ここで形を整えるので、以降は as で嘘をつかない。

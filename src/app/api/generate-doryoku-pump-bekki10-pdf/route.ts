@@ -30,7 +30,9 @@ import {
     type CellAt,
     drawOrWrapWhenTiny,
     drawShiftedDown,
+    condenseSingleLine,
 } from "@/lib/pdf-form-helpers"
+import { drawInspectorFields, inspectorBox } from "@/lib/pdf-inspector-field"
 
 /**
  * テストデータ生成が読む「数値しか入らない欄」の宣言。
@@ -76,7 +78,7 @@ type Bekki10Payload = {
 }
 
 type DrawOptions = {
-    align?: "left" | "center"
+    align?: "left" | "center" | "right"
     paddingX?: number
     paddingY?: number
     minFontSize?: number
@@ -209,20 +211,25 @@ export async function POST(req: NextRequest) {
             const heightAtCurrent = fonts.jp.heightAtSize(currentSize, { descender: true })
             if (heightAtCurrent > maxHeight) currentSize *= maxHeight / heightAtCurrent
             currentSize = Math.max(currentSize, minFontSize)
+            // ★5pt を割るなら 5pt のまま横を縮めて入れる（condenseSingleLine の約束 3 つ・全機能チェック 48）
+            const fitted = condenseSingleLine(fonts, normalized, currentSize, maxWidth, maxHeight)
+            currentSize = fitted.size
+            const condense = fitted.condense
             fonts.fit?.reportShrink(normalized, designSize, currentSize, options?.at)
             reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth, options?.at)
 
-            const textToDraw = truncateToFitWidth(normalized, currentSize, maxWidth,
+            const textToDraw = condense < 1 ? normalized : truncateToFitWidth(normalized, currentSize, maxWidth,
                 cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at))
             if (!textToDraw) return
 
-            const textWidth = measureRuns(fonts, String(textToDraw ?? ""), currentSize)
+            const textWidth = measureRuns(fonts, String(textToDraw ?? ""), currentSize) * condense
             const textHeight = fonts.jp.heightAtSize(currentSize, { descender: true })
             let textX = cellX + paddingX
             if (options?.align === "center") textX = cellX + (cellW - textWidth) / 2
+            else if (options?.align === "right") textX = cellX + cellW - paddingX - textWidth
             const textTop = cellTopFromTop + (cellH - textHeight) / 2
             const baselineOffset = textHeight * 0.78
-            drawTextRuns(page, fonts, String(textToDraw ?? ""), textX, pageHeight - (textTop + baselineOffset), currentSize)
+            drawTextRuns(page, fonts, String(textToDraw ?? ""), textX, pageHeight - (textTop + baselineOffset), currentSize, condense)
         }
 
         const drawWrappedInCell = (
@@ -287,7 +294,7 @@ export async function POST(req: NextRequest) {
         // 点検種別: テンプレートに「機器・総合」が刷り込まれているので文字を重ねず○で囲む。
         // ○の座標はテンプレートPDFの文字を実測（様式ごとに位置が違う）。
         drawChoiceCircle(page1, p1Height, fonts, body.inspection_type || "機器・総合", [
-            { label: "機器", cx: 127.38, cy: 180.61, rx: 17.56, ry: 8.03 },
+            { label: "機器", cx: 127.38, cy: 180.61, rx: 17.56, ry: 8.28 },
             { label: "総合", cx: 186.11, cy: 180.61, rx: 17.62, ry: 8.03 },
         ], undefined, { column: "inspection_type" })
 
@@ -296,12 +303,16 @@ export async function POST(req: NextRequest) {
             drawPeriodDate({ page: page1, pageHeight: p1Height, fonts, dateValue: body.period_end, anchors: PERIOD_END_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 7.6 })
         }
 
-        // 刷り込みに重ねない: 前置ラベル「氏名」(-133.4) の右から（テンプレート実測）
-        drawInCell(page1, p1Height, body.inspector_name, 133.9, 194.67, 77.4, 52.66, 7.6)
-        // 刷り込みに重ねない: 「TEL」(416.9-) の手前まで（テンプレート実測）
-        drawInCell(page1, p1Height, body.inspector_company, 306.0, 194.67, 110.4, 26.33, 7.4)
-        drawInCell(page1, p1Height, body.inspector_tel, 437.33, 194.67, 92.0, 26.33, 7.4)
-        drawInCell(page1, p1Height, body.inspector_address, 306.0, 221.0, 223.33, 26.33, 7.2)
+        // ★点検者の欄は、刷り込みの見出し（氏名・社名・TEL・住所）と同じ高さに 8pt で描く（全機能チェック 51・src/lib/pdf-inspector-field.ts）。
+        //   inspectorBox(見出しの右端, 見出しのベースライン, 値の右の限り, 欄の下端)。見出しの位置は雛形の実測
+        drawInspectorFields(page1, p1Height, fonts, {
+            name: body.inspector_name, company: body.inspector_company, tel: body.inspector_tel, address: body.inspector_address,
+        }, {
+            name: inspectorBox(133.44, 204.0, 211.3, 247.33),
+            company: inspectorBox(290.88, 206.16, 411.88, 221.0),
+            tel: inspectorBox(432.72, 206.16, 529.33, 221.0),
+            address: inspectorBox(290.88, 232.44, 529.33, 247.33),
+        })
 
         // The "本佁E cell is a fixed label in this template, so we do not draw equipment_name here.
         // 本体の製造者名/型式等は「製造者名」y=247.6-268.6 /「型式等」y=268.6- の行（テンプレート実測）。
@@ -332,7 +343,7 @@ export async function POST(req: NextRequest) {
 
         // PAGE2 row 3「積載器具 / ホース・ノズル等 / 外形」: 長さ(m)/本数/口径(mm) を分割描画
         // 公式PDF実測: ｍ@238.4 / ×@248.9(x1=259.4) / 本@275.2(x1=285.7) / mm@296.2。content列左=217。
-        // 新キー優先（content=長さ, hose_count=本数, nozzle_dia=口径）→ "/" 分割 → 単一content の3段fallback。値は各空白に中央寄せ
+        // 新キー優先（content=長さ, hose_count=本数, nozzle_dia=口径）→ "/" 分割 → 単一content の3段fallback。値は各単位の直前に右寄せ
         const hoseRow10 = body.page2_rows?.[3]
         if (hoseRow10) {
             const hTop = P2_ROW_BOUNDS[3]
@@ -346,7 +357,8 @@ export async function POST(req: NextRequest) {
             //   口径は 10.5pt しか無い。既定の 2.5×2 だと使える幅が 5.5pt ＝ 2桁（「25」）が
             //   入らず 4.95pt まで縮んで絶対下限 5.0pt を割る。1.0 なら 8.5pt 使えて 6.0pt のまま入る。
             //   ★同じ対処を bekki12 の感度範囲では既に入れてあり、ここに届いていなかった。
-            const NARROW = { align: "center", paddingX: 1.0 } as const
+            // ★値は単位の直前に右寄せ（全機能チェック 50・以前は空白の中央で、本数・口径が前の「×」「本」に寄って読めた）
+            const NARROW = { align: "right", paddingX: 1.0 } as const
             const drawLen = (v: string) => { if (v) drawInCell(page2, p2Height, v, 217, hValTop, 21.4, hValH, 6.0, NARROW) }
             const drawCnt = (v: string) => { if (v) drawInCell(page2, p2Height, v, 259.4, hValTop, 15.8, hValH, 6.0, NARROW) }
             const drawDia = (v: string) => { if (v) drawInCell(page2, p2Height, v, 285.7, hValTop, 10.5, hValH, 6.0, NARROW) }

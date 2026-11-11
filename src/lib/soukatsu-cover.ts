@@ -46,6 +46,33 @@ export function joinFireDepartment(name: string, title: FireDepartmentTitle | ""
     return `${name.trim()}${title}`
 }
 
+/**
+ * 名前の終わりと敬称の始まりが重なる字数（★2 字以上だけ・2026-11-08 定期テスト 26）。
+ *   例: 「大阪市北消防署」＋「消防署長」は「消防署」の 3 字が重なる。「北消防」＋「消防長」は 2 字。
+ *   ★1 字は重ねない（「大阪市」＋「市町村長」の「市」を重ねると「大阪市町村長」になる）
+ */
+function titleOverlap(name: string, title: string): number {
+    for (let n = Math.min(name.length, title.length); n >= 2; n--) {
+        if (name.endsWith(title.slice(0, n))) return n
+    }
+    return 0
+}
+
+/**
+ * 表紙に印字する宛名（★画面の「表紙の印字：」と PDF（api/generate-pdf）が同じこの関数を使う・2026-11-08 定期テスト 26）。
+ *   保存してある値を名前と敬称に分け、名前の終わりが敬称の始まりと重なるときは重ねない
+ *   （宛名「大阪市北消防署」＋敬称「消防署長」→「大阪市北消防署長」。以前は「大阪市北消防署消防署長」と重なって出た）。
+ * ★保存する値は変えない（入れたとおり「大阪市北消防署消防署長」のまま）。直すのは印字だけ
+ *   ＝ splitFireDepartment で分け直すと、入れた名前（大阪市北消防署）と敬称（消防署長）がそのまま戻る。
+ *   保存の値を詰めると、画面の名前の欄が打っている途中で「大阪市北」に縮む（欄は保存の値から分け直して出しているため）。
+ * ★敬称の無い宛名はそのまま（前後の空白だけ落とす）。
+ */
+export function printedFireDepartment(value: string | null | undefined): string {
+    const { name, title } = splitFireDepartment(value)
+    if (!title) return name
+    return `${name.slice(0, name.length - titleOverlap(name, title)).trim()}${title}`
+}
+
 /** 名前の欄の上限（★敬称を含めて FIRE_DEPARTMENT_NAME_MAX に収まる長さ） */
 export function fireDepartmentNameInputMax(title: FireDepartmentTitle | ""): number {
     return FIRE_DEPARTMENT_NAME_MAX - title.length

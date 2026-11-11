@@ -19,7 +19,7 @@ import { toast } from "sonner"
 import { friendlyError } from "@/lib/error-messages"
 import { supabase } from "@/lib/supabase"
 import { loadDraftLocal, saveDraftLocal } from "@/lib/local-draft"
-import { toDateInputValue } from "@/lib/date-utils"
+import { toDateInputValue, formatJstDateTime } from "@/lib/date-utils"
 import { bekkiInspectionTypeDefault } from "@/lib/bekki-inspection-type"
 import {
     resolveDeviceTable,
@@ -30,6 +30,8 @@ import CameraInput from "@/components/camera-input"
 import JudgmentButtons from "@/components/judgment-buttons"
 import DeviceTableInputs from "@/components/device-table-inputs"
 import CopyTextFromPhotoHint from "@/components/copy-text-from-photo-hint"
+import { NameplatePairButtons } from "@/components/nameplate-read-button"
+import { nameplateFieldPairs } from "@/lib/nameplate-apply"
 import {
     normalizeBekkiInspectorNameForPayload,
     normalizeBekkiInspectorNameForState,
@@ -125,7 +127,13 @@ type SectionConfig = {
 type ExtraFieldConfig = {
     key: string
     label: string
+    /** 入力欄の薄い字。★"checkbox" では使わない（説明は checkboxNote） */
     placeholder?: string
+    /**
+     * "checkbox" の下に出す説明（★チェックの有無で出し分ける・2026-11-08 定期テスト 22）。
+     *   以前は placeholder を流用していて、チェックしていなくても「チェックしたときの文」が出ていた。
+     */
+    checkboxNote?: (checked: boolean) => string
     /**
      * 入力の種類。未指定は "text"（既存の16様式はすべてこれ＝挙動不変）。
      * ★"checkbox" でも保存形は string のまま（"1" = オン / "" = オフ）。
@@ -198,7 +206,7 @@ const formatSavedAt = (value?: string | null) => {
     if (!value) return null
     const date = new Date(value)
     if (Number.isNaN(date.getTime())) return null
-    return date.toLocaleString("ja-JP")
+    return formatJstDateTime(date)
 }
 
 export default function BekkiResultFormBase({
@@ -339,7 +347,7 @@ export default function BekkiResultFormBase({
 
         // Try saving to Supabase (may fail if offline)
         if (!navigator.onLine) {
-            setSaveMessage(`ローカル保存済み (オフライン): ${new Date().toLocaleString("ja-JP")}`)
+            setSaveMessage(`ローカル保存済み (オフライン): ${formatJstDateTime(new Date())}`)
             return true
         }
 
@@ -365,7 +373,7 @@ export default function BekkiResultFormBase({
             return false
         }
 
-        setSaveMessage(`保存しました: ${new Date().toLocaleString("ja-JP")}`)
+        setSaveMessage(`保存しました: ${formatJstDateTime(new Date())}`)
         toast.success("保存しました")
         return true
     }, [dbTable, itiranId, payload, propertyId, soukatsuId])
@@ -463,7 +471,7 @@ export default function BekkiResultFormBase({
     useEffect(() => { persistDraftRef.current = persistDraft }, [persistDraft])
 
     // 自動保存: 入力が止まって 5 秒後と、別のアプリに切り替えた瞬間（src/hooks/use-auto-save.ts）
-    useAutoSave(payload, () => persistDraftRef.current(false), () => setSaveMessage(`自動保存済み: ${new Date().toLocaleString("ja-JP")}`))
+    useAutoSave(payload, () => persistDraftRef.current(false), () => setSaveMessage(`自動保存済み: ${formatJstDateTime(new Date())}`))
 
     // 復元完了フラグ: 復元前の自動保存（StrictMode の擬似アンマウントや復元前の離脱）で
     // 新しいローカル下書きをサーバー初期値で上書きしないためのガード。
@@ -887,6 +895,7 @@ export default function BekkiResultFormBase({
     )
 
     const busy = saving || loadingPreview || loadingDownload
+    const nameplatePairs = nameplateFieldPairs(extraFields)
     const extraColumnsClass = extraFields.length >= 5 ? "md:grid-cols-5" : extraFields.length >= 4 ? "md:grid-cols-4" : "md:grid-cols-3"
 
     return (
@@ -1009,6 +1018,19 @@ export default function BekkiResultFormBase({
                     {extraFields.length > 0 && (
                         <div className="space-y-2">
                             <p className="text-sm font-medium text-slate-700">{extraFieldsTitle}</p>
+                            {/* ★銘板を撮って読む（2026-11-03・スイッチが on のときだけ出る）。型式等は「型式（型式番号）」で入れる。空の欄は今の値を消さない */}
+                            <NameplatePairButtons
+                                pairs={nameplatePairs.map((p) => ({
+                                    key: p.prefix,
+                                    device: p.device,
+                                    apply: (maker, model) =>
+                                        setExtraFieldValues((prev) => ({
+                                            ...prev,
+                                            [p.makerKey]: maker || prev[p.makerKey] || "",
+                                            [p.modelKey]: model || prev[p.modelKey] || "",
+                                        })),
+                                }))}
+                            />
                             {extraFields.some((f) => /_(maker|model)$/.test(f.key)) && <CopyTextFromPhotoHint />}
                             <div className={`grid gap-4 ${extraColumnsClass}`}>
                                 {extraFields.map((field) =>
@@ -1018,6 +1040,7 @@ export default function BekkiResultFormBase({
                                                 <input
                                                     type="checkbox"
                                                     className="mt-0.5"
+                                                    aria-describedby={field.checkboxNote ? `extra-${field.key}-note` : undefined}
                                                     checked={isExtraChecked(extraFieldValues[field.key])}
                                                     onChange={(e) =>
                                                         setExtraFieldValues((prev) => ({
@@ -1029,8 +1052,10 @@ export default function BekkiResultFormBase({
                                                 />
                                                 <span>{field.label}</span>
                                             </label>
-                                            {field.placeholder && (
-                                                <p className="text-xs text-slate-500 pl-6">{field.placeholder}</p>
+                                            {field.checkboxNote && (
+                                                <p id={`extra-${field.key}-note`} className="text-xs text-slate-500 pl-6" aria-live="polite">
+                                                    {field.checkboxNote(isExtraChecked(extraFieldValues[field.key]))}
+                                                </p>
                                             )}
                                         </div>
                                     ) : (

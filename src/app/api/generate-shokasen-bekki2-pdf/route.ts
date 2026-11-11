@@ -29,7 +29,9 @@ import {
     type CellAt,
     drawOrWrapWhenTiny,
     drawShiftedDown,
+    condenseSingleLine,
 } from "@/lib/pdf-form-helpers"
+import { drawInspectorFields, inspectorBox } from "@/lib/pdf-inspector-field"
 
 /**
  * テストデータ生成が読む「数値しか入らない欄」の宣言。
@@ -96,7 +98,7 @@ type Bekki2Payload = {
 }
 
 type DrawOptions = {
-    align?: "left" | "center"
+    align?: "left" | "center" | "right"
     paddingX?: number
     paddingY?: number
     minFontSize?: number
@@ -248,24 +250,30 @@ export async function POST(req: NextRequest) {
 
             currentSize = Math.max(currentSize, minFontSize)
 
+            // ★5pt を割るなら 5pt のまま横を縮めて入れる（condenseSingleLine の約束 3 つ・全機能チェック 48）
+            const fitted = condenseSingleLine(fonts, normalized, currentSize, maxWidth, maxHeight)
+            currentSize = fitted.size
+            const condense = fitted.condense
             fonts.fit?.reportShrink(normalized, designSize, currentSize, options?.at)
 
             reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth, options?.at)
 
-            const textToDraw = truncateToFitWidth(normalized, currentSize, maxWidth,
+            const textToDraw = condense < 1 ? normalized : truncateToFitWidth(normalized, currentSize, maxWidth,
                 cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at))
             if (!textToDraw) return
 
-            const textWidth = measureRuns(fonts, String(textToDraw ?? ""), currentSize)
+            const textWidth = measureRuns(fonts, String(textToDraw ?? ""), currentSize) * condense
             const textHeight = fonts.jp.heightAtSize(currentSize, { descender: true })
             let textX = cellX + paddingX
             if (options?.align === "center") {
                 textX = cellX + (cellW - textWidth) / 2
+            } else if (options?.align === "right") {
+                textX = cellX + cellW - paddingX - textWidth
             }
             const textTopFromTop = cellTopFromTop + (cellH - textHeight) / 2
             const baselineOffset = textHeight * 0.78
 
-            drawTextRuns(page, fonts, String(textToDraw ?? ""), textX, pageHeight - (textTopFromTop + baselineOffset), currentSize)
+            drawTextRuns(page, fonts, String(textToDraw ?? ""), textX, pageHeight - (textTopFromTop + baselineOffset), currentSize, condense)
         }
 
         // 別フォントを指定して drawInCell と同等の描画を行うヘルパー（型式など ASCII 主体のセル用）
@@ -296,21 +304,26 @@ export async function POST(req: NextRequest) {
             const h = font.jp.heightAtSize(currentSize, { descender: true })
             if (h > maxHeight) currentSize = currentSize * (maxHeight / h)
             currentSize = Math.max(currentSize, minFontSize)
+            // ★5pt を割るなら 5pt のまま横を縮めて入れる（condenseSingleLine の約束 3 つ・全機能チェック 48）
+            const fitted = condenseSingleLine(font, normalized, currentSize, maxWidth, maxHeight)
+            currentSize = fitted.size
+            const condense = fitted.condense
             fonts.fit?.reportShrink(normalized, designSize, currentSize, options?.at)
             reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth, options?.at)
             // truncate if still too wide (+ 0.1 tolerance for floating point)
             // ★共有の truncateRunsToFitWidth に寄せた（8本目の複製だった）。
             //   自前版は cut が 0 まで落ちた場合の report(value, 0) を持たず、
             //   1文字も入らないときに情報が消えたまま 200 が返っていた。
-            const textToDraw = truncateRunsToFitWidth(font, normalized, currentSize, maxWidth,
+            const textToDraw = condense < 1 ? normalized : truncateRunsToFitWidth(font, normalized, currentSize, maxWidth,
                 cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at))
-            const textWidth = measureRuns(font, String(textToDraw ?? ""), currentSize)
+            const textWidth = measureRuns(font, String(textToDraw ?? ""), currentSize) * condense
             const textHeight = font.jp.heightAtSize(currentSize, { descender: true })
             let textX = cellX + paddingX
             if (options?.align === "center") textX = cellX + (cellW - textWidth) / 2
+            else if (options?.align === "right") textX = cellX + cellW - paddingX - textWidth
             const textTopFromTop = cellTopFromTop + (cellH - textHeight) / 2
             const baselineOffset = textHeight * 0.78
-            drawTextRuns(page, font, String(textToDraw ?? ""), textX, pageHeight - (textTopFromTop + baselineOffset), currentSize)
+            drawTextRuns(page, font, String(textToDraw ?? ""), textX, pageHeight - (textTopFromTop + baselineOffset), currentSize, condense)
         }
 
         const drawWrappedInCell = (
@@ -397,14 +410,16 @@ export async function POST(req: NextRequest) {
             drawPeriodDate({ page: page1, pageHeight: p1Height, fonts, dateValue: body.period_end, anchors: PERIOD_END_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 8.1 })
         }
 
-        // 刷り込みに重ねない: 前置ラベル氏名(-144.1) の右から（テンプレート実測）
-        drawInCell(page1, p1Height, body.inspector_name, 144.6, 165, 66.4, 42, 8.4)
-        // 「社名」ラベル x=285.7-306.8 の右から開始 → x=309, w=422-309-2=111
-        drawInCell(page1, p1Height, body.inspector_company, 309, 165, 111, 21, 8.2)
-        // 「TEL」ラベル x=422.4-438.1 の右から開始 → x=440, w=530-440-2=88
-        drawInCell(page1, p1Height, body.inspector_tel, 440, 165, 88, 21, 8.2)
-        // 「住所」ラベル x=285.7-306.8 の右から開始 → x=309, w=530-309-3=218
-        drawInCell(page1, p1Height, body.inspector_address, 309, 186, 218, 21, 8.2)
+        // ★点検者の欄は、刷り込みの見出し（氏名・社名・TEL・住所）と同じ高さに 8pt で描く（全機能チェック 51・src/lib/pdf-inspector-field.ts）。
+        //   inspectorBox(見出しの右端, 見出しのベースライン, 値の右の限り, 欄の下端)。見出しの位置は雛形の実測
+        drawInspectorFields(page1, p1Height, fonts, {
+            name: body.inspector_name, company: body.inspector_company, tel: body.inspector_tel, address: body.inspector_address,
+        }, {
+            name: inspectorBox(144.12, 176.76, 211.0, 207),
+            company: inspectorBox(306.84, 176.76, 417.4, 186),
+            tel: inspectorBox(438.12, 176.76, 528, 186),
+            address: inspectorBox(306.84, 197.76, 527, 207),
+        })
 
         // equipment_name はテンプレートに印刷済みのため描画しない
         // 「製造者名」ラベル x=170.3-212.4 の右から開始 → x=215, w=311.6-215-2=94
@@ -432,20 +447,23 @@ export async function POST(req: NextRequest) {
             const voltTop = P1_ROW_BOUNDS[10]
             const voltH = P1_ROW_BOUNDS[11] - P1_ROW_BOUNDS[10]
             const voltContent = normalizeText(voltRow.content)
+            // ★値は単位の直前に右寄せ（全機能チェック 50・左に寄せると電流の値が「Ｖ」にくっついて「Ｖ15.5」と読めた）
+            const drawVolt = (v: unknown) => drawInCellWithFont(page1, p1Height, fonts, v, 239, voltTop, 34, voltH, 6.8, { align: "right", paddingX: 1 })
+            const drawAmp = (v: unknown) => drawInCellWithFont(page1, p1Height, fonts, v, 289, voltTop, 36, voltH, 6.8, { align: "right", paddingX: 1 })
 
             if (voltRow.current_value) {
                 // 明示的フィールド: content=電圧, current_value=電流
-                drawWrappedInCell(page1, p1Height, voltContent, 239, voltTop, 34, voltH, 6.8)
-                drawWrappedInCell(page1, p1Height, voltRow.current_value, 289, voltTop, 36, voltH, 6.8)
+                drawVolt(voltContent)
+                drawAmp(voltRow.current_value)
             } else if (voltContent.includes("/")) {
                 // "AC200/15.5" → "AC200" before V, "15.5" before A
                 const slashIdx = voltContent.indexOf("/")
                 const voltage = voltContent.slice(0, slashIdx).trim()
                 const current = voltContent.slice(slashIdx + 1).trim()
-                drawWrappedInCell(page1, p1Height, voltage, 239, voltTop, 34, voltH, 6.8)
-                drawWrappedInCell(page1, p1Height, current, 289, voltTop, 36, voltH, 6.8)
+                drawVolt(voltage)
+                drawAmp(current)
             } else if (voltContent) {
-                drawWrappedInCell(page1, p1Height, voltContent, 239, voltTop, 34, voltH, 6.8)
+                drawVolt(voltContent)
             }
         }
 
@@ -475,8 +493,9 @@ export async function POST(req: NextRequest) {
             const perfH = P2_ROW_BOUNDS[25] - P2_ROW_BOUNDS[24]
             const perfContent = normalizeText(perfRow.content)
 
-            const drawMpaVal = (v: string) => drawWrappedInCell(page2, p2Height, v, 239, perfTop, 27, perfH, 6.8)
-            const drawFlowVal = (v: string) => drawInCellWithFont(page2, p2Height, fonts, v, 297, perfTop, 15, perfH, 6.5, { paddingX: 1 })
+            // ★値は単位の直前に右寄せ（全機能チェック 50）。雛形の実測: 「MPa」の左端 268.7・「a」の右端 284.5・「L/min」の左端 310.7
+            const drawMpaVal = (v: string) => drawInCellWithFont(page2, p2Height, fonts, v, 239, perfTop, 28, perfH, 6.8, { align: "right", paddingX: 1 })
+            const drawFlowVal = (v: string) => drawInCellWithFont(page2, p2Height, fonts, v, 286, perfTop, 24, perfH, 6.5, { align: "right", paddingX: 1 })
 
             if (perfRow.flow_value) {
                 // 明示的フィールド: content=MPa値, flow_value=L/min値
@@ -510,7 +529,7 @@ export async function POST(req: NextRequest) {
         // P3A row 13: 表示灯（専用/兼用）の選択を〇で表示
         drawChoiceCircle(page3, p3Height, fonts, p3Rows[13]?.content ?? "", [
             { label: "専用", cx: 270, cy: 306.75, rx: 16.06, ry: 5.78 },
-            { label: "兼用", cx: 312.1, cy: 306.75, rx: 14, ry: 7 },
+            { label: "兼用", cx: 312.1, cy: 306.98, rx: 15.54, ry: 6.03 },
         ], undefined, { rowsKey: "page3_rows", row: 13, column: "content" })
 
         // P3A row 8, 9: ホース/ノズル径「ホース ___m× ___本 ｜ ノズル径 ___mm」を手動3分割描画
@@ -530,17 +549,18 @@ export async function POST(req: NextRequest) {
             const hValH = hH / 2 + 2
             const parts = hCount || nDia ? [hContent, hCount, nDia] : hContent.split("/")
             if (parts.length >= 3) {
-                // ホース長(m): 「m」(x=264.6)の左
-                drawInCellWithFont(page3, p3Height, fonts, parts[0]?.trim(), 244, hValTop, 20, hValH, 6.5, { paddingX: 0.5 })
-                // 本数: 「×」(x=285.7)と「本」(x=301.4)の間
-                drawInCellWithFont(page3, p3Height, fonts, parts[1]?.trim(), 287, hValTop, 12, hValH, 6.0, { paddingX: 0 })
-                // ノズル径(mm): 「本」(x=312)と「mm」(x=327.7)の間
-                drawInCellWithFont(page3, p3Height, fonts, parts[2]?.trim(), 313, hValTop, 14, hValH, 6.0, { paddingX: 0 })
+                // ★値は単位の直前に右寄せ（全機能チェック 50・左に寄せると口径が「本」にくっついて「本25」と読めた）
+                // ホース長(m): 「ｍ」(x=264.6)の左
+                drawInCellWithFont(page3, p3Height, fonts, parts[0]?.trim(), 244, hValTop, 20, hValH, 6.5, { align: "right", paddingX: 1.5 })
+                // 本数: 「×」(右端 285.7)と「本」(x=301.4)の間
+                drawInCellWithFont(page3, p3Height, fonts, parts[1]?.trim(), 287, hValTop, 12, hValH, 6.0, { align: "right", paddingX: 0.5 })
+                // ノズル径(mm): 「本」(右端 312.0)と「mm」(x=327.7)の間
+                drawInCellWithFont(page3, p3Height, fonts, parts[2]?.trim(), 313, hValTop, 14, hValH, 6.0, { align: "right", paddingX: 1.5 })
             } else if (parts.length === 2) {
-                drawInCellWithFont(page3, p3Height, fonts, parts[0]?.trim(), 244, hValTop, 20, hValH, 6.5, { paddingX: 0.5 })
-                drawInCellWithFont(page3, p3Height, fonts, parts[1]?.trim(), 313, hValTop, 14, hValH, 6.0, { paddingX: 0 })
+                drawInCellWithFont(page3, p3Height, fonts, parts[0]?.trim(), 244, hValTop, 20, hValH, 6.5, { align: "right", paddingX: 1.5 })
+                drawInCellWithFont(page3, p3Height, fonts, parts[1]?.trim(), 313, hValTop, 14, hValH, 6.0, { align: "right", paddingX: 1.5 })
             } else if (hContent) {
-                drawInCellWithFont(page3, p3Height, fonts, hContent, 244, hValTop, 20, hValH, 6.5, { paddingX: 0.5 })
+                drawInCellWithFont(page3, p3Height, fonts, hContent, 244, hValTop, 20, hValH, 6.5, { align: "right", paddingX: 1.5 })
             }
         }
 

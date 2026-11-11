@@ -22,7 +22,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { CheckCheck, Eye, FileDown, Loader2, Save } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { bekkiInspectionTypeDefault } from "@/lib/bekki-inspection-type"
-import { toDateInputValue } from "@/lib/date-utils"
+import { toDateInputValue, formatJstDateTime } from "@/lib/date-utils"
 import {
     normalizeBekkiInspectorNameForPayload,
     normalizeBekkiInspectorNameForState,
@@ -40,6 +40,7 @@ import { PDF_FIT_FRAGMENT, openInAppPdfPreview, prefersInAppPdfViewer } from "@/
 import { soukatsuPdfGate } from "@/lib/pdf-gate-client"
 import { CODE_INPUT_PROPS } from "@/lib/code-input-props"
 import CopyTextFromPhotoHint from "@/components/copy-text-from-photo-hint"
+import { NameplatePairButtons } from "@/components/nameplate-read-button"
 import { useAutoSave } from "@/hooks/use-auto-save"
 import FormActionBar from "@/components/form-action-bar"
 import InspectorSyncNotice from "@/components/inspector-sync-notice"
@@ -266,7 +267,7 @@ const formatSavedAt = (value?: string | null) => {
     if (!value) return null
     const date = new Date(value)
     if (Number.isNaN(date.getTime())) return null
-    return date.toLocaleString("ja-JP")
+    return formatJstDateTime(date)
 }
 
 export default function ShokasenBekki2Form({
@@ -395,7 +396,7 @@ export default function ShokasenBekki2Form({
             return false
         }
 
-        setSaveMessage(`保存しました: ${new Date().toLocaleString("ja-JP")}`)
+        setSaveMessage(`保存しました: ${formatJstDateTime(new Date())}`)
         return true
     }, [itiranId, payload, propertyId, soukatsuId])
 
@@ -494,7 +495,7 @@ export default function ShokasenBekki2Form({
         return () => { persistDraftRef.current(false) }
     }, [])
     // 自動保存: 入力が止まって 5 秒後と、別のアプリに切り替えた瞬間（src/hooks/use-auto-save.ts）
-    useAutoSave(payload, () => persistDraftRef.current(false), () => setSaveMessage(`自動保存済み: ${new Date().toLocaleString("ja-JP")}`))
+    useAutoSave(payload, () => persistDraftRef.current(false), () => setSaveMessage(`自動保存済み: ${formatJstDateTime(new Date())}`))
 
 
 
@@ -854,7 +855,7 @@ export default function ShokasenBekki2Form({
             <Card>
                 <CardHeader>
                     <CardTitle>屋内消火栓設備点検票（別記様式2）入力</CardTitle>
-                    <CardDescription>s50_kokuji14_bekki2.pdf に転記する項目です。</CardDescription>
+                    <CardDescription>点検票（別記様式2）に印字する項目です。</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-5">
                     <div className="grid md:grid-cols-2 gap-4">
@@ -910,6 +911,13 @@ export default function ShokasenBekki2Form({
                         </div>
                     </div>
 
+                    {/* ★銘板を撮って読む（2026-11-03・スイッチが on のときだけ出る）。空の欄は今の値を消さない */}
+                    <NameplatePairButtons
+                        pairs={[
+                            { key: "pump", device: "ポンプ", apply: (maker, model) => { if (maker) setPumpMaker(maker); if (model) setPumpModel(model) } },
+                            { key: "motor", device: "電動機", apply: (maker, model) => { if (maker) setMotorMaker(maker); if (model) setMotorModel(model) } },
+                        ]}
+                    />
                     <CopyTextFromPhotoHint />
                     {/* ★「設備名」の入力欄は出さない（#20）。紙の「点検設備名」はポンプ・電動機の製造者名／型式の
                         行見出しで、自由に設備名を書く欄が無い（ルートも描かない＝入れても載らなかった） */}

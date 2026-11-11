@@ -32,7 +32,9 @@ import {
     type CellAt,
     drawOrWrapWhenTiny,
     drawShiftedDown,
+    condenseSingleLine,
 } from "@/lib/pdf-form-helpers"
+import { drawInspectorFields, inspectorBox } from "@/lib/pdf-inspector-field"
 
 /**
  * テストデータ生成が読む「数値しか入らない欄」の宣言。
@@ -125,7 +127,7 @@ type Bekki6Payload = {
 }
 
 type DrawOptions = {
-    align?: "left" | "center"
+    align?: "left" | "center" | "right"
     paddingX?: number
     paddingY?: number
     minFontSize?: number
@@ -294,24 +296,30 @@ export async function POST(req: NextRequest) {
 
             currentSize = Math.max(currentSize, minFontSize)
 
+            // ★5pt を割るなら 5pt のまま横を縮めて入れる（condenseSingleLine の約束 3 つ・全機能チェック 48）
+            const fitted = condenseSingleLine(fonts, normalized, currentSize, maxWidth, maxHeight)
+            currentSize = fitted.size
+            const condense = fitted.condense
             fonts.fit?.reportShrink(normalized, designSize, currentSize, options?.at)
 
             reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth, options?.at)
 
-            const textToDraw = truncateToFitWidth(normalized, currentSize, maxWidth,
+            const textToDraw = condense < 1 ? normalized : truncateToFitWidth(normalized, currentSize, maxWidth,
                 cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at))
             if (!textToDraw) return
 
-            const textWidth = measureRuns(fonts, String(textToDraw ?? ""), currentSize)
+            const textWidth = measureRuns(fonts, String(textToDraw ?? ""), currentSize) * condense
             const textHeight = fonts.jp.heightAtSize(currentSize, { descender: true })
             let textX = cellX + paddingX
             if (options?.align === "center") {
                 textX = cellX + (cellW - textWidth) / 2
+            } else if (options?.align === "right") {
+                textX = cellX + cellW - paddingX - textWidth
             }
             const textTop = cellTopFromTop + (cellH - textHeight) / 2
             const baselineOffset = textHeight * 0.78
 
-            drawTextRuns(page, fonts, String(textToDraw ?? ""), textX, pageHeight - (textTop + baselineOffset), currentSize)
+            drawTextRuns(page, fonts, String(textToDraw ?? ""), textX, pageHeight - (textTop + baselineOffset), currentSize, condense)
         }
 
         const drawWrappedInCell = (
@@ -507,9 +515,9 @@ export async function POST(req: NextRequest) {
         //   正典でも完全な刷り込みで記入欄が無く、bekki7/8 では実際に重なっていた。
         //   選択肢は右側にあるので、該当する語を○で囲む（座標はテンプレート実測）。
         drawChoiceCircle(page1, p1Height, fonts, body.equipment_system, [
-            { label: "全域", cx: 452.29, cy: 105.9, rx: 13.39, ry: 9.13 },
-            { label: "局所", cx: 481.81, cy: 105.9, rx: 16.14, ry: 7.13 },
-            { label: "移動", cx: 511.1, cy: 105.9, rx: 13.64, ry: 7.88 },
+            { label: "全域", cx: 452.29, cy: 106.15, rx: 13.14, ry: 9.13 },
+            { label: "局所", cx: 481.81, cy: 105.9, rx: 16.39, ry: 7.13 },
+            { label: "移動", cx: 511.1, cy: 105.9, rx: 13.39, ry: 7.88 },
         ], undefined, { column: "equipment_system" })
         drawInCell(page1, p1Height, body.form_name, 113.33, 116.0, 266.0, 27.33, 8.8)
         drawInCell(page1, p1Height, body.fire_manager, 422.67, 116.0, 106.0, 27.33, 8.4)
@@ -520,21 +528,23 @@ export async function POST(req: NextRequest) {
         // ○の座標はテンプレートPDFの文字を実測（様式ごとに位置が違う）。
         drawChoiceCircle(page1, p1Height, fonts, body.inspection_type || "機器・総合", [
             { label: "機器", cx: 133.08, cy: 179.53, rx: 18.28, ry: 7.03 },
-            { label: "総合", cx: 186.84, cy: 179.53, rx: 17.78, ry: 7.03 },
+            { label: "総合", cx: 186.84, cy: 179.78, rx: 18.28, ry: 7.03 },
         ], undefined, { column: "inspection_type" })
         if (parseDateParts(body.period_start) || parseDateParts(body.period_end)) {
             drawPeriodDate({ page: page1, pageHeight: p1Height, fonts, dateValue: body.period_start, anchors: PERIOD_START_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 7.8 })
             drawPeriodDate({ page: page1, pageHeight: p1Height, fonts, dateValue: body.period_end, anchors: PERIOD_END_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 7.8 })
         }
 
-        // 刷り込みに重ねない: 前置ラベル「氏名」(-139.9) の右から（テンプレート実測）
-        drawInCell(page1, p1Height, body.inspector_name, 140.4, 187.33, 64.9, 48.0, 8.0)
-        // 刷り込みに重ねない: 「社名」(-290.4) の右から「TEL」(395.5-) の手前まで（テンプレート実測）
-        drawInCell(page1, p1Height, body.inspector_company, 290.4, 187.33, 105.1, 23.0, 7.8)
-        // 刷り込みに重ねない: 前置ラベル「TEL」(-411.4) の右から（テンプレート実測）
-        drawInCell(page1, p1Height, body.inspector_tel, 411.4, 187.33, 117.3, 23.0, 7.8)
-        // 刷り込みに重ねない: 前置ラベル「住所」(-290.4) の右から（テンプレート実測）
-        drawInCell(page1, p1Height, body.inspector_address, 290.4, 210.0, 238.3, 25.33, 7.6)
+        // ★点検者の欄は、刷り込みの見出し（氏名・社名・TEL・住所）と同じ高さに 8pt で描く（全機能チェック 51・src/lib/pdf-inspector-field.ts）。
+        //   inspectorBox(見出しの右端, 見出しのベースライン, 値の右の限り, 欄の下端)。見出しの位置は雛形の実測
+        drawInspectorFields(page1, p1Height, fonts, {
+            name: body.inspector_name, company: body.inspector_company, tel: body.inspector_tel, address: body.inspector_address,
+        }, {
+            name: inspectorBox(139.92, 201.84, 205.3, 235.33),
+            company: inspectorBox(290.4, 200.4, 390.52, 210.33),
+            tel: inspectorBox(411.36, 200.4, 528.7, 210.33),
+            address: inspectorBox(290.4, 223.2, 528.7, 235.33),
+        })
 
         // 刷り込みの見出し行には描かない: p1 行0 = 刷り込み「機器点検」（テンプレート実測）
         drawResultRows(page1, p1Height, blankPrintedRows(body.page1_rows ?? [], new Set([0])), P1_ROW_BOUNDS, {
@@ -568,7 +578,7 @@ export async function POST(req: NextRequest) {
         // PAGE2 row 17「起動装置 / 自動式 / 火災感知装置（専用・兼用）」: 公式PDF刷り込みの選択を丸囲み
         drawChoiceCircle(page2, p2Height, fonts, body.page2_rows?.[17]?.content ?? "", [
             { label: "専用", cx: 252.45, cy: 337, rx: 14.09, ry: 6.28 },
-            { label: "兼用", cx: 294.45, cy: 337, rx: 14.84, ry: 6.78 },
+            { label: "兼用", cx: 294.45, cy: 337, rx: 15.09, ry: 6.78 },
         ], undefined, { rowsKey: "page2_rows", row: 17, column: "content" })
 
         drawResultRows(page3, p3Height, body.page3_rows ?? [], P3_ROW_BOUNDS, {

@@ -59,7 +59,10 @@ _p.loader.exec_module(cpo)
 #     generate-soukatu               3 … 同上
 # ★2026-10-07: 7 → 6。総括表の点検種別の○は「機器」「総合」で別々に drawEllipse を書いていたのを、
 #   TYPE_MARK から中心を選ぶ 1 か所にまとめた（描く○の数は変わらない）。
-EXPECTED_DRAW_SITES = 6
+# ★2026-11-11（全機能チェック 52）: 6 → 11。点検種別に「機器」だけが刷られている様式のうち、
+#   第13 だけが「機器」に○を付けていたのを、第16・17・19・21・22 にも同じ形（const TYPE_CHOICES ＋ drawEllipse）で足した。
+#   ★座標は check-choice-clearance が TYPE_CHOICES として静的に見る（solve-choice-circle-geometry で解いた）
+EXPECTED_DRAW_SITES = 11
 
 # ★静的検査が届いていない○の数。★増えたら落ちる。★減ったら登録を直すこと。
 #
@@ -73,7 +76,11 @@ EXPECTED_DRAW_SITES = 6
 #   ★重なりは check-printed-overlap が見る（11の1・14・15 の 6 つは名指しの例外）。
 # ★2026-10-20: 88 → 89。総括表の「総合点検」の○（scripts/fixtures/extra/soukatu_test__sougou）。
 #   それまで総合点検の総括表はどちらのセットにも無く、この○は一度も描かれていなかった
-EXPECTED_UNCOVERED = 89
+# ★2026-11-11（全機能チェック 52）: 89 → 94。第16・17・19・21・22 の点検種別「機器」の○（各 1 つ）。
+#   生成PDFの一覧で 5 個とも 1 ページ目の点検種別の位置にあることを確かめた。
+#   ★この 5 個は TYPE_CHOICES なので check-choice-clearance が静的にも見ている（この一覧の「届いていない」は drawChoiceCircle の定数だけを数えるため）。
+#   重なりは check-printed-overlap も 0
+EXPECTED_UNCOVERED = 94
 
 SET_DIRS = ["tmp/pdf-test-bekki234", "tmp/pdf-test-bekki5678", "tmp/pdf-test-bekki9to12",
             "tmp/pdf-test-bekki13to22", "tmp/pdf-test-extra", "tmp/pdf-realistic"]

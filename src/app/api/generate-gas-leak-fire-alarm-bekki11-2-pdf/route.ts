@@ -28,7 +28,10 @@ import {
     type CellRef,
     type CellAt,
     drawOrWrapWhenTiny,
+    condenseSingleLine,
+    CHOICE_CIRCLE_BORDER,
 } from "@/lib/pdf-form-helpers"
+import { drawInspectorFields, inspectorBox } from "@/lib/pdf-inspector-field"
 
 /**
  * テストデータ生成が読む「数値しか入らない欄」の宣言。
@@ -74,7 +77,7 @@ type Bekki11_2Payload = {
 }
 
 type DrawOptions = {
-    align?: "left" | "center"
+    align?: "left" | "center" | "right"
     paddingX?: number
     paddingY?: number
     minFontSize?: number
@@ -130,18 +133,10 @@ const PERIOD_ROW = { top: 170.0, h: 16.0 }
 const TYPE_CHOICES = [
     // ★2026-08-25: テンプレートの実測から解き直した（重なり 227px / 230px → 0px）。
     //   ★rx を広げ、ry を縮める。★縦だけでは解けない（角で字を切っていた）。
-    { label: "機器", cx: 137.82, cy: 177.4, rx: 19.14, ry: 7.03 }, // 機 122.8-133.3 / 器 142.3-152.9
-    { label: "総合", cx: 196.5, cy: 177.4, rx: 18.57, ry: 7.03 }, // 総 181.4-192.0 / 合 201.0-211.5
+    { label: "機器", cx: 137.82, cy: 177.4, rx: 19.56, ry: 7.03 }, // 機 122.8-133.3 / 器 142.3-152.9
+    { label: "総合", cx: 196.5, cy: 177.4, rx: 18.82, ry: 7.03 }, // 総 181.4-192.0 / 合 201.0-211.5
 ]
 
-// 点検者ブロック。セル内に「氏名」「社名」「TEL」「住所」が印字されているため、
-// 値はその右の空きに置き、上下位置は印字ラベルの中心に合わせる（実測値）。
-const INSPECTOR = {
-    name: { x: 147.0, top: 189.1, w: 67.6, h: 14.0 }, // 氏名 122.8-143.9 の右、セル右端 216.6
-    company: { x: 310.0, top: 186.5, w: 99.0, h: 14.0 }, // 社名 285.6-306.7 の右、TEL 411.7 の手前
-    tel: { x: 430.0, top: 186.5, w: 97.6, h: 14.0 }, // TEL 411.7-427.6 の右、セル右端 529.6
-    address: { x: 310.0, top: 212.8, w: 217.6, h: 14.0 }, // 住所 285.6-306.7 の右
-}
 // baseline は刷り込み「年」のベースライン（テンプレート p1 の実測値）。
 // ★これが無いとセル矩形の中央に置くことになり、刷り込みと高さが揃わない。
 //   実測では23様式すべてでズレていた（-0.4〜-5.19pt / bekki7 が最大）。
@@ -241,22 +236,27 @@ export async function POST(req: NextRequest) {
             const heightAtCurrent = fonts.jp.heightAtSize(currentSize, { descender: true })
             if (heightAtCurrent > maxHeight) currentSize *= maxHeight / heightAtCurrent
             currentSize = Math.max(currentSize, minFontSize)
+            // ★5pt を割るなら 5pt のまま横を縮めて入れる（condenseSingleLine の約束 3 つ・全機能チェック 48）
+            const fitted = condenseSingleLine(fonts, normalized, currentSize, maxWidth, maxHeight)
+            currentSize = fitted.size
+            const condense = fitted.condense
             fonts.fit?.reportShrink(normalized, designSize, currentSize, options?.at)
             reportIfBelowMinSize(fonts, normalized, currentSize, maxWidth, options?.at)
 
-            const textToDraw = truncateToFitWidth(normalized, currentSize, maxWidth,
+            const textToDraw = condense < 1 ? normalized : truncateToFitWidth(normalized, currentSize, maxWidth,
                 cellAt(page, cellX, cellTopFromTop, cellW, cellH, options?.at))
             if (!textToDraw) return
 
-            const textWidth = measureRuns(fonts, String(textToDraw ?? ""), currentSize)
+            const textWidth = measureRuns(fonts, String(textToDraw ?? ""), currentSize) * condense
             const textHeight = fonts.jp.heightAtSize(currentSize, { descender: true })
             let textX = cellX + paddingX
             if (options?.align === "center") textX = cellX + (cellW - textWidth) / 2
+            else if (options?.align === "right") textX = cellX + cellW - paddingX - textWidth
 
             const textTop = cellTopFromTop + (cellH - textHeight) / 2
             const baselineOffset = textHeight * 0.78
 
-            drawTextRuns(page, fonts, String(textToDraw ?? ""), textX, pageHeight - (textTop + baselineOffset), currentSize)
+            drawTextRuns(page, fonts, String(textToDraw ?? ""), textX, pageHeight - (textTop + baselineOffset), currentSize, condense)
         }
 
         const drawWrappedInCell = (
@@ -330,7 +330,7 @@ export async function POST(req: NextRequest) {
                 xScale: choice.rx,
                 yScale: choice.ry,
                 borderColor: rgb(0, 0, 0),
-                borderWidth: 0.7,
+                borderWidth: CHOICE_CIRCLE_BORDER,
             })
         }
 
@@ -339,10 +339,16 @@ export async function POST(req: NextRequest) {
             drawPeriodDate({ page: page1, pageHeight: p1Height, fonts, dateValue: body.period_end, anchors: PERIOD_END_ANCHORS, rowTop: PERIOD_ROW.top, rowHeight: PERIOD_ROW.h, fontSize: 6.8 })
         }
 
-        drawInCell(page1, p1Height, body.inspector_name, INSPECTOR.name.x, INSPECTOR.name.top, INSPECTOR.name.w, INSPECTOR.name.h, 7.2)
-        drawInCell(page1, p1Height, body.inspector_company, INSPECTOR.company.x, INSPECTOR.company.top, INSPECTOR.company.w, INSPECTOR.company.h, 7.0)
-        drawInCell(page1, p1Height, body.inspector_tel, INSPECTOR.tel.x, INSPECTOR.tel.top, INSPECTOR.tel.w, INSPECTOR.tel.h, 7.0)
-        drawInCell(page1, p1Height, body.inspector_address, INSPECTOR.address.x, INSPECTOR.address.top, INSPECTOR.address.w, INSPECTOR.address.h, 6.8)
+        // ★点検者の欄は、刷り込みの見出し（氏名・社名・TEL・住所）と同じ高さに 8pt で描く（全機能チェック 51・src/lib/pdf-inspector-field.ts）。
+        //   inspectorBox(見出しの右端, 見出しのベースライン, 値の右の限り, 欄の下端)。見出しの位置は雛形の実測
+        drawInspectorFields(page1, p1Height, fonts, {
+            name: body.inspector_name, company: body.inspector_company, tel: body.inspector_tel, address: body.inspector_address,
+        }, {
+            name: inspectorBox(143.88, 199.92, 214.6, 213.92),
+            company: inspectorBox(306.72, 197.28, 406.72, 212.06),
+            tel: inspectorBox(427.56, 197.28, 527.6, 212.06),
+            address: inspectorBox(306.72, 223.56, 527.6, 237.56),
+        })
 
         // 点検設備名 row has fixed labels for 受信橁E/ 中継器 in the left cells.
         // 設備情報の帯は 製造者名 y=238.6-255.0 / 型式等 y=255.0-271.6（テンプレート実測）。

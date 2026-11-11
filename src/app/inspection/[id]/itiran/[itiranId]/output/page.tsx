@@ -23,7 +23,8 @@ import { findBlankJudgmentSections } from "@/lib/blank-judgment-sections"
 import { findInspectionTypeMismatches } from "@/lib/inspection-type-consistency"
 import WithdrawnMatchNotice from "@/components/withdrawn-match-notice"
 import { withdrawnAtOf } from "@/lib/match-withdrawn"
-import { checkReportReadiness } from "@/lib/report-readiness"
+import { checkReportReadiness, readinessBoxTitle } from "@/lib/report-readiness"
+import { loadBekkiPayloads } from "@/lib/bekki-payloads"
 import ReportReadinessBox from "@/components/report-readiness-box"
 
 export default async function OutputPage({
@@ -95,38 +96,26 @@ export default async function OutputPage({
     const applicableSteps = selectedSteps(property?.equipment_types)
     const applicableStepIds = applicableSteps.map((s) => s.id)
 
-    // Fetch all bekki payloads in parallel
-    const bekkiPayloads: Record<string, Record<string, unknown>> = {}
-    const bekkiResults = await Promise.allSettled(
-        applicableSteps.map(async (step) => {
-            const config = PDF_MERGE_CONFIG[step.id as ItiranInputStepId]
-            const { data } = await supabase
-                .from(config.dbTable)
-                .select("payload")
-                .eq("itiran_id", itiranId)
-                .single()
-            return { stepId: step.id, payload: data?.payload }
-        })
-    )
-    for (const result of bekkiResults) {
-        if (result.status === "fulfilled" && result.value.payload) {
-            bekkiPayloads[result.value.stepId] = result.value.payload as Record<string, unknown>
-        }
-    }
+    // 点検票（別記）の保存内容を様式ごとに読む（総括表の確認の画面と同じ読み方・src/lib/bekki-payloads.ts）
+    const bekkiPayloads = await loadBekkiPayloads(supabase, itiranId, applicableStepIds)
 
     // ★出力前の不備チェック（src/lib/report-readiness.ts・2026-10-19 打合せ #101）。
-    //   総括表の必須・点検者1の氏名と資格・別記の「否」の不良内容・未入力の様式。★止めない（PDF・納品はそのまま）
+    //   総括表の必須・点検者1の氏名と資格・別記の「否」の不良内容・未入力の様式・総括表の判定と別記の「否」。★止めない（PDF・納品はそのまま）
     const readiness = checkReportReadiness({ soukatsu, itiran, bekkiPayloads, stepIds: applicableStepIds })
     const flagged = new Set([...readiness.missing, ...readiness.warnings].map((r) => r.id))
+    // ★確定のボタンをこの画面に置くとき（未確定）は「確定前の確認」。一覧の注記も箱の見出しと同じ言葉にする（定期テスト 25）
+    const readinessMode = needsFinalizeOnOutput(finalization) ? "finalize" : "review"
+    const readinessTitle = readinessBoxTitle(readinessMode)
 
     // ★attention … 出せるが、出力前の確認に指摘がある（以前は報告書（様式第１）が中身に関係なくいつも準備済みに見えた）
     const pdfList = [
         { label: "報告書（様式第１）", ready: true, attention: readiness.missing.length > 0 || flagged.has("report_date"), urgent: flagged.has("report_date") },
-        { label: "総括表", ready: true, attention: readiness.missing.length > 0 || flagged.has("soukatsu_bad_detail") },
+        { label: "総括表", ready: true, attention: readiness.missing.length > 0 || flagged.has("soukatsu_bad_detail") || flagged.has("soukatsu_judgment") },
         // ★電話番号（2026-10-20・録音 102）も。点検者 1 の氏名・資格・電話番号は赤で目立たせる
         { label: "点検者一覧表", ready: true, attention: flagged.has("inspector1_name") || flagged.has("inspector1_license") || flagged.has("inspector1_phone"), urgent: flagged.has("inspector1_name") || flagged.has("inspector1_license") || flagged.has("inspector1_phone") },
         // ★綴じる順（様式番号の順・src/lib/build-merged-report.ts と同じ）に並べる。
-        //   以前は入力の順（1→12〜22→2〜11）のままで、一覧と実際の PDF の順が違っていた（2026-10-20 の本番の通しチェック）
+        //   以前は入力の順（1→12〜22→2〜11）のままで、一覧と実際の PDF の順が違っていた（2026-10-20 の本番の通しチェック）。
+        //   ★入力の順も様式番号の順にした（2026-11-08）が、綴じる順に合わせる並べ替えはここに残す（入力の順に頼らない）
         ...[...applicableSteps].sort((a, b) => PDF_MERGE_CONFIG[a.id].formNo - PDF_MERGE_CONFIG[b.id].formNo).map((step) => ({
             label: step.title,
             ready: !!bekkiPayloads[step.id],
@@ -203,23 +192,27 @@ export default async function OutputPage({
 
                     <div className="space-y-2">
                         {pdfList.map((item, idx) => (
-                            <div key={idx} className="flex items-center gap-2 text-sm">
+                            <div key={idx} className="flex items-start gap-2 text-sm">
                                 {!item.ready ? (
-                                    <MinusCircle className="w-4 h-4 text-slate-400 shrink-0" />
+                                    <MinusCircle className="mt-0.5 w-4 h-4 text-slate-400 shrink-0" />
                                 ) : "urgent" in item && item.urgent ? (
                                     // ★足りない項目（点検者 1 の氏名・資格・電話番号／報告年月日）は赤い印を点滅させる（2026-10-20・録音 102）
-                                    <AlertCircle className="w-4 h-4 text-red-600 shrink-0 motion-safe:animate-pulse" />
+                                    <AlertCircle className="mt-0.5 w-4 h-4 text-red-600 shrink-0 motion-safe:animate-pulse" />
                                 ) : item.attention ? (
-                                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                                    <AlertTriangle className="mt-0.5 w-4 h-4 text-amber-600 shrink-0" />
                                 ) : (
-                                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                                    <CheckCircle2 className="mt-0.5 w-4 h-4 text-emerald-600 shrink-0" />
                                 )}
-                                <span className={item.ready ? "" : "text-slate-400"}>{item.label}</span>
-                                {item.ready && item.attention && (
-                                    <span className={"urgent" in item && item.urgent ? "text-xs font-semibold text-red-700" : "text-xs text-amber-700"}>
-                                        {"urgent" in item && item.urgent ? "（足りない項目があります。下の「出力前の確認」を見てください）" : "（下の「出力前の確認」を見てください）"}
-                                    </span>
-                                )}
+                                {/* ★名前は途中で折らない（375px 幅で「総括／表」と折れていた・定期テスト 25）。
+                                    注記は名前のあとに続け、入らなければ次の行へ回す。長い様式名は「（別記様式…）」の前で折れる */}
+                                <span className="min-w-0">
+                                    <span className={`break-keep wrap-anywhere ${item.ready ? "" : "text-slate-400"}`}>{item.label}</span>
+                                    {item.ready && item.attention && (
+                                        <span className={`ml-1 inline-block ${"urgent" in item && item.urgent ? "text-xs font-semibold text-red-700" : "text-xs text-amber-700"}`}>
+                                            {"urgent" in item && item.urgent ? `（足りない項目があります。下の「${readinessTitle}」を見てください）` : `（下の「${readinessTitle}」を見てください）`}
+                                        </span>
+                                    )}
+                                </span>
                             </div>
                         ))}
                     </div>

@@ -31,6 +31,12 @@ export interface Database {
                     floor_below: number | null
                     total_floor_area: number | null
                     equipment_types: string[]
+                    /** 現場の位置（20261231160000・地図などの改善 3）。どちらも空か、どちらも値 */
+                    location_lat: number | null
+                    location_lng: number | null
+                    /** 前回の点検（月の 1 日と種類・20261231160000）。総括表がまだ無い物件で職人さんがボタンで選ぶ */
+                    last_inspection_month: string | null
+                    last_inspection_kind: string | null
                 }
                 Insert: {
                     id?: string
@@ -53,6 +59,11 @@ export interface Database {
                     floor_below?: number | null
                     total_floor_area?: number | null
                     equipment_types?: string[]
+                    /** 現場の位置（20261231160000・地図などの改善 3）。どちらも空か、どちらも値 */
+                    location_lat?: number | null
+                    location_lng?: number | null
+                    last_inspection_month?: string | null
+                    last_inspection_kind?: string | null
                 }
                 Update: {
                     id?: string
@@ -75,6 +86,11 @@ export interface Database {
                     floor_below?: number | null
                     total_floor_area?: number | null
                     equipment_types?: string[]
+                    /** 現場の位置（20261231160000・地図などの改善 3）。どちらも空か、どちらも値 */
+                    location_lat?: number | null
+                    location_lng?: number | null
+                    last_inspection_month?: string | null
+                    last_inspection_kind?: string | null
                 }
             }
             inspection_reports: {

@@ -20,7 +20,7 @@ export default function ContactPage() {
         }
 
         // mailto fallback – opens user's mail client with pre-filled content
-        const subject = encodeURIComponent(`[Mamoru Infra] ${body.name}様からのお問い合わせ`)
+        const subject = encodeURIComponent(`[マモルインフラ] ${body.name}様からのお問い合わせ`)
         const mailBody = encodeURIComponent(
             `お名前: ${body.name}\nメールアドレス: ${body.email}\n\n${body.message}`
         )
@@ -29,14 +29,14 @@ export default function ContactPage() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-screen bg-canvas">
             <header className="border-b border-slate-200 bg-white">
                 <div className="mx-auto flex h-16 max-w-4xl items-center px-4">
                     <Link href="/" className="flex items-center gap-2">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-white">
                             <Building2 className="h-4 w-4" />
                         </div>
-                        <span className="text-lg font-bold text-slate-800">Mamoru Infra</span>
+                        <span className="text-lg font-bold text-slate-800">マモルインフラ</span>
                     </Link>
                 </div>
             </header>
@@ -51,14 +51,14 @@ export default function ContactPage() {
                         <p className="text-sm text-slate-600">
                             メールアプリからそのまま送信してください。<br />
                             メーラーが起動しない場合は、直接
-                            <a href="mailto:support@mamoruinfra.com" className="text-blue-600 underline ml-1">
+                            <a href="mailto:support@mamoruinfra.com" className="text-brand-600 underline ml-1">
                                 support@mamoruinfra.com
                             </a>
                             までご連絡ください。
                         </p>
                         <Link
                             href="/"
-                            className="mt-6 inline-flex h-10 items-center justify-center rounded-full bg-blue-600 px-6 text-sm font-semibold text-white hover:bg-blue-500"
+                            className="mt-6 inline-flex h-10 items-center justify-center rounded-full bg-brand-600 px-6 text-sm font-semibold text-white hover:bg-brand-500"
                         >
                             トップページへ
                         </Link>
@@ -66,8 +66,8 @@ export default function ContactPage() {
                 ) : (
                     <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
                         <div className="mb-8 flex items-center gap-4">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50">
-                                <Mail className="h-6 w-6 text-blue-600" />
+                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-50">
+                                <Mail className="h-6 w-6 text-brand-600" />
                             </div>
                             <div>
                                 <h2 className="text-lg font-bold text-slate-900">メールでのお問い合わせ</h2>
@@ -83,7 +83,7 @@ export default function ContactPage() {
                                     name="name"
                                     type="text"
                                     required
-                                    className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                    className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200"
                                     placeholder="山田 太郎"
                                 />
                             </div>
@@ -94,7 +94,7 @@ export default function ContactPage() {
                                     name="email"
                                     type="email"
                                     required
-                                    className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                    className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200"
                                     placeholder="example@email.com"
                                 />
                             </div>
@@ -105,13 +105,13 @@ export default function ContactPage() {
                                     name="message"
                                     rows={5}
                                     required
-                                    className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 resize-none"
+                                    className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200 resize-none"
                                     placeholder="お問い合わせ内容をご記入ください..."
                                 />
                             </div>
                             <button
                                 type="submit"
-                                className={`${ACTION_BUTTON_FULL} bg-blue-600 text-white hover:bg-blue-700`}
+                                className={`${ACTION_BUTTON_FULL} bg-brand-600 text-white hover:bg-brand-700`}
                             >
                                 送信する
                             </button>

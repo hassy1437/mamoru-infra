@@ -148,7 +148,7 @@ export default function UpdatePasswordPage() {
                                     : "リンクが無効か期限切れです。お手数ですが再度お試しください。"}
                             </div>
                             <p className="text-center text-sm text-slate-600">
-                                <Link href="/forgot-password" className="text-blue-600 hover:underline">
+                                <Link href="/forgot-password" className="text-brand-600 hover:underline">
                                     再度リクエストする
                                 </Link>
                             </p>

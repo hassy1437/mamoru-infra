@@ -23,14 +23,14 @@ export default async function EditInstrumentPage({
     }
 
     return (
-        <main className="min-h-screen bg-gray-50 py-10">
+        <main className="min-h-screen bg-canvas py-4 md:py-10">
             <div className="container mx-auto px-4">
                 <div className="mb-6 max-w-4xl mx-auto">
-                    <Link href="/instruments" className="text-sm text-blue-600 hover:underline inline-flex min-h-11 items-center">
+                    <Link href="/instruments" className="text-sm text-brand-600 hover:underline inline-flex min-h-11 items-center">
                         ← 測定機器の台帳に戻る
                     </Link>
                     <h1 className="text-2xl font-bold text-slate-900 mt-2">測定機器の編集</h1>
-                    <p className="text-slate-500 mt-1 text-sm">
+                    <p className="lead-note mt-0.5">
                         直しても、もう入れた点検票の値は変わりません（写しただけなので）。
                     </p>
                 </div>

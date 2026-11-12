@@ -25,7 +25,7 @@ export default function InspectorList({ items }: InspectorListProps) {
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                             <div className="min-w-0 sm:flex-1">
                                 <h2 className="text-lg font-bold text-slate-900 truncate flex items-center gap-2">
-                                    <User className="w-4 h-4 text-blue-600 shrink-0" />
+                                    <User className="w-4 h-4 text-brand-600 shrink-0" />
                                     {displayName}
                                 </h2>
                                 <div className="mt-1.5 space-y-1 text-sm text-slate-500">

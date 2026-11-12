@@ -431,9 +431,9 @@ export default function DeliverReportButton({
             {phase === "done" && (
                 <a
                     href={MATCHING_VENDOR_HOME_URL}
-                    className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-blue-600 underline"
+                    className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-brand-600 underline"
                 >
-                    次は、マッチングサイトの業者ホームで「結果を報告する」→
+                    次は、マモルマッチの業者ホームで「結果を報告する」→
                 </a>
             )}
         </div>

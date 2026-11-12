@@ -30,7 +30,7 @@ export const ACTION_BUTTON_FULL = BASE
 
 /** 点検票のいちばん下の 3 つ（保存・プレビュー・PDF） */
 export const SAVE_BUTTON = `${ACTION_BUTTON} bg-slate-700 hover:bg-slate-800 text-white`
-export const PREVIEW_BUTTON = `${ACTION_BUTTON} bg-blue-600 hover:bg-blue-700 text-white`
+export const PREVIEW_BUTTON = `${ACTION_BUTTON} bg-brand-600 hover:bg-brand-700 text-white`
 export const DOWNLOAD_BUTTON = `${ACTION_BUTTON} bg-emerald-600 hover:bg-emerald-700 text-white`
 
 /**

@@ -40,7 +40,7 @@ export default async function ResumeReports({ limit = 3, showAllLink = true }: {
                     続きから（最近の報告書）
                 </h2>
                 {showAllLink && (
-                    <Link href="/reports" className="inline-flex min-h-11 shrink-0 items-center text-xs font-medium text-blue-600 hover:underline">
+                    <Link href="/reports" className="inline-flex min-h-11 shrink-0 items-center text-xs font-medium text-brand-600 hover:underline">
                         すべての報告書 →
                     </Link>
                 )}
@@ -52,11 +52,11 @@ export default async function ResumeReports({ limit = 3, showAllLink = true }: {
                         <li key={r.id}>
                             <Link
                                 href={t.href}
-                                className="group flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm transition-colors hover:border-blue-200 hover:bg-blue-50"
+                                className="group flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm transition-colors hover:border-brand-200 hover:bg-brand-50"
                             >
                                 <div className="min-w-0">
                                     <div className="flex items-center gap-2">
-                                        <span className="truncate font-medium text-slate-800 group-hover:text-blue-700">
+                                        <span className="truncate font-medium text-slate-800 group-hover:text-brand-700">
                                             {r.building_name || "無題の報告書"}
                                         </span>
                                         {r.cloned_at && (
@@ -66,10 +66,10 @@ export default async function ResumeReports({ limit = 3, showAllLink = true }: {
                                     <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-slate-500">
                                         {r.inspection_type && <span>{r.inspection_type}</span>}
                                         {r.inspection_date && <span>{new Date(r.inspection_date).toLocaleDateString("ja-JP", { timeZone: "Asia/Tokyo" })}</span>}
-                                        <span className="text-blue-700">・{t.stage}</span>
+                                        <span className="text-brand-700">・{t.stage}</span>
                                     </div>
                                 </div>
-                                <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-blue-600">
+                                <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-brand-600">
                                     <span className="hidden sm:inline">{t.action}</span>
                                     <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                                 </span>

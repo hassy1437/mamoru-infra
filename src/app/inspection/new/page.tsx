@@ -47,7 +47,7 @@ export default async function NewInspectionPage({
     }
 
     return (
-        <main className="min-h-screen bg-gray-50 py-10">
+        <main className="min-h-screen bg-canvas py-4 md:py-10">
             <div className="container mx-auto px-4">
                 <div className="mb-6 max-w-4xl mx-auto">
                     <Breadcrumb items={[
@@ -61,7 +61,7 @@ export default async function NewInspectionPage({
                     <h1 className="text-2xl font-bold text-slate-900 mt-2">
                         消防用設備等点検結果総括表
                     </h1>
-                    <p className="text-slate-500 mt-1 text-sm">
+                    <p className="lead-note mt-0.5">
                         {previousData
                             ? "前回の報告書からプリフィルしました。必要に応じて修正し、保存後に各様式をご確認ください。"
                             : "点検結果を入力して総括表を作成します。"

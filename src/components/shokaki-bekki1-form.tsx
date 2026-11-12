@@ -676,7 +676,7 @@ export default function ShokakiBekki1Form({
                                                     aria-pressed={active}
                                                     aria-label={`${key} ${typeLabel}`}
                                                     onClick={() => toggleMark(page, idx, key)}
-                                                    className={`min-h-11 rounded-md border text-base font-bold transition-colors ${active ? "bg-blue-600 border-blue-600 text-white" : "bg-white border-slate-300 text-slate-700"}`}
+                                                    className={`min-h-11 rounded-md border text-base font-bold transition-colors ${active ? "bg-brand-600 border-brand-600 text-white" : "bg-white border-slate-300 text-slate-700"}`}
                                                 >
                                                     {key}
                                                 </button>
@@ -843,7 +843,7 @@ export default function ShokakiBekki1Form({
                                 type="button"
                                 aria-pressed={bulkMarks[key]}
                                 onClick={() => { setBulkMarks((m) => ({ ...m, [key]: !m[key] })); setBulkMarksMessage(null) }}
-                                className={`min-w-[44px] min-h-[44px] px-1.5 py-1 rounded-md border flex flex-col items-center justify-center leading-tight transition-colors ${bulkMarks[key] ? "bg-blue-600 border-blue-600 text-white" : "bg-white border-slate-300 text-slate-700"}`}
+                                className={`min-w-[44px] min-h-[44px] px-1.5 py-1 rounded-md border flex flex-col items-center justify-center leading-tight transition-colors ${bulkMarks[key] ? "bg-brand-600 border-brand-600 text-white" : "bg-white border-slate-300 text-slate-700"}`}
                             >
                                 <span className="text-sm font-bold">{key}</span>
                                 <span className="text-[10px] whitespace-nowrap">{typeLabel}</span>

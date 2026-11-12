@@ -123,7 +123,7 @@ export default function PropertyLocationCard({
                         onClick={here}
                         disabled={busy !== null}
                         aria-busy={busy === "here"}
-                        className="inline-flex min-h-14 items-center justify-center gap-2 rounded-lg bg-red-600 px-5 text-lg font-bold text-white hover:bg-red-700 disabled:cursor-wait"
+                        className="inline-flex min-h-14 items-center justify-center gap-2 rounded-lg bg-brand-700 px-5 text-lg font-bold text-white hover:bg-brand-800 disabled:cursor-wait"
                     >
                         {busy === "here" ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" /> : <Crosshair className="h-5 w-5" aria-hidden="true" />}
                         いまここにする
@@ -238,7 +238,7 @@ function LocationPicker({
                     onClick={() => onPick(center)}
                     disabled={saving}
                     aria-busy={saving}
-                    className="inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-lg bg-red-600 px-5 text-lg font-bold text-white hover:bg-red-700 disabled:cursor-wait"
+                    className="inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-lg bg-brand-700 px-5 text-lg font-bold text-white hover:bg-brand-800 disabled:cursor-wait"
                 >
                     {saving ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" /> : <MapPin className="h-5 w-5" aria-hidden="true" />}
                     この場所にする

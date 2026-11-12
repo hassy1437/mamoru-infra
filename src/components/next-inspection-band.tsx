@@ -13,7 +13,7 @@ const STYLE = {
     over: { box: "border-red-300 bg-red-50 text-red-800", Icon: AlertTriangle },
     soon: { box: "border-amber-300 bg-amber-50 text-amber-900", Icon: Clock },
     ok: { box: "border-slate-200 bg-slate-50 text-slate-700", Icon: CalendarCheck },
-    planned: { box: "border-blue-200 bg-blue-50 text-blue-800", Icon: CalendarClock },
+    planned: { box: "border-brand-200 bg-brand-50 text-brand-800", Icon: CalendarClock },
 } as const
 
 export default function NextInspectionBand({
@@ -40,7 +40,7 @@ export default function NextInspectionBand({
                     <CalendarClock className="h-4 w-4 shrink-0" aria-hidden="true" />
                     次の点検: 記録なし
                 </span>
-                <span className="inline-flex items-center gap-0.5 text-blue-700">
+                <span className="inline-flex items-center gap-0.5 text-brand-700">
                     前回を選ぶ
                     <ChevronRight className="h-4 w-4" aria-hidden="true" />
                 </span>

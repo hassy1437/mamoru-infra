@@ -25,11 +25,11 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
         }
 
     return (
-        <main className="min-h-screen bg-gray-50 py-10">
+        <main className="min-h-screen bg-canvas py-4 md:py-10">
             <div className="max-w-lg mx-auto px-4">
                 <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-5">
                     <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                        <Building2 className="w-6 h-6 text-blue-600 shrink-0" />
+                        <Building2 className="w-6 h-6 text-brand-600 shrink-0" />
                         {msg.title}
                     </h1>
                     <p className="text-slate-700 leading-relaxed">{msg.body}</p>

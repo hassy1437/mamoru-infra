@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-    title: "お問い合わせ | Mamoru Infra",
+    title: "お問い合わせ | マモルインフラ",
 }
 
 export default function ContactLayout({ children }: { children: React.ReactNode }) {

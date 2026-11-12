@@ -176,7 +176,7 @@ export default function FloorPlanBoard({
         }
         setSending(false)
         if (sent) toast.success(`覚えていた印を ${sent} 個 送りました`)
-        if (dropped) toast.error(`送れなかった印が ${dropped} 個ありました（見取り図が撮り直された・消された など）`)
+        if (dropped) toast.error(`送れなかった印が ${dropped} 個ありました（図が撮り直された・消された など）`)
         if (manual && !sent && !dropped) toast.error("まだ電波がありません")
     }, [plans])
 
@@ -318,7 +318,7 @@ export default function FloorPlanBoard({
 
     return (
         <div className="space-y-3">
-            <h1 className="text-xl font-bold text-slate-900">見取り図</h1>
+            <h1 className="text-xl font-bold text-slate-900">消防設備プロット図</h1>
 
             {/* 階（★横に流して選ぶ・印がある階は数を出す） */}
             <div className="-mx-4 overflow-x-auto px-4" role="group" aria-label="階">
@@ -334,14 +334,14 @@ export default function FloorPlanBoard({
                                 onClick={() => chooseFloor(f)}
                                 className={`inline-flex min-h-12 min-w-14 shrink-0 items-center justify-center gap-1 rounded-full border px-4 text-base font-bold transition-colors ${
                                     floor === f
-                                        ? "border-blue-600 bg-blue-600 text-white"
+                                        ? "border-brand-600 bg-brand-600 text-white"
                                         : has
-                                            ? "border-blue-300 bg-blue-50 text-blue-800"
+                                            ? "border-brand-300 bg-brand-50 text-brand-800"
                                             : "border-slate-300 bg-white text-slate-600"
                                 }`}
                             >
                                 {f}
-                                {n > 0 && <span className={`rounded-full px-1.5 text-xs ${floor === f ? "bg-white/25" : "bg-blue-100"}`}>{n}</span>}
+                                {n > 0 && <span className={`rounded-full px-1.5 text-xs ${floor === f ? "bg-white/25" : "bg-brand-100"}`}>{n}</span>}
                             </button>
                         )
                     })}
@@ -353,7 +353,7 @@ export default function FloorPlanBoard({
 
             {!plan ? (
                 <div className="space-y-3 rounded-xl border-2 border-dashed border-slate-300 bg-white p-6 text-center">
-                    <p className="text-base font-bold text-slate-700">{floor} の見取り図はまだありません</p>
+                    <p className="text-base font-bold text-slate-700">{floor} の図はまだありません</p>
                     <p className="text-sm text-slate-500">階の避難経路図などを撮る</p>
                     <div className="grid gap-2 sm:grid-cols-2">
                         <button
@@ -423,7 +423,7 @@ export default function FloorPlanBoard({
                         </button>
                     </div>
 
-                    <div className="max-h-[65vh] overflow-auto rounded-lg border border-slate-200 bg-white">
+                    <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
                         {/* ★幅を倍にして拡大（印は 0〜1 の位置なので一緒に動く） */}
                         <div
                             ref={surface}
@@ -433,7 +433,7 @@ export default function FloorPlanBoard({
                         >
                             {plan.imageUrl ? (
                                 // eslint-disable-next-line @next/next/no-img-element -- 非公開の置き場の期限つき URL（next/image の最適化に通さない）
-                                <img src={plan.imageUrl} alt={`${floor} の見取り図`} draggable={false} className="pointer-events-none h-full w-full object-contain" />
+                                <img src={plan.imageUrl} alt={`${floor} の消防設備プロット図`} draggable={false} className="pointer-events-none h-full w-full object-contain" />
                             ) : (
                                 <div className="flex h-full w-full items-center justify-center bg-slate-100 text-sm text-slate-500">写真を読み込めませんでした（撮り直してください）</div>
                             )}

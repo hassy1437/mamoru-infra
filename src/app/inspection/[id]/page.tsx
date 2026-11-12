@@ -84,7 +84,7 @@ export default async function InspectionDetailPage({ params }: { params: Promise
         && !finalizeBlockNotice(finalization.blockedSince, finalization.notContracted)
 
     return (
-        <div className="min-h-screen bg-gray-100 p-4 md:p-8">
+        <div className="min-h-screen bg-canvas p-4 md:p-8">
             <div className="max-w-[210mm] mx-auto mb-6">
                 <Breadcrumb items={[
                     { label: "点検", href: "/inspection" },
@@ -96,7 +96,7 @@ export default async function InspectionDetailPage({ params }: { params: Promise
             </div>
             <div className="max-w-[210mm] mx-auto mb-6 flex justify-between items-center gap-3 flex-wrap">
                 {/* ★物件から始めた点検は物件へ戻る（2026-10-21）。以前は「物件選択に戻る」で、点検を始める画面（物件の一覧）へ戻っていた */}
-                <Link href={report.property_id ? `/properties/${report.property_id}` : "/inspection"} className="text-blue-600 hover:underline inline-flex min-h-11 items-center">
+                <Link href={report.property_id ? `/properties/${report.property_id}` : "/inspection"} className="text-brand-600 hover:underline inline-flex min-h-11 items-center">
                     &larr; {report.property_id ? "物件に戻る" : "物件選択に戻る"}
                 </Link>
                 <div className="flex gap-2 flex-wrap">
@@ -110,7 +110,7 @@ export default async function InspectionDetailPage({ params }: { params: Promise
                     <SoukatsuPdfButton data={soukatsuData} canDownload={canDownloadPdf(finalization)} gateMessage={pdfGateMessage(finalization)} />
                     <Link
                         href={nextItiranHref}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-cta-600 hover:bg-cta-700 text-white text-sm font-medium rounded-lg transition-colors"
                     >
                         {nextItiranId ? "次へ: 点検票の入力" : "次へ: 点検者一覧表を入力"}
                         <ArrowRight className="w-4 h-4" />
@@ -178,7 +178,7 @@ export default async function InspectionDetailPage({ params }: { params: Promise
                 <SoukatsuPdfButton data={soukatsuData} canDownload={canDownloadPdf(finalization)} gateMessage={pdfGateMessage(finalization)} />
                 <Link
                     href={nextItiranHref}
-                    className="inline-flex min-h-11 items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors"
+                    className="inline-flex min-h-11 items-center gap-2 px-4 py-2 bg-cta-600 hover:bg-cta-700 text-white text-sm font-medium rounded-lg transition-colors"
                 >
                     {nextItiranId ? "次へ: 点検票の入力" : "次へ: 点検者一覧表を入力"}
                     <ArrowRight className="w-4 h-4" />

@@ -46,15 +46,15 @@ export default async function CompanyPage() {
 
 function Shell({ children }: { children: React.ReactNode }) {
     return (
-        <main className="min-h-screen bg-gray-50 py-10">
+        <main className="min-h-screen bg-canvas py-4 md:py-10">
             <div className="max-w-4xl mx-auto px-4">
                 <Breadcrumb items={[{ label: "会社と人" }]} />
                 <div className="mb-8">
                     <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                        <Building2 className="w-7 h-7 text-blue-600 shrink-0" />
+                        <Building2 className="w-7 h-7 text-brand-600 shrink-0" />
                         会社と人
                     </h1>
-                    <p className="text-slate-500 mt-1 text-sm">
+                    <p className="lead-note mt-0.5">
                         同じ会社の人は、報告書・物件・点検者・測定機器を一緒に見て直せます。
                     </p>
                 </div>

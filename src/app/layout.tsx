@@ -10,6 +10,7 @@ import ChatbotHint from "@/components/chatbot-hint";
 import ChatbotPrivacyNotice from "@/components/chatbot-privacy-notice";
 import NavigationProgress from "@/components/navigation-progress";
 import PdfPreviewHost from "@/components/pdf-preview-host";
+import AppHeader from "@/components/app-header";
 import { Suspense } from "react";
 
 export const metadata: Metadata = {
@@ -17,20 +18,20 @@ export const metadata: Metadata = {
   //   無いとビルドが「metadataBase が無い」と警告し、Vercel が補った値に頼ることになる。
   //   プレビュー環境でも本番の画像を指すが、SNS 用なのでそれでよい。
   metadataBase: new URL("https://app.mamoruinfra.com"),
-  title: "Mamoru Infra — 消防設備点検の報告書作成を効率化",
+  title: "マモルインフラ — 消防設備点検の報告書作成を効率化",
   description: "スマホで入力するだけで、消防設備点検結果報告書のPDFをその場で自動生成。消火器・屋内消火栓・スプリンクラー等7設備に対応。インストール不要・無料で利用可能。",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Mamoru Infra",
+    title: "マモルインフラ",
   },
 };
 
 // アプリはライトモード固定。colorScheme: 'light' で OS のダーク配色を拾わない。
 // themeColor は metadata から viewport export へ移設（Next の警告も解消）。
 export const viewport: Viewport = {
-  themeColor: "#2563eb",
+  themeColor: "#1f4d3a",
   colorScheme: "light",
 };
 
@@ -62,6 +63,7 @@ export default async function RootLayout({
           <Suspense fallback={null}>
             <NavigationProgress />
           </Suspense>
+          <AppHeader />
           {children}
           {/* ★右下の相談の丸いボタンに、画面の一番下の文やボタンが隠れないよう、最後に余白を足す（2026-11-11） */}
           <div aria-hidden="true" className="h-20" />
@@ -84,14 +86,14 @@ export default async function RootLayout({
             __html: `
               @keyframes mamoru-chatbot-pulse {
                 0%, 100% {
-                  box-shadow: 0 4px 12px rgba(28, 100, 242, 0.35);
+                  box-shadow: 0 4px 12px rgba(31, 77, 58, 0.35);
                 }
                 50% {
-                  box-shadow: 0 4px 24px rgba(28, 100, 242, 0.65), 0 0 0 10px rgba(28, 100, 242, 0.12);
+                  box-shadow: 0 4px 24px rgba(31, 77, 58, 0.65), 0 0 0 10px rgba(31, 77, 58, 0.12);
                 }
               }
               #dify-chatbot-bubble-button {
-                background-color: #1C64F2 !important;
+                background-color: #1f4d3a !important;
                 animation: mamoru-chatbot-pulse 2.5s ease-in-out infinite;
                 /* embed.min.js のデフォルト位置に依存せず明示固定 (iOS Safari のロード遅延フラッシュ対策) */
                 position: fixed !important;

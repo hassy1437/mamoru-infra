@@ -30,7 +30,7 @@ export default function PropertyActionButtons({
         // ★消すと総括表の property_id が NULL になり（ON DELETE SET NULL）、別記の入力ページは 404、
         //   一括 PDF からも別記が落ちる（総括表は残る）。★確認文で先に伝える（2026-09-23・総点検 B4）。
         const confirmed = window.confirm(
-            `「${propertyName || "この物件"}」を削除しますか？\nこの物件の報告書（別記）も表示できなくなります。見取り図と印も消えます。\nこの操作は取り消せません。`
+            `「${propertyName || "この物件"}」を削除しますか？\nこの物件の報告書（別記）も表示できなくなります。消防設備プロット図（図の写真と設備の印）も消えます。\nこの操作は取り消せません。`
         )
 
         if (!confirmed) return
@@ -62,7 +62,7 @@ export default function PropertyActionButtons({
                  以前は 編集（濃い灰）→ 複製 → 点検開始 → 削除（赤）の順で、赤い削除がいちばん目立っていた */}
             <Link
                 href={`/inspection/new?propertyId=${propertyId}`}
-                className="inline-flex min-h-11 items-center justify-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-lg transition-colors whitespace-nowrap"
+                className="inline-flex min-h-11 items-center justify-center gap-1.5 px-4 py-2 bg-cta-600 hover:bg-cta-700 text-white text-sm font-bold rounded-lg transition-colors whitespace-nowrap"
             >
                 <ClipboardCheck className="w-4 h-4" />
                 点検開始

@@ -64,7 +64,7 @@ export default function SignupPage() {
             <Card className="w-full max-w-md">
                 <CardHeader className="text-center">
                     <CardTitle className="text-2xl">新規登録</CardTitle>
-                    <CardDescription>Mamoru Infra のアカウントを作成</CardDescription>
+                    <CardDescription>マモルインフラ のアカウントを作成</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSignup} className="space-y-4">
@@ -115,7 +115,7 @@ export default function SignupPage() {
                     </form>
                     <p className="mt-4 text-center text-sm text-slate-600">
                         既にアカウントをお持ちの方は{" "}
-                        <Link href="/login" className="text-blue-600 hover:underline">
+                        <Link href="/login" className="text-brand-600 hover:underline">
                             ログイン
                         </Link>
                     </p>

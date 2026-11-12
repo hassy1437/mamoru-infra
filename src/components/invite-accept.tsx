@@ -57,7 +57,7 @@ export default function InviteAccept({ token, canAccept, showLogout, role }: Pro
                         onClick={accept}
                         disabled={busy}
                         aria-busy={busy}
-                        className={`${ACTION_BUTTON_FULL} bg-blue-600 hover:bg-blue-700 text-white`}
+                        className={`${ACTION_BUTTON_FULL} bg-brand-600 hover:bg-brand-700 text-white`}
                     >
                         {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <UserCheck className="h-5 w-5" />}
                         参加する
@@ -77,7 +77,7 @@ export default function InviteAccept({ token, canAccept, showLogout, role }: Pro
                     ログアウトして、招待されたメールアドレスでログインする
                 </Button>
             )}
-            <Link href="/tool" className="inline-flex min-h-11 items-center text-sm text-blue-600 hover:underline">
+            <Link href="/tool" className="inline-flex min-h-11 items-center text-sm text-brand-600 hover:underline">
                 点検アプリのトップへ
             </Link>
         </div>

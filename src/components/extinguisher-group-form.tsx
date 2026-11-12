@@ -176,8 +176,8 @@ export default function ExtinguisherGroupForm({
                                 <label
                                     key={k.key}
                                     className={cn(
-                                        "flex min-h-11 cursor-pointer items-center justify-center rounded-lg border px-2 text-sm font-medium transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-blue-500",
-                                        v.kind === k.key ? "border-blue-600 bg-blue-600 text-white" : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50",
+                                        "flex min-h-11 cursor-pointer items-center justify-center rounded-lg border px-2 text-sm font-medium transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand-500",
+                                        v.kind === k.key ? "border-brand-600 bg-brand-600 text-white" : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50",
                                     )}
                                 >
                                     <input type="radio" name="kind" value={k.key} checked={v.kind === k.key} onChange={() => setKind(k.key)} className="sr-only" />
@@ -195,9 +195,9 @@ export default function ExtinguisherGroupForm({
                                     <label
                                         key={p.key}
                                         className={cn(
-                                            "flex min-h-11 items-center justify-center rounded-lg border px-2 text-sm font-medium transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-blue-500",
+                                            "flex min-h-11 items-center justify-center rounded-lg border px-2 text-sm font-medium transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand-500",
                                             disabled ? "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400" : "cursor-pointer",
-                                            !disabled && (v.pressurization === p.key ? "border-blue-600 bg-blue-600 text-white" : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"),
+                                            !disabled && (v.pressurization === p.key ? "border-brand-600 bg-brand-600 text-white" : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"),
                                         )}
                                     >
                                         <input

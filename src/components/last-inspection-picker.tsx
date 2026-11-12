@@ -50,7 +50,7 @@ export default function LastInspectionPicker({
             <button
                 type="button"
                 onClick={() => setOpen(true)}
-                className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg border border-blue-300 bg-white px-4 text-base font-bold text-blue-700 hover:bg-blue-50"
+                className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg border border-brand-300 bg-white px-4 text-base font-bold text-brand-700 hover:bg-brand-50"
             >
                 <CalendarClock className="h-5 w-5" aria-hidden="true" />
                 {current ? "前回の点検を直す" : "前回の点検を選ぶ"}
@@ -60,7 +60,7 @@ export default function LastInspectionPicker({
 
     const months = [...recentMonths(undefined, 12), ...(older ? recentMonths(undefined, 12, 12) : [])]
     return (
-        <div className="space-y-3 rounded-xl border border-blue-200 bg-white p-4">
+        <div className="space-y-3 rounded-xl border border-brand-200 bg-white p-4">
             <div className="flex items-center justify-between">
                 <p className="text-base font-bold text-slate-800">{kind ? "いつ？" : "前回の点検は？"}</p>
                 <button type="button" onClick={() => { setOpen(false); setKind(null) }} className="inline-flex h-11 w-11 items-center justify-center rounded-full hover:bg-slate-100" aria-label="閉じる">
@@ -74,7 +74,7 @@ export default function LastInspectionPicker({
                             key={k}
                             type="button"
                             onClick={() => setKind(k)}
-                            className="min-h-14 rounded-lg border-2 border-slate-300 bg-white text-lg font-bold text-slate-800 hover:border-blue-500 hover:bg-blue-50"
+                            className="min-h-14 rounded-lg border-2 border-slate-300 bg-white text-lg font-bold text-slate-800 hover:border-brand-500 hover:bg-brand-50"
                         >
                             {k}
                         </button>
@@ -93,7 +93,7 @@ export default function LastInspectionPicker({
                 </div>
             ) : (
                 <>
-                    <p className="text-sm font-bold text-blue-700">{kind}</p>
+                    <p className="text-sm font-bold text-brand-700">{kind}</p>
                     <div className="grid grid-cols-3 gap-2">
                         {months.map((m) => (
                             <button
@@ -103,7 +103,7 @@ export default function LastInspectionPicker({
                                 disabled={saving !== null}
                                 aria-busy={saving === m.value}
                                 className={`inline-flex min-h-12 items-center justify-center rounded-lg border px-1 text-sm font-bold disabled:cursor-wait ${
-                                    current?.month === m.value && current.kind === kind ? "border-blue-600 bg-blue-600 text-white" : "border-slate-300 bg-white text-slate-800 hover:bg-blue-50"
+                                    current?.month === m.value && current.kind === kind ? "border-brand-600 bg-brand-600 text-white" : "border-slate-300 bg-white text-slate-800 hover:bg-brand-50"
                                 }`}
                             >
                                 {saving === m.value ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : m.label}

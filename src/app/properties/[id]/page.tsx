@@ -80,7 +80,7 @@ export default async function PropertyDetailPage({
     const extTotal = ((extRows ?? []) as { quantity: number }[]).reduce((s, r) => s + (r.quantity ?? 0), 0)
 
     return (
-        <main className="min-h-screen bg-gray-50 py-10">
+        <main className="min-h-screen bg-canvas py-4 md:py-10">
             <div className="max-w-4xl mx-auto px-4 space-y-6">
                 <Breadcrumb items={[
                     { label: "物件一覧", href: "/properties" },
@@ -92,7 +92,7 @@ export default async function PropertyDetailPage({
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                         <div className="min-w-0">
                             <h1 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
-                                <Building2 className="w-6 h-6 sm:w-7 sm:h-7 text-blue-600 shrink-0" />
+                                <Building2 className="w-6 h-6 sm:w-7 sm:h-7 text-brand-600 shrink-0" />
                                 <span className="truncate">{p.building_name}</span>
                             </h1>
                             <div className="mt-2 space-y-1 text-sm text-slate-500">
@@ -147,11 +147,11 @@ export default async function PropertyDetailPage({
                         return (
                             <Link
                                 href={t.href}
-                                className="flex min-h-11 items-center justify-between gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800 transition-colors hover:bg-blue-100"
+                                className="flex min-h-11 items-center justify-between gap-3 rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-800 transition-colors hover:bg-brand-100"
                             >
                                 <span className="min-w-0">
                                     <span className="block font-semibold">いちばん新しい報告書（点検日 {history[0].inspection_date ?? "未入力"}）</span>
-                                    <span className="block text-xs text-blue-700">{t.stage}</span>
+                                    <span className="block text-xs text-brand-700">{t.stage}</span>
                                 </span>
                                 <span className="inline-flex shrink-0 items-center gap-1 font-medium">
                                     {t.action}
@@ -177,7 +177,7 @@ export default async function PropertyDetailPage({
                     <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                         <Link
                             href={`/inspection/new?propertyId=${id}`}
-                            className="inline-flex min-h-11 items-center justify-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition-colors"
+                            className="inline-flex min-h-11 items-center justify-center gap-2 px-5 py-2.5 bg-cta-600 hover:bg-cta-700 text-white font-bold rounded-lg transition-colors"
                         >
                             <Plus className="w-4 h-4" />
                             新しい点検を始める
@@ -185,7 +185,7 @@ export default async function PropertyDetailPage({
                         {latestInspectionId && (
                             <Link
                                 href={`/inspection/new?propertyId=${id}&copyFrom=${latestInspectionId}`}
-                                className="inline-flex min-h-11 items-center justify-center gap-2 px-5 py-2.5 border border-blue-300 bg-white hover:bg-blue-50 text-blue-700 font-medium rounded-lg transition-colors"
+                                className="inline-flex min-h-11 items-center justify-center gap-2 px-5 py-2.5 border border-brand-300 bg-white hover:bg-brand-50 text-brand-700 font-medium rounded-lg transition-colors"
                             >
                                 <Copy className="w-4 h-4" />
                                 前回の点検からコピーして始める
@@ -203,11 +203,11 @@ export default async function PropertyDetailPage({
                     className="flex min-h-16 items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 transition-colors hover:bg-slate-50 sm:px-6"
                 >
                     <span className="flex min-w-0 items-center gap-3">
-                        <LayoutGrid className="h-6 w-6 shrink-0 text-blue-600" aria-hidden="true" />
+                        <LayoutGrid className="h-6 w-6 shrink-0 text-brand-600" aria-hidden="true" />
                         <span className="min-w-0">
-                            <span className="block text-lg font-bold text-slate-800">見取り図</span>
+                            <span className="block text-lg font-bold text-slate-800">消防設備プロット図</span>
                             <span className="block text-sm text-slate-500">
-                                {planIds.length > 0 ? `${planIds.length} 階・印 ${pinCount ?? 0} 個` : "まだありません（撮って印を付ける）"}
+                                {planIds.length > 0 ? `${planIds.length} 階・印 ${pinCount ?? 0} 個` : "まだありません（図を撮って設備を置く）"}
                             </span>
                         </span>
                     </span>
@@ -221,7 +221,7 @@ export default async function PropertyDetailPage({
                         className="flex min-h-16 items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 transition-colors hover:bg-slate-50 sm:px-6"
                     >
                         <span className="flex min-w-0 items-center gap-3">
-                            <FireExtinguisher className="h-6 w-6 shrink-0 text-blue-600" aria-hidden="true" />
+                            <FireExtinguisher className="h-6 w-6 shrink-0 text-brand-600" aria-hidden="true" />
                             <span className="min-w-0">
                                 <span className="block text-lg font-bold text-slate-800">消火器の台帳</span>
                                 <span className="block text-sm text-slate-500">
@@ -267,7 +267,7 @@ export default async function PropertyDetailPage({
                             {(p.equipment_types ?? []).map((eq) => (
                                 <span
                                     key={eq}
-                                    className="inline-block px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-full font-medium"
+                                    className="inline-block px-2 py-0.5 bg-brand-50 text-brand-700 text-xs rounded-full font-medium"
                                 >
                                     {eq}
                                 </span>

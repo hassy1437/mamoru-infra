@@ -54,7 +54,7 @@ function LoginForm() {
         <Card className="w-full max-w-md">
             <CardHeader className="text-center">
                 <CardTitle className="text-2xl">ログイン</CardTitle>
-                <CardDescription>Mamoru Infra にログイン</CardDescription>
+                <CardDescription>マモルインフラ にログイン</CardDescription>
             </CardHeader>
             <CardContent>
                 <form onSubmit={handleLogin} className="space-y-4">
@@ -92,7 +92,7 @@ function LoginForm() {
                         />
                     </div>
                     <p className="text-right text-sm">
-                        <Link href="/forgot-password" className="text-blue-600 hover:underline">
+                        <Link href="/forgot-password" className="text-brand-600 hover:underline">
                             パスワードをお忘れの方
                         </Link>
                     </p>
@@ -106,7 +106,7 @@ function LoginForm() {
                     {/* ★招待の画面から来たときは、新規登録のあとも招待の画面へ戻す（2026-11-08） */}
                     <Link
                         href={redirectTo === DEFAULT_AFTER_LOGIN ? "/signup" : `/signup?redirectTo=${encodeURIComponent(redirectTo)}`}
-                        className="text-blue-600 hover:underline"
+                        className="text-brand-600 hover:underline"
                     >
                         新規登録
                     </Link>

@@ -153,7 +153,7 @@ export default function CombinedPdfButton({
             onClick={handleDownload}
             disabled={loading || taskCount === 0 || (!canDownload && !!gateNoteId)}
             aria-describedby={!canDownload && gateNoteId ? gateNoteId : undefined}
-            className={`${ACTION_BUTTON} bg-blue-600 hover:bg-blue-700 text-white`}
+            className={`${ACTION_BUTTON} bg-brand-600 hover:bg-brand-700 text-white`}
         >
             {loading ? (
                 <>

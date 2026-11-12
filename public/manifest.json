@@ -1,11 +1,11 @@
 {
-  "name": "Mamoru Infra - 消防設備点検報告書作成",
-  "short_name": "Mamoru Infra",
+  "name": "マモルインフラ - 消防設備点検報告書作成",
+  "short_name": "マモルインフラ",
   "description": "消防用設備等点検結果報告書をブラウザから作成・PDF出力できるWebアプリケーション",
   "start_url": "/tool",
   "display": "standalone",
-  "background_color": "#f8fafc",
-  "theme_color": "#2563eb",
+  "background_color": "#f1f4f2",
+  "theme_color": "#173a2c",
   "orientation": "portrait-primary",
   "icons": [
     {

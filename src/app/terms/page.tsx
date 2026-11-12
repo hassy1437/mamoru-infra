@@ -3,19 +3,19 @@ import { Building2 } from "lucide-react"
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-    title: "利用規約 | Mamoru Infra",
+    title: "利用規約 | マモルインフラ",
 }
 
 export default function TermsPage() {
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-screen bg-canvas">
             <header className="border-b border-slate-200 bg-white">
                 <div className="mx-auto flex h-16 max-w-4xl items-center px-4">
                     <Link href="/" className="flex items-center gap-2">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-white">
                             <Building2 className="h-4 w-4" />
                         </div>
-                        <span className="text-lg font-bold text-slate-800">Mamoru Infra</span>
+                        <span className="text-lg font-bold text-slate-800">マモルインフラ</span>
                     </Link>
                 </div>
             </header>
@@ -27,7 +27,7 @@ export default function TermsPage() {
 
                     <section className="space-y-3">
                         <h2 className="text-lg font-bold text-slate-900">第1条（適用）</h2>
-                        <p>本規約は、Mamoru Infra（以下「本サービス」）の利用に関する条件を定めるものです。ユーザーは本規約に同意の上、本サービスを利用するものとします。</p>
+                        <p>本規約は、マモルインフラ（以下「本サービス」）の利用に関する条件を定めるものです。ユーザーは本規約に同意の上、本サービスを利用するものとします。</p>
                     </section>
 
                     <section className="space-y-3">

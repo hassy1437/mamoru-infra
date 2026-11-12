@@ -52,7 +52,7 @@ export default function ForgotPasswordPage() {
                                 入力したメールアドレスに再設定用のリンクを送信しました。メールをご確認ください。
                             </div>
                             <p className="text-center text-sm text-slate-600">
-                                <Link href="/login" className="text-blue-600 hover:underline">
+                                <Link href="/login" className="text-brand-600 hover:underline">
                                     ログインに戻る
                                 </Link>
                             </p>
@@ -77,7 +77,7 @@ export default function ForgotPasswordPage() {
                                 </Button>
                             </form>
                             <p className="mt-4 text-center text-sm text-slate-600">
-                                <Link href="/login" className="text-blue-600 hover:underline">
+                                <Link href="/login" className="text-brand-600 hover:underline">
                                     ログインに戻る
                                 </Link>
                             </p>

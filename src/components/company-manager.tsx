@@ -135,7 +135,7 @@ export default function CompanyManager({ company, members, invitations }: Props)
                         <span className="block text-xs text-slate-500 mt-1">
                             {company.contract_company_name
                                 ? "報告書の確定と利用料は、この業者登録で見ます。"
-                                : "報告書を確定するには、会社を作った方がマモルインフラで業者登録の承認を受けてください。"}
+                                : "報告書を確定するには、会社を作った方がマモルマッチで業者登録の承認を受けてください。"}
                         </span>
                     </p>
                 )}
@@ -156,7 +156,7 @@ export default function CompanyManager({ company, members, invitations }: Props)
                                     </p>
                                     {m.display_name && m.email && <p className="text-xs text-slate-500 break-all">{m.email}</p>}
                                     <p className="mt-1 flex flex-wrap gap-1 text-xs">
-                                        <span className={`rounded px-2 py-0.5 ${m.role === "admin" ? "bg-blue-100 text-blue-800" : "bg-slate-100 text-slate-700"}`}>
+                                        <span className={`rounded px-2 py-0.5 ${m.role === "admin" ? "bg-brand-100 text-brand-800" : "bg-slate-100 text-slate-700"}`}>
                                             {ROLE_LABEL[m.role]}
                                         </span>
                                         {m.is_contract_holder && (
@@ -222,7 +222,7 @@ export default function CompanyManager({ company, members, invitations }: Props)
             {isAdmin && (
                 <section className="rounded-xl border border-slate-200 bg-white p-5 space-y-4">
                     <h2 className="font-bold text-slate-900 flex items-center gap-2">
-                        <UserPlus className="h-5 w-5 text-blue-600" />
+                        <UserPlus className="h-5 w-5 text-brand-600" />
                         人を招待する
                     </h2>
                     <form
@@ -263,7 +263,7 @@ export default function CompanyManager({ company, members, invitations }: Props)
                             type="submit"
                             disabled={busy !== null || !email.trim() || !(company?.name ?? "").trim()}
                             aria-busy={busy === "invite"}
-                            className={`${ACTION_BUTTON} bg-blue-600 hover:bg-blue-700 text-white`}
+                            className={`${ACTION_BUTTON} bg-brand-600 hover:bg-brand-700 text-white`}
                         >
                             {busy === "invite" ? <Loader2 className="h-5 w-5 animate-spin" /> : <Mail className="h-5 w-5" />}
                             招待のメールを送る

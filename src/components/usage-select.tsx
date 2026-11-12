@@ -62,7 +62,7 @@ export function UsageSelect({ id, value, onChange, required, className }: UsageS
                 // コントロールが潰れて表示されない（Chromium は許容）。既存の動作する
                 // select（bekki 判定欄等）と同じく flex を付けずブロック表示にする。
                 className={cn(
-                    "h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 invalid:border-red-400 invalid:ring-red-200",
+                    "h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 user-invalid:border-red-400 user-invalid:ring-red-200",
                     className,
                 )}
             >

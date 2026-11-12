@@ -290,7 +290,7 @@ export default function ItiranForm({ soukatsuId, masters, initial, itiranId }: P
             {masters.length === 0 && (
                 <p className="text-sm text-gray-500">
                     点検者マスタに登録すると自動入力できます。
-                    <Link href="/inspectors/new" className="text-blue-600 hover:underline ml-1">
+                    <Link href="/inspectors/new" className="text-brand-600 hover:underline ml-1">
                         点検者を登録
                     </Link>
                 </p>

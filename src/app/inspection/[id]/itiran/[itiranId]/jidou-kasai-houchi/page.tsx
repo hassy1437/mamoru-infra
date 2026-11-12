@@ -53,7 +53,7 @@ export default async function JidouKasaiHouchiBekki11_1Page({
     const inspector = bekkiInspectorInitial(itiran?.inspector1)
 
     return (
-        <main className="min-h-screen bg-gray-100 py-8">
+        <main className="min-h-screen bg-canvas py-4 md:py-8">
             <div className="max-w-6xl mx-auto px-4">
                 <ItiranFormNav
                     soukatsuId={id}

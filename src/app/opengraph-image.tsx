@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og"
 
-export const alt = "Mamoru Infra — 消防設備点検の報告書作成を効率化"
+export const alt = "マモルインフラ — 消防設備点検の報告書作成を効率化"
 export const size = { width: 1200, height: 630 }
 export const contentType = "image/png"
 
@@ -15,7 +15,7 @@ export default function Image() {
                     flexDirection: "column",
                     alignItems: "center",
                     justifyContent: "center",
-                    background: "linear-gradient(135deg, #eff6ff 0%, #f8fafc 50%, #eef2ff 100%)",
+                    background: "linear-gradient(135deg, #eef4f0 0%, #f8fafc 50%, #e6efe9 100%)",
                     fontFamily: "sans-serif",
                 }}
             >
@@ -27,7 +27,7 @@ export default function Image() {
                         left: 0,
                         right: 0,
                         height: 6,
-                        background: "linear-gradient(90deg, #2563eb, #6366f1)",
+                        background: "linear-gradient(90deg, #1f4d3a, #3d7b5e)",
                     }}
                 />
 
@@ -45,7 +45,7 @@ export default function Image() {
                             width: 56,
                             height: 56,
                             borderRadius: 16,
-                            background: "linear-gradient(135deg, #2563eb, #4f46e5)",
+                            background: "linear-gradient(135deg, #1f4d3a, #10291f)",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
@@ -57,7 +57,7 @@ export default function Image() {
                         M
                     </div>
                     <div style={{ fontSize: 40, fontWeight: 800, color: "#1e293b" }}>
-                        Mamoru Infra
+                        マモルインフラ
                     </div>
                 </div>
 
@@ -73,7 +73,7 @@ export default function Image() {
                     }}
                 >
                     現場の事務作業を、
-                    <span style={{ color: "#2563eb" }}>ゼロ</span>
+                    <span style={{ color: "#1f4d3a" }}>ゼロ</span>
                     にする。
                 </div>
 

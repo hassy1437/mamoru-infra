@@ -56,8 +56,8 @@ export default function NavigationProgress() {
     if (pendingFrom === null || pendingFrom !== current) return null
     return (
         <div role="status" aria-live="polite" className="nav-progress pointer-events-none fixed inset-x-0 top-0 z-[70]">
-            <div className="h-1 w-full overflow-hidden bg-blue-100">
-                <div className="nav-progress-bar h-full w-1/3 bg-blue-600" />
+            <div className="h-1 w-full overflow-hidden bg-brand-100">
+                <div className="nav-progress-bar h-full w-1/3 bg-brand-600" />
             </div>
             <div className="mx-auto mt-2 flex w-fit items-center gap-2 rounded-full bg-slate-900/85 px-4 py-2 text-sm font-medium text-white shadow-lg">
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden />

@@ -93,7 +93,7 @@ export default function FormActionBar({
                         type="button"
                         onClick={onPreview}
                         disabled={busy}
-                        className="inline-flex h-11 shrink-0 items-center gap-1 rounded-md bg-blue-600 px-3 font-medium text-white disabled:opacity-50"
+                        className="inline-flex h-11 shrink-0 items-center gap-1 rounded-md bg-brand-600 px-3 font-medium text-white disabled:opacity-50"
                     >
                         {previewing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
                         プレビュー

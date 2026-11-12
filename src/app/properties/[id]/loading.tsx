@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/skeleton"
 
 export default function Loading() {
     return (
-        <main className="min-h-screen bg-gray-50 py-10">
+        <main className="min-h-screen bg-canvas py-4 md:py-10">
             <div className="max-w-4xl mx-auto px-4 space-y-6">
                 <div>
                     <Skeleton className="h-4 w-32 mb-2" />

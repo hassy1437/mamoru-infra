@@ -84,7 +84,7 @@ export default function FinalizeSoukatsuButton({
                 {notContracted && (
                     <>
                         {" "}
-                        <a href={MATCHING_VENDOR_HOME_URL} className="font-medium text-blue-600 underline">マッチングサイトの業者ホームを開く</a>
+                        <a href={MATCHING_VENDOR_HOME_URL} className="font-medium text-brand-600 underline">マモルマッチの業者ホームを開く</a>
                     </>
                 )}
             </span>
@@ -190,7 +190,7 @@ export default function FinalizeSoukatsuButton({
                 onClick={() => setOpen(true)}
                 disabled={blockedByReadiness}
                 aria-describedby={blockedByReadiness ? "finalize-readiness-note" : undefined}
-                className={`${ACTION_BUTTON} bg-blue-600 hover:bg-blue-700 text-white`}
+                className={`${ACTION_BUTTON} bg-brand-600 hover:bg-brand-700 text-white`}
             >
                 この点検を確定する
             </Button>
@@ -231,7 +231,7 @@ export default function FinalizeSoukatsuButton({
                                             key={c}
                                             className={
                                                 isBillable
-                                                    ? "rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800"
+                                                    ? "rounded bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-800"
                                                     : "rounded bg-slate-200 px-2 py-0.5 text-xs text-slate-600"
                                             }
                                         >
@@ -249,7 +249,7 @@ export default function FinalizeSoukatsuButton({
                                 {formatAmount(preview.unit_price_yen)}
                                 <span className="mx-1 text-slate-400">＝</span>
                                 {/* ★0円も必ず出す */}
-                                <strong className="text-base text-blue-700">
+                                <strong className="text-base text-brand-700">
                                     {formatAmount(preview.amount_yen)}
                                 </strong>
                                 <span className="ml-1 text-xs text-slate-500">（税別）</span>
@@ -285,7 +285,7 @@ export default function FinalizeSoukatsuButton({
                             <Button
                                 disabled={busy}
                                 onClick={() => run(false)}
-                                className={`${ACTION_BUTTON} bg-blue-600 hover:bg-blue-700 text-white`}
+                                className={`${ACTION_BUTTON} bg-brand-600 hover:bg-brand-700 text-white`}
                             >
                                 {busy ? "確定中…" : "確定する"}
                             </Button>

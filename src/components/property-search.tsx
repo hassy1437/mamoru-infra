@@ -10,6 +10,7 @@ import MapLink from "@/components/map-link"
 import { withdrawnAtOf, type MatchLink } from "@/lib/match-withdrawn"
 import NextInspectionBand from "@/components/next-inspection-band"
 import { dueSortKey, type NextInspection } from "@/lib/next-inspection"
+import { hasNotifierName } from "@/lib/property-notices"
 
 interface PropertySearchProps {
     items: Property[]
@@ -216,10 +217,13 @@ function PropertyMeta({ property }: { property: Property }) {
                 <MapPin className="w-3.5 h-3.5 shrink-0" />
                 <span className="truncate">{property.building_address}</span>
             </div>
-            <div className="flex items-center gap-1.5 min-w-0">
-                <User className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">{property.notifier_name}</span>
-            </div>
+            {/* ★届出者が空なら行ごと出さない（成約から作った物件は空で入る・2026-11-12） */}
+            {hasNotifierName(property) && (
+                <div className="flex items-center gap-1.5 min-w-0">
+                    <User className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">{property.notifier_name}</span>
+                </div>
+            )}
         </div>
     )
 }

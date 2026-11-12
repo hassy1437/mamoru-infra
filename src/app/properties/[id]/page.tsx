@@ -27,6 +27,15 @@ import PropertyLocationCard from "@/components/property-location-card"
 import { locationOf } from "@/lib/property-location"
 import { manualRecordOf, nextInspection, type InspectionRecord } from "@/lib/next-inspection"
 import LastInspectionPicker from "@/components/last-inspection-picker"
+import {
+    FLOOR_AREA_MISSING_NOTE,
+    FLOOR_AREA_MISSING_TITLE,
+    NOTIFIER_MISSING_NOTE,
+    NOTIFIER_MISSING_TITLE,
+    hasNotifierName,
+    needsFloorAreaNotice,
+    needsNotifierNotice,
+} from "@/lib/property-notices"
 
 export default async function PropertyDetailPage({
     params,
@@ -51,11 +60,15 @@ export default async function PropertyDetailPage({
     // 点検履歴を取得
     const { data: inspections } = await supabase
         .from("inspection_soukatsu")
-        .select("id, inspection_date, inspection_type, overall_judgment, created_at")
+        .select("id, inspection_date, inspection_type, overall_judgment, total_floor_area, created_at")
         .eq("property_id", id)
         .order("inspection_date", { ascending: false })
 
     const history = inspections ?? []
+    // ★知らせ（src/lib/property-notices.ts）。延べ面積は、いちばん新しい総括表に入っていれば出さない
+    const latestArea = history.length > 0 ? { total_floor_area: history[0].total_floor_area as number | string | null } : null
+    const showFloorAreaNotice = needsFloorAreaNotice(p, latestArea)
+    const showNotifierNotice = needsNotifierNotice(p)
 
     // ★次の点検（総括表＋月だけ選んだ前回の点検）
     const manual = manualRecordOf(p)
@@ -102,10 +115,13 @@ export default async function PropertyDetailPage({
                                     {/* ★Google マップ（2026-09-22）。住所は本人の物件のもの */}
                                     <MapLink prefecture={null} municipality={null} address={p.building_address} lat={p.location_lat} lng={p.location_lng} className="shrink-0" />
                                 </div>
-                                <div className="flex items-center gap-1.5 min-w-0">
-                                    <User className="w-3.5 h-3.5 shrink-0" />
-                                    <span className="truncate">{p.notifier_name}</span>
-                                </div>
+                                {/* ★届出者が空なら行ごと出さない（以前はアイコンだけの空の行・下の知らせで入れてもらう） */}
+                                {hasNotifierName(p) && (
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                        <User className="w-3.5 h-3.5 shrink-0" />
+                                        <span className="truncate">{p.notifier_name}</span>
+                                    </div>
+                                )}
                             </div>
                         </div>
                         <div className="flex gap-2 shrink-0 w-full sm:w-auto">
@@ -161,13 +177,28 @@ export default async function PropertyDetailPage({
                         )
                     })()}
                     {/* ★延べ面積が空のまま報告書を作ると、最後の「確定」で初めて止まっていた（2026-11-11 の打ち合わせ）。
-                          マッチングで延床面積を「範囲」で選んだ物件は空で入るので、点検を始める前に知らせる */}
-                    {!p.total_floor_area && (
+                          マッチングで延床面積を「範囲」で選んだ物件は空で入るので、点検を始める前に知らせる。
+                          ★物件にも、いちばん新しい総括表にも無いときだけ（2026-11-12: 総括表に入れても消えなかった） */}
+                    {showFloorAreaNotice && (
                         <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
                             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                             <p>
-                                <span className="font-bold">延べ面積がまだ入っていません。</span>
-                                報告書の確定に必要です。
+                                <span className="font-bold">{FLOOR_AREA_MISSING_TITLE}</span>
+                                {FLOOR_AREA_MISSING_NOTE}
+                                <Link href={`/properties/${id}/edit`} className="ml-1 inline-flex min-h-11 items-center font-bold underline underline-offset-2">
+                                    物件を直す
+                                </Link>
+                            </p>
+                        </div>
+                    )}
+                    {/* ★届出者（2026-11-12 の 3 つの立場のデモ）。成約から作った物件は空で入り、総括表を作るたびに手で入れていた。
+                          物件に入れておけば次の総括表から自動で入る（src/components/soukatsu-form.tsx） */}
+                    {showNotifierNotice && (
+                        <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                            <p>
+                                <span className="font-bold">{NOTIFIER_MISSING_TITLE}</span>
+                                {NOTIFIER_MISSING_NOTE}
                                 <Link href={`/properties/${id}/edit`} className="ml-1 inline-flex min-h-11 items-center font-bold underline underline-offset-2">
                                     物件を直す
                                 </Link>

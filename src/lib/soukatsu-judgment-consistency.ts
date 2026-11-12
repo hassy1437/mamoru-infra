@@ -18,7 +18,8 @@ import { isBadResult, isGoodResult } from "@/lib/soukatsu-equipment"
  *     点検票 … 「否」の行（isBadResult・総括表の判定と同じ言葉で見る＝「不良」も数える）。
  *              見出し行と、別記11の1 で自動試験機能ありのときの※行は紙に出ないので数えない
  *   ・設備と様式は設備名で突き合わせる（equipmentKeywordOf・点検票の立会者の引き継ぎ src/lib/bekki-witness.ts と同じ）
- *   ・★逆向き（総括表は要改善なのに点検票は全部良）は見ない。点検票に無い不良（総括表にだけ書く指摘）もありうる
+ *   ・逆向き（総括表は要改善なのに点検票は全部良）は findSoukatsuBadWithoutBekkiBad で別に見る（2026-11-12・定期テスト 第7回 61）。
+ *     ★点検票に無い不良（総括表にだけ書く指摘）もありうるので、文は「入れ忘れていないか確かめて・それならこのままで構わない」
  *   ★止めない。確定前・出力前の確認（src/lib/report-readiness.ts）の注意にする
  */
 
@@ -77,6 +78,38 @@ export function findSoukatsuJudgmentMismatches(
             const badRows = countPrintedBadRows(stepId, bekkiPayloads[stepId])
             if (badRows > 0) found.push({ equipment: name, stepId, badRows })
         }
+    }
+    return found
+}
+
+export type SoukatsuBadWithoutBekkiBad = {
+    /** 総括表の設備名 */
+    equipment: string
+    /** その設備の点検票（保存してあるもの） */
+    stepIds: ItiranInputStepId[]
+}
+
+/**
+ * 逆向き: 総括表で「要改善」（PDF は「不良」に○）なのに、その設備の点検票に「否」の行が 1 つも無いもの（★総括表の並びのまま）。
+ *   2026-11-12・定期テスト 第7回 61。以前は「不良内容が空」の注意しか出ず、不良内容を入れると何も出なかった。
+ *   ★点検票をまだ保存していない設備は見ない（未入力は別の注意で出る・総括表の確認画面は点検票の前に開くのが普通）
+ *   ★「否」の数え方は countPrintedBadRows（見出し行・自動試験機能ありの※行は数えない＝紙に出る「否」だけ）
+ */
+export function findSoukatsuBadWithoutBekkiBad(
+    equipmentResults: unknown,
+    bekkiPayloads: Record<string, Record<string, unknown>> | null | undefined,
+): SoukatsuBadWithoutBekkiBad[] {
+    if (!Array.isArray(equipmentResults) || !bekkiPayloads) return []
+    const stepIds = (Object.keys(PDF_MERGE_CONFIG) as ItiranInputStepId[])
+        .sort((a, b) => PDF_MERGE_CONFIG[a].formNo - PDF_MERGE_CONFIG[b].formNo)
+    const found: SoukatsuBadWithoutBekkiBad[] = []
+    for (const raw of equipmentResults) {
+        const item = (raw && typeof raw === "object" ? raw : {}) as { name?: unknown; result?: unknown }
+        const name = norm(item.name)
+        if (!name || !isBadResult(item.result)) continue
+        const saved = stepIds.filter((stepId) => name.includes(equipmentKeywordOf(stepId)) && bekkiPayloads[stepId])
+        if (saved.length === 0) continue
+        if (saved.every((stepId) => countPrintedBadRows(stepId, bekkiPayloads[stepId]) === 0)) found.push({ equipment: name, stepIds: saved })
     }
     return found
 }

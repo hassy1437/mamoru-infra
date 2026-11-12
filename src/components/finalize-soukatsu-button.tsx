@@ -150,7 +150,7 @@ export default function FinalizeSoukatsuButton({
                     <div className="flex gap-2">
                         <dt className="w-24 shrink-0 text-emerald-700">課金対象</dt>
                         <dd>
-                            合計 {items} 項目 ／ {formatAmount(total)}（税別）
+                            合計 {items} 項目 ／ {formatAmount(total)}（税抜）
                         </dd>
                     </div>
                 </dl>
@@ -252,7 +252,7 @@ export default function FinalizeSoukatsuButton({
                                 <strong className="text-base text-brand-700">
                                     {formatAmount(preview.amount_yen)}
                                 </strong>
-                                <span className="ml-1 text-xs text-slate-500">（税別）</span>
+                                <span className="ml-1 text-xs text-slate-500">（税抜）</span>
                             </p>
                             {billable === 0 && (
                                 <p className="mt-1 text-xs text-slate-600">

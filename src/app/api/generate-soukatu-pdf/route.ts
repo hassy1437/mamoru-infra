@@ -446,6 +446,10 @@ export async function POST(req: NextRequest) {
         const fitError = buildFitError("総括表", fonts.fit!)
         if (fitError) return NextResponse.json(fitError, { status: 422 })
 
+        // ★（その2）は、設備が（その1）の 6 行に収まるときは綴じない（2026-11-12・定期テスト 第7回 62）。
+        //   以前は白紙の（その2）がいつも 1 枚付き、消防署に出す紙が 1 枚多かった。（その2）には設備の行のほかに何も描かないので、外すのはこの場合だけ
+        if (page2 && results.length <= P1_EQ_ROWS.length) pdfDoc.removePage(1);
+
         const pdfBytes = await pdfDoc.save();
 
         return new NextResponse(pdfBytes as unknown as BodyInit, {

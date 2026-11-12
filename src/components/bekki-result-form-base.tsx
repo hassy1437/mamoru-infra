@@ -20,7 +20,7 @@ import { friendlyError } from "@/lib/error-messages"
 import { supabase } from "@/lib/supabase"
 import { loadDraftLocal, saveDraftLocal } from "@/lib/local-draft"
 import { toDateInputValue, formatJstDateTime } from "@/lib/date-utils"
-import { bekkiInspectionTypeDefault } from "@/lib/bekki-inspection-type"
+import { BEKKI_KIKI_ONLY_INSPECTION_TYPE, bekkiInspectionTypeDefault } from "@/lib/bekki-inspection-type"
 import {
     resolveDeviceTable,
     type DeviceTableKind,
@@ -189,6 +189,11 @@ interface Props {
      * ほかの様式は既定の plain（紙の 3 行 × 左右の 6 台・2026-10-20。以前は「機器名つき2行」で 2 台まで）
      */
     deviceTable?: DeviceTableKind
+    /**
+     * 点検種別の欄に「機器」しか刷られていない様式（第13・16・17・19・21・22）。
+     * ★選ぶ欄を出さず「機器点検」に固める（総括表が総合点検でも・定期テスト 第7回 60）
+     */
+    kikiOnly?: boolean
 }
 
 
@@ -226,6 +231,7 @@ export default function BekkiResultFormBase({
     notesCardTitle = "備考・測定機器",
     notesRows = 4,
     deviceTable = "plain",
+    kikiOnly = false,
 }: Props) {
     const saved = savedPayload ?? {}
 
@@ -234,6 +240,8 @@ export default function BekkiResultFormBase({
     const [witness, setWitness] = useState(normalizeBekkiWitnessForState(bekkiWitnessInitial(saved.witness, initial.witness)))
     const [location, setLocation] = useState(coerceString(saved.location, initial.building_address ?? ""))
     const [inspectionType, setInspectionType] = useState(coerceString(saved.inspection_type, bekkiInspectionTypeDefault(initial.inspection_type)))
+    // ★「機器」だけの様式は、保存済みの値・総括表の値に関係なく「機器点検」（定期テスト 第7回 60）
+    const shownInspectionType = kikiOnly ? BEKKI_KIKI_ONLY_INSPECTION_TYPE : inspectionType
     const [periodStart, setPeriodStart] = useState(coerceString(saved.period_start, bekkiPeriodDefault(initial).start))
     const [periodEnd, setPeriodEnd] = useState(coerceString(saved.period_end, bekkiPeriodDefault(initial).end))
     const [inspectorName, setInspectorName] = useState(normalizeBekkiInspectorNameForState(coerceString(saved.inspector_name, initial.inspector_name ?? "")))
@@ -269,7 +277,7 @@ export default function BekkiResultFormBase({
     //   ★開閉は最初の 1 回だけ決める。入力のたびに決め直すと、最後の 1 文字を入れた瞬間に畳まれて入力中の欄が消える。
     //   防火管理者・立会者・TEL・所属会社・住所は空が正しいことがある（物件に防火管理者が無い等）ので数えない。
     const basicInfoBlank = ([
-        ["名称", formName], ["所在地", location], ["点検種別", inspectionType],
+        ["名称", formName], ["所在地", location], ["点検種別", shownInspectionType],
         ["点検年月日（開始）", periodStart], ["点検年月日（終了）", periodEnd], ["点検者氏名", inspectorName],
     ] as const).filter(([, v]) => v.trim() === "").map(([label]) => label)
     const [basicInfoOpen, setBasicInfoOpen] = useState(() => basicInfoBlank.length > 0)
@@ -292,7 +300,7 @@ export default function BekkiResultFormBase({
         fire_manager: fireManager,
         witness: normalizeBekkiWitnessForPayload(witness),
         location,
-        inspection_type: inspectionType,
+        inspection_type: shownInspectionType,
         period_start: periodStart,
         period_end: periodEnd,
         inspector_name: normalizeBekkiInspectorNameForPayload(inspectorName),
@@ -314,7 +322,7 @@ export default function BekkiResultFormBase({
         extraFieldValues,
         fireManager,
         formName,
-        inspectionType,
+        shownInspectionType,
         inspectorAddress,
         inspectorCompany,
         inspectorName,
@@ -914,7 +922,7 @@ export default function BekkiResultFormBase({
             {/* ★様式の頭に 1 つ。表ごとの「この表の空欄を良にする」は残す（#101） */}
             <BekkiBulkGoodButton
                 form={bekkiFormNameOfApiRoute(apiPath) ?? apiPath}
-                inspectionType={inspectionType}
+                inspectionType={shownInspectionType}
                 sections={sections.map((s) => ({ key: s.key, labels: s.labels, rows: rowsByKey[s.key], hiddenRow: s.hiddenRow }))}
                 onApply={applyBulkGoodToSections}
                 fresh={savedPayload == null}
@@ -948,7 +956,7 @@ export default function BekkiResultFormBase({
                             ) : (
                                 !basicInfoOpen && (
                                     <span className="block truncate text-xs text-slate-500">
-                                        {formName} ／ {inspectionType} ／ {periodStart === periodEnd ? periodStart : `${periodStart}〜${periodEnd}`} ／ 点検者 {inspectorName}
+                                        {formName} ／ {shownInspectionType} ／ {periodStart === periodEnd ? periodStart : `${periodStart}〜${periodEnd}`} ／ 点検者 {inspectorName}
                                         {/* ★立会者も見せる。畳んだ中で空のまま気づかれず、23 様式すべて立会者の空欄で出た（2026-10-20） */}
                                         {" "}／ 立会者 {witness.trim() || "未入力"}
                                     </span>
@@ -984,7 +992,11 @@ export default function BekkiResultFormBase({
                     <div id="bekki-basic-info-2" hidden={!basicInfoOpen} className="grid md:grid-cols-4 gap-4">
                         <div className="space-y-1">
                             <Label>点検種別</Label>
-                            <BekkiInspectionTypeInput value={inspectionType} onChange={setInspectionType} />
+                            {kikiOnly ? (
+                                <p className="flex min-h-10 items-center text-sm text-slate-700">機器点検（この様式は機器点検だけです）</p>
+                            ) : (
+                                <BekkiInspectionTypeInput value={inspectionType} onChange={setInspectionType} />
+                            )}
                         </div>
                         <div className="space-y-1 min-w-0">
                             <Label>点検年月日（開始）</Label>

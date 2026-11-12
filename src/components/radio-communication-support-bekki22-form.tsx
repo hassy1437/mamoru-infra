@@ -53,6 +53,7 @@ export default function RadioCommunicationSupportBekki22Form(props: Props) {
             title="無線通信補助設備点検票（別記様式22）"
             iframeTitle="無線通信補助設備点検票（別記様式22）PDFプレビュー"
             apiPath="/api/generate-radio-communication-support-bekki22-pdf"
+            kikiOnly
             dbTable="inspection_radio_communication_support_bekki22"
             downloadFilenamePrefix="無線通信補助設備点検票"
             extraFieldsTitle="漏洩同軸ケーブル・空中線・増幅器"

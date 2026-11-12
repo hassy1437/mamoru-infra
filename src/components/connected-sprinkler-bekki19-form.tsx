@@ -59,6 +59,7 @@ export default function ConnectedSprinklerBekki19Form(props: Props) {
             title="連結散水設備点検票（別記様式19）"
             iframeTitle="連結散水設備点検票（別記様式19）PDFプレビュー"
             apiPath="/api/generate-connected-sprinkler-bekki19-pdf"
+            kikiOnly
             dbTable="inspection_connected_sprinkler_bekki19"
             downloadFilenamePrefix="連結散水設備点検票"
             sections={[{ key: "page1_rows", title: "機器点検", labels: PAGE1_ITEMS }]}

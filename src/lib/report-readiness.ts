@@ -5,7 +5,7 @@ import { bekkiInspectorInitial, normalizeInspectorData } from "@/lib/inspector-h
 import { INSPECTOR_FIELD_LABELS, inspectorDiff, itiranInspectorFields } from "@/lib/inspector-sync"
 import { DEFAULT_GOOD_READINESS_MESSAGE, isJudgmentsDefaulted } from "@/lib/bekki-default-good"
 import { buildItiranInputHref, getItiranInputPageTitle, type ItiranInputStepId } from "@/lib/itiran-input-flow"
-import { findSoukatsuJudgmentMismatches } from "@/lib/soukatsu-judgment-consistency"
+import { findSoukatsuBadWithoutBekkiBad, findSoukatsuJudgmentMismatches } from "@/lib/soukatsu-judgment-consistency"
 
 /**
  * 確定の前・出力の前の不備チェック（2026-10-19・打合せ録音 #101 で決定）。
@@ -130,6 +130,13 @@ const REQUIRED_FIELDS: readonly FieldRule[] = [
 export const SOUKATSU_JUDGMENT_MISMATCH_MESSAGE =
     "点検票に「否」がある設備が「良」になっています（PDF の総括表では「良」に○が付きます）。点検票が正しければ、総括表の点検結果を「要改善」にしてください"
 
+/**
+ * 逆向きの食い違い（総括表は「要改善」なのに点検票に「否」が無い）の注意の文（2026-11-12・定期テスト 第7回 61）。
+ * ★点検票に無い指摘（総括表にだけ書く不良）もありうるので、止めずに確かめてもらう
+ */
+export const SOUKATSU_BAD_WITHOUT_BEKKI_BAD_MESSAGE =
+    "総括表で「要改善」の設備なのに、点検票に「否」が 1 つもありません。点検票の不良を入れ忘れていないか確かめてください（点検票に無い指摘なら、このままで構いません）"
+
 /** 必須の欄の列名（検査スクリプトが 1 つずつ空にして確かめる） */
 export const READINESS_REQUIRED_COLUMNS: readonly string[] = REQUIRED_FIELDS.map((f) => f.column)
 
@@ -222,6 +229,11 @@ export function checkReportReadiness(input: ReadinessInput): ReportReadiness {
     const judgmentMismatch = [...new Set(findSoukatsuJudgmentMismatches(s.equipment_results, input.bekkiPayloads).map((m) => m.equipment))]
     if (judgmentMismatch.length) {
         warn("soukatsu_judgment", "総括表の判定", SOUKATSU_JUDGMENT_MISMATCH_MESSAGE, judgmentMismatch, { kind: "soukatsu", anchor: "equipment-results" })
+    }
+    // ★逆向き（定期テスト 第7回 61）。直す所は多くの場合は点検票なので、その様式を開くリンクにする（設備が複数の様式に当たるときは最初の様式）
+    const badWithoutBekki = findSoukatsuBadWithoutBekkiBad(s.equipment_results, input.bekkiPayloads)
+    if (badWithoutBekki.length) {
+        warn("soukatsu_judgment_reverse", "総括表の判定", SOUKATSU_BAD_WITHOUT_BEKKI_BAD_MESSAGE, badWithoutBekki.map((m) => m.equipment), { kind: "bekki", stepId: badWithoutBekki[0].stepIds[0] })
     }
 
     // ★点検者は itiran を渡したときだけ（確定の前は点検者一覧がまだ無いのが普通・出力画面で見る）

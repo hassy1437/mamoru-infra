@@ -13,6 +13,8 @@
 //   4. 画面: 作成と編集が同じ判定のボタン（EquipmentResultButtons）を使い、編集は「指摘なし」「要改善」だけを出す。
 //      編集の画面に「（判定は）変えられません」と書かない
 //   3. PDF: 1枚目と2枚目の行に、不良内容 → 措置内容 → 立会者 が左から順に、その行の高さに載る
+//   5. PDF の枚数: 設備が（その1）の 6 行に収まるとき（3 行・6 行）は 1 枚、7 行目からは（その2）を足して 2 枚
+//      （2026-11-12・定期テスト 第7回 62。以前は白紙の（その2）がいつも綴じられた）
 //
 // 使い方: node scripts/check-soukatsu-details.mjs [--self-test]
 import { spawnSync } from "child_process"
@@ -125,6 +127,32 @@ async function judgePdf(items, outName) {
     return problems
 }
 
+const ROUTE = "src/app/api/generate-soukatu-pdf/route.ts"
+const REMOVE_BLANK_PAGE2 = "if (page2 && results.length <= P1_EQ_ROWS.length) pdfDoc.removePage(1);"
+
+function pageCountOf(pdf) {
+    const r = spawnSync(PY, ["-c", "import fitz, sys\nprint(fitz.open(sys.argv[1]).page_count)", pdf], { encoding: "utf8" })
+    if (r.status !== 0) throw new Error(`PDF を読めない: ${r.stderr}`)
+    return Number(r.stdout.trim().split("\n").pop())
+}
+
+/** 5. 枚数（★routePath を差し替えて、自己診断で壊した写しも同じ道で測る） */
+async function judgePageCount(rows, routePath, tag) {
+    const problems = []
+    for (const [n, want] of [[3, 1], [6, 1], [7, 2]]) {
+        const out = path.join("tmp", `_soukatsu_pages_${tag}_${n}.pdf`)
+        const payload = {
+            building_name: "検証ビル", building_address: "京都市", building_usage: "(15)", notifier_name: "検証防災",
+            notifier_address: "京都市", inspection_type: "総合点検", inspection_date: "2026-11-12", equipment_results: rows.slice(0, n),
+        }
+        await runRoutePdf({ routePath, payload, outPdfPath: out })
+        const got = pageCountOf(out)
+        fs.rmSync(out, { force: true })
+        if (got !== want) problems.push(`（その2）: 設備 ${n} 行で ${want} 枚のはずが ${got} 枚`)
+    }
+    return problems
+}
+
 const items = Array.from({ length: 9 }, (_, k) => ({
     name: `EQ${k}`, result: "要改善", bad_detail: `BD${k}`, action: `AC${k}`, witness: `WT${k}`,
 }))
@@ -137,7 +165,7 @@ if (process.argv.includes("--self-test")) {
     const okLogic = [...judgeLogic(lib), ...judgeScreens(screens)]
     // ★自己診断は本番の検査と別の名前で作る（check-pdf-all は両方を並列に走らせる。
     //   同じ名前だと片方が消した直後にもう片方が読み、「PDF を読めない」で落ちた・2026-10-06）
-    const okPdf = await judgePdf(items, "_soukatsu_details_selftest.pdf")
+    const okPdf = [...(await judgePdf(items, "_soukatsu_details_selftest.pdf")), ...(await judgePageCount(items, ROUTE, "selftest"))]
     if (okLogic.length || okPdf.length) {
         console.log("自己診断: 現状が既にNG（陰性対照が成立しない）")
         for (const p of [...okLogic, ...okPdf]) console.log("   ", p)
@@ -177,6 +205,20 @@ if (process.argv.includes("--self-test")) {
         console.log("自己診断: 不良内容などが空でも PDF の検査が通ってしまう")
         process.exit(1)
     }
+    // 陽性対照3: 白紙の（その2）を外す 1 行を消す（直す前の形）→ 枚数の検査が落ちる
+    const routeSrc = readSrc(ROUTE)
+    if (!routeSrc.includes(REMOVE_BLANK_PAGE2)) { console.log("自己診断: 書き換える箇所が無い: 白紙の（その2）を外す"); process.exit(1) }
+    const mutantDir = path.join("tmp", "soukatsu-route-mutant")
+    fs.mkdirSync(mutantDir, { recursive: true })
+    const mutantRoute = path.join(mutantDir, "route.ts")
+    fs.writeFileSync(mutantRoute, routeSrc.replace(REMOVE_BLANK_PAGE2, ""))
+    const keepBlank = await judgePageCount(items, mutantRoute, "mutant")
+    fs.rmSync(mutantDir, { recursive: true, force: true })
+    if (!keepBlank.some((p) => p.startsWith("（その2）: 設備 3 行"))) {
+        console.log("自己診断: 白紙の（その2）を綴じても枚数の検査が通ってしまう")
+        process.exit(1)
+    }
+    console.log("  陽性対照3: 白紙の（その2）を綴じる（直す前の形）→ 枚数の検査が検出")
     for (const f of ["_soukatsu_details_selftest.pdf", "_soukatsu_details_bare.pdf"]) fs.rmSync(path.join("tmp", f), { force: true })
     console.log("  陰性対照: 整理・突き合わせ（判定は指摘なし⇄要改善だけ）・画面の配線・PDF（1枚目と2枚目）すべて約束どおり")
     console.log("  陽性対照2: 3つの欄が空の行（以前の画面の保存）→ PDF の検査が検出")
@@ -185,9 +227,9 @@ if (process.argv.includes("--self-test")) {
 }
 
 const lib = await loadLib(libSrc)
-const problems = [...judgeLogic(lib), ...judgeScreens(screens), ...(await judgePdf(items, "_soukatsu_details.pdf"))]
+const problems = [...judgeLogic(lib), ...judgeScreens(screens), ...(await judgePdf(items, "_soukatsu_details.pdf")), ...(await judgePageCount(items, ROUTE, "main"))]
 fs.rmSync(path.join("tmp", "_soukatsu_details.pdf"), { force: true })
-console.log("総括表の判定・不良内容・措置内容・立会者を検査: 整理・突き合わせ（判定は指摘なし⇄要改善だけ）・画面の配線・PDF（1枚目と2枚目）")
+console.log("総括表の判定・不良内容・措置内容・立会者を検査: 整理・突き合わせ（判定は指摘なし⇄要改善だけ）・画面の配線・PDF（1枚目と2枚目・枚数）")
 if (problems.length) {
     console.log("★NG:")
     for (const p of problems) console.log("   ", p)

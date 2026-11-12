@@ -110,7 +110,7 @@ export default async function OutputPage({
     // ★attention … 出せるが、出力前の確認に指摘がある（以前は報告書（様式第１）が中身に関係なくいつも準備済みに見えた）
     const pdfList = [
         { label: "報告書（様式第１）", ready: true, attention: readiness.missing.length > 0 || flagged.has("report_date"), urgent: flagged.has("report_date") },
-        { label: "総括表", ready: true, attention: readiness.missing.length > 0 || flagged.has("soukatsu_bad_detail") || flagged.has("soukatsu_judgment") },
+        { label: "総括表", ready: true, attention: readiness.missing.length > 0 || flagged.has("soukatsu_bad_detail") || flagged.has("soukatsu_judgment") || flagged.has("soukatsu_judgment_reverse") },
         // ★電話番号（2026-10-20・録音 102）も。点検者 1 の氏名・資格・電話番号は赤で目立たせる
         { label: "点検者一覧表", ready: true, attention: flagged.has("inspector1_name") || flagged.has("inspector1_license") || flagged.has("inspector1_phone"), urgent: flagged.has("inspector1_name") || flagged.has("inspector1_license") || flagged.has("inspector1_phone") },
         // ★綴じる順（様式番号の順・src/lib/build-merged-report.ts と同じ）に並べる。

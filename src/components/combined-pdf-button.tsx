@@ -147,13 +147,17 @@ export default function CombinedPdfButton({
         }
     }
 
+    // ★確定の前は枠だけのボタン（2026-11-12・定期テスト 第7回 63）。押すと「確定してから」の案内が出るのは今までどおり。
+    //   以前は「この点検を確定する」と同じ塗りの大きいボタンが縦に並び、はじめての人はどちらを先に押すか迷った
+    const tone = canDownload ? "bg-brand-600 hover:bg-brand-700 text-white" : "border-2 border-brand-600 bg-white text-brand-700 hover:bg-brand-50"
+
     return (
         <div>
         <Button
             onClick={handleDownload}
             disabled={loading || taskCount === 0 || (!canDownload && !!gateNoteId)}
             aria-describedby={!canDownload && gateNoteId ? gateNoteId : undefined}
-            className={`${ACTION_BUTTON} bg-brand-600 hover:bg-brand-700 text-white`}
+            className={`${ACTION_BUTTON} ${tone}`}
         >
             {loading ? (
                 <>

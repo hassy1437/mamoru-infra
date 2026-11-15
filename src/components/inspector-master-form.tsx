@@ -98,7 +98,7 @@ export default function InspectorMasterForm({ inspector }: InspectorMasterFormPr
                         <Label htmlFor="label">識別名</Label>
                         <Input
                             id="label"
-                            placeholder="例：橋本 拓也、事務 山田（一覧での表示名）"
+                            placeholder="例：山田 太郎、事務 佐藤（一覧での表示名）"
                             value={label}
                             onChange={(e) => setLabel(e.target.value)}
                         />

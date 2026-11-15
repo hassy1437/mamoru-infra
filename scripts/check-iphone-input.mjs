@@ -151,7 +151,7 @@ if (SELF_TEST) {
         ["16px をやめる", mut(CSS, "font-size: 16px;", "font-size: 14px;"), "16px にしていない"],
         ["16px をレイヤーの中へ", mut(CSS, "@media (pointer: coarse) {", "@layer base { @media (pointer: coarse) {"), "レイヤーの中"],
         ["その5 の値の数字キーボードを外す", mut(inert, 'placeholder="例: 67.2" inputMode="decimal"', 'placeholder="例: 67.2"'), "数字のキーボードが出ない"],
-        ["点検者の TEL を文字の欄に戻す", mut(base, '<Input type="tel" autoComplete="tel" value={inspectorTel}', "<Input value={inspectorTel}"), "電話のキーボード"],
+        ["点検者の TEL を文字の欄に戻す", mut(base, '<Input aria-label="点検者の電話番号" type="tel" autoComplete="tel" value={inspectorTel}', '<Input aria-label="点検者の電話番号" value={inspectorTel}'), "電話のキーボード"],
         ["測定の日付を文字の欄に戻す", mut(MEASURE, 'type="date"\n', ""), "日付を選ぶ欄でない"],
         ["前の容器と同じ仕様を外す", mut(inert, "onClick={() => copySpecFromPrevious(idx)}", "onClick={() => {}}"), "前の容器と同じ仕様"],
         ["種別のまとめ付けを外す", mut(SHOKAKI, "onClick={applyBulkMarks}", "onClick={() => {}}"), "まとめて付けられない"],

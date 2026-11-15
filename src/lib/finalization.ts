@@ -275,6 +275,22 @@ export function needsFinalizeOnOutput(state: FinalizationState): state is Extrac
     return state.finalized.length === 0 && finalizeBlockNotice(state.blockedSince, state.notContracted) === null
 }
 
+/**
+ * 結果出力の画面で、確定したあとに出す文（定期テスト第11回の 80・2026-11-16）。
+ *   以前は「まだ確定していません」の箱が消えるだけで、はじめての人は確定できたかが分からなかった
+ *   （総括表の確認の画面には「確定済み・最終確定・確定した回数」が出る）。
+ *   ★確定が 1 回も無い・判定できないときは null（何も出さない）
+ *   ★日時の書き方（formatJstDateTime）は呼ぶ側が渡す。このファイルは検査のスクリプトが単体で読み込むので、実行時の import を足さない
+ */
+export function finalizedNoticeText(state: FinalizationState, formatAt: (at: string) => string): string | null {
+    if (!state.available || state.finalized.length === 0) return null
+    const n = state.finalized.length
+    // ★並びに頼らず、いちばん新しい確定の日時を出す
+    const latest = state.finalized.reduce((a, f) => (Date.parse(f.acted_at) > Date.parse(a.acted_at) ? f : a))
+    const at = formatAt(latest.acted_at)
+    return `確定済みです（最終確定 ${at}${n > 1 ? `・${n} 回確定` : ""}）。PDF の一括出力ができます。`
+}
+
 /** PDF のボタンを確定前に押したときの案内 */
 export function pdfGateMessage(state: FinalizationState): string {
     return finalizeBlockedGateMessage(state) ?? PDF_GATE_MESSAGE

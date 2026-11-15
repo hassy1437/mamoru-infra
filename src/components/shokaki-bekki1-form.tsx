@@ -38,6 +38,7 @@ import { soukatsuPdfGate } from "@/lib/pdf-gate-client"
 import { useAutoSave } from "@/hooks/use-auto-save"
 import FormActionBar from "@/components/form-action-bar"
 import InspectorSyncNotice from "@/components/inspector-sync-notice"
+import { changeRowField } from "@/lib/judgment-change"
 
 type MarkKey = "A" | "B" | "C" | "D" | "E" | "F"
 
@@ -505,7 +506,7 @@ export default function ShokakiBekki1Form({
         value: string,
     ) => {
         const setter = page === "p1" ? setPage1Rows : setPage2Rows
-        setter((prev) => prev.map((row, i) => (i === index ? { ...row, [field]: value } : row)))
+        setter((prev) => prev.map((row, i) => (i === index ? changeRowField(row, field, value) : row)))
     }
 
     // ★種別（A〜F）をまとめて付ける（2026-10-20）。iPhone では行ごとに約 35 回タップしていた。
@@ -780,49 +781,49 @@ export default function ShokakiBekki1Form({
                     <div className="grid md:grid-cols-2 gap-4">
                         <div className="space-y-1">
                             <Label>名称</Label>
-                            <Input value={formName} onChange={(e) => setFormName(e.target.value)} />
+                            <Input aria-label="名称" value={formName} onChange={(e) => setFormName(e.target.value)} />
                         </div>
                         <div className="space-y-1">
                             <Label>所在地</Label>
-                            <Input value={location} onChange={(e) => setLocation(e.target.value)} />
+                            <Input aria-label="所在地" value={location} onChange={(e) => setLocation(e.target.value)} />
                         </div>
                         <div className="space-y-1">
                             <Label>防火管理者</Label>
-                            <Input value={fireManager} onChange={(e) => setFireManager(e.target.value)} />
+                            <Input aria-label="防火管理者" value={fireManager} onChange={(e) => setFireManager(e.target.value)} />
                         </div>
                         <div className="space-y-1">
                             <Label>立会者</Label>
-                            <Input value={witness} onChange={(e) => setWitness(e.target.value)} />
+                            <Input aria-label="立会者" value={witness} onChange={(e) => setWitness(e.target.value)} />
                         </div>
                     </div>
 
                     <div className="grid md:grid-cols-4 gap-4">
                         <div className="space-y-1 min-w-0">
                             <Label>点検期間（開始）</Label>
-                            <Input type="date" className="min-w-0" value={toDateInputValue(periodStart)} onChange={(e) => setPeriodStart(e.target.value)} />
+                            <Input aria-label="点検期間（開始）" type="date" className="min-w-0" value={toDateInputValue(periodStart)} onChange={(e) => setPeriodStart(e.target.value)} />
                         </div>
                         <div className="space-y-1 min-w-0">
                             <Label>点検期間（終了）</Label>
-                            <Input type="date" className="min-w-0" value={toDateInputValue(periodEnd)} onChange={(e) => setPeriodEnd(e.target.value)} />
+                            <Input aria-label="点検期間（終了）" type="date" className="min-w-0" value={toDateInputValue(periodEnd)} onChange={(e) => setPeriodEnd(e.target.value)} />
                         </div>
                         <div className="space-y-1">
                             <Label>点検者 氏名</Label>
-                            <Input value={inspectorName} onChange={(e) => setInspectorName(e.target.value)} />
+                            <Input aria-label="点検者 氏名" value={inspectorName} onChange={(e) => setInspectorName(e.target.value)} />
                         </div>
                         <div className="space-y-1">
                             <Label>TEL</Label>
-                            <Input type="tel" autoComplete="tel" value={inspectorTel} onChange={(e) => setInspectorTel(e.target.value)} />
+                            <Input aria-label="点検者の電話番号" type="tel" autoComplete="tel" value={inspectorTel} onChange={(e) => setInspectorTel(e.target.value)} />
                         </div>
                     </div>
 
                     <div className="grid md:grid-cols-2 gap-4">
                         <div className="space-y-1">
                             <Label>点検者 所属会社</Label>
-                            <Input value={inspectorCompany} onChange={(e) => setInspectorCompany(e.target.value)} />
+                            <Input aria-label="点検者 所属会社" value={inspectorCompany} onChange={(e) => setInspectorCompany(e.target.value)} />
                         </div>
                         <div className="space-y-1">
                             <Label>点検者 住所</Label>
-                            <Input value={inspectorAddress} onChange={(e) => setInspectorAddress(e.target.value)} />
+                            <Input aria-label="点検者 住所" value={inspectorAddress} onChange={(e) => setInspectorAddress(e.target.value)} />
                         </div>
                     </div>
                 </CardContent>
@@ -871,7 +872,7 @@ export default function ShokakiBekki1Form({
                 <CardContent className="space-y-5">
                     <div className="space-y-1">
                         <Label>備考</Label>
-                        <Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
+                        <Textarea aria-label="備考" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
                     </div>
 
                     <DeviceTableInputs kind="plain" rows={deviceTableRows} onChange={updateDeviceTableRow} />

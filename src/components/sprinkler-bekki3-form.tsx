@@ -44,6 +44,7 @@ import { NameplatePairButtons } from "@/components/nameplate-read-button"
 import { useAutoSave } from "@/hooks/use-auto-save"
 import FormActionBar from "@/components/form-action-bar"
 import InspectorSyncNotice from "@/components/inspector-sync-notice"
+import { changeRowField } from "@/lib/judgment-change"
 
 type RowState = {
     content: string
@@ -541,7 +542,7 @@ export default function SprinklerBekki3Form({
         field: keyof RowState,
         value: string,
     ) => {
-        setter((prev) => prev.map((row, i) => (i === index ? { ...row, [field]: value } : row)))
+        setter((prev) => prev.map((row, i) => (i === index ? changeRowField(row, field, value) : row)))
     }
 
     const renderItemTable = (
@@ -944,19 +945,19 @@ export default function SprinklerBekki3Form({
                     <div className="grid md:grid-cols-2 gap-4">
                         <div className="space-y-1">
                             <Label>名称</Label>
-                            <Input value={formName} onChange={(e) => setFormName(e.target.value)} />
+                            <Input aria-label="名称" value={formName} onChange={(e) => setFormName(e.target.value)} />
                         </div>
                         <div className="space-y-1">
                             <Label>所在地</Label>
-                            <Input value={location} onChange={(e) => setLocation(e.target.value)} />
+                            <Input aria-label="所在地" value={location} onChange={(e) => setLocation(e.target.value)} />
                         </div>
                         <div className="space-y-1">
                             <Label>防火管理者</Label>
-                            <Input value={fireManager} onChange={(e) => setFireManager(e.target.value)} />
+                            <Input aria-label="防火管理者" value={fireManager} onChange={(e) => setFireManager(e.target.value)} />
                         </div>
                         <div className="space-y-1">
                             <Label>立会者</Label>
-                            <Input value={witness} onChange={(e) => setWitness(e.target.value)} />
+                            <Input aria-label="立会者" value={witness} onChange={(e) => setWitness(e.target.value)} />
                         </div>
                     </div>
 
@@ -967,30 +968,30 @@ export default function SprinklerBekki3Form({
                         </div>
                         <div className="space-y-1 min-w-0">
                             <Label>点検期間（開始）</Label>
-                            <Input type="date" className="min-w-0" value={toDateInputValue(periodStart)} onChange={(e) => setPeriodStart(e.target.value)} />
+                            <Input aria-label="点検期間（開始）" type="date" className="min-w-0" value={toDateInputValue(periodStart)} onChange={(e) => setPeriodStart(e.target.value)} />
                         </div>
                         <div className="space-y-1 min-w-0">
                             <Label>点検期間（終了）</Label>
-                            <Input type="date" className="min-w-0" value={toDateInputValue(periodEnd)} onChange={(e) => setPeriodEnd(e.target.value)} />
+                            <Input aria-label="点検期間（終了）" type="date" className="min-w-0" value={toDateInputValue(periodEnd)} onChange={(e) => setPeriodEnd(e.target.value)} />
                         </div>
                         <div className="space-y-1">
                             <Label>TEL</Label>
-                            <Input type="tel" autoComplete="tel" value={inspectorTel} onChange={(e) => setInspectorTel(e.target.value)} />
+                            <Input aria-label="点検者の電話番号" type="tel" autoComplete="tel" value={inspectorTel} onChange={(e) => setInspectorTel(e.target.value)} />
                         </div>
                     </div>
 
                     <div className="grid md:grid-cols-2 gap-4">
                         <div className="space-y-1">
                             <Label>点検者 氏名</Label>
-                            <Input value={inspectorName} onChange={(e) => setInspectorName(e.target.value)} />
+                            <Input aria-label="点検者 氏名" value={inspectorName} onChange={(e) => setInspectorName(e.target.value)} />
                         </div>
                         <div className="space-y-1">
                             <Label>点検者 所属会社</Label>
-                            <Input value={inspectorCompany} onChange={(e) => setInspectorCompany(e.target.value)} />
+                            <Input aria-label="点検者 所属会社" value={inspectorCompany} onChange={(e) => setInspectorCompany(e.target.value)} />
                         </div>
                         <div className="space-y-1 md:col-span-2">
                             <Label>点検者 住所</Label>
-                            <Input value={inspectorAddress} onChange={(e) => setInspectorAddress(e.target.value)} />
+                            <Input aria-label="点検者 住所" value={inspectorAddress} onChange={(e) => setInspectorAddress(e.target.value)} />
                         </div>
                     </div>
 
@@ -1007,19 +1008,19 @@ export default function SprinklerBekki3Form({
                     <div className="grid md:grid-cols-4 gap-4">
                         <div className="space-y-1">
                             <Label>ポンプ 製造者名</Label>
-                            <Input value={pumpMaker} onChange={(e) => setPumpMaker(e.target.value)} />
+                            <Input aria-label="ポンプ 製造者名" value={pumpMaker} onChange={(e) => setPumpMaker(e.target.value)} />
                         </div>
                         <div className="space-y-1">
                             <Label>ポンプ 型式等</Label>
-                            <Input {...CODE_INPUT_PROPS} value={pumpModel} onChange={(e) => setPumpModel(e.target.value)} />
+                            <Input aria-label="ポンプ 型式等" {...CODE_INPUT_PROPS} value={pumpModel} onChange={(e) => setPumpModel(e.target.value)} />
                         </div>
                         <div className="space-y-1">
                             <Label>電動機・内燃機関 製造者名</Label>
-                            <Input value={motorMaker} onChange={(e) => setMotorMaker(e.target.value)} />
+                            <Input aria-label="電動機・内燃機関 製造者名" value={motorMaker} onChange={(e) => setMotorMaker(e.target.value)} />
                         </div>
                         <div className="space-y-1">
                             <Label>電動機・内燃機関 型式等</Label>
-                            <Input {...CODE_INPUT_PROPS} value={motorModel} onChange={(e) => setMotorModel(e.target.value)} />
+                            <Input aria-label="電動機・内燃機関 型式等" {...CODE_INPUT_PROPS} value={motorModel} onChange={(e) => setMotorModel(e.target.value)} />
                         </div>
                     </div>
                 </CardContent>
@@ -1039,7 +1040,7 @@ export default function SprinklerBekki3Form({
                 <CardContent className="space-y-5">
                     <div className="space-y-1">
                         <Label>備考</Label>
-                        <Textarea rows={5} value={notes} onChange={(e) => setNotes(e.target.value)} />
+                        <Textarea aria-label="備考" rows={5} value={notes} onChange={(e) => setNotes(e.target.value)} />
                     </div>
 
                     <DeviceTableInputs kind="plain" rows={deviceTableRows} onChange={updateDeviceTableRow} />

@@ -152,8 +152,10 @@ function hasLicense(raw: unknown): boolean {
     return Object.values(d.shoubou_licenses).some(filled) || Object.values(d.kensa_licenses).some(filled)
 }
 
-/** 別記の「否」なのに不良内容が空の行（見出し行は紙に出ないので数えない） */
-function badRowsWithoutContent(stepId: string, payload: Record<string, unknown>): string[] {
+type BekkiRow = { judgment?: unknown; bad_content?: unknown }
+
+/** 別記の行のうち match に当たる行の名前（見出しの行は数えない・表が 2 つ以上なら「その2「…」」） */
+function bekkiRowNames(stepId: string, payload: Record<string, unknown>, match: (row: BekkiRow) => boolean): string[] {
     const config = PDF_MERGE_CONFIG[stepId as ItiranInputStepId]
     const labelsByKey = config ? BEKKI_ROW_LABELS[`別記様式第${String(config.formNo).replace(".", "の")}`] ?? {} : {}
     const keys = [...new Set([...Object.keys(labelsByKey), ...Object.keys(payload)])]
@@ -165,8 +167,8 @@ function badRowsWithoutContent(stepId: string, payload: Record<string, unknown>)
         const rows = Array.isArray(payload[key]) ? (payload[key] as unknown[]) : []
         const labels = labelsByKey[key] ?? []
         rows.forEach((raw, i) => {
-            const row = (raw && typeof raw === "object" ? raw : {}) as { judgment?: unknown; bad_content?: unknown }
-            if (row.judgment !== "否" || text(row.bad_content) !== "") return
+            const row = (raw && typeof raw === "object" ? raw : {}) as BekkiRow
+            if (!match(row)) return
             const label = labels[i] ?? ""
             if (isBekkiHeadingLabel(label)) return
             const name = label || `${i + 1}行目`
@@ -174,6 +176,22 @@ function badRowsWithoutContent(stepId: string, payload: Record<string, unknown>)
         })
     }
     return out
+}
+
+/** 別記の「否」なのに不良内容が空の行（見出し行は紙に出ないので数えない） */
+function badRowsWithoutContent(stepId: string, payload: Record<string, unknown>): string[] {
+    return bekkiRowNames(stepId, payload, (row) => row.judgment === "否" && text(row.bad_content) === "")
+}
+
+/**
+ * ★「良」の行に不良内容が入っている（定期テスト第11回の 79）。否にして書いたあと良に戻すと残っていて、
+ *   PDF では判定「○（良）」の行にそのまま印字された。いまは良に戻すと消える（src/lib/judgment-change.ts）が、
+ *   それより前に保存したもの・ほかの道で入ったものはここで知らせる（止めない）。★措置内容だけの行は知らせない（良でも書くことがある）
+ */
+export const GOOD_ROW_BAD_CONTENT_MESSAGE = "「良」の行に不良内容が入っています（PDF ではその行に印字されます。要らなければ消してください）"
+
+function goodRowsWithBadContent(stepId: string, payload: Record<string, unknown>): string[] {
+    return bekkiRowNames(stepId, payload, (row) => row.judgment === "良" && text(row.bad_content) !== "")
 }
 
 const stepTitle = (stepId: string): string =>
@@ -271,6 +289,10 @@ export function checkReportReadiness(input: ReadinessInput): ReportReadiness {
         const bad = badRowsWithoutContent(stepId, payload)
         if (bad.length) {
             warn(`bekki_bad_content:${stepId}`, stepTitle(stepId), "「否」の行に不良内容が入っていません", bad, { kind: "bekki", stepId })
+        }
+        const goodWithBad = goodRowsWithBadContent(stepId, payload)
+        if (goodWithBad.length) {
+            warn(`bekki_good_with_bad:${stepId}`, stepTitle(stepId), GOOD_ROW_BAD_CONTENT_MESSAGE, goodWithBad, { kind: "bekki", stepId })
         }
         // ★初期値の「良」を入れたまま「確かめました」を押していない（見ていない行が良のまま出るおそれ）
         if (isJudgmentsDefaulted(payload)) {

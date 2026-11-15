@@ -16,6 +16,12 @@ import { KENSA_TYPES, SHOUBOU_TYPES } from "@/lib/license-types"
 
 // その分類に値が1つでも入っているか（モバイルの初期タブ選択に使う）。
 // itiran-form の isInspectorFilled と同型。保有フラグは持たず値の有無で判定する。
+/**
+ * 読み上げ用の免状の名前（表の字そろえの全角空白を抜く・「甲　種　特　類」→「甲種特類」）。
+ * ★定期テスト第11回の 81: 表の入力欄に名前が無く、読み上げでは「日付」「交付番号」としか分からなかった
+ */
+const plainLabel = (label: string) => label.replace(/\s+/g, "")
+
 const shoubouFilled = (l: ShoubouLicense) => Boolean(
     l.issue_year || l.issue_month || l.issue_day || l.license_number ||
     l.issuing_governor || l.training_year || l.training_month,
@@ -146,7 +152,7 @@ export function LicenseEditor({ value, onChange }: LicenseEditorProps) {
                                         <td className="border border-gray-300 px-2 py-1 text-sm whitespace-nowrap">{label}</td>
                                         {/* 交付年月日 (colSpan=3) */}
                                         <td className="border border-gray-300 px-1 py-1" colSpan={3}>
-                                            <Input type="date" className="h-9 w-full min-w-0 text-sm" value={issueDate}
+                                            <Input aria-label={`消防設備士 ${plainLabel(label)} 交付年月日`} type="date" className="h-9 w-full min-w-0 text-sm" value={issueDate}
                                                 onChange={e => {
                                                     const { year, month, day } = splitDateInputValue(e.target.value)
                                                     updateShoubouLicense(key, { issue_year: year, issue_month: month, issue_day: day })
@@ -155,17 +161,17 @@ export function LicenseEditor({ value, onChange }: LicenseEditorProps) {
                                         </td>
                                         {/* 交付番号 */}
                                         <td className="border border-gray-300 px-1 py-1">
-                                            <Input {...CODE_INPUT_PROPS} className="h-9 w-full min-w-0 text-sm px-1" placeholder="交付番号" value={lic.license_number}
+                                            <Input {...CODE_INPUT_PROPS} aria-label={`消防設備士 ${plainLabel(label)} 交付番号`} className="h-9 w-full min-w-0 text-sm px-1" placeholder="交付番号" value={lic.license_number}
                                                 onChange={e => updateShoubouLicense(key, { license_number: e.target.value })} />
                                         </td>
                                         {/* 交付知事 */}
                                         <td className="border border-gray-300 px-1 py-1">
-                                            <Input className="h-9 w-full min-w-0 text-sm px-1" placeholder="知事名" value={lic.issuing_governor}
+                                            <Input aria-label={`消防設備士 ${plainLabel(label)} 交付知事`} className="h-9 w-full min-w-0 text-sm px-1" placeholder="知事名" value={lic.issuing_governor}
                                                 onChange={e => updateShoubouLicense(key, { issuing_governor: e.target.value })} />
                                         </td>
                                         {/* 講習受講年月 (colSpan=2) */}
                                         <td className="border border-gray-300 px-1 py-1" colSpan={2}>
-                                            <Input type="month" className="h-9 w-full min-w-0 text-sm" value={trainingMonth}
+                                            <Input aria-label={`消防設備士 ${plainLabel(label)} 講習受講年月`} type="month" className="h-9 w-full min-w-0 text-sm" value={trainingMonth}
                                                 onChange={e => {
                                                     const { year, month } = splitMonthInputValue(e.target.value)
                                                     updateShoubouLicense(key, { training_year: year, training_month: month })
@@ -190,7 +196,7 @@ export function LicenseEditor({ value, onChange }: LicenseEditorProps) {
                                 <div className="font-medium text-sm text-slate-800">{label}</div>
                                 <div className="space-y-1 min-w-0">
                                     <span className="text-xs text-slate-500">交付年月日</span>
-                                    <Input type="date" className="h-9 w-full min-w-0 text-sm" value={issueDate}
+                                    <Input aria-label={`消防設備士 ${plainLabel(label)} 交付年月日`} type="date" className="h-9 w-full min-w-0 text-sm" value={issueDate}
                                         onChange={e => {
                                             const { year, month, day } = splitDateInputValue(e.target.value)
                                             updateShoubouLicense(key, { issue_year: year, issue_month: month, issue_day: day })
@@ -199,17 +205,17 @@ export function LicenseEditor({ value, onChange }: LicenseEditorProps) {
                                 </div>
                                 <div className="space-y-1 min-w-0">
                                     <span className="text-xs text-slate-500">交付番号</span>
-                                    <Input {...CODE_INPUT_PROPS} className="h-9 w-full min-w-0 text-sm" placeholder="交付番号" value={lic.license_number}
+                                    <Input {...CODE_INPUT_PROPS} aria-label={`消防設備士 ${plainLabel(label)} 交付番号`} className="h-9 w-full min-w-0 text-sm" placeholder="交付番号" value={lic.license_number}
                                         onChange={e => updateShoubouLicense(key, { license_number: e.target.value })} />
                                 </div>
                                 <div className="space-y-1 min-w-0">
                                     <span className="text-xs text-slate-500">交付知事</span>
-                                    <Input className="h-9 w-full min-w-0 text-sm" placeholder="知事名" value={lic.issuing_governor}
+                                    <Input aria-label={`消防設備士 ${plainLabel(label)} 交付知事`} className="h-9 w-full min-w-0 text-sm" placeholder="知事名" value={lic.issuing_governor}
                                         onChange={e => updateShoubouLicense(key, { issuing_governor: e.target.value })} />
                                 </div>
                                 <div className="space-y-1 min-w-0">
                                     <span className="text-xs text-slate-500">講習受講年月</span>
-                                    <Input type="month" className="h-9 w-full min-w-0 text-sm" value={trainingMonth}
+                                    <Input aria-label={`消防設備士 ${plainLabel(label)} 講習受講年月`} type="month" className="h-9 w-full min-w-0 text-sm" value={trainingMonth}
                                         onChange={e => {
                                             const { year, month } = splitMonthInputValue(e.target.value)
                                             updateShoubouLicense(key, { training_year: year, training_month: month })
@@ -257,7 +263,7 @@ export function LicenseEditor({ value, onChange }: LicenseEditorProps) {
                                         <td className="border border-gray-300 px-2 py-1 text-sm whitespace-nowrap">{label}</td>
                                         {/* 交付年月日 (colSpan=3) */}
                                         <td className="border border-gray-300 px-1 py-1" colSpan={3}>
-                                            <Input type="date" className="h-9 w-full min-w-0 text-sm" value={issueDate}
+                                            <Input aria-label={`点検資格者 ${plainLabel(label)} 交付年月日`} type="date" className="h-9 w-full min-w-0 text-sm" value={issueDate}
                                                 onChange={e => {
                                                     const { year, month, day } = splitDateInputValue(e.target.value)
                                                     updateKensaLicense(key, { issue_year: year, issue_month: month, issue_day: day })
@@ -266,12 +272,12 @@ export function LicenseEditor({ value, onChange }: LicenseEditorProps) {
                                         </td>
                                         {/* 交付番号 */}
                                         <td className="border border-gray-300 px-1 py-1">
-                                            <Input {...CODE_INPUT_PROPS} className="h-9 w-full min-w-0 text-sm px-1" placeholder="交付番号" value={lic.license_number}
+                                            <Input {...CODE_INPUT_PROPS} aria-label={`点検資格者 ${plainLabel(label)} 交付番号`} className="h-9 w-full min-w-0 text-sm px-1" placeholder="交付番号" value={lic.license_number}
                                                 onChange={e => updateKensaLicense(key, { license_number: e.target.value })} />
                                         </td>
                                         {/* 有効期限 (colSpan=3) */}
                                         <td className="border border-gray-300 px-1 py-1" colSpan={3}>
-                                            <Input type="date" className="h-9 w-full min-w-0 text-sm" value={expiryDate}
+                                            <Input aria-label={`点検資格者 ${plainLabel(label)} 有効期限`} type="date" className="h-9 w-full min-w-0 text-sm" value={expiryDate}
                                                 onChange={e => {
                                                     const { year, month, day } = splitDateInputValue(e.target.value)
                                                     updateKensaLicense(key, { expiry_year: year, expiry_month: month, expiry_day: day })
@@ -296,7 +302,7 @@ export function LicenseEditor({ value, onChange }: LicenseEditorProps) {
                                 <div className="font-medium text-sm text-slate-800">{label}</div>
                                 <div className="space-y-1 min-w-0">
                                     <span className="text-xs text-slate-500">交付年月日</span>
-                                    <Input type="date" className="h-9 w-full min-w-0 text-sm" value={issueDate}
+                                    <Input aria-label={`点検資格者 ${plainLabel(label)} 交付年月日`} type="date" className="h-9 w-full min-w-0 text-sm" value={issueDate}
                                         onChange={e => {
                                             const { year, month, day } = splitDateInputValue(e.target.value)
                                             updateKensaLicense(key, { issue_year: year, issue_month: month, issue_day: day })
@@ -305,12 +311,12 @@ export function LicenseEditor({ value, onChange }: LicenseEditorProps) {
                                 </div>
                                 <div className="space-y-1 min-w-0">
                                     <span className="text-xs text-slate-500">交付番号</span>
-                                    <Input {...CODE_INPUT_PROPS} className="h-9 w-full min-w-0 text-sm" placeholder="交付番号" value={lic.license_number}
+                                    <Input {...CODE_INPUT_PROPS} aria-label={`点検資格者 ${plainLabel(label)} 交付番号`} className="h-9 w-full min-w-0 text-sm" placeholder="交付番号" value={lic.license_number}
                                         onChange={e => updateKensaLicense(key, { license_number: e.target.value })} />
                                 </div>
                                 <div className="space-y-1 min-w-0">
                                     <span className="text-xs text-slate-500">有効期限</span>
-                                    <Input type="date" className="h-9 w-full min-w-0 text-sm" value={expiryDate}
+                                    <Input aria-label={`点検資格者 ${plainLabel(label)} 有効期限`} type="date" className="h-9 w-full min-w-0 text-sm" value={expiryDate}
                                         onChange={e => {
                                             const { year, month, day } = splitDateInputValue(e.target.value)
                                             updateKensaLicense(key, { expiry_year: year, expiry_month: month, expiry_day: day })

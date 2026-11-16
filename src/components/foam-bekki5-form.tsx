@@ -44,6 +44,7 @@ import { NameplatePairButtons } from "@/components/nameplate-read-button"
 import { useAutoSave } from "@/hooks/use-auto-save"
 import FormActionBar from "@/components/form-action-bar"
 import InspectorSyncNotice from "@/components/inspector-sync-notice"
+import { changeRowField } from "@/lib/judgment-change"
 
 type RowState = {
     content: string
@@ -531,7 +532,7 @@ export default function FoamBekki5Form({
         field: keyof RowState,
         value: string,
     ) => {
-        setter((prev) => prev.map((row, i) => (i === index ? { ...row, [field]: value } : row)))
+        setter((prev) => prev.map((row, i) => (i === index ? changeRowField(row, field, value) : row)))
     }
 
     const renderItemTable = (
@@ -918,19 +919,19 @@ export default function FoamBekki5Form({
                     <div className="grid md:grid-cols-2 gap-4">
                         <div className="space-y-1">
                             <Label>名称</Label>
-                            <Input value={formName} onChange={(e) => setFormName(e.target.value)} />
+                            <Input aria-label="名称" value={formName} onChange={(e) => setFormName(e.target.value)} />
                         </div>
                         <div className="space-y-1">
                             <Label>所在地</Label>
-                            <Input value={location} onChange={(e) => setLocation(e.target.value)} />
+                            <Input aria-label="所在地" value={location} onChange={(e) => setLocation(e.target.value)} />
                         </div>
                         <div className="space-y-1">
                             <Label>防火管理者</Label>
-                            <Input value={fireManager} onChange={(e) => setFireManager(e.target.value)} />
+                            <Input aria-label="防火管理者" value={fireManager} onChange={(e) => setFireManager(e.target.value)} />
                         </div>
                         <div className="space-y-1">
                             <Label>立会者</Label>
-                            <Input value={witness} onChange={(e) => setWitness(e.target.value)} />
+                            <Input aria-label="立会者" value={witness} onChange={(e) => setWitness(e.target.value)} />
                         </div>
                     </div>
 
@@ -941,30 +942,30 @@ export default function FoamBekki5Form({
                         </div>
                         <div className="space-y-1 min-w-0">
                             <Label>点検年月日（開始）</Label>
-                            <Input type="date" className="min-w-0" value={toDateInputValue(periodStart)} onChange={(e) => setPeriodStart(e.target.value)} />
+                            <Input aria-label="点検年月日（開始）" type="date" className="min-w-0" value={toDateInputValue(periodStart)} onChange={(e) => setPeriodStart(e.target.value)} />
                         </div>
                         <div className="space-y-1 min-w-0">
                             <Label>点検年月日（終了）</Label>
-                            <Input type="date" className="min-w-0" value={toDateInputValue(periodEnd)} onChange={(e) => setPeriodEnd(e.target.value)} />
+                            <Input aria-label="点検年月日（終了）" type="date" className="min-w-0" value={toDateInputValue(periodEnd)} onChange={(e) => setPeriodEnd(e.target.value)} />
                         </div>
                         <div className="space-y-1">
                             <Label>TEL</Label>
-                            <Input type="tel" autoComplete="tel" value={inspectorTel} onChange={(e) => setInspectorTel(e.target.value)} />
+                            <Input aria-label="点検者の電話番号" type="tel" autoComplete="tel" value={inspectorTel} onChange={(e) => setInspectorTel(e.target.value)} />
                         </div>
                     </div>
 
                     <div className="grid md:grid-cols-2 gap-4">
                         <div className="space-y-1">
                             <Label>点検者氏名</Label>
-                            <Input value={inspectorName} onChange={(e) => setInspectorName(e.target.value)} />
+                            <Input aria-label="点検者氏名" value={inspectorName} onChange={(e) => setInspectorName(e.target.value)} />
                         </div>
                         <div className="space-y-1">
                             <Label>点検者所属会社</Label>
-                            <Input value={inspectorCompany} onChange={(e) => setInspectorCompany(e.target.value)} />
+                            <Input aria-label="点検者所属会社" value={inspectorCompany} onChange={(e) => setInspectorCompany(e.target.value)} />
                         </div>
                         <div className="space-y-1 md:col-span-2">
                             <Label>点検者住所</Label>
-                            <Input value={inspectorAddress} onChange={(e) => setInspectorAddress(e.target.value)} />
+                            <Input aria-label="点検者住所" value={inspectorAddress} onChange={(e) => setInspectorAddress(e.target.value)} />
                         </div>
                     </div>
 
@@ -981,37 +982,37 @@ export default function FoamBekki5Form({
                     <div className="grid md:grid-cols-6 gap-4">
                         <div className="space-y-1">
                             <Label>ポンプ製造者名</Label>
-                            <Input value={pumpMaker} onChange={(e) => setPumpMaker(e.target.value)} />
+                            <Input aria-label="ポンプ製造者名" value={pumpMaker} onChange={(e) => setPumpMaker(e.target.value)} />
                         </div>
                         <div className="space-y-1">
                             <Label>ポンプ型式</Label>
-                            <Input {...CODE_INPUT_PROPS} value={pumpModel} onChange={(e) => setPumpModel(e.target.value)} />
+                            <Input aria-label="ポンプ型式" {...CODE_INPUT_PROPS} value={pumpModel} onChange={(e) => setPumpModel(e.target.value)} />
                         </div>
                         <div className="space-y-1">
                             <Label>電動機製造者名</Label>
-                            <Input value={motorMaker} onChange={(e) => setMotorMaker(e.target.value)} />
+                            <Input aria-label="電動機製造者名" value={motorMaker} onChange={(e) => setMotorMaker(e.target.value)} />
                         </div>
                         <div className="space-y-1">
                             <Label>電動機型式</Label>
-                            <Input {...CODE_INPUT_PROPS} value={motorModel} onChange={(e) => setMotorModel(e.target.value)} />
+                            <Input aria-label="電動機型式" {...CODE_INPUT_PROPS} value={motorModel} onChange={(e) => setMotorModel(e.target.value)} />
                         </div>
                         <div className="space-y-1">
                             <Label>泡消火薬剤製造者名</Label>
-                            <Input value={foamMaker} onChange={(e) => setFoamMaker(e.target.value)} />
+                            <Input aria-label="泡消火薬剤製造者名" value={foamMaker} onChange={(e) => setFoamMaker(e.target.value)} />
                         </div>
                         <div className="space-y-1">
                             <Label>泡合成器型式</Label>
-                            <Input {...CODE_INPUT_PROPS} value={foamModel} onChange={(e) => setFoamModel(e.target.value)} />
+                            <Input aria-label="泡合成器型式" {...CODE_INPUT_PROPS} value={foamModel} onChange={(e) => setFoamModel(e.target.value)} />
                         </div>
                         {/* ★正典（令和6年9月10日最終改正）で（その3）消火薬剤欄に新設された刷り込み
                             「（泡第 __ ～ __ 号）」の2つの空欄。範囲でない場合は開始側だけ入れる */}
                         <div className="space-y-1">
                             <Label>消火薬剤 型式番号（泡第 ○ 〜）</Label>
-                            <Input {...CODE_INPUT_PROPS} value={foamTypeNoFrom} onChange={(e) => setFoamTypeNoFrom(e.target.value)} />
+                            <Input aria-label="消火薬剤 型式番号（泡第 ○ 〜）" {...CODE_INPUT_PROPS} value={foamTypeNoFrom} onChange={(e) => setFoamTypeNoFrom(e.target.value)} />
                         </div>
                         <div className="space-y-1">
                             <Label>消火薬剤 型式番号（〜 ○ 号）</Label>
-                            <Input {...CODE_INPUT_PROPS} value={foamTypeNoTo} onChange={(e) => setFoamTypeNoTo(e.target.value)} />
+                            <Input aria-label="消火薬剤 型式番号（〜 ○ 号）" {...CODE_INPUT_PROPS} value={foamTypeNoTo} onChange={(e) => setFoamTypeNoTo(e.target.value)} />
                         </div>
                     </div>
                 </CardContent>
@@ -1030,7 +1031,7 @@ export default function FoamBekki5Form({
                 <CardContent className="space-y-5">
                     <div className="space-y-1">
                         <Label>備考</Label>
-                        <Textarea rows={5} value={notes} onChange={(e) => setNotes(e.target.value)} />
+                        <Textarea aria-label="備考" rows={5} value={notes} onChange={(e) => setNotes(e.target.value)} />
                     </div>
 
                     <DeviceTableInputs kind="plain" rows={deviceTableRows} onChange={updateDeviceTableRow} />

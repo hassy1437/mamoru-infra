@@ -7,6 +7,7 @@ import {
     canDownloadPdf,
     FINALIZE_ON_OUTPUT_NOTE,
     finalizeBlockedGateMessage,
+    finalizedNoticeText,
     loadFinalizationState,
     needsFinalizeOnOutput,
     pdfGateMessage,
@@ -24,6 +25,7 @@ import { findInspectionTypeMismatches } from "@/lib/inspection-type-consistency"
 import WithdrawnMatchNotice from "@/components/withdrawn-match-notice"
 import { withdrawnAtOf } from "@/lib/match-withdrawn"
 import { checkReportReadiness, readinessBoxTitle } from "@/lib/report-readiness"
+import { formatJstDateTime } from "@/lib/date-utils"
 import { loadBekkiPayloads } from "@/lib/bekki-payloads"
 import ReportReadinessBox from "@/components/report-readiness-box"
 
@@ -38,6 +40,7 @@ export default async function OutputPage({
     // ★PDFゲート。確定の仕組みが使えないとき（未適用・判定失敗）は素通りさせる
     //   ＝ canDownloadPdf が fail-open。ここで止めると本番のPDF出力が止まる。
     const finalization = await loadFinalizationState(supabase, id)
+    const finalizedNotice = finalizedNoticeText(finalization, formatJstDateTime)
 
     const { data: soukatsu } = await supabase
         .from("inspection_soukatsu")
@@ -119,7 +122,7 @@ export default async function OutputPage({
         ...[...applicableSteps].sort((a, b) => PDF_MERGE_CONFIG[a.id].formNo - PDF_MERGE_CONFIG[b.id].formNo).map((step) => ({
             label: step.title,
             ready: !!bekkiPayloads[step.id],
-            attention: flagged.has(`bekki_bad_content:${step.id}`),
+            attention: flagged.has(`bekki_bad_content:${step.id}`) || flagged.has(`bekki_good_with_bad:${step.id}`),
         })),
     ]
     // ★判定が 1 つも無い表（その1 だけ入れて続きが空など・src/lib/blank-judgment-sections.ts）。止めずに知らせる
@@ -288,6 +291,15 @@ export default async function OutputPage({
                                 missingRequired={readiness.missing.map((m) => m.label)}
                             />
                         </div>
+                    )}
+
+                    {/* ★確定したあとは「確定済み」と最終確定の日時を出す（定期テスト第11回の 80）。
+                        以前は「まだ確定していません」の箱が消えるだけで、確定できたかが分からなかった */}
+                    {finalizedNotice && (
+                        <p role="status" className="flex items-start gap-2 rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-sm leading-relaxed text-emerald-900">
+                            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+                            <span>{finalizedNotice}</span>
+                        </p>
                     )}
 
                     {/* ★確定できない（業者登録の承認前・解約日を迎えた など）ときは、押す前に理由を出す。

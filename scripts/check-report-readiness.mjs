@@ -16,6 +16,7 @@
 //        直す画面は総括表の編集の点検結果・2026-11-09 から判定を変えられる）
 //      ★逆向き（総括表で「要改善」なのに点検票に「否」が 1 つも無い・2026-11-12・定期テスト 第7回 61）。直す画面はその点検票。
 //        点検票をまだ保存していない設備は見ない
+//      ★別記の「良」の行に不良内容が残っている（PDF に印字される・2026-11-16・定期テスト 第11回 79）。措置内容だけ・見出し行は見ない
 //   5. 直す画面のリンク（総括表の欄・点検者一覧・様式）
 //   6. 呼び出し側: 総括表の確認画面がプレビュー → 確定前の確認 → 確定のボタンの順に並べ、空の必須を確定のボタンに渡す。
 //      確定のボタンが押せなくなる。出力画面が点検者・別記まで渡す。共通の別記フォームが基本情報を畳める。
@@ -136,6 +137,15 @@ function behaviour({ lib, labels }) {
             if (r.warnings[0].fix?.kind !== "bekki" || r.warnings[0].fix?.stepId !== STEP) problems.push("別記の「否」で不良内容が空: 直す画面がその様式でない")
         })
     warnCase("別記の「否」で不良内容あり", { bekkiPayloads: { [STEP]: { ...HEAD, page1_rows: rows(26, (i) => (i === 3 ? { judgment: "否", bad_content: "降下空間に障害物" } : { judgment: "良" })), page2_rows: rows(27) } } }, [])
+    // ★「否」→「良」に直したのに不良内容が残っていると、PDF のその行に印字される（定期テスト第11回の 79）
+    warnCase("別記の「良」に不良内容が残っている", { bekkiPayloads: { [STEP]: { ...HEAD, page1_rows: rows(26, (i) => (i === 3 ? { judgment: "否", bad_content: "降下空間に障害物" } : i === 5 ? { judgment: "良", bad_content: "前に書いた不良内容" } : { judgment: "良" })), page2_rows: rows(27) } } },
+        [`bekki_good_with_bad:${STEP}`], (r) => {
+            const want = `その1「${s15.page1_rows[5]}」`
+            if (r.warnings[0].details[0] !== want || r.warnings[0].details.length !== 1) problems.push(`別記の「良」に不良内容: 行の名前が ${JSON.stringify(r.warnings[0].details)}（期待 [${JSON.stringify(want)}]）`)
+            if (r.warnings[0].fix?.kind !== "bekki" || r.warnings[0].fix?.stepId !== STEP) problems.push("別記の「良」に不良内容: 直す画面がその様式でない")
+        })
+    warnCase("別記の「良」に措置内容だけ（注意しない）", { bekkiPayloads: { [STEP]: { ...HEAD, page1_rows: rows(26, (i) => (i === 3 ? { judgment: "否", bad_content: "降下空間に障害物" } : i === 5 ? { judgment: "良", action_content: "清掃した" } : { judgment: "良" })), page2_rows: rows(27) } } }, [])
+    warnCase("見出し行（総合点検）の「良」に不良内容（紙に出ないので注意しない）", { bekkiPayloads: { [STEP]: { ...HEAD, page1_rows: rows(26, (i) => (i === 3 ? { judgment: "否", bad_content: "降下空間に障害物" } : { judgment: "良" })), page2_rows: rows(27, (i) => (i === 23 ? { judgment: "良", bad_content: "x" } : { judgment: "良" })) } } }, [])
     // ★見出し行の「否」は紙に出ない＝不良内容の注意は出ない。点検票に紙に出る「否」が無いので、総括表の「要改善」との逆向きの注意だけが出る
     warnCase("見出し行（総合点検）に「否」", { bekkiPayloads: { [STEP]: { ...HEAD, page1_rows: rows(26), page2_rows: rows(27, (i) => (i === 23 ? { judgment: "否" } : { judgment: "良" })) } } }, ["soukatsu_judgment_reverse"])
     warnCase("「否」の行が多い", { bekkiPayloads: { [STEP]: { ...HEAD, page1_rows: rows(26, () => ({ judgment: "否" })), page2_rows: rows(27) } } }, [`bekki_bad_content:${STEP}`], (r) => {
@@ -285,7 +295,9 @@ if (SELF_TEST) {
     const mutants = [
         ["届出者の氏名を見ない", swap(LIB, `{ column: "notifier_name", label: "届出者の氏名", anchor: "notifierName", filled: (v) => text(v) !== "" },`, ""), "notifier_name が"],
         ["延べ面積 0 を通す", swap(LIB, "filled: (v) => (num(v) ?? 0) > 0", "filled: (v) => num(v) !== null"), "延べ面積 0"],
-        ["「否」の不良内容を見ない", swap(LIB, `if (row.judgment !== "否" || text(row.bad_content) !== "") return`, "return"), "別記の「否」で不良内容が空"],
+        ["「否」の不良内容を見ない", swap(LIB, `(row) => row.judgment === "否" && text(row.bad_content) === ""`, "() => false"), "別記の「否」で不良内容が空"],
+        ["「良」に残った不良内容を見ない", swap(LIB, `(row) => row.judgment === "良" && text(row.bad_content) !== ""`, "() => false"), "別記の「良」に不良内容が残っている"],
+        ["「良」の措置内容も知らせる", swap(LIB, `(row) => row.judgment === "良" && text(row.bad_content) !== ""`, `(row) => row.judgment === "良" && (text(row.bad_content) !== "" || text((row as { action_content?: unknown }).action_content) !== "")`), "措置内容だけ"],
         ["見出し行も数える", swap(LIB, "if (isBekkiHeadingLabel(label)) return", ""), "見出し行"],
         ["確定の前にも点検者を見る", swap(LIB, "if (input.itiran !== undefined) {", "if (true) {"), "点検者一覧を渡さない"],
         ["注意で確定を止める", swap(LIB, "canFinalize: missing.length === 0", "canFinalize: missing.length === 0 && warnings.length === 0"), "注意なのに確定を止めている"],

@@ -56,6 +56,7 @@ import { CODE_INPUT_PROPS } from "@/lib/code-input-props"
 import { useAutoSave } from "@/hooks/use-auto-save"
 import FormActionBar from "@/components/form-action-bar"
 import InspectorSyncNotice from "@/components/inspector-sync-notice"
+import { changeRowField } from "@/lib/judgment-change"
 export type { BekkiRowState } from "@/lib/bekki-row-state"
 
 export type BekkiDeviceState = {
@@ -538,7 +539,7 @@ export default function BekkiResultFormBase({
     const updateRowField = (key: BekkiPageRowsKey, index: number, field: keyof BekkiRowState, value: string) => {
         setRowsByKey((prev) => ({
             ...prev,
-            [key]: prev[key].map((row, i) => (i === index ? { ...row, [field]: value } : row)),
+            [key]: prev[key].map((row, i) => (i === index ? changeRowField(row, field, value) : row)),
         }))
     }
 
@@ -973,19 +974,19 @@ export default function BekkiResultFormBase({
                     <div id="bekki-basic-info-1" hidden={!basicInfoOpen} className="grid md:grid-cols-2 gap-4">
                         <div className="space-y-1">
                             <Label>名称</Label>
-                            <Input value={formName} onChange={(e) => setFormName(e.target.value)} />
+                            <Input aria-label="名称" value={formName} onChange={(e) => setFormName(e.target.value)} />
                         </div>
                         <div className="space-y-1">
                             <Label>所在地</Label>
-                            <Input value={location} onChange={(e) => setLocation(e.target.value)} />
+                            <Input aria-label="所在地" value={location} onChange={(e) => setLocation(e.target.value)} />
                         </div>
                         <div className="space-y-1">
                             <Label>防火管理者</Label>
-                            <Input value={fireManager} onChange={(e) => setFireManager(e.target.value)} />
+                            <Input aria-label="防火管理者" value={fireManager} onChange={(e) => setFireManager(e.target.value)} />
                         </div>
                         <div className="space-y-1">
                             <Label>立会者</Label>
-                            <Input value={witness} onChange={(e) => setWitness(e.target.value)} />
+                            <Input aria-label="立会者" value={witness} onChange={(e) => setWitness(e.target.value)} />
                         </div>
                     </div>
 
@@ -1000,30 +1001,30 @@ export default function BekkiResultFormBase({
                         </div>
                         <div className="space-y-1 min-w-0">
                             <Label>点検年月日（開始）</Label>
-                            <Input type="date" className="min-w-0" value={toDateInputValue(periodStart)} onChange={(e) => setPeriodStart(e.target.value)} />
+                            <Input aria-label="点検年月日（開始）" type="date" className="min-w-0" value={toDateInputValue(periodStart)} onChange={(e) => setPeriodStart(e.target.value)} />
                         </div>
                         <div className="space-y-1 min-w-0">
                             <Label>点検年月日（終了）</Label>
-                            <Input type="date" className="min-w-0" value={toDateInputValue(periodEnd)} onChange={(e) => setPeriodEnd(e.target.value)} />
+                            <Input aria-label="点検年月日（終了）" type="date" className="min-w-0" value={toDateInputValue(periodEnd)} onChange={(e) => setPeriodEnd(e.target.value)} />
                         </div>
                         <div className="space-y-1">
                             <Label>TEL</Label>
-                            <Input type="tel" autoComplete="tel" value={inspectorTel} onChange={(e) => setInspectorTel(e.target.value)} />
+                            <Input aria-label="点検者の電話番号" type="tel" autoComplete="tel" value={inspectorTel} onChange={(e) => setInspectorTel(e.target.value)} />
                         </div>
                     </div>
 
                     <div id="bekki-basic-info-3" hidden={!basicInfoOpen} className="grid md:grid-cols-2 gap-4">
                         <div className="space-y-1">
                             <Label>点検者氏名</Label>
-                            <Input value={inspectorName} onChange={(e) => setInspectorName(e.target.value)} />
+                            <Input aria-label="点検者氏名" value={inspectorName} onChange={(e) => setInspectorName(e.target.value)} />
                         </div>
                         <div className="space-y-1">
                             <Label>点検者所属会社</Label>
-                            <Input value={inspectorCompany} onChange={(e) => setInspectorCompany(e.target.value)} />
+                            <Input aria-label="点検者所属会社" value={inspectorCompany} onChange={(e) => setInspectorCompany(e.target.value)} />
                         </div>
                         <div className="space-y-1 md:col-span-2">
                             <Label>点検者住所</Label>
-                            <Input value={inspectorAddress} onChange={(e) => setInspectorAddress(e.target.value)} />
+                            <Input aria-label="点検者住所" value={inspectorAddress} onChange={(e) => setInspectorAddress(e.target.value)} />
                         </div>
                     </div>
 
@@ -1097,7 +1098,7 @@ export default function BekkiResultFormBase({
                 <CardContent className="space-y-5">
                     <div className="space-y-1">
                         <Label>備考</Label>
-                        <Textarea rows={notesRows} value={notes} onChange={(e) => setNotes(e.target.value)} />
+                        <Textarea aria-label="備考" rows={notesRows} value={notes} onChange={(e) => setNotes(e.target.value)} />
                     </div>
 
                     <DeviceTableInputs kind={deviceTable} rows={deviceTableRows} onChange={updateDeviceTableRow} />
